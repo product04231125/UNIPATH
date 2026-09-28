@@ -1,0 +1,244 @@
+{
+  "schema_version": "1.0",
+  "status": "draft",
+  "institution_name": "경동대학교",
+  "department_name": "컴퓨터공학과",
+  "document": {
+    "id": "a6e538bc-8317-4b27-b41a-2bc3d6a3d832",
+    "title": "컴퓨터공학과 졸업최소이수학점",
+    "source_file": "docs/sources/경동대학교_컴퓨터공학과_2026학년도_졸업최소이수학점.pdf",
+    "source_url": null,
+    "pages": [1, 2, 3],
+    "extraction_method": "text_layer"
+  },
+  "rules": [
+    {
+      "admission_years": [2026, 2025],
+      "track": "single_major",
+      "minimum_credits": {
+        "liberal_arts": {
+          "basic_liberal_arts": 7,
+          "kd_liberal_arts": 5,
+          "basic_science": 6,
+          "foreign_language": 4,
+          "elective": 9,
+          "total": 31
+        },
+        "major": {
+          "required": 15,
+          "elective": 51,
+          "total": 66
+        },
+        "free_elective": 23,
+        "graduation_total": 120
+      },
+      "source_page": 1
+    },
+    {
+      "admission_years": [2026, 2025],
+      "track": "double_major",
+      "minimum_credits": {
+        "major": { "total": 33 },
+        "graduation_total": 120
+      },
+      "note": "다른 전공과 병행이수",
+      "source_page": 1
+    },
+    {
+      "admission_years": [2026, 2025],
+      "track": "minor",
+      "minimum_credits": {
+        "major": { "total": 18 },
+        "graduation_total": 120
+      },
+      "source_page": 1
+    },
+    {
+      "admission_years": [2026, 2025],
+      "track": "working_student",
+      "minimum_credits": {
+        "liberal_arts": { "elective": 25, "total": 25 },
+        "major": { "elective": 45, "total": 45 },
+        "free_elective": 50,
+        "graduation_total": 120
+      },
+      "source_page": 1
+    },
+    {
+      "admission_years": [2026, 2025],
+      "track": "international_student",
+      "minimum_credits": { "graduation_total": 120 },
+      "source_page": 1
+    },
+    {
+      "admission_years": [2024, 2023, 2022, 2021],
+      "track": "single_major",
+      "minimum_credits": {
+        "liberal_arts": {
+          "basic_liberal_arts": 7,
+          "kd_liberal_arts": 5,
+          "basic_science": 6,
+          "foreign_language": 4,
+          "elective": 9,
+          "total": 31
+        },
+        "major": {
+          "required_general": 6,
+          "required_basic": 12,
+          "elective": 48,
+          "total": 66
+        },
+        "free_elective": 23,
+        "graduation_total": 120
+      },
+      "source_pages": [1, 2]
+    },
+    {
+      "admission_years": [2024, 2023, 2022, 2021],
+      "track": "double_major",
+      "minimum_credits": {
+        "major": { "total": 33 },
+        "graduation_total": 120
+      },
+      "note": "다른 전공과 병행이수",
+      "source_pages": [1, 2]
+    },
+    {
+      "admission_years": [2024, 2023, 2022, 2021],
+      "track": "minor",
+      "minimum_credits": {
+        "major": { "total": 18 },
+        "graduation_total": 120
+      },
+      "source_pages": [1, 2]
+    },
+    {
+      "admission_years": [2024, 2023, 2022, 2021],
+      "track": "working_student",
+      "minimum_credits": {
+        "liberal_arts": { "elective": 25, "total": 25 },
+        "major": { "elective": 45, "total": 45 },
+        "free_elective": 50,
+        "graduation_total": 120
+      },
+      "source_pages": [1, 2]
+    },
+    {
+      "admission_years": [2024, 2023, 2022, 2021],
+      "track": "international_student",
+      "minimum_credits": { "graduation_total": 120 },
+      "source_pages": [1, 2]
+    },
+    {
+      "admission_years": [2020],
+      "track": "single_major",
+      "minimum_credits": {
+        "liberal_arts": {
+          "basic_liberal_arts": 7,
+          "kd_liberal_arts": 5,
+          "basic_science": 6,
+          "foreign_language": 4,
+          "elective": 9,
+          "total": 31
+        },
+        "major": { "required": 12, "elective": 54, "total": 66 },
+        "free_elective": 23,
+        "graduation_total": 120
+      },
+      "source_page": 3
+    },
+    {
+      "admission_years": [2020],
+      "track": "double_major",
+      "minimum_credits": {
+        "major": { "total": 33 },
+        "graduation_total": 120
+      },
+      "note": "다른 전공과 병행이수",
+      "source_page": 3
+    },
+    {
+      "admission_years": [2020],
+      "track": "minor",
+      "minimum_credits": {
+        "major": { "total": 18 },
+        "graduation_total": 120
+      },
+      "note": "다른 전공과 병행이수",
+      "source_page": 3
+    },
+    {
+      "admission_years": [2020],
+      "track": "working_student",
+      "minimum_credits": {
+        "liberal_arts": { "elective": 25, "total": 25 },
+        "major": { "elective": 45, "total": 45 },
+        "free_elective": 50,
+        "graduation_total": 120
+      },
+      "source_page": 3
+    },
+    {
+      "admission_years": [2020],
+      "track": "international_student",
+      "minimum_credits": { "graduation_total": 120 },
+      "source_page": 3
+    },
+    {
+      "admission_years": [2019, 2018],
+      "track": "single_major",
+      "minimum_credits": {
+        "liberal_arts": {
+          "general": 11,
+          "basic_or_series_basic": 12,
+          "foreign_language": 8,
+          "elective": 6,
+          "total": 37
+        },
+        "major": { "required": 14, "elective": 56, "total": 70 },
+        "free_elective": 23,
+        "graduation_total": 130
+      },
+      "source_page": 3
+    },
+    {
+      "admission_years": [2019, 2018],
+      "track": "double_major",
+      "minimum_credits": { "major": { "required": 4, "elective": 31, "total": 35 } },
+      "note": "다른 전공과 병행이수",
+      "source_page": 3
+    },
+    {
+      "admission_years": [2019, 2018],
+      "track": "minor",
+      "minimum_credits": { "major": { "required": 4, "elective": 17, "total": 21 } },
+      "source_page": 3
+    },
+    {
+      "admission_years": [2019, 2018],
+      "track": "working_student",
+      "minimum_credits": {
+        "liberal_arts": { "elective": 25, "total": 25 },
+        "major": { "elective": 48, "total": 48 },
+        "free_elective": 57,
+        "graduation_total": 130
+      },
+      "source_page": 3
+    },
+    {
+      "admission_years": [2019, 2018],
+      "track": "international_student",
+      "minimum_credits": {
+        "liberal_arts": { "elective": 33, "total": 33 },
+        "major": { "elective": 69, "total": 69 },
+        "free_elective": 28,
+        "graduation_total": 130
+      },
+      "source_page": 3
+    }
+  ],
+  "review": {
+    "required": true,
+    "reason": "PDF에서 텍스트 레이어와 표를 추출한 초안입니다. Rule Engine 반영 전 학과 또는 학사 담당자의 확인이 필요합니다."
+  }
+}
