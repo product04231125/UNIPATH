@@ -21,6 +21,8 @@ erDiagram
     USER ||--o{ ACADEMIC_RECORD : owns
     USER ||--o{ VOLUNTEER_RECORD : records
     USER ||--o{ PII_PROCESSING_AUDIT : audit_subject
+    USER ||--o{ SCHOOL_ADMIN_SCOPE : administers
+    INSTITUTION ||--o{ SCHOOL_ADMIN_SCOPE : grants_scope
     COURSE ||--o{ ACADEMIC_RECORD : completed_as
     INSTITUTION ||--o{ GRADUATION_RULE_SET : defines
     DEPARTMENT ||--o{ GRADUATION_RULE_SET : defines
@@ -60,9 +62,20 @@ erDiagram
         uuid institution_id FK
         uuid department_id FK
         uuid curriculum_id FK
+        string role
         int admission_year
         datetime created_at
         datetime updated_at
+    }
+    SCHOOL_ADMIN_SCOPE {
+        uuid id PK
+        uuid user_id FK
+        uuid institution_id FK
+        uuid department_id FK
+        uuid curriculum_id FK
+        string status
+        datetime granted_at
+        datetime revoked_at
     }
     PII_PROCESSING_AUDIT {
         uuid id PK
@@ -182,6 +195,13 @@ erDiagram
     }
 ```
 
+`User.role`은 최소 `user`, `school_admin` enum으로 관리한다. `school_admin`은
+`SchoolAdminScope`에서 부여된 학교·학과·교육과정 범위의 공식 데이터만 관리할 수
+있다. 사용자의 학교·학과·교육과정 FK는 데이터 미등록 또는 미지원 학교 사용자를
+지원하기 위해 nullable로 설계할 수 있으며, 직접 입력한 학사·활동 데이터의 소유권은
+학교 데이터와 독립적으로 항상 사용자에게 남는다. 실제 학교 관리자 신원 검증 및
+권한 부여 절차는 구현 전에 별도로 확정한다.
+
 `GraduationRuleSet`은 규칙의 적용 계층을 표현한다. 한 사용자의 졸업감사에는
 해당 학교의 `institution` 규칙 묶음, 소속 학과의 `department` 규칙 묶음, 적용
 교육과정의 `curriculum` 규칙 묶음을 함께 선택해 모두 판정한다. 즉 학교 공통
@@ -192,6 +212,13 @@ erDiagram
 `institution_id`만, 학과 규칙은 `institution_id`와 `department_id`, 교육과정
 규칙은 세 범위 FK를 모두 가진다. 감사에는 사용된 규칙 묶음의 버전을 스냅샷으로
 남기며, 이미 실행된 감사에 적용된 규칙 묶음을 변경·재작성하지 않는다.
+
+사용자가 직접 입력한 임시 졸업요건은 공식 `GraduationRuleSet`과 분리된 개인 참고
+데이터로 관리한다. 학교 관리자가 공식 규정과 적용 범위를 등록하면 공식
+`GraduationRuleSet`이 이후 감사에서 우선하며, 임시 요건이나 사용자의 이수기록을
+덮어쓰거나 삭제하지 않는다. 적용 가능한 공식 규칙 묶음이 하나도 없으면
+`GraduationAudit.status`는 `not_applicable`으로 기록하고 졸업 가능 여부를 판정하지
+않는다.
 
 과목 최소 성적 요건은 원 성적 표기(`grade`)와 계산용 점수(`grade_points`)를
 함께 보존하고, `GraduationRuleCourse`의 기준 점수와 `comparison_grade_scale`로
@@ -518,7 +545,7 @@ erDiagram
 
 | 단계 | 목표 | 실제 생성·구현 대상 |
 |---|---|---|
-| 1차 MVP | 계층형 학사 판정, 공식 문서·개인화 RAG, 자격증·봉사·논문·캡스톤 요건 관리 | `User`, `Institution`, `Department`, `Curriculum`, `Course`, `CurriculumCourse`, `AcademicRecord`, `VolunteerRecord`, `GraduationRuleSet`, `GraduationRule`, `GraduationRuleCourse`, `GraduationRuleCertificate`, `GraduationRuleVolunteer`, `GraduationRuleThesis`, `GraduationAudit`, `GraduationAuditResult`, `ThesisRecord`, `CertificateProvider`, `Certificate`, `UserCertificate`, `Document`, `DocumentChunk`, `DocumentScope`, `CertificateDocument`, `Experience` |
+| 1차 MVP | 역할·학교 관리 범위, 계층형 학사 판정, 공식 문서·개인화 RAG, 자격증·봉사·논문·캡스톤 요건 관리 | `User`, `SchoolAdminScope`, `Institution`, `Department`, `Curriculum`, `Course`, `CurriculumCourse`, `AcademicRecord`, `VolunteerRecord`, `GraduationRuleSet`, `GraduationRule`, `GraduationRuleCourse`, `GraduationRuleCertificate`, `GraduationRuleVolunteer`, `GraduationRuleThesis`, `GraduationAudit`, `GraduationAuditResult`, `ThesisRecord`, `CertificateProvider`, `Certificate`, `UserCertificate`, `Document`, `DocumentChunk`, `DocumentScope`, `CertificateDocument`, `Experience` |
 | 2차 MVP | 진로 정보 RAG, 채용공고 분석, 역량 요건 및 설명 가능한 매칭 | `JobPosting`, `JobRequirement`, `JobRequirementCertificate`, `JobMatch`, `JobMatchDetail`, `Skill`, `UserSkill`, `CertificateSkill`, `ExperienceSkill`, `CareerPath`, `CareerPathSkill`, `GraduationRuleSkill`, `JobRequirementSkill` 및 사용자 경험·자격증 기반 추천 API |
 | 3차 MVP | 취업 준비 과정 관리와 고도화된 추천 | `JobApplication`, 지원 상태·피드백 기반 추천, 필요 시 공고 의미 검색용 별도 청크·임베딩, 추천 이력·사용자 피드백 모델 |
 

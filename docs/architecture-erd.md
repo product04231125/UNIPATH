@@ -9,7 +9,10 @@ FastAPI 내부는 기능별 모듈로 분리하되, MVP 단계에서는 마이�
 
 ```mermaid
 flowchart LR
-    Student[학생 사용자] --> Flutter[Flutter Web: 1차 MVP<br/>Windows 애플리케이션: 3차 MVP]
+    Student[일반 사용자] --> StudentUi[학생용 Flutter Web]
+    SchoolAdmin[학교 관리자] --> AdminUi[학교 관리자용 Flutter Web]
+    StudentUi --> Flutter[Flutter Web: 1차 MVP<br/>Windows 애플리케이션: 3차 MVP]
+    AdminUi --> Flutter
     Flutter -->|REST /api/v1| API
 
     subgraph App[FastAPI 애플리케이션]
@@ -76,6 +79,12 @@ flowchart TB
         RuleSetResolver --> RuleEngine
     end
 
+    subgraph Administration[학교 데이터 관리]
+        AccessControl[역할·학교 범위 권한 확인]
+        OfficialDataManagement[학교·학과·교육과정·공식 규정 관리]
+        AccessControl --> OfficialDataManagement
+    end
+
     subgraph Knowledge[지식·RAG 도메인]
         SchoolRag[School Knowledge RAG]
         CareerRag[Career / Certificate RAG<br/>자격증 1차 · 진로 2차]
@@ -104,11 +113,13 @@ flowchart TB
     end
 
     API --> RuleSetResolver
+    API --> AccessControl
     API --> SchoolRag
     API --> CareerRag
     API --> CandidateProfile
     API -. 2차 MVP .-> PostingIngest
     RuleEngine --> PublicData
+    OfficialDataManagement --> PublicData
     Retrieval --> PublicData
     RequirementExtraction --> PublicData
     CandidateProfile --> RequirementMatcher
@@ -127,13 +138,22 @@ flowchart TB
 | Job Analysis Module (2차 MVP) | 공고 요건 추출과 후보자 프로필 매칭 | 공고 요건과 최소화된 후보자 프로필 비교 |
 | Privacy Guard / LLM Adapter | LLM 전송 전후 PII 보호와 공급자 분리 | 원문을 최소화·비식별화해 외부 전송 |
 
+학교 데이터가 없는 일반 사용자는 공용 모듈과 개인 직접 입력을 계속 사용할 수 있다.
+이 경우 `Academic Rule Engine`과 `School Knowledge RAG`는 공식 학교·학과·교육과정
+범위가 확인되지 않았으므로 졸업 판정이나 학교 규정 답변을 추정하지 않는다. 학교
+관리자가 공식 데이터를 등록하고 적용 범위가 사용자 프로필과 일치하면, 이후 요청부터
+공식 데이터가 개인 임시 요건보다 우선한다. 개인 이수·활동·자격증 데이터는 대체하거나
+삭제하지 않는다.
+
 ## 핵심 책임과 요청 흐름
 
 ```mermaid
 flowchart TB
+    AdminUpdate[학교 관리자: 공식 데이터 등록·갱신] --> OfficialData[(학교·학과·교육과정별 공식 데이터)]
     AuditRequest[졸업감사 요청] --> RuleSetResolver[적용 규칙 묶음 선택]
     StudentScope[(사용자의 학교·학과·교육과정)] --> RuleSetResolver
-    RuleSetResolver --> InstitutionRules[(학교 공통 규칙)]
+    OfficialData --> RuleSetResolver
+    RuleSetResolver -->|적용 가능한 공식 데이터 있음| InstitutionRules[(학교 공통 규칙)]
     RuleSetResolver --> DepartmentRules[(학과 추가 규칙)]
     RuleSetResolver --> CurriculumRules[(교육과정 규칙)]
     InstitutionRules --> GraduationRequirements[학교 기반 졸업요건]
@@ -151,6 +171,8 @@ flowchart TB
     RuleEngine --> AuditResult[결정론적 충족·미충족 판정]
     AuditResult --> Explanation[LLM 설명 생성]
     Evidence[(공식 문서 근거)] --> Explanation
+
+    RuleSetResolver -->|공식 데이터 없음| NoOfficialAudit[not_applicable: 공식 규정 미등록]
 
     SchoolQuery[학교 규정 질의] --> SchoolScope[학교·학과·교육과정 적용 범위 필터]
     StudentScope --> SchoolScope
@@ -201,6 +223,9 @@ flowchart TB
   학과 추가, 교육과정별 규칙 묶음을 모두 선택한다. Rule Engine은 과목 이수·최소
   성적·자격증·봉사 승인시간·논문 등 각 규칙을 개별 판정하고, 통합 감사 결과와 규칙별 결과를
   함께 저장한다.
+- 적용 가능한 공식 규칙 묶음이 없으면 Rule Engine은 졸업 가능 여부를 추정하지 않고
+  `not_applicable`을 반환한다. 사용자가 입력한 개인 임시 요건은 개인 참고 분석에만
+  사용할 수 있으며, 공식 감사 결과나 공식 규정으로 표시하지 않는다.
 - RAG는 문서 청크와 출처 메타데이터를 검색한다. 근거가 부족하면 추측하는 대신
   `insufficient_evidence` 상태를 반환한다.
 - AI 응답은 가능한 경우 문서 제목, URL, 페이지, 문서 식별자를 함께 반환한다.
