@@ -198,7 +198,7 @@ class Workspace extends StatefulWidget {
 class _WorkspaceState extends State<Workspace> {
   int page = 0;
   String tab = '대학 공통';
-  bool chatOpen = true;
+  bool chatOpen = false;
   bool chatManuallyOpened = false;
   bool detachedChatActive = false;
   double chatWidth = 360;
