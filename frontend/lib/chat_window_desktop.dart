@@ -119,6 +119,7 @@ Future<void> initializeDetachedChatWindow() async {
     ),
     () async {
       await windowManager.setSize(Size(config.width, config.height));
+      await windowManager.setMinimumSize(const Size(300, 520));
       await windowManager.setPosition(Offset(config.left, config.top));
       await windowManager.setSkipTaskbar(true);
       await windowManager.setMaximizable(false);
@@ -236,6 +237,9 @@ Future<void> _dockDetachedChatInMainWindow() async {
 
 Future<void> initializeMainWindowCloseBehavior() async {
   await windowManager.ensureInitialized();
+  // This is the smallest workspace that preserves the 220px navigation,
+  // readable content area, and the 300px AI dock without layout collapse.
+  await windowManager.setMinimumSize(const Size(1365, 768));
   final controller = await WindowController.fromCurrentEngine();
   await controller.setWindowMethodHandler((call) async {
     if (call.method == 'detached_chat_closed') {
