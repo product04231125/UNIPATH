@@ -8,6 +8,7 @@ import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
 
 const _detachedChatPrefix = 'university_path_ai_detached_chat:';
+final _mainWindowMaximizeController = StreamController<bool>.broadcast();
 
 Future<void> _shutdownTrace(String event) async {
   final file = File(
@@ -159,9 +160,15 @@ class _MainWindowCloseListener with WindowListener {
 
   @override
   void onWindowMaximize() {
+    _mainWindowMaximizeController.add(true);
     // A detached panel would otherwise float over the maximized workspace.
     // Return it to the in-window dock as soon as the main workspace expands.
     unawaited(_dockDetachedChatInMainWindow());
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    _mainWindowMaximizeController.add(false);
   }
 
   Future<void> _closeMainAndDetachedChat() async {
@@ -202,6 +209,14 @@ class _MainWindowCloseListener with WindowListener {
 final _mainWindowCloseListener = _MainWindowCloseListener();
 bool _mainDetachedChatOpen = false;
 StreamSubscription<bool>? _mainDetachedChatSubscription;
+
+Future<bool> isMainWindowMaximized() async {
+  await windowManager.ensureInitialized();
+  return windowManager.isMaximized();
+}
+
+Stream<bool> mainWindowMaximizeChanges() =>
+    _mainWindowMaximizeController.stream;
 
 Future<void> _dockDetachedChatInMainWindow() async {
   if (!_mainDetachedChatOpen) return;

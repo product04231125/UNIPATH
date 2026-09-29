@@ -13,6 +13,10 @@ Future<bool> hasDetachedChatWindow() async => false;
 
 Stream<bool> detachedChatWindowChanges() => const Stream<bool>.empty();
 
+Future<bool> isMainWindowMaximized() async => false;
+
+Stream<bool> mainWindowMaximizeChanges() => const Stream<bool>.empty();
+
 Future<void> openDetachedChatWindow({double width = 360}) async {
   final currentUrl = html.window.location.href;
   final baseUrl = currentUrl.split('?').first;

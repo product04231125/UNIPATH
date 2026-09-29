@@ -201,10 +201,12 @@ class _WorkspaceState extends State<Workspace> {
   bool chatOpen = false;
   bool chatManuallyOpened = false;
   bool detachedChatActive = false;
+  bool mainWindowMaximized = false;
   double chatWidth = 360;
   final input = TextEditingController();
   final curriculumScrollController = ScrollController();
   StreamSubscription<bool>? detachedChatSubscription;
+  StreamSubscription<bool>? mainWindowMaximizeSubscription;
   final messages = <String>[
     '궁금한 점이나 정리할 일을 자연어로 물어보세요. 규정 질문에는 문서 근거를 자동으로 붙입니다.',
   ];
@@ -222,6 +224,14 @@ class _WorkspaceState extends State<Workspace> {
   @override
   void initState() {
     super.initState();
+    chat_window.isMainWindowMaximized().then((maximized) {
+      if (mounted) setState(() => mainWindowMaximized = maximized);
+    });
+    mainWindowMaximizeSubscription = chat_window
+        .mainWindowMaximizeChanges()
+        .listen((maximized) {
+          if (mounted) setState(() => mainWindowMaximized = maximized);
+        });
     detachedChatSubscription = chat_window.detachedChatWindowChanges().listen((
       isOpen,
     ) {
@@ -243,6 +253,7 @@ class _WorkspaceState extends State<Workspace> {
   @override
   void dispose() {
     detachedChatSubscription?.cancel();
+    mainWindowMaximizeSubscription?.cancel();
     input.dispose();
     curriculumScrollController.dispose();
     super.dispose();
@@ -418,7 +429,9 @@ class _WorkspaceState extends State<Workspace> {
                     if (desktopPanel)
                       _chat(
                         onClose: _closeChat,
-                        onDetach: _openDetachedChat,
+                        onDetach: mainWindowMaximized
+                            ? null
+                            : _openDetachedChat,
                         width: chatWidth,
                       ),
                   ],
@@ -433,7 +446,9 @@ class _WorkspaceState extends State<Workspace> {
                       elevation: 18,
                       child: _chat(
                         onClose: _closeChat,
-                        onDetach: _openDetachedChat,
+                        onDetach: mainWindowMaximized
+                            ? null
+                            : _openDetachedChat,
                         width: overlayWidth,
                       ),
                     ),
