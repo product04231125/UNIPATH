@@ -120,6 +120,7 @@ Future<void> initializeDetachedChatWindow() async {
       await windowManager.setSize(Size(config.width, config.height));
       await windowManager.setPosition(Offset(config.left, config.top));
       await windowManager.setSkipTaskbar(true);
+      await windowManager.setMaximizable(false);
       await windowManager.show();
       await windowManager.focus();
     },
@@ -154,6 +155,13 @@ class _MainWindowCloseListener with WindowListener {
   void onWindowClose() {
     unawaited(_shutdownTrace('main native close event received'));
     unawaited(_closeMainAndDetachedChat());
+  }
+
+  @override
+  void onWindowMaximize() {
+    // A detached panel would otherwise float over the maximized workspace.
+    // Return it to the in-window dock as soon as the main workspace expands.
+    unawaited(_dockDetachedChatInMainWindow());
   }
 
   Future<void> _closeMainAndDetachedChat() async {
@@ -194,6 +202,22 @@ class _MainWindowCloseListener with WindowListener {
 final _mainWindowCloseListener = _MainWindowCloseListener();
 bool _mainDetachedChatOpen = false;
 StreamSubscription<bool>? _mainDetachedChatSubscription;
+
+Future<void> _dockDetachedChatInMainWindow() async {
+  if (!_mainDetachedChatOpen) return;
+  final windows = await WindowController.getAll();
+  for (final window in windows) {
+    if (_DetachedChatWindowConfig.matches(window.arguments)) {
+      try {
+        await window.invokeMethod<void>('close_detached_chat');
+      } catch (_) {
+        // The normal window-change listener will reconcile a child that has
+        // already started closing.
+      }
+      return;
+    }
+  }
+}
 
 Future<void> initializeMainWindowCloseBehavior() async {
   await windowManager.ensureInitialized();

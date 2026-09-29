@@ -226,7 +226,17 @@ class _WorkspaceState extends State<Workspace> {
       isOpen,
     ) {
       if (!mounted || detachedChatActive == isOpen) return;
-      setState(() => detachedChatActive = isOpen);
+      setState(() {
+        final wasDetached = detachedChatActive;
+        detachedChatActive = isOpen;
+        // A detached chat that closes (including when the main window is
+        // maximized) returns to the main window's dock instead of leaving the
+        // user without a visible assistant.
+        if (wasDetached && !isOpen) {
+          chatOpen = true;
+          chatManuallyOpened = true;
+        }
+      });
     });
   }
 
