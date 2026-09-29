@@ -38,6 +38,10 @@
 
 MVP 개발 중 새로운 기능이 제안되면 필수 기능 완성에 미치는 영향을 먼저 검토합니다.
 
+### 검토 중인 외부 서비스 연계 후보
+
+- **디지털서비스 개방 수시신청**: 향후 사용자가 UniversityPath 안에서 공공 봉사활동을 찾아 신청하는 흐름을 검토할 때 참고할 후보다. 초기에는 1365 자원봉사포털을 새 탭으로 여는 외부 링크만 제공하고, 신청 정보·계정·봉사 실적을 UniversityPath와 교환하지 않는다. 현재 공공서비스 직접 연계는 서비스 이용을 희망하는 기업·단체·법인이 신청서류를 갖춰 문서24로 수시신청하는 절차이며, 실제 연계·인증·개인정보 처리 방식은 확정하지 않았다. 도입 검토 시 서비스별 제공 범위, 심의 결과, CI값 기반 연계 요건, 보안대책 및 관련 법령을 확인한다. [공식 수시신청 안내](https://www.openservice.go.kr/onDemandApp)
+
 ## 2. 시스템 구조
 
 ```text
@@ -66,6 +70,8 @@ LLM         검색 근거와 판정 결과를 자연어로 설명
 ```
 
 졸업 가능 여부와 같은 확정적 판정은 LLM이 아닌 Rule Engine이 담당합니다. LLM은 판정 결과를 변경하지 않으며 설명만 생성합니다.
+
+학교 시스템은 학사·졸업·승인 활동 데이터의 기준 원본이다. UniversityPath는 학교 시스템을 대신해 수강, 봉사 승인, 사전교육 또는 소감문을 처리·재판정하지 않는다. 학교의 확정값을 바탕으로 부족한 항목을 보여 주고, 외부 활동 탐색·계획·개인 보조 기록을 돕는다.
 
 ### 사용자·학교 관리자 운영 모델
 
@@ -312,6 +318,35 @@ docker compose up --build
 ```
 
 개인적으로 Python을 직접 실행하거나 다른 디버깅 방법을 사용해도 되지만, Pull Request를 병합하기 전에는 Docker 환경에서 정상 동작해야 합니다.
+
+### Flutter 프론트엔드 설치 및 실행 (Windows)
+
+`frontend/`는 Flutter Web과 Windows 목업을 함께 제공합니다. Flutter SDK를 내려받아
+예를 들어 `C:\develop\flutter`에 압축을 풀고, `C:\develop\flutter\bin`을 사용자
+`Path`에 추가합니다. Windows 앱도 빌드하려면 Visual Studio의 **Desktop development
+with C++** 워크로드가 필요합니다. 자세한 설치 절차는 [Flutter 수동 설치 안내](https://docs.flutter.dev/install/manual)와 [Windows 개발 환경 안내](https://docs.flutter.dev/platform-integration/windows/setup)를 따른다.
+
+설치 후 PowerShell을 새로 열어 도구를 확인합니다.
+
+```powershell
+flutter doctor -v
+flutter devices
+```
+
+프론트엔드 실행과 검증 명령은 다음과 같습니다.
+
+```powershell
+cd frontend
+flutter pub get
+flutter run -d chrome      # Web 목업 실행
+flutter run -d windows     # Windows 앱 실행
+flutter analyze
+flutter test
+flutter build web
+flutter build windows
+```
+
+Windows Release 실행 파일은 `frontend\build\windows\x64\runner\Release\university_path_frontend.exe`에 생성됩니다. Flutter가 `Path`에 없다면 위 명령의 `flutter` 대신 Flutter SDK의 `bin\flutter.bat` 절대 경로를 사용합니다.
 
 ## 8. 환경 분리 및 배포
 

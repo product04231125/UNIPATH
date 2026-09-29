@@ -5,6 +5,19 @@ UniversityPath AI는 1차 MVP의 Flutter Web과 3차 MVP 확장인 Windows
 FastAPI 내부는 기능별 모듈로 분리하되, MVP 단계에서는 마이크로서비스로 분리하지
 않는다.
 
+### 독립 AI 대화창 목업
+
+- Windows에서는 우측 AI 패널을 별도 Flutter OS 창으로 분리할 수 있고, Web에서는
+  같은 이름의 브라우저 팝업 창을 재사용한다.
+- 독립 창은 현재 목업에서 화면 문맥만 전달받는다. 실제 대화 이력과 RAG 응답 동기화는
+  메모리 공유가 아니라 conversation_id를 포함한 동일 API 계약으로 처리한다.
+- 메인 창의 채팅 아이콘은 기존 독립 창이 있으면 새 창을 만들지 않고 해당 창을
+  전면화한다. Windows 목업에서 메인 창을 닫으면 분리 AI 창을 먼저 명시적으로
+  종료한 뒤 전체 앱을 종료한다.
+- Windows 분리 창은 `frontend/third_party/desktop_multi_window`의 로컬 패치본을
+  사용한다. 닫힌 보조 창의 Flutter 엔진은 다음 창 생성까지 보류하지 않고, 메인
+  이벤트 루프에서 즉시 해제해 앱 종료 지연을 방지한다.
+
 ## 전체 기술 관계도
 
 ```mermaid
