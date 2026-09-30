@@ -296,10 +296,8 @@ university-path/
 │  ├─ initial-plan-comparison.md
 │  ├─ specialized-ai-and-supporting-tools-proposal.md
 │  ├─ job-matching-decision-layer-proposal.md
-│  ├─ application-settings-ux.md
-│  ├─ student-contributed-school-information-ux.md
-│  ├─ menu-ux/
-│  └─ web-windows-ux-guidelines.md
+│  ├─ product-ux.md
+│  └─ student-menu-ux.md
 ├─ compose.yaml
 ├─ .env.example
 └─ README.md
