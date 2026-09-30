@@ -210,6 +210,12 @@ class _WorkspaceState extends State<Workspace> {
   final messages = <String>[
     '궁금한 점이나 정리할 일을 자연어로 물어보세요. 규정 질문에는 문서 근거를 자동으로 붙입니다.',
   ];
+  final manualEntries = <int, List<(String, String, String)>>{};
+  bool personalAcademicMode = false;
+  String personalSchool = '';
+  String personalDepartment = '';
+  String personalAdmissionYear = '';
+  final personalRules = <(String, int, int)>[];
   final labels = const ['홈', '수강 관리', '졸업 요건', '활동', '경험', '자격', '포트폴리오·성과'];
   final icons = const [
     Icons.home_outlined,
@@ -644,7 +650,7 @@ class _WorkspaceState extends State<Workspace> {
                     _homeCard(
                       'ACADEMIC BASIS',
                       '학사 기준',
-                      '연결한 학교·학과·입학연도에 맞는 적용 기준을 확인합니다.',
+                      '지원하지 않는 학교·학과도 내 기준을 직접 설정해 관리할 수 있습니다.',
                       Icons.school_outlined,
                       2,
                       compact: compact || singleColumn,
@@ -746,23 +752,41 @@ class _WorkspaceState extends State<Workspace> {
     ),
   );
   Widget _graduation() {
+    final profileLabel = personalAcademicMode
+        ? '$personalSchool $personalDepartment · $personalAdmissionYear학번 · 개인 기준'
+        : '경동대학교 컴퓨터공학과 · 2024학번';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '경동대학교 컴퓨터공학과 · 2024학번',
-          style: TextStyle(
+        Text(
+          profileLabel,
+          style: const TextStyle(
             fontSize: 12,
             color: Color(0xff946c2e),
             fontWeight: FontWeight.w700,
           ),
         ),
         const SizedBox(height: 4),
-        const Text(
-          '졸업 요건',
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            const Text(
+              '졸업 요건',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+            ),
+            OutlinedButton.icon(
+              onPressed: _showPersonalAcademicSetup,
+              icon: const Icon(Icons.tune, size: 18),
+              label: Text(personalAcademicMode ? '개인 기준 수정' : '내 학교·학과 기준 설정'),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
+        if (personalAcademicMode)
+          Expanded(child: SingleChildScrollView(child: _personalAcademicRules()))
+        else ...[
         _card(
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -805,9 +829,184 @@ class _WorkspaceState extends State<Workspace> {
                 : _departmentCertification(),
           ),
         ),
+        ],
       ],
     );
   }
+
+  Widget _personalAcademicRules() {
+    final unmet = personalRules.where((rule) => rule.$3 < rule.$2).length;
+    return Column(
+      children: [
+        _card(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.person_outline, color: Color(0xff315a77)),
+                  SizedBox(width: 8),
+                  Text('내 학교·학과 기준', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text('$personalSchool · $personalDepartment · $personalAdmissionYear학번', style: const TextStyle(color: Color(0xff607386))),
+              const SizedBox(height: 10),
+              const Text(
+                '지원되지 않는 학교·학과용 개인 규칙 세트입니다. 입력한 기준과 내 기록으로 계산하지만, 학교의 공식 졸업 판정은 아닙니다.',
+                style: TextStyle(fontSize: 12, height: 1.45),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _showPersonalAcademicSetup(addRule: true),
+                    icon: const Icon(Icons.add, size: 17),
+                    label: const Text('개인 기준 항목 추가'),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() => personalAcademicMode = false),
+                    child: const Text('기본 학교 기준 보기'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _graduationSection(
+          title: '개인 기준 계산',
+          description: unmet == 0
+              ? '입력한 개인 기준을 모두 충족했습니다. 학교 공식 시스템에서 최종 결과를 확인해 주세요.'
+              : '입력한 개인 기준 중 $unmet개 항목을 더 확인하거나 채워야 합니다. 학교 공식 판정과는 별개입니다.',
+          child: _auditTable(
+            const ['개인 기준', '현재 값', '계산', '내가 입력한 기준'],
+            [
+              for (final rule in personalRules)
+                [
+                  rule.$1,
+                  '${rule.$3}',
+                  rule.$3 >= rule.$2 ? '충족' : '미충족',
+                  '최소 ${rule.$2}',
+                ],
+            ],
+            firstColumnWidth: 220,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showPersonalAcademicSetup({bool addRule = false}) async {
+    final school = TextEditingController(text: personalSchool);
+    final department = TextEditingController(text: personalDepartment);
+    final admissionYear = TextEditingController(text: personalAdmissionYear);
+    final ruleName = TextEditingController(text: addRule ? '' : '최소 총 취득학점');
+    final requiredValue = TextEditingController(text: addRule ? '' : '120');
+    final currentValue = TextEditingController(text: addRule ? '' : '88');
+    var showErrors = false;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(addRule ? '개인 기준 항목 추가' : '내 학교·학과 기준 설정'),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '학교가 지원되지 않아도 내 기준으로 학업 현황을 계산할 수 있습니다. 이 결과는 개인용이며 학교 공식 졸업 판정을 대체하지 않습니다.',
+                    style: TextStyle(fontSize: 13, height: 1.45),
+                  ),
+                  if (!addRule) ...[
+                    const SizedBox(height: 18),
+                    _setupField(school, '학교명', '예: OO대학교', showErrors),
+                    const SizedBox(height: 12),
+                    _setupField(department, '학과', '예: 컴퓨터공학과', showErrors),
+                    const SizedBox(height: 12),
+                    _setupField(admissionYear, '입학연도', '예: 2024', showErrors, keyboardType: TextInputType.number),
+                  ],
+                  const SizedBox(height: 18),
+                  const Text('개인 규칙 항목', style: TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  _setupField(ruleName, '기준 이름', '예: 전공 필수 학점', showErrors),
+                  const SizedBox(height: 12),
+                  _setupField(requiredValue, '필요한 값', '예: 120', showErrors, keyboardType: TextInputType.number),
+                  const SizedBox(height: 12),
+                  _setupField(currentValue, '현재 값', '예: 88', showErrors, keyboardType: TextInputType.number),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('취소')),
+            FilledButton(
+              onPressed: () {
+                final invalid = (!addRule && (school.text.trim().isEmpty || department.text.trim().isEmpty || admissionYear.text.trim().isEmpty)) ||
+                    ruleName.text.trim().isEmpty ||
+                    int.tryParse(requiredValue.text.trim()) == null ||
+                    int.tryParse(currentValue.text.trim()) == null;
+                if (invalid) {
+                  setDialogState(() => showErrors = true);
+                  return;
+                }
+                setState(() {
+                  if (!addRule) {
+                    personalSchool = school.text.trim();
+                    personalDepartment = department.text.trim();
+                    personalAdmissionYear = admissionYear.text.trim();
+                    personalRules
+                      ..clear()
+                      ..add((ruleName.text.trim(), int.parse(requiredValue.text.trim()), int.parse(currentValue.text.trim())));
+                    personalAcademicMode = true;
+                  } else {
+                    personalRules.add((ruleName.text.trim(), int.parse(requiredValue.text.trim()), int.parse(currentValue.text.trim())));
+                  }
+                });
+                Navigator.pop(dialogContext);
+              },
+              child: Text(addRule ? '항목 추가' : '개인 기준으로 저장'),
+            ),
+          ],
+        ),
+      ),
+    );
+    school.dispose();
+    department.dispose();
+    admissionYear.dispose();
+    ruleName.dispose();
+    requiredValue.dispose();
+    currentValue.dispose();
+  }
+
+  Widget _setupField(
+    TextEditingController controller,
+    String label,
+    String hint,
+    bool showErrors, {
+    TextInputType? keyboardType,
+  }) => TextField(
+    controller: controller,
+    keyboardType: keyboardType,
+    decoration: InputDecoration(
+      labelText: label,
+      hintText: hint,
+      errorText: !showErrors
+          ? null
+          : controller.text.trim().isEmpty
+          ? '$label을 입력해 주세요.'
+          : keyboardType == TextInputType.number &&
+                int.tryParse(controller.text.trim()) == null
+          ? '$label에는 숫자를 입력해 주세요.'
+          : null,
+      border: const OutlineInputBorder(),
+    ),
+  );
 
   Widget _commonRules() => _graduationSection(
     title: '대학 공통 기준',
@@ -1152,99 +1351,209 @@ class _WorkspaceState extends State<Workspace> {
           kicker: 'ACADEMIC RECORDS',
           title: '수강 관리',
           description: '학교 수강 내역을 기준으로 이번 학기 계획과 이수 기록을 정리합니다.',
-          notice: '학교 수강 시스템에서 확정된 과목만 등록해 주세요.',
+          notice: '학교 정보가 없어도 내 수강 기록을 직접 입력할 수 있습니다. 졸업 반영은 학교의 확정 기록을 기준으로 확인합니다.',
           listTitle: '이번 학기 수강 과목',
-          entries: const [
+          entries: _entriesFor(1, const [
             ('자료구조', '전공선택 · 3학점', '수강 중'),
             ('데이터베이스', '전공선택 · 3학점', '수강 예정'),
             ('사회봉사', '교양필수 · 승인 시간 확인', '확인 필요'),
-          ],
+          ]),
           guideTitle: '교육과정 확인',
           guides: const [
             '인정 영역과 학점 분류 확인',
             '다음 학기 수강 계획 정리',
             '학과 공지의 변경 사항 확인',
           ],
+          addLabel: '수강 과목 직접 입력',
+          detailLabel: '구분 · 학점',
         );
       case 3:
         return _recordPage(
           kicker: 'ACTIVITY RECORDS',
           title: '활동',
           description: '교내외 활동과 봉사 내역을 한곳에 기록합니다.',
-          notice: '졸업 반영이 필요한 활동은 학교 시스템 승인 후 등록해 주세요.',
+          notice: '학교 정보가 없어도 내 활동을 직접 기록할 수 있습니다. 졸업 반영이 필요한 활동은 학교 승인 후 확인해 주세요.',
           listTitle: '등록한 활동',
-          entries: const [
+          entries: _entriesFor(3, const [
             ('학과 멘토링', '교내 활동 · 2026.03–06', '기록됨'),
             ('지역 아동센터 봉사', '1365 연계 · 30시간', '학교 승인 확인'),
             ('학술 동아리', '프로젝트 활동 · 2026.03–', '진행 중'),
-          ],
+          ]),
           guideTitle: '활동 준비',
           guides: const [
             '봉사 시간·증빙 자료 점검',
             '교내 활동 인정 절차 확인',
             '필요할 때 외부 봉사 사이트 안내',
           ],
+          addLabel: '활동 직접 기록',
+          detailLabel: '기관 · 기간 · 역할',
         );
       case 4:
         return _recordPage(
           kicker: 'EXPERIENCE RECORDS',
           title: '경험',
           description: '프로젝트·인턴·동아리 경험을 이력 문장과 강점으로 정리합니다.',
-          notice: '사실과 역할을 먼저 기록하고, 표현 정리는 AI 도우미에게 물어보세요.',
+          notice: '학교 정보가 없어도 내 경험을 직접 기록할 수 있습니다. 사실과 역할을 먼저 적고, 표현 정리는 AI 도우미에게 물어보세요.',
           listTitle: '경험 타임라인',
-          entries: const [
+          entries: _entriesFor(4, const [
             ('캡스톤 설계 프로젝트', '프론트엔드 구현 · 팀 프로젝트', '정리 필요'),
             ('학과 해커톤', '서비스 기획·발표', '기록됨'),
             ('스터디 운영', '주 1회 진행 · 2025.09–', '진행 중'),
-          ],
+          ]),
           guideTitle: '이력 정리',
           guides: const [
             '내 역할과 결과를 분리해 기록',
             '증빙 링크·자료 위치 보관',
             '자기소개서 문장 초안 만들기',
           ],
+          addLabel: '경험 직접 기록',
+          detailLabel: '기간 · 역할 · 결과',
         );
       case 5:
         return _recordPage(
           kicker: 'CERTIFICATE RECORDS',
           title: '자격',
           description: '자격증·어학·교육 이수 내역을 관리합니다.',
-          notice: '발급·등록이 완료된 자격만 등록해 주세요.',
+          notice: '학교 정보가 없어도 내 자격·어학·교육 이수 내역을 직접 등록할 수 있습니다. 발급 정보는 원문 또는 발급 기관 기준으로 확인해 주세요.',
           listTitle: '등록한 자격',
-          entries: const [
+          entries: _entriesFor(5, const [
             ('정보처리기사', 'Q-Net 발급 확인 후 등록', '준비 중'),
             ('SQLD', '국가공인 민간자격', '취득'),
             ('OPIc', '어학 성적 · 유효기간 확인', '확인 필요'),
-          ],
+          ]),
           guideTitle: '자격 준비',
           guides: const [
             '희망 직무와 자격의 연관성 탐색',
             'Q-Net 시험 일정·발급 정보 안내',
             '성적·자격 유효기간 점검',
           ],
+          addLabel: '자격 직접 등록',
+          detailLabel: '발급 기관 · 취득일 · 유효기간',
         );
       case 6:
         return _recordPage(
           kicker: 'PORTFOLIO & OUTCOMES',
           title: '포트폴리오·성과',
           description: '프로젝트, 논문, 수상과 산출물을 포트폴리오로 구성합니다.',
-          notice: '파일은 증빙·보관용으로 올리고, 핵심 내용은 설명으로 함께 기록해 주세요.',
+          notice: '학교 정보가 없어도 내 프로젝트·논문·수상과 산출물을 직접 기록할 수 있습니다. 파일은 증빙용으로, 핵심 내용은 설명으로 함께 적어 주세요.',
           listTitle: '포트폴리오 초안',
-          entries: const [
+          entries: _entriesFor(6, const [
             ('UniversityPath AI', '기획·화면 설계·구현 기록', '초안'),
             ('캡스톤 결과물', '발표 자료·저장소 링크', '자료 필요'),
             ('학과 해커톤 장려상', '상장·역할·결과 정리', '기록됨'),
-          ],
+          ]),
           guideTitle: '성과 구성',
           guides: const [
             '설명·역할·결과·링크를 함께 보관',
             '공개 가능한 파일만 첨부',
             '지원 목적에 맞게 항목 순서 구성',
           ],
+          addLabel: '성과 직접 기록',
+          detailLabel: '유형 · 역할 · 결과 또는 링크',
         );
       default:
         return const SizedBox.shrink();
     }
+  }
+
+  List<(String, String, String)> _entriesFor(
+    int menu,
+    List<(String, String, String)> seeded,
+  ) => [...seeded, ...(manualEntries[menu] ?? const [])];
+
+  Future<void> _showRecordForm({
+    required String pageTitle,
+    required String addLabel,
+    required String detailLabel,
+  }) async {
+    final title = TextEditingController();
+    final detail = TextEditingController();
+    var showErrors = false;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(addLabel),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$pageTitle 메뉴에 내 기록을 추가합니다. 학교 공식 기준이나 졸업 판정은 바꾸지 않습니다.',
+                    style: const TextStyle(fontSize: 13, height: 1.45),
+                  ),
+                  const SizedBox(height: 18),
+                  TextField(
+                    controller: title,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: '$pageTitle 이름',
+                      hintText: '예: ${pageTitle == '수강 관리' ? '알고리즘' : pageTitle == '활동' ? '교내 멘토링' : pageTitle == '경험' ? '팀 프로젝트' : pageTitle == '자격' ? '정보처리기사' : '캡스톤 결과물'}',
+                      errorText: showErrors && title.text.trim().isEmpty
+                          ? '이름을 입력해 주세요.'
+                          : null,
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: (_) {
+                      if (showErrors) setDialogState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: detail,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: detailLabel,
+                      hintText: '기억나는 정보부터 적어 두세요.',
+                      errorText: showErrors && detail.text.trim().isEmpty
+                          ? '$detailLabel 정보를 입력해 주세요.'
+                          : null,
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: (_) {
+                      if (showErrors) setDialogState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    '목업에서는 저장 후 현재 목록에만 반영됩니다. 실제 연동에서는 학교 승인·공식 기록 여부가 별도로 표시됩니다.',
+                    style: TextStyle(fontSize: 12, color: Color(0xff607386)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (title.text.trim().isEmpty || detail.text.trim().isEmpty) {
+                  setDialogState(() => showErrors = true);
+                  return;
+                }
+                setState(() {
+                  (manualEntries[page] ??= []).add((
+                    title.text.trim(),
+                    detail.text.trim(),
+                    '직접 입력',
+                  ));
+                });
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('내 기록에 저장'),
+            ),
+          ],
+        ),
+      ),
+    );
+    title.dispose();
+    detail.dispose();
   }
 
   Widget _recordPage({
@@ -1256,6 +1565,8 @@ class _WorkspaceState extends State<Workspace> {
     required List<(String, String, String)> entries,
     required String guideTitle,
     required List<String> guides,
+    required String addLabel,
+    required String detailLabel,
   }) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -1307,10 +1618,23 @@ class _WorkspaceState extends State<Workspace> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    '학교 승인 상태와 개인 기록은 구분해서 표시합니다.',
+                    '학교에서 확인한 정보가 없으면 내 기록을 직접 추가할 수 있습니다.',
                     style: TextStyle(fontSize: 12, color: Color(0xff607386)),
                   ),
                   const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton.icon(
+                      onPressed: () => _showRecordForm(
+                        pageTitle: title,
+                        addLabel: addLabel,
+                        detailLabel: detailLabel,
+                      ),
+                      icon: const Icon(Icons.add),
+                      label: Text(addLabel),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   for (final entry in entries)
                     _recordEntry(entry.$1, entry.$2, entry.$3),
                 ],
