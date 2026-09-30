@@ -3,7 +3,10 @@
 이 폴더는 학생 화면의 각 메뉴가 해결해야 할 사용자 과업, 필요한 UI 구성, 상태 표현,
 AI·공식 데이터 경계를 정리한다. 공통 창·반응형·접근성 기준은
 [`../web-windows-ux-guidelines.md`](../web-windows-ux-guidelines.md), 설정의 정보 구조는
-[`../application-settings-ux.md`](../application-settings-ux.md)를 우선한다.
+[`../application-settings-ux.md`](../application-settings-ux.md)를 우선한다. 학교 제공 정보가
+없는 경우의 학생 보완 입력은
+[`../student-contributed-school-information-ux.md`](../student-contributed-school-information-ux.md)를
+따른다.
 
 | 메뉴 | 문서 | 핵심 과업 |
 | --- | --- | --- |

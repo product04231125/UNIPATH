@@ -7,6 +7,9 @@
 [`docs/application-settings-ux.md`](application-settings-ux.md)를 따른다.
 학생 메뉴별 과업과 UI 구성 기준은
 [`docs/menu-ux/`](menu-ux/README.md)에 정리한다.
+학교 제공 정보가 없을 때의 학생 보완 입력과 출처·검토 상태는
+[`docs/student-contributed-school-information-ux.md`](student-contributed-school-information-ux.md)를
+따른다.
 
 ## 1. 적용 원칙
 
