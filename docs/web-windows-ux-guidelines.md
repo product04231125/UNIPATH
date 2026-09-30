@@ -5,6 +5,8 @@
 위한 보조 근거로만 사용한다. API, Rule Engine, RAG의 도메인 책임을 바꾸지 않는다.
 설정 화면의 정보 구조와 저장·권한 경계는
 [`docs/application-settings-ux.md`](application-settings-ux.md)를 따른다.
+학생 메뉴별 과업과 UI 구성 기준은
+[`docs/menu-ux/`](menu-ux/README.md)에 정리한다.
 
 ## 1. 적용 원칙
 

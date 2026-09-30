@@ -293,6 +293,7 @@ university-path/
 │  ├─ specialized-ai-and-supporting-tools-proposal.md
 │  ├─ job-matching-decision-layer-proposal.md
 │  ├─ application-settings-ux.md
+│  ├─ menu-ux/
 │  └─ web-windows-ux-guidelines.md
 ├─ compose.yaml
 ├─ .env.example
