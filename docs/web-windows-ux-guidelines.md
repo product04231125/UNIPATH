@@ -3,6 +3,8 @@
 이 문서는 UniversityPath AI의 Flutter Web과 Windows 애플리케이션 목업을 검토할 때
 쓰는 화면·창·접근성 기준이다. 공식 지침을 우선하며, 제품 사례는 구현 방향을 이해하기
 위한 보조 근거로만 사용한다. API, Rule Engine, RAG의 도메인 책임을 바꾸지 않는다.
+설정 화면의 정보 구조와 저장·권한 경계는
+[`docs/application-settings-ux.md`](application-settings-ux.md)를 따른다.
 
 ## 1. 적용 원칙
 
