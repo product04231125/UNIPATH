@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "documents": [
+    {
+      "document_id": "a6e538bc-8317-4b27-b41a-2bc3d6a3d832",
+      "source_file": "docs/sources/경동대학교_컴퓨터공학과_2026학년도_졸업최소이수학점.pdf",
+      "title": "컴퓨터공학과 졸업최소이수학점",
+      "institution": "경동대학교",
+      "department": "컴퓨터공학과",
+      "expected_sha256": "2778b9aaa1d2e248d9fbd15a0960b3201342e939a8881a5fc48c6493c05250fb",
+      "source_url": null
+    },
+    {
+      "document_id": "e652c6b8-a7da-48cd-b1e8-fbc0c93cfbd0",
+      "source_file": "docs/sources/경동대학교_컴퓨터공학과_졸업인증요건.pdf",
+      "title": "컴퓨터공학과 졸업자격요건",
+      "institution": "경동대학교",
+      "department": "컴퓨터공학과",
+      "expected_sha256": "c984ce908cce3bdcc00d42c9a363ced1cedfb9fc2eb4551b213d97a453a0f036",
+      "source_url": null
+    }
+  ]
+}
