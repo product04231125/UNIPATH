@@ -15,3 +15,27 @@ __pycache__/
 htmlcov/
 *.egg-info/
 backend/dist/
+
+# Agent instructions, skills and personal tool settings stay local.
+[Aa][Gg][Ee][Nn][Tt].[Mm][Dd]
+[Aa][Gg][Ee][Nn][Tt][Ss].[Mm][Dd]
+[Aa][Gg][Ee][Nn][Tt][Ss].override.[Mm][Dd]
+[Ss][Kk][Ii][Ll][Ll].[Mm][Dd]
+[Ss][Kk][Ii][Ll][Ll][Ss].[Mm][Dd]
+[Cc][Ll][Aa][Uu][Dd][Ee].[Mm][Dd]
+[Gg][Ee][Mm][Ii][Nn][Ii].[Mm][Dd]
+.codex/
+.agents/
+.claude/
+.cursor/
+.windsurf/
+.gemini/
+.opencode/
+.aider*
+.mcp.json
+.mcp.local.json
+.vscode/mcp.json
+.github/copilot-instructions.md
+.github/instructions/
+.github/agents/
+.github/prompts/
