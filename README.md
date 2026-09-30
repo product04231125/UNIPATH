@@ -291,7 +291,8 @@ university-path/
 │  ├─ database-erd.md
 │  ├─ initial-plan-comparison.md
 │  ├─ specialized-ai-and-supporting-tools-proposal.md
-│  └─ job-matching-decision-layer-proposal.md
+│  ├─ job-matching-decision-layer-proposal.md
+│  └─ web-windows-ux-guidelines.md
 ├─ compose.yaml
 ├─ .env.example
 └─ README.md
