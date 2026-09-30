@@ -1,0 +1,64 @@
+name: Backend CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'compose*.yaml'
+      - '.env.example'
+      - '.dockerignore'
+      - '.github/workflows/backend-ci.yaml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - 'compose*.yaml'
+      - '.env.example'
+      - '.dockerignore'
+      - '.github/workflows/backend-ci.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.12.21'
+          python-version: '3.12'
+          enable-cache: true
+      - name: Install locked dependencies
+        working-directory: backend
+        run: |
+          uv lock --check
+          uv sync --frozen
+      - name: Lint and format
+        working-directory: backend
+        run: |
+          uv run --frozen ruff check .
+          uv run --frozen ruff format --check .
+      - name: Unit tests
+        working-directory: backend
+        env:
+          POSTGRES_PASSWORD: synthetic-ci-password
+        run: uv run --frozen pytest -q -m 'not integration'
+      - name: Prepare synthetic local settings
+        run: cp .env.example .env
+      - name: Build and start common environment
+        run: docker compose up --build --wait --wait-timeout 120
+      - name: Database integration and container tests
+        run: docker compose --profile test run --build --rm test
+      - name: Smoke check
+        run: |
+          curl --fail http://127.0.0.1:8010/api/v1/health/ready
+          curl --fail http://127.0.0.1:8010/api/v1/openapi.json > /dev/null
+      - name: Container status
+        if: always()
+        run: docker compose ps -a
+      - name: Clean up CI environment
+        if: always()
+        run: docker compose down --volumes

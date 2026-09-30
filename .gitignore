@@ -1,3 +1,17 @@
 # Local capstone proposal documents (not published to GitHub)
 캡스톤프로젝트I_계획서(*)_.hwp
 캡스톤프로젝트I_계획서(*)_.pdf
+
+# Backend environment, secrets and generated files
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+backend/dist/

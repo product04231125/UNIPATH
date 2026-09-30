@@ -5,6 +5,17 @@ UniversityPath AI는 1차 MVP의 Flutter Web과 3차 MVP 확장인 Windows
 FastAPI 내부는 기능별 모듈로 분리하되, MVP 단계에서는 마이크로서비스로 분리하지
 않는다.
 
+### 현재 개발환경 구현
+
+`compose.yaml`은 하나의 FastAPI `api` 서비스, PostgreSQL 17/pgvector `db`
+서비스와 시작 전 Alembic을 실행하는 일회성 `migrate` 서비스를 구성한다.
+DB 준비 → 마이그레이션 성공 → API 시작 순서이며 도메인을 별도 서비스로 나누지 않는다.
+호스트에서는 API 8010과 DB 5433을 사용하고 Docker 내부에서는 8000/5432를 사용한다.
+`backend/app/`에는 API·스키마·DB·서비스·Rule Engine·RAG 경계를 마련했다.
+아래 다이어그램의 도메인 기능과 외부 어댑터는 목표 구조이며 현재 기능 구현이 아니다.
+현재 API는 상태 확인과 DB 준비 상태 확인을 제공한다. 상세 실행 방법은
+[`../backend/README.md`](../backend/README.md)를 따른다.
+
 ### 독립 AI 대화창 목업
 
 - Windows에서는 우측 AI 패널을 별도 Flutter OS 창으로 분리할 수 있고, Web에서는

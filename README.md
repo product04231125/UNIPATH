@@ -6,6 +6,37 @@
 
 코딩 에이전트가 따라야 할 저장소 규칙은 [`AGENTS.md`](AGENTS.md)에 별도로 정의합니다. README는 사람을 위한 프로젝트 설명과 합의 사항을, AGENTS.md는 구현 중 항상 적용할 규칙을 담당합니다.
 
+## 팀 공용 저장소
+
+이 저장소는 백엔드·프론트엔드·AI/RAG 팀원이 함께 사용하는 공용 모노레포입니다.
+[hongdydk/UNIPATH](https://github.com/hongdydk/UNIPATH)의 코드와 설계 문서, Git 이력을
+바탕으로 공통 백엔드 개발환경을 추가했습니다.
+
+```bash
+git clone https://github.com/product04231125/UNIPATH.git
+cd UNIPATH
+git switch develop
+git switch -c feature/your-task
+```
+
+- 프론트엔드: `frontend/`에서 Flutter 화면과 API 연동을 개발합니다.
+- 백엔드: `backend/app/api/`, `models/`, `schemas/`, `services/`, `rules/`에서 개발합니다.
+- AI/RAG: `backend/app/rag/`, `data/`, `docs/sources/`에서 검색 모듈과 문서 파이프라인을 개발합니다.
+- 팀 공통: `compose.yaml`, `.env.example`, `docs/`에서 실행 환경과 API·DB 계약을 관리합니다.
+
+기능 브랜치는 `develop`을 기준으로 만들고 Pull Request의 대상도 `develop`로 설정합니다.
+통합 검증을 마친 변경은 `develop`에서 `main`으로 반영합니다. 실제 Staging/Production
+배포는 아직 구성되지 않았으며 브랜치에 푸시하는 것만으로 배포되지는 않습니다.
+각 담당자는 자신의 변경과 관련된 테스트를 실행하고, API·DB 계약을 바꾸면 영향받는
+팀원과 문서·모델을 함께 확인합니다. `.env`와 실제 학생 데이터는 커밋하지 않습니다.
+
+백엔드 CI 설정은 [`.github/workflow-templates/backend-ci.yaml`](.github/workflow-templates/backend-ci.yaml)에
+보관합니다. 저장소 생성에 사용한 GitHub OAuth 토큰에 `workflow` 권한이 없어
+활성 워크플로 파일의 푸시가 거부되었으므로 자동 CI는 아직 활성화하지 않았습니다.
+권한을 갖춘 팀원이 파일을 `.github/workflows/backend-ci.yaml`로 옮겨 푸시하면
+PR 및 `main`/`develop` 푸시에 자동 검증이 실행됩니다. 그 전에는 아래 Docker
+테스트 명령으로 공통 환경을 검증합니다.
+
 ## 1. MVP 범위
 
 ### 필수 기능
@@ -324,6 +355,25 @@ docker compose up --build
 ```
 
 개인적으로 Python을 직접 실행하거나 다른 디버깅 방법을 사용해도 되지만, Pull Request를 병합하기 전에는 Docker 환경에서 정상 동작해야 합니다.
+
+### 백엔드 실행 (구현됨)
+
+Python 3.12 / FastAPI / PostgreSQL 17 + pgvector 개발 기반이 `backend/`에 있습니다.
+저장소 루트에서 `.env.example`을 `.env`로 복사하고 로컬 DB 비밀번호를 설정합니다.
+
+```bash
+cp .env.example .env
+docker compose up --build -d
+docker compose --profile test run --build --rm test
+```
+
+API 문서는 `http://localhost:8010/api/v1/docs`, DB 준비 상태 확인은
+`http://localhost:8010/api/v1/health/ready`입니다. PostgreSQL 호스트 포트는 5433입니다.
+Docker 내부에서는 API 8000과 DB 5432를 사용합니다. 기존 서비스와 충돌하면
+`.env`에서 호스트 포트를 변경합니다. 실행 시 Alembic으로 pgvector를 활성화하며,
+도메인 테이블·인증·졸업 판정·RAG는 후속 구현 범위입니다.
+자세한 호스트 개발, 자동 재시작, 테스트 및 마이그레이션 방법은
+[`backend/README.md`](backend/README.md)를 참고합니다.
 
 ### Flutter 프론트엔드 설치 및 실행 (Windows)
 
