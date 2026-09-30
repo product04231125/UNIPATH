@@ -242,3 +242,51 @@ UniversityPath의 학사·RAG·Rule Engine 책임 분리에 맞는 범위에서�
 - [W3C WAI — Target Size (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum): 포인터 조작 대상의 24×24 CSS px 최소 크기 또는 충분한 간격 기준.
 - [W3C WAI — Focus Appearance](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance): 키보드 포커스 윤곽선의 가시성·대비 기준.
 - [W3C WAI — Error Identification](https://www.w3.org/WAI/WCAG22/Understanding/error-identification): 자동 검증 오류를 해당 항목과 설명 텍스트로 제공해야 하는 기준.
+
+## 8. macOS UX에서 참고할 장점 (적용 원칙)
+
+UniversityPath의 현재 지원 범위는 Flutter Web과 Windows 애플리케이션이다. 이 절은
+macOS 앱을 새로 지원한다는 뜻이 아니라, macOS가 긴 생산성 작업에서 좋은 경험으로
+평가받는 이유를 Windows/Web UX에 적용하기 위한 참고 기준이다. Apple의 HIG도 이를
+특정 시각 스타일이 아니라 목적·사용자 주도성·친숙성·유연성·단순성의 설계 원칙으로
+설명한다.
+
+### macOS UX가 주는 핵심 장점
+
+| 강점 | macOS에서의 의미 | UniversityPath에 적용할 원칙 |
+| --- | --- | --- |
+| 명확한 기본값 | 중요한 일에 바로 집중할 수 있게 불필요한 UI와 모달 흐름을 줄인다. | AI 패널은 기본 닫힘으로 두고, 홈은 학생이 다음에 할 행동을 하나의 주 행동부터 보여 준다. |
+| 사용자 주도성 | 창·도구 모음·보기·입력 방법을 사용자의 작업 방식에 맞춘다. 실수에서 쉽게 회복할 수 있게 한다. | 도킹 AI 폭 조절·분리·재도킹은 허용하되, 메인 최대화 때 겹치는 창은 자동 정리한다. 삭제·AI 제안 적용·입력 이탈에는 취소·되돌리기·확인 경로를 둔다. |
+| 긴 작업에 맞는 데스크톱 밀도 | 큰 화면, 여러 앱·창, 정밀한 포인터, 키보드 작업을 전제로 깊은 작업을 방해하지 않는다. | 학사 기록·표·문서 근거는 넓은 본문에서 읽고, AI·보조 작업은 우측 패널 또는 별도 창에 둔다. 중요한 정보는 카드 안에 과도하게 숨기지 않는다. |
+| 예측 가능한 시스템 패턴 | 메뉴, 단축키, 창 이동·크기 조절, 포커스 동작이 앱마다 크게 달라지지 않는다. | Windows/Web의 표준 단축키·브라우저/OS 동작을 덮어쓰지 않는다. `Esc` 닫기, `Tab` 포커스 이동, Enter 제출처럼 익숙한 동작을 유지한다. |
+| 직접 조작과 즉시 피드백 | 드래그·크기 조절·선택 같은 조작이 결과와 연결되고, 상태 변화를 즉시 알린다. | AI 패널 리사이즈, 표 스크롤, 카드 선택에 즉시 시각 피드백을 주고 저장·동기화·판정 갱신 상태는 결과와 다음 행동을 함께 보여 준다. |
+| 접근 가능한 다중 입력 | 키보드, 포인터, 음성 등 서로 다른 입력 방식을 동등하게 고려한다. | 마우스 드래그만으로 가능한 기능을 만들지 않고, 버튼·키보드·명령 메뉴로도 같은 핵심 작업을 할 수 있게 한다. |
+| 문맥 보존 | 창·패널·전환 중에도 사용자가 보고 있던 내용과 작업 위치를 잃지 않게 한다. | 채팅을 닫거나 분리 창이 도킹으로 돌아올 때 현재 메뉴·본문·입력 초안을 유지한다. AI 응답은 현재 화면·선택한 기록 문맥을 표시한다. |
+
+### 적용할 때 피할 오해
+
+- macOS처럼 보이게 만드는 것이 목표가 아니다. macOS 전용 창 버튼, 메뉴 바, 아이콘,
+  색상 체계를 Windows/Web에 그대로 복제하지 않는다. 각 플랫폼의 표준 창 장식과
+  단축키를 존중한다.
+- "깔끔함"을 이유로 필요한 상태·근거·오류를 숨기지 않는다. 특히 졸업 판정의 적용
+  규정, 부족 항목, 공식 문서 근거는 필요할 때 쉽게 확인할 수 있어야 한다.
+- 사용자 설정을 많이 준다고 좋은 것은 아니다. 기본값은 안전하고 단순하게 두며, 폭
+  조절·분리 창·표 스크롤처럼 반복 작업에서 실제 효용이 있는 선택지만 제공한다.
+- 부드러운 애니메이션이나 투명 재질은 보조 요소다. 읽기와 입력을 늦추거나 고대비·저성능
+  환경에서 가독성을 낮춘다면 사용하지 않는다.
+
+### 후속 UX 검토 항목
+
+- 마지막으로 사용한 메뉴와 AI 패널 폭을 복원할 때, 자동 복원이 학생의 현재 작업을
+  방해하지 않는지 사용자 테스트로 확인한다.
+- 학사 입력처럼 시간이 긴 작업에서 `저장됨`, `저장 중`, `오류` 상태와 되돌리기 흐름이
+  충분히 눈에 띄는지 확인한다.
+- 키보드만으로 메뉴 이동, 표 탐색, AI 열기·닫기·전면화, 외부 문서 열기를 완료할 수
+  있는지 확인한다.
+
+### macOS 참고 자료
+
+- [Apple HIG — Design principles](https://developer.apple.com/design/human-interface-guidelines/design-principles): 사용자 주도성, 친숙성, 유연성, 단순성, 일관된 피드백의 원칙.
+- [Apple HIG — Designing for macOS](https://developer.apple.com/design/human-interface-guidelines/designing-for-macos/): 큰 화면·다중 앱·창 조절·정밀 포인터·키보드·개인화가 긴 생산성 작업에서 갖는 의미.
+- [Apple HIG — Feedback](https://developer.apple.com/design/human-interface-guidelines/feedback): 상태, 성공·실패, 경고, 실수 복구에 맞춰 피드백 강도를 정하는 원칙.
+- [Apple HIG — Accessibility](https://developer.apple.com/design/human-interface-guidelines/accessibility): 하나의 감각·입력 방식에 의존하지 않고 접근 가능하고 적응적인 UI를 설계하는 기준.
