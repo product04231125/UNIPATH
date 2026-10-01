@@ -8,22 +8,7 @@ import 'graduation_mock_fixture.dart';
 
 /// Owns the graduation-screen mock state until the audit API contract exists.
 class GraduationPage extends StatefulWidget {
-  const GraduationPage({
-    super.key,
-    this.profileLabel,
-    this.isPersonalMode,
-    this.onConfigurePersonalRules,
-    this.personalContent,
-    this.officialContent,
-  });
-
-  /// Transitional compatibility inputs for `_legacyBuild`; the active screen
-  /// owns all graduation state in [_GraduationPageState].
-  final String? profileLabel;
-  final bool? isPersonalMode;
-  final VoidCallback? onConfigurePersonalRules;
-  final Widget? personalContent;
-  final Widget? officialContent;
+  const GraduationPage({super.key});
 
   @override
   State<GraduationPage> createState() => _GraduationPageState();

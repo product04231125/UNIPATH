@@ -112,6 +112,26 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
+  testWidgets('opens every workspace menu', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+
+    for (final menu in [
+      ('수강 관리', '이번 학기 수강 과목'),
+      ('졸업 요건', '기준 선택'),
+      ('활동', '등록한 활동'),
+      ('경험', '경험 타임라인'),
+      ('자격', '등록한 자격'),
+      ('포트폴리오·성과', '포트폴리오 초안'),
+      ('설정', '기능과 계약이 확정된 뒤 제공됩니다.'),
+    ]) {
+      await tester.tap(find.text(menu.$1));
+      await tester.pumpAndSettle();
+      expect(find.textContaining(menu.$2), findsWidgets);
+    }
+    await tester.binding.setSurfaceSize(null);
+  });
+
   testWidgets('configures a personal academic rule set', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
