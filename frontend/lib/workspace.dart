@@ -17,7 +17,9 @@ import 'features/records/fixtures/portfolio_fixture.dart';
 import 'features/records/fixtures/record_mock_entry.dart';
 import 'features/records/activity/activity_page.dart';
 import 'features/records/course/course_page.dart';
+import 'features/records/credential/credential_page.dart';
 import 'features/records/experience/experience_page.dart';
+import 'features/records/portfolio/portfolio_page.dart';
 import 'features/settings/settings_page.dart';
 import 'shared/widgets/status_badge.dart';
 import 'shared/widgets/surface_card.dart';
@@ -143,6 +145,8 @@ class _WorkspaceState extends State<Workspace> {
         if (page == 1) return CoursePage(showMockData: showMockData);
         if (page == 3) return ActivityPage(showMockData: showMockData);
         if (page == 4) return ExperiencePage(showMockData: showMockData);
+        if (page == 5) return CredentialPage(showMockData: showMockData);
+        if (page == 6) return PortfolioPage(showMockData: showMockData);
         if (page == navigationItems.length - 1) return const SettingsPage();
         return _record();
       },
