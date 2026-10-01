@@ -47,6 +47,38 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
+  testWidgets('opens the settings placeholder from the workspace navigation', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+
+    await tester.tap(find.text('설정'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('기능과 계약이 확정된 뒤 제공됩니다.'), findsOneWidget);
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('opens and sends a message through the assistant panel', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+
+    await tester.tap(find.byIcon(Icons.chat_bubble_outline));
+    await tester.pumpAndSettle();
+    expect(find.text('AI 도우미'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '졸업 요건을 확인해줘');
+    await tester.tap(find.text('보내기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('나: 졸업 요건을 확인해줘'), findsOneWidget);
+    expect(find.textContaining('문서 근거 답변'), findsOneWidget);
+    await tester.binding.setSurfaceSize(null);
+  });
+
   testWidgets('adds a personal record from the course menu', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
@@ -61,6 +93,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('운영체제'), findsOneWidget);
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('can hide record fixtures from the mock switch', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+
+    await tester.tap(find.text('수강 관리'));
+    await tester.pumpAndSettle();
+    expect(find.text('자료구조'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('mock-data-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('자료구조'), findsNothing);
+    expect(find.text('수강 과목 직접 입력'), findsOneWidget);
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('opens every workspace menu', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+
+    for (final menu in [
+      ('수강 관리', '이번 학기 수강 과목'),
+      ('졸업 요건', '기준 선택'),
+      ('활동', '등록한 활동'),
+      ('경험', '경험 타임라인'),
+      ('자격', '등록한 자격'),
+      ('포트폴리오·성과', '포트폴리오 초안'),
+      ('설정', '기능과 계약이 확정된 뒤 제공됩니다.'),
+    ]) {
+      await tester.tap(find.text(menu.$1));
+      await tester.pumpAndSettle();
+      expect(find.textContaining(menu.$2), findsWidgets);
+    }
     await tester.binding.setSurfaceSize(null);
   });
 
