@@ -9,6 +9,12 @@ import 'features/assistant/assistant_conversation.dart';
 import 'features/assistant/assistant_panel.dart';
 import 'features/graduation/graduation_page.dart';
 import 'features/home/home_page.dart';
+import 'features/records/fixtures/activity_fixture.dart';
+import 'features/records/fixtures/course_fixture.dart';
+import 'features/records/fixtures/credential_fixture.dart';
+import 'features/records/fixtures/experience_fixture.dart';
+import 'features/records/fixtures/portfolio_fixture.dart';
+import 'features/records/fixtures/record_mock_entry.dart';
 import 'features/settings/settings_page.dart';
 import 'shared/widgets/status_badge.dart';
 import 'shared/widgets/surface_card.dart';
@@ -31,7 +37,8 @@ class _WorkspaceState extends State<Workspace> {
   final curriculumScrollController = ScrollController();
   StreamSubscription<bool>? detachedChatSubscription;
   StreamSubscription<bool>? mainWindowMaximizeSubscription;
-  final manualEntries = <int, List<(String, String, String)>>{};
+  bool showMockData = true;
+  final manualEntries = <int, List<RecordMockEntry>>{};
   bool personalAcademicMode = false;
   String personalSchool = '';
   String personalDepartment = '';
@@ -97,6 +104,8 @@ class _WorkspaceState extends State<Workspace> {
       selectedPage: page,
       navigationItems: navigationItems,
       onPageSelected: (value) => setState(() => page = value),
+      showMockData: showMockData,
+      onMockDataChanged: (value) => setState(() => showMockData = value),
       isAssistantOpen: chatOpen,
       isAssistantManuallyOpened: chatManuallyOpened,
       assistantWidth: chatWidth,
@@ -1216,11 +1225,7 @@ class _WorkspaceState extends State<Workspace> {
           description: '학교 수강 내역을 기준으로 이번 학기 계획과 이수 기록을 정리합니다.',
           notice: '학교 정보가 없어도 내 수강 기록을 직접 입력할 수 있습니다. 졸업 반영은 학교의 확정 기록을 기준으로 확인합니다.',
           listTitle: '이번 학기 수강 과목',
-          entries: _entriesFor(1, const [
-            ('자료구조', '전공선택 · 3학점', '수강 중'),
-            ('데이터베이스', '전공선택 · 3학점', '수강 예정'),
-            ('사회봉사', '교양필수 · 승인 시간 확인', '확인 필요'),
-          ]),
+          entries: _entriesFor(1, courseMockEntries),
           guideTitle: '교육과정 확인',
           guides: const [
             '인정 영역과 학점 분류 확인',
@@ -1238,11 +1243,7 @@ class _WorkspaceState extends State<Workspace> {
           notice:
               '학교 정보가 없어도 내 활동을 직접 기록할 수 있습니다. 졸업 반영이 필요한 활동은 학교 승인 후 확인해 주세요.',
           listTitle: '등록한 활동',
-          entries: _entriesFor(3, const [
-            ('학과 멘토링', '교내 활동 · 2026.03–06', '기록됨'),
-            ('지역 아동센터 봉사', '1365 연계 · 30시간', '학교 승인 확인'),
-            ('학술 동아리', '프로젝트 활동 · 2026.03–', '진행 중'),
-          ]),
+          entries: _entriesFor(3, activityMockEntries),
           guideTitle: '활동 준비',
           guides: const [
             '봉사 시간·증빙 자료 점검',
@@ -1259,11 +1260,7 @@ class _WorkspaceState extends State<Workspace> {
           description: '프로젝트·인턴·동아리 경험을 이력 문장과 강점으로 정리합니다.',
           notice: '학교 정보가 없어도 내 경험을 직접 기록할 수 있습니다. 사실과 역할을 먼저 적고, 표현 정리는 AI 도우미에게 물어보세요.',
           listTitle: '경험 타임라인',
-          entries: _entriesFor(4, const [
-            ('캡스톤 설계 프로젝트', '프론트엔드 구현 · 팀 프로젝트', '정리 필요'),
-            ('학과 해커톤', '서비스 기획·발표', '기록됨'),
-            ('스터디 운영', '주 1회 진행 · 2025.09–', '진행 중'),
-          ]),
+          entries: _entriesFor(4, experienceMockEntries),
           guideTitle: '이력 정리',
           guides: const [
             '내 역할과 결과를 분리해 기록',
@@ -1280,11 +1277,7 @@ class _WorkspaceState extends State<Workspace> {
           description: '자격증·어학·교육 이수 내역을 관리합니다.',
           notice: '학교 정보가 없어도 내 자격·어학·교육 이수 내역을 직접 등록할 수 있습니다. 발급 정보는 원문 또는 발급 기관 기준으로 확인해 주세요.',
           listTitle: '등록한 자격',
-          entries: _entriesFor(5, const [
-            ('정보처리기사', 'Q-Net 발급 확인 후 등록', '준비 중'),
-            ('SQLD', '국가공인 민간자격', '취득'),
-            ('OPIc', '어학 성적 · 유효기간 확인', '확인 필요'),
-          ]),
+          entries: _entriesFor(5, credentialMockEntries),
           guideTitle: '자격 준비',
           guides: const [
             '희망 직무와 자격의 연관성 탐색',
@@ -1301,11 +1294,7 @@ class _WorkspaceState extends State<Workspace> {
           description: '프로젝트, 논문, 수상과 산출물을 포트폴리오로 구성합니다.',
           notice: '학교 정보가 없어도 내 프로젝트·논문·수상과 산출물을 직접 기록할 수 있습니다. 파일은 증빙용으로, 핵심 내용은 설명으로 함께 적어 주세요.',
           listTitle: '포트폴리오 초안',
-          entries: _entriesFor(6, const [
-            ('UniversityPath AI', '기획·화면 설계·구현 기록', '초안'),
-            ('캡스톤 결과물', '발표 자료·저장소 링크', '자료 필요'),
-            ('학과 해커톤 장려상', '상장·역할·결과 정리', '기록됨'),
-          ]),
+          entries: _entriesFor(6, portfolioMockEntries),
           guideTitle: '성과 구성',
           guides: const [
             '설명·역할·결과·링크를 함께 보관',
@@ -1320,10 +1309,13 @@ class _WorkspaceState extends State<Workspace> {
     }
   }
 
-  List<(String, String, String)> _entriesFor(
+  List<RecordMockEntry> _entriesFor(
     int menu,
-    List<(String, String, String)> seeded,
-  ) => [...seeded, ...(manualEntries[menu] ?? const [])];
+    List<RecordMockEntry> seeded,
+  ) => [
+    if (showMockData) ...seeded,
+    ...(manualEntries[menu] ?? const []),
+  ];
 
   Future<void> _showRecordForm({
     required String pageTitle,
@@ -1411,11 +1403,13 @@ class _WorkspaceState extends State<Workspace> {
                   return;
                 }
                 setState(() {
-                  (manualEntries[page] ??= []).add((
-                    title.text.trim(),
-                    detail.text.trim(),
-                    '직접 입력',
-                  ));
+                  (manualEntries[page] ??= []).add(
+                    RecordMockEntry(
+                      title: title.text.trim(),
+                      detail: detail.text.trim(),
+                      status: '직접 입력',
+                    ),
+                  );
                 });
                 Navigator.pop(dialogContext);
               },
@@ -1438,7 +1432,7 @@ class _WorkspaceState extends State<Workspace> {
     required String description,
     required String notice,
     required String listTitle,
-    required List<(String, String, String)> entries,
+    required List<RecordMockEntry> entries,
     required String guideTitle,
     required List<String> guides,
     required String addLabel,
@@ -1512,7 +1506,7 @@ class _WorkspaceState extends State<Workspace> {
                   ),
                   const SizedBox(height: 10),
                   for (final entry in entries)
-                    _recordEntry(entry.$1, entry.$2, entry.$3),
+                    _recordEntry(entry.title, entry.detail, entry.status),
                 ],
               ),
             );

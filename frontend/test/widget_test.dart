@@ -96,6 +96,22 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
+  testWidgets('can hide record fixtures from the mock switch', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+
+    await tester.tap(find.text('수강 관리'));
+    await tester.pumpAndSettle();
+    expect(find.text('자료구조'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('mock-data-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('자료구조'), findsNothing);
+    expect(find.text('수강 과목 직접 입력'), findsOneWidget);
+    await tester.binding.setSurfaceSize(null);
+  });
+
   testWidgets('configures a personal academic rule set', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
