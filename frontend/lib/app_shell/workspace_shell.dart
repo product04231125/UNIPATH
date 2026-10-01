@@ -206,17 +206,20 @@ class _Sidebar extends StatelessWidget {
             onPressed: () => onPageSelected(index),
           ),
         const Spacer(),
-        SwitchListTile.adaptive(
-          key: const Key('mock-data-toggle'),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-          dense: true,
-          title: const Text(
-            '목업용',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+        Material(
+          color: Colors.transparent,
+          child: SwitchListTile.adaptive(
+            key: const Key('mock-data-toggle'),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+            dense: true,
+            title: const Text(
+              '목업용',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+            subtitle: const Text('예시 데이터 표시', style: TextStyle(fontSize: 10)),
+            value: showMockData,
+            onChanged: onMockDataChanged,
           ),
-          subtitle: const Text('예시 데이터 표시', style: TextStyle(fontSize: 10)),
-          value: showMockData,
-          onChanged: onMockDataChanged,
         ),
         const SizedBox(height: 4),
         _NavigationTile(
