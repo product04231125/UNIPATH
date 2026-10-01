@@ -10,6 +10,8 @@ import 'features/assistant/assistant_panel.dart';
 import 'features/graduation/graduation_page.dart';
 import 'features/home/home_page.dart';
 import 'features/settings/settings_page.dart';
+import 'shared/widgets/status_badge.dart';
+import 'shared/widgets/surface_card.dart';
 
 class Workspace extends StatefulWidget {
   const Workspace({super.key});
@@ -1203,28 +1205,7 @@ class _WorkspaceState extends State<Workspace> {
         : Align(alignment: Alignment.centerLeft, child: _statusBadge(status)),
   );
 
-  Widget _statusBadge(String status) {
-    final color = status == '충족'
-        ? const Color(0xff157766)
-        : status == '미충족'
-        ? const Color(0xffb44232)
-        : const Color(0xff956720);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          color: color,
-        ),
-      ),
-    );
-  }
+  Widget _statusBadge(String status) => StatusBadge(status: status);
 
   Widget _record() {
     switch (page) {
@@ -1633,16 +1614,7 @@ class _WorkspaceState extends State<Workspace> {
       ],
     ),
   );
-  Widget _card(Widget child) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: const Color(0xffd8e1e7)),
-    ),
-    child: child,
-  );
+  Widget _card(Widget child) => SurfaceCard(child: child);
 
   Widget _chat({
     required VoidCallback onClose,
