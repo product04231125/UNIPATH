@@ -7,6 +7,7 @@ import 'app_shell/workspace_shell.dart';
 import 'chat_window.dart' as chat_window;
 import 'features/assistant/assistant_conversation.dart';
 import 'features/assistant/assistant_panel.dart';
+import 'features/home/home_page.dart';
 import 'features/settings/settings_page.dart';
 
 class Workspace extends StatefulWidget {
@@ -120,7 +121,9 @@ class _WorkspaceState extends State<Workspace> {
         chatWidth = (chatWidth - delta).clamp(300.0, 480.0);
       }),
       pageBuilder: (context, layout) {
-        if (page == 0) return _home();
+        if (page == 0) {
+          return HomePage(onOpenPage: (value) => setState(() => page = value));
+        }
         if (page == 2) return _graduation();
         if (page == navigationItems.length - 1) return const SettingsPage();
         return _record();
