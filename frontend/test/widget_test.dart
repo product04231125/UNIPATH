@@ -3,9 +3,45 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:university_path_frontend/main.dart';
 
 void main() {
-  testWidgets('renders the UniversityPath workspace', (tester) async {
+  testWidgets('renders and validates the login mock', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     await tester.pumpWidget(const UniversityPathApp());
+
+    expect(find.text('나의 대학생활 경로를\n관리하세요.'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('login-submit')));
+    await tester.pump();
+    expect(find.text('이메일 주소를 입력해 주세요.'), findsOneWidget);
+    expect(find.text('비밀번호를 입력해 주세요.'), findsOneWidget);
+
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'mock@example.com',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'password');
+    await tester.tap(find.byKey(const Key('login-submit')));
+    await tester.pumpAndSettle();
+    expect(find.text('정민서님, 오늘 무엇을 정리해볼까요?'), findsOneWidget);
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('shows the sign-up mock without creating an account', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    await tester.pumpWidget(const UniversityPathApp());
+
+    await tester.tap(find.byKey(const Key('signup-tab')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('이름'), findsOneWidget);
+    expect(find.byKey(const Key('signup-submit')), findsOneWidget);
+    expect(find.textContaining('계정, 학교 정보, 역할은 생성·저장되지 않습니다.'), findsOneWidget);
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('renders the UniversityPath workspace', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     expect(find.text('UniversityPath'), findsOneWidget);
     expect(find.text('정민서님, 오늘 무엇을 정리해볼까요?'), findsOneWidget);
     await tester.binding.setSurfaceSize(null);
@@ -13,7 +49,7 @@ void main() {
 
   testWidgets('adds a personal record from the course menu', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
-    await tester.pumpWidget(const UniversityPathApp());
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
 
     await tester.tap(find.text('수강 관리'));
     await tester.pumpAndSettle();
@@ -30,7 +66,7 @@ void main() {
 
   testWidgets('configures a personal academic rule set', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
-    await tester.pumpWidget(const UniversityPathApp());
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
 
     await tester.tap(find.text('졸업 요건'));
     await tester.pumpAndSettle();
