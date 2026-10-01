@@ -7,6 +7,7 @@ import 'app_shell/workspace_shell.dart';
 import 'chat_window.dart' as chat_window;
 import 'features/assistant/assistant_conversation.dart';
 import 'features/assistant/assistant_panel.dart';
+import 'features/graduation/graduation_page.dart';
 import 'features/home/home_page.dart';
 import 'features/settings/settings_page.dart';
 
@@ -615,40 +616,13 @@ class _WorkspaceState extends State<Workspace> {
     final profileLabel = personalAcademicMode
         ? '$personalSchool $personalDepartment · $personalAdmissionYear학번 · 개인 기준'
         : '경동대학교 컴퓨터공학과 · 2024학번';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          profileLabel,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xff946c2e),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Wrap(
-          spacing: 12,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            const Text(
-              '졸업 요건',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
-            ),
-            OutlinedButton.icon(
-              onPressed: _showPersonalAcademicSetup,
-              icon: const Icon(Icons.tune, size: 18),
-              label: Text(personalAcademicMode ? '개인 기준 수정' : '내 학교·학과 기준 설정'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (personalAcademicMode)
-          Expanded(
-            child: SingleChildScrollView(child: _personalAcademicRules()),
-          )
-        else ...[
+    return GraduationPage(
+      profileLabel: profileLabel,
+      isPersonalMode: personalAcademicMode,
+      onConfigurePersonalRules: _showPersonalAcademicSetup,
+      personalContent: _personalAcademicRules(),
+      officialContent: Column(
+        children: [
           _card(
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -692,7 +666,7 @@ class _WorkspaceState extends State<Workspace> {
             ),
           ),
         ],
-      ],
+      ),
     );
   }
 
