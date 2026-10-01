@@ -330,7 +330,11 @@ university-path/
 │  ├─ specialized-ai-and-supporting-tools-proposal.md
 │  ├─ job-matching-decision-layer-proposal.md
 │  ├─ product-ux.md
-│  └─ student-menu-ux.md
+│  └─ frontend/
+│     ├─ README.md
+│     ├─ architecture.md
+│     ├─ platform-differences.md
+│     └─ features/
 ├─ compose.yaml
 ├─ .env.example
 └─ README.md

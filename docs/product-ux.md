@@ -1,7 +1,8 @@
 # UniversityPath 제품 UX 기준
 
-이 문서는 Flutter Web과 Windows 학생 화면의 공통 UX 기준 단일 원본이다. API, Rule
-Engine, RAG의 책임을 바꾸지 않으며, **현재 구현된 정책**과 **추가 권장 사항**을 구분한다.
+이 문서는 Flutter Web과 Windows 학생 화면의 **공통 UX 기준 단일 원본**이다. 메뉴별 화면의
+현재 구현·목업 경계·후속 계약은 [프론트엔드 기능 문서](frontend/README.md)를 따른다. API,
+Rule Engine, RAG의 책임을 바꾸지 않으며, **현재 구현된 정책**과 **추가 권장 사항**을 구분한다.
 
 ## 1. 공통 원칙과 작업 공간
 
