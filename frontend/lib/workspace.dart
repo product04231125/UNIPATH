@@ -136,7 +136,7 @@ class _WorkspaceState extends State<Workspace> {
         if (page == 0) {
           return HomePage(onOpenPage: (value) => setState(() => page = value));
         }
-        if (page == 2) return _graduation();
+        if (page == 2) return const GraduationPage();
         if (page == navigationItems.length - 1) return const SettingsPage();
         return _record();
       },
@@ -277,7 +277,7 @@ class _WorkspaceState extends State<Workspace> {
                                 child: page == 0
                                     ? _home()
                                     : page == 2
-                                    ? _graduation()
+                                    ? const GraduationPage()
                                     : _record(),
                               ),
                             ),
@@ -623,6 +623,9 @@ class _WorkspaceState extends State<Workspace> {
       ],
     ),
   );
+  // Kept until the final legacy workspace cleanup removes every remaining
+  // menu implementation from this file.
+  // ignore: unused_element
   Widget _graduation() {
     final profileLabel = personalAcademicMode
         ? '$personalSchool $personalDepartment · $personalAdmissionYear학번 · 개인 기준'
@@ -1309,10 +1312,7 @@ class _WorkspaceState extends State<Workspace> {
     }
   }
 
-  List<RecordMockEntry> _entriesFor(
-    int menu,
-    List<RecordMockEntry> seeded,
-  ) => [
+  List<RecordMockEntry> _entriesFor(int menu, List<RecordMockEntry> seeded) => [
     if (showMockData) ...seeded,
     ...(manualEntries[menu] ?? const []),
   ];
