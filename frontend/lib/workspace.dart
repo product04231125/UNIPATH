@@ -15,6 +15,9 @@ import 'features/records/fixtures/credential_fixture.dart';
 import 'features/records/fixtures/experience_fixture.dart';
 import 'features/records/fixtures/portfolio_fixture.dart';
 import 'features/records/fixtures/record_mock_entry.dart';
+import 'features/records/activity/activity_page.dart';
+import 'features/records/course/course_page.dart';
+import 'features/records/experience/experience_page.dart';
 import 'features/settings/settings_page.dart';
 import 'shared/widgets/status_badge.dart';
 import 'shared/widgets/surface_card.dart';
@@ -137,6 +140,9 @@ class _WorkspaceState extends State<Workspace> {
           return HomePage(onOpenPage: (value) => setState(() => page = value));
         }
         if (page == 2) return const GraduationPage();
+        if (page == 1) return CoursePage(showMockData: showMockData);
+        if (page == 3) return ActivityPage(showMockData: showMockData);
+        if (page == 4) return ExperiencePage(showMockData: showMockData);
         if (page == navigationItems.length - 1) return const SettingsPage();
         return _record();
       },
