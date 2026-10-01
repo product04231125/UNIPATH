@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 
 import 'app_shell/workspace_shell.dart';
 import 'chat_window.dart' as chat_window;
+import 'features/assistant/assistant_conversation.dart';
+import 'features/assistant/assistant_panel.dart';
 import 'features/settings/settings_page.dart';
 
 class Workspace extends StatefulWidget {
@@ -21,13 +23,10 @@ class _WorkspaceState extends State<Workspace> {
   bool detachedChatActive = false;
   bool mainWindowMaximized = false;
   double chatWidth = 360;
-  final input = TextEditingController();
+  final assistantConversation = AssistantConversation();
   final curriculumScrollController = ScrollController();
   StreamSubscription<bool>? detachedChatSubscription;
   StreamSubscription<bool>? mainWindowMaximizeSubscription;
-  final messages = <String>[
-    '궁금한 점이나 정리할 일을 자연어로 물어보세요. 규정 질문에는 문서 근거를 자동으로 붙입니다.',
-  ];
   final manualEntries = <int, List<(String, String, String)>>{};
   bool personalAcademicMode = false;
   String personalSchool = '';
@@ -78,23 +77,9 @@ class _WorkspaceState extends State<Workspace> {
   void dispose() {
     detachedChatSubscription?.cancel();
     mainWindowMaximizeSubscription?.cancel();
-    input.dispose();
+    assistantConversation.dispose();
     curriculumScrollController.dispose();
     super.dispose();
-  }
-
-  void send() {
-    final text = input.text.trim();
-    if (text.isEmpty) return;
-    setState(() {
-      messages.add('나: $text');
-      messages.add(
-        text.contains('졸업') || text.contains('학점')
-            ? '문서 근거 답변: 졸업 충족 여부는 Rule Engine 결과와 공식 문서의 페이지 근거를 함께 확인합니다.'
-            : 'AI 답변: 현재 화면의 기록을 문맥으로 사용해 다음 확인 항목을 정리합니다.',
-      );
-      input.clear();
-    });
   }
 
   @override
@@ -140,7 +125,8 @@ class _WorkspaceState extends State<Workspace> {
         if (page == navigationItems.length - 1) return const SettingsPage();
         return _record();
       },
-      assistantBuilder: (context, width) => _chat(
+      assistantBuilder: (context, width) => AssistantPanel(
+        conversation: assistantConversation,
         onClose: _closeChat,
         onDetach: mainWindowMaximized ? null : _openDetachedChat,
         width: width,
@@ -1680,123 +1666,15 @@ class _WorkspaceState extends State<Workspace> {
     ),
     child: child,
   );
+
   Widget _chat({
     required VoidCallback onClose,
     VoidCallback? onDetach,
     required double width,
-  }) {
-    return Container(
-      width: width,
-      color: Colors.white,
-      child: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(16, 18, 16, 10),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'RAG 기반 대화',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Color(0xff946c2e),
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      Text(
-                        'AI 도우미',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (onDetach != null)
-                  Tooltip(
-                    message: '새 창으로 분리',
-                    child: IconButton(
-                      onPressed: onDetach,
-                      icon: const Icon(Icons.open_in_new),
-                    ),
-                  ),
-                Tooltip(
-                  message: 'AI 도우미 닫기',
-                  child: IconButton(
-                    onPressed: onClose,
-                    icon: const Icon(Icons.close),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Text(
-              '현재 화면의 기록을 읽고 답합니다. 규정 질문에는 공식 문서 근거를 자동으로 붙입니다.',
-              style: TextStyle(fontSize: 12, color: Color(0xff607386)),
-            ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.all(14),
-              itemCount: messages.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (_, i) {
-                final user = messages[i].startsWith('나:');
-                return Align(
-                  alignment: user
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: 285),
-                    padding: const EdgeInsets.all(11),
-                    decoration: BoxDecoration(
-                      color: user
-                          ? const Color(0xff1c425e)
-                          : const Color(0xffeef4f6),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      messages[i],
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.45,
-                        color: user ? Colors.white : const Color(0xff243d52),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: input,
-                    onSubmitted: (_) => send(),
-                    decoration: const InputDecoration(
-                      hintText: '자연어로 질문해 보세요',
-                      isDense: true,
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(onPressed: send, child: const Text('보내기')),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  }) => AssistantPanel(
+    conversation: assistantConversation,
+    onClose: onClose,
+    onDetach: onDetach,
+    width: width,
+  );
 }

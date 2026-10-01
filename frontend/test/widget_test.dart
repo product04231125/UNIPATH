@@ -60,6 +60,25 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
+  testWidgets('opens and sends a message through the assistant panel', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+
+    await tester.tap(find.byIcon(Icons.chat_bubble_outline));
+    await tester.pumpAndSettle();
+    expect(find.text('AI 도우미'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '졸업 요건을 확인해줘');
+    await tester.tap(find.text('보내기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('나: 졸업 요건을 확인해줘'), findsOneWidget);
+    expect(find.textContaining('문서 근거 답변'), findsOneWidget);
+    await tester.binding.setSurfaceSize(null);
+  });
+
   testWidgets('adds a personal record from the course menu', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
