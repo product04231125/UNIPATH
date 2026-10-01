@@ -47,6 +47,19 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
+  testWidgets('opens the settings placeholder from the workspace navigation', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+
+    await tester.tap(find.text('설정'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('기능과 계약이 확정된 뒤 제공됩니다.'), findsOneWidget);
+    await tester.binding.setSurfaceSize(null);
+  });
+
   testWidgets('adds a personal record from the course menu', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));

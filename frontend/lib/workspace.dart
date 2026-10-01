@@ -3,7 +3,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'app_shell/workspace_shell.dart';
 import 'chat_window.dart' as chat_window;
+import 'features/settings/settings_page.dart';
 
 class Workspace extends StatefulWidget {
   const Workspace({super.key});
@@ -97,6 +99,59 @@ class _WorkspaceState extends State<Workspace> {
 
   @override
   Widget build(BuildContext context) {
+    final navigationItems = [
+      for (var index = 0; index < labels.length; index++)
+        WorkspaceNavigationItem(label: labels[index], icon: icons[index]),
+      const WorkspaceNavigationItem(label: '설정', icon: Icons.settings_outlined),
+    ];
+    return WorkspaceShell(
+      selectedPage: page,
+      navigationItems: navigationItems,
+      onPageSelected: (value) => setState(() => page = value),
+      isAssistantOpen: chatOpen,
+      isAssistantManuallyOpened: chatManuallyOpened,
+      assistantWidth: chatWidth,
+      assistantTooltip: detachedChatActive ? '분리된 AI 도우미 앞으로' : 'AI 도우미 열기',
+      onOpenAssistant: () async {
+        if (detachedChatActive) {
+          final exists = await chat_window.hasDetachedChatWindow();
+          if (exists) {
+            await _openDetachedChat();
+          } else if (mounted) {
+            setState(() {
+              detachedChatActive = false;
+              chatOpen = true;
+              chatManuallyOpened = true;
+            });
+          }
+          return;
+        }
+        setState(() {
+          chatOpen = true;
+          chatManuallyOpened = true;
+        });
+      },
+      onAssistantWidthChanged: (delta) => setState(() {
+        chatWidth = (chatWidth - delta).clamp(300.0, 480.0);
+      }),
+      pageBuilder: (context, layout) {
+        if (page == 0) return _home();
+        if (page == 2) return _graduation();
+        if (page == navigationItems.length - 1) return const SettingsPage();
+        return _record();
+      },
+      assistantBuilder: (context, width) => _chat(
+        onClose: _closeChat,
+        onDetach: mainWindowMaximized ? null : _openDetachedChat,
+        width: width,
+      ),
+    );
+  }
+
+  // Kept only while the shell extraction is verified. It is removed with the
+  // page moves below, after every page has an independent owner.
+  // ignore: unused_element
+  Widget _legacyBuild(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(
