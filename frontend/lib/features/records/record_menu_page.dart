@@ -131,51 +131,51 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       if (widget.showMockData) ...widget.fixture,
       ..._manualEntries,
     ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          widget.kicker,
-          style: const TextStyle(
-            fontSize: AppTypography.caption,
-            letterSpacing: .5,
-            fontWeight: FontWeight.w800,
-            color: Color(0xff738ba0),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          widget.title,
-          style: const TextStyle(
-            fontSize: AppTypography.page,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 5),
-        Text(
-          widget.description,
-          style: const TextStyle(color: Color(0xff607386)),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-          decoration: BoxDecoration(
-            color: const Color(0xfffff7e5),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xffefdba7)),
-          ),
-          child: Text(
-            widget.notice,
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.kicker,
             style: const TextStyle(
               fontSize: AppTypography.caption,
-              color: Color(0xff795a22),
+              letterSpacing: .5,
+              fontWeight: FontWeight.w800,
+              color: Color(0xff738ba0),
             ),
           ),
-        ),
-        const SizedBox(height: 14),
-        Expanded(
-          child: LayoutBuilder(
+          const SizedBox(height: 4),
+          Text(
+            widget.title,
+            style: const TextStyle(
+              fontSize: AppTypography.page,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            widget.description,
+            style: const TextStyle(color: Color(0xff607386)),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              color: const Color(0xfffff7e5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xffefdba7)),
+            ),
+            child: Text(
+              widget.notice,
+              style: const TextStyle(
+                fontSize: AppTypography.caption,
+                color: Color(0xff795a22),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
             builder: (context, constraints) {
               final records = SurfaceCard(
                 child: Column(
@@ -249,8 +249,8 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               );
             },
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

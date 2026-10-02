@@ -31,46 +31,44 @@ class _GraduationPageState extends State<GraduationPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        _isPersonalMode
-            ? '$_personalSchool $_personalDepartment · $_personalAdmissionYear학번 · 개인 기준'
-            : '경동대학교 컴퓨터공학과 · 2024학번',
-        style: const TextStyle(
-          fontSize: AppTypography.caption,
-          color: Color(0xff946c2e),
-          fontWeight: FontWeight.w700,
+  Widget build(BuildContext context) => SingleChildScrollView(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _isPersonalMode
+              ? '$_personalSchool $_personalDepartment · $_personalAdmissionYear학번 · 개인 기준'
+              : '경동대학교 컴퓨터공학과 · 2024학번',
+          style: const TextStyle(
+            fontSize: AppTypography.caption,
+            color: Color(0xff946c2e),
+            fontWeight: FontWeight.w700,
+          ),
         ),
-      ),
-      const SizedBox(height: 4),
-      Wrap(
-        spacing: 12,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          const Text(
-            '졸업 요건',
-            style: TextStyle(
-              fontSize: AppTypography.page,
-              fontWeight: FontWeight.w800,
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            const Text(
+              '졸업 요건',
+              style: TextStyle(
+                fontSize: AppTypography.page,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-          OutlinedButton.icon(
-            onPressed: _showPersonalAcademicSetup,
-            icon: const Icon(Icons.tune, size: 18),
-            label: Text(_isPersonalMode ? '개인 기준 수정' : '내 학교·학과 기준 설정'),
-          ),
-        ],
-      ),
-      const SizedBox(height: 16),
-      Expanded(
-        child: _isPersonalMode
-            ? SingleChildScrollView(child: _personalContent())
-            : _officialContent(),
-      ),
-    ],
+            OutlinedButton.icon(
+              onPressed: _showPersonalAcademicSetup,
+              icon: const Icon(Icons.tune, size: 18),
+              label: Text(_isPersonalMode ? '개인 기준 수정' : '내 학교·학과 기준 설정'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _isPersonalMode ? _personalContent() : _officialContent(),
+      ],
+    ),
   );
 
   Widget _officialContent() => Column(
@@ -114,7 +112,7 @@ class _GraduationPageState extends State<GraduationPage> {
         ),
       ),
       const SizedBox(height: 12),
-      Expanded(child: SingleChildScrollView(child: _officialTable())),
+      _officialTable(),
     ],
   );
 

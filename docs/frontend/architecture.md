@@ -11,6 +11,7 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
 - `shared/widgets/`: 카드·상태 배지처럼 도메인 상태가 없는 표현 위젯
 - `shared/app_typography.dart`: 역할별 공통 글자 크기·줄높이, 앱 테마 적용
 - `shared/widgets/anchored_select_field.dart`: 트리거 기준 배치·키보드 포커스를 공유하는 선택 제어
+- `features/planning/planning_dates.dart`, `weekly_schedule.dart`: 홈·일정의 공통 날짜 범위·7일 표
 - `chat_window*.dart`: 플랫폼별 AI 분리 창 어댑터
 
 ## 기능 소유권

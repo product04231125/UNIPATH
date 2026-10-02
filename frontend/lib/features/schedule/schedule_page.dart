@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../planning/planning_repository.dart';
 import '../../shared/widgets/anchored_select_field.dart';
+import '../planning/planning_dates.dart';
+import '../planning/weekly_schedule.dart';
 
 class SchedulePage extends StatefulWidget {
-  const SchedulePage({super.key, required this.repository});
+  const SchedulePage({super.key, required this.repository, this.initialDay});
 
   final PlanningRepository repository;
+  final DateTime? initialDay;
 
   @override
   State<SchedulePage> createState() => _SchedulePageState();
@@ -19,7 +22,7 @@ class _SchedulePageState extends State<SchedulePage> {
   @override
   void initState() {
     super.initState();
-    _selectedDay = _dateOnly(DateTime.now());
+    _selectedDay = _dateOnly(widget.initialDay ?? DateTime.now());
     _month = DateTime(_selectedDay.year, _selectedDay.month);
   }
 
@@ -31,7 +34,6 @@ class _SchedulePageState extends State<SchedulePage> {
         return const Center(child: CircularProgressIndicator());
       }
       final selectedEvents = _eventsForDay(_selectedDay);
-      final weekEvents = _eventsForWeek(DateTime.now());
       return LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
           padding: EdgeInsets.only(
@@ -84,7 +86,14 @@ class _SchedulePageState extends State<SchedulePage> {
                   _dayList(selectedEvents),
                 ],
                 const SizedBox(height: 18),
-                _weekList(weekEvents),
+                WeeklySchedule(
+                  events: widget.repository.events,
+                  startsOn: widget.repository.profile.weekStartsOn,
+                  onSelectDay: (day) => setState(() {
+                    _selectedDay = day;
+                    _month = DateTime(day.year, day.month);
+                  }),
+                ),
               ],
             ),
           ),
@@ -127,11 +136,14 @@ class _SchedulePageState extends State<SchedulePage> {
           const SizedBox(height: 8),
           Row(
             children: [
-              for (final day in ['월', '화', '수', '목', '금', '토', '일'])
+              for (final day in planningWeek(
+                DateTime.now(),
+                widget.repository.profile.weekStartsOn,
+              ))
                 Expanded(
                   child: Center(
                     child: Text(
-                      day,
+                      weekdayLabel(day.weekday),
                       style: TextStyle(color: Color(0xff607386)),
                     ),
                   ),
@@ -143,14 +155,22 @@ class _SchedulePageState extends State<SchedulePage> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: 42,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
-              childAspectRatio: 1.12,
+              mainAxisExtent:
+                  MediaQuery.textScalerOf(context).scale(14) * 3 + 24,
             ),
             itemBuilder: (context, index) {
               final first = DateTime(_month.year, _month.month);
               final day = first.add(
-                Duration(days: index - (first.weekday - 1)),
+                Duration(
+                  days:
+                      index -
+                      (first.weekday -
+                              widget.repository.profile.weekStartsOn.weekday +
+                              7) %
+                          7,
+                ),
               );
               return _dayCell(day);
             },
@@ -234,35 +254,6 @@ class _SchedulePageState extends State<SchedulePage> {
     ),
   );
 
-  Widget _weekList(List<PlanningEvent> events) {
-    final start = _startOfWeek(DateTime.now());
-    final end = start.add(const Duration(days: 6));
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('이번 주', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 2),
-            Text(
-              '${start.month}.${start.day}–${end.month}.${end.day}',
-              style: const TextStyle(color: Color(0xff607386)),
-            ),
-            const SizedBox(height: 10),
-            if (events.isEmpty)
-              const Text(
-                '이번 주에 등록한 개인 일정이 없습니다.',
-                style: TextStyle(color: Color(0xff607386)),
-              )
-            else
-              for (final event in events) _eventTile(event, showDate: true),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _eventTile(PlanningEvent event, {bool showDate = false}) => ListTile(
     contentPadding: EdgeInsets.zero,
     leading: Container(
@@ -284,21 +275,8 @@ class _SchedulePageState extends State<SchedulePage> {
     ),
   );
 
-  List<PlanningEvent> _eventsForDay(DateTime day) => widget.repository.events
-      .where(
-        (event) =>
-            !event.end.isBefore(_dateOnly(day)) &&
-            !event.start.isAfter(_dateOnly(day).add(const Duration(days: 1))),
-      )
-      .toList();
-
-  List<PlanningEvent> _eventsForWeek(DateTime date) {
-    final start = _startOfWeek(date);
-    final end = start.add(const Duration(days: 7));
-    return widget.repository.events
-        .where((event) => event.start.isBefore(end) && event.end.isAfter(start))
-        .toList();
-  }
+  List<PlanningEvent> _eventsForDay(DateTime day) =>
+      eventsOnDay(widget.repository.events, day);
 
   Future<void> _editEvent([PlanningEvent? existing]) async {
     final result = await showDialog<_EventChange>(
@@ -498,8 +476,6 @@ class _EventEditorState extends State<_EventEditor> {
 
 DateTime _dateOnly(DateTime value) =>
     DateTime(value.year, value.month, value.day);
-DateTime _startOfWeek(DateTime value) =>
-    _dateOnly(value).subtract(Duration(days: value.weekday - 1));
 bool _sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 String _time(DateTime value) =>

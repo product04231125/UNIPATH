@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:university_path_frontend/shared/app_typography.dart';
 
+import '../planning/planning_dates.dart';
 import '../planning/planning_repository.dart';
+import '../planning/weekly_schedule.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({
@@ -9,11 +10,12 @@ class HomePage extends StatelessWidget {
     required this.repository,
     required this.onOpenPage,
     required this.onOpenSettings,
+    required this.onOpenSchedule,
   });
-
   final PlanningRepository repository;
   final ValueChanged<int> onOpenPage;
   final VoidCallback onOpenSettings;
+  final ValueChanged<DateTime> onOpenSchedule;
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -23,384 +25,352 @@ class HomePage extends StatelessWidget {
         return const Center(child: CircularProgressIndicator());
       }
       final profile = repository.profile;
-      final academicYear = profile.academicYearFor(DateTime.now());
-      final weekEvents = _eventsThisWeek(
-        repository.events,
-        profile.weekStartsOn,
-      );
-      return LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          padding: EdgeInsets.only(
-            bottom: constraints.maxHeight < 620 ? 28 : 8,
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1050),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  profile.school.trim().isEmpty
-                      ? '오늘 무엇을 정리해볼까요?'
-                      : '${profile.school} · ${profile.department}',
-                  style: const TextStyle(
-                    fontSize: AppTypography.caption,
-                    color: Color(0xff946c2e),
-                    fontWeight: FontWeight.w700,
+      final now = DateTime.now();
+      final year = profile.academicYearFor(now);
+      final todayEvents = eventsOnDay(repository.events, now);
+      final upcoming = repository.events
+          .where((e) => e.end.isAfter(now))
+          .take(3)
+          .toList();
+      return SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              key: const Key('home-overview'),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${now.month}월 ${now.day}일 ${weekdayLabel(now.weekday)}요일',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  '나의 대학생활 경로',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  '입력한 개인 계획을 바탕으로 다음 작업을 정리합니다.',
-                  style: TextStyle(color: Color(0xff607386)),
-                ),
-                const SizedBox(height: 18),
-                if (constraints.maxWidth >= 820)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 8),
+                  Text(
+                    '나의 대학생활 경로',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    profile.isConfigured
+                        ? '${profile.school} · ${profile.department}'
+                        : '학교·학과와 첫 일정을 입력하고 나의 계획을 시작하세요.',
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Expanded(
-                        flex: 3,
-                        child: _weeklyCard(
-                          context,
-                          weekEvents,
-                          profile.weekStartsOn,
+                      Chip(label: Text('오늘 일정 ${todayEvents.length}개')),
+                      Chip(
+                        label: Text(
+                          year == null ? '개인 계획 미설정' : '개인 계획 $year학년',
                         ),
                       ),
-                      const SizedBox(width: 18),
-                      Expanded(
-                        flex: 2,
-                        child: _prepareCard(context, profile, academicYear),
-                      ),
+                      const Chip(label: Text('기기 로컬 저장')),
                     ],
-                  )
-                else ...[
-                  _weeklyCard(context, weekEvents, profile.weekStartsOn),
-                  const SizedBox(height: 18),
-                  _prepareCard(context, profile, academicYear),
+                  ),
                 ],
-                const SizedBox(height: 18),
-                _nextStepsCard(context, academicYear),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(height: 16),
+            WeeklySchedule(
+              events: repository.events,
+              startsOn: profile.weekStartsOn,
+              onSelectDay: onOpenSchedule,
+            ),
+            const SizedBox(height: 16),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final upcomingCard = _upcoming(context, upcoming);
+                final prepare = _prepare(context, profile);
+                if (constraints.maxWidth < 820) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      upcomingCard,
+                      const SizedBox(height: 16),
+                      prepare,
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 3, child: upcomingCard),
+                    const SizedBox(width: 16),
+                    Expanded(flex: 2, child: prepare),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            _nextSteps(context, year),
+          ],
         ),
       );
     },
   );
 
-  Widget _weeklyCard(
-    BuildContext context,
-    List<PlanningEvent> events,
-    WeekStartDay weekStartsOn,
-  ) => Card(
+  Widget _card(BuildContext context, String title, Widget child) => Card(
     child: Padding(
       padding: const EdgeInsets.all(18),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final title = Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.calendar_month_outlined,
-                    color: Color(0xff315a77),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '이번 주 일정',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ],
-              );
-              final action = TextButton(
-                onPressed: () => onOpenPage(1),
-                child: const Text('전체 일정 보기 →'),
-              );
-              if (constraints.maxWidth < 340) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [title, action],
-                );
-              }
-              return Row(children: [title, const Spacer(), action]);
-            },
-          ),
+          Text(title, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final dayWidth = ((constraints.maxWidth - 48) / 7)
-                  .clamp(72.0, 132.0)
-                  .toDouble();
-              final weekDays = _weekDays(DateTime.now(), weekStartsOn);
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (var index = 0; index < weekDays.length; index++) ...[
-                      SizedBox(
-                        width: dayWidth,
-                        child: _weekDayCard(
-                          context,
-                          weekDays[index],
-                          _eventsForDay(events, weekDays[index]),
-                        ),
-                      ),
-                      if (index < weekDays.length - 1) const SizedBox(width: 8),
-                    ],
-                  ],
-                ),
-              );
-            },
-          ),
+          child,
         ],
       ),
     ),
   );
 
-  Widget _weekDayCard(
-    BuildContext context,
-    DateTime day,
-    List<PlanningEvent> events,
-  ) {
-    final isToday = _sameDay(day, DateTime.now());
-    return Container(
-      constraints: const BoxConstraints(minHeight: 112),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: isToday ? const Color(0xffdcebf1) : const Color(0xfff6f8f9),
-        border: Border.all(
-          color: isToday ? const Color(0xff315a77) : const Color(0xffd8e1e7),
-        ),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _upcoming(BuildContext context, List<PlanningEvent> events) => _card(
+    context,
+    '다가오는 일정',
+    events.isEmpty
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.event_available_outlined, size: 28),
+              const SizedBox(height: 8),
+              const Text('앞으로 예정된 개인 일정이 없습니다.'),
+              const SizedBox(height: 4),
+              Text(
+                '과제 마감이나 참여할 활동을 기록해 이번 주 계획을 채워보세요.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: () => onOpenSchedule(DateTime.now()),
+                icon: const Icon(Icons.add),
+                label: const Text('일정 추가'),
+              ),
+            ],
+          )
+        : Column(
+            children: [
+              for (final event in events)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.event_outlined),
+                  title: Text(
+                    event.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    '${event.start.month}.${event.start.day} · ${planningTime(event.start)} · ${event.category.label}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => onOpenSchedule(event.start),
+                ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: () => onOpenPage(1),
+                  child: const Text('전체 일정 보기 →'),
+                ),
+              ),
+            ],
+          ),
+  );
+
+  Widget _prepare(BuildContext context, PlanningProfile profile) {
+    final configured = profile.isConfigured;
+    final hasEvents = repository.events.isNotEmpty;
+    return _card(
+      context,
+      '준비 목록',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            '${_weekdayLabel(day.weekday)} ${day.month}/${day.day}',
-            style: TextStyle(
-              fontSize: AppTypography.caption,
-              fontWeight: isToday ? FontWeight.w800 : FontWeight.w700,
-            ),
+            '기본 준비 ${(configured ? 1 : 0) + (hasEvents ? 1 : 0)}/2',
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 8),
-          if (events.isEmpty)
-            const Text(
-              '일정 없음',
-              style: TextStyle(
-                fontSize: AppTypography.caption,
-                color: Color(0xff607386),
-              ),
-            )
-          else ...[
-            for (final event in events.take(2))
-              Text(
-                event.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: AppTypography.caption,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            if (events.length > 2)
-              Text(
-                '+ ${events.length - 2}개',
-                style: const TextStyle(
-                  fontSize: AppTypography.caption,
-                  color: Color(0xff607386),
-                ),
-              ),
-          ],
+          LinearProgressIndicator(
+            value: ((configured ? 1 : 0) + (hasEvents ? 1 : 0)) / 2,
+          ),
+          const SizedBox(height: 12),
+          _prepareItem(
+            context,
+            configured,
+            '학업과 계획 정보',
+            configured ? '학교·학과·입학연도 입력 완료' : '학교·학과·입학연도를 설정하세요.',
+            onOpenSettings,
+          ),
+          const Divider(),
+          _prepareItem(
+            context,
+            hasEvents,
+            '개인 일정',
+            hasEvents
+                ? '개인 일정 ${repository.events.length}개 저장됨'
+                : '첫 일정으로 계획을 시작하세요.',
+            () => onOpenSchedule(DateTime.now()),
+          ),
         ],
       ),
     );
   }
 
-  Widget _prepareCard(
+  Widget _prepareItem(
     BuildContext context,
-    PlanningProfile profile,
-    int? academicYear,
-  ) {
-    final items = <_ChecklistItem>[
-      if (!profile.isConfigured)
-        _ChecklistItem(
-          title: '학업과 계획 정보 입력',
-          description: '학교·학과·입학연도를 입력하면 개인 계획 학년을 안내할 수 있어요.',
-          action: '설정 열기',
-          onTap: onOpenSettings,
+    bool done,
+    String title,
+    String description,
+    VoidCallback action,
+  ) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    leading: Icon(
+      done ? Icons.check_circle_outline : Icons.radio_button_unchecked,
+    ),
+    title: Text(title),
+    subtitle: Text(description),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: action,
+  );
+
+  Widget _nextSteps(BuildContext context, int? year) {
+    final steps = switch (year) {
+      1 || 2 => const [
+        _PlanLink(
+          '수강 계획 정리',
+          '학기별 과목과 개인 수강 계획을 확인하세요.',
+          Icons.menu_book_outlined,
+          2,
         ),
-      if (repository.events.isEmpty)
-        _ChecklistItem(
-          title: '첫 개인 일정 추가',
-          description: '이번 주에 준비할 과제, 활동 또는 마감을 기록해 보세요.',
-          action: '일정 추가',
-          onTap: () => onOpenPage(1),
+        _PlanLink(
+          '활동 기록 시작',
+          '참여한 활동과 준비 중인 활동을 정리하세요.',
+          Icons.volunteer_activism_outlined,
+          4,
         ),
-      if (profile.isConfigured && repository.events.isNotEmpty)
-        _ChecklistItem(
-          title: '기본 계획 준비 완료',
-          description:
-              '${academicYear == null ? '개인 계획' : '$academicYear학년 개인 계획'}과 이번 주 일정을 확인할 수 있어요.',
-          action: '일정 보기',
-          onTap: () => onOpenPage(1),
+      ],
+      3 => const [
+        _PlanLink(
+          '경험 정리',
+          '프로젝트와 경험을 내 기록으로 남기세요.',
+          Icons.business_center_outlined,
+          5,
         ),
-    ];
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('준비 목록', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 6),
-            const Text(
-              '아직 입력하지 않은 항목부터 시작하세요.',
-              style: TextStyle(color: Color(0xff607386)),
-            ),
-            const SizedBox(height: 10),
-            for (final item in items)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.radio_button_unchecked),
-                title: Text(item.title),
-                subtitle: Text(item.description),
-                trailing: TextButton(
-                  onPressed: item.onTap,
-                  child: Text(item.action),
-                ),
-              ),
-          ],
+        _PlanLink(
+          '수강 계획 확인',
+          '과목과 학기 계획을 이어서 정리하세요.',
+          Icons.menu_book_outlined,
+          2,
         ),
+      ],
+      4 => const [
+        _PlanLink(
+          '졸업 요건 확인',
+          '개인 기준과 학교 공식 정보의 범위를 확인하세요.',
+          Icons.school_outlined,
+          3,
+        ),
+        _PlanLink(
+          '포트폴리오 정리',
+          '기록한 경험과 성과를 정리하세요.',
+          Icons.collections_bookmark_outlined,
+          7,
+        ),
+      ],
+      _ => const [
+        _PlanLink('수강 관리', '수강 과목과 학기 계획을 정리하세요.', Icons.menu_book_outlined, 2),
+        _PlanLink(
+          '활동 기록',
+          '참여한 활동을 내 기록으로 남기세요.',
+          Icons.volunteer_activism_outlined,
+          4,
+        ),
+        _PlanLink(
+          '경험 정리',
+          '프로젝트와 경험을 정리하세요.',
+          Icons.business_center_outlined,
+          5,
+        ),
+      ],
+    };
+    return _card(
+      context,
+      '다음에 이어갈 기록',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            year == null
+                ? '관심 있는 기록부터 시작하세요.'
+                : '$year학년 개인 계획 링크 · 공식 학적 판정이나 서버 추천이 아닙니다.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 820 ? steps.length : 1;
+              final width =
+                  (constraints.maxWidth - (columns - 1) * 12) / columns;
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final step in steps)
+                    SizedBox(
+                      width: width,
+                      child: Material(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(12),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => onOpenPage(step.page),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(step.icon),
+                                const SizedBox(height: 10),
+                                Text(
+                                  step.label,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  step.description,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }
-
-  Widget _nextStepsCard(BuildContext context, int? academicYear) {
-    final steps = _linksFor(academicYear);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('다음에 이어갈 기록', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 6),
-            Text(
-              academicYear == null
-                  ? '학업과 계획 정보를 입력하면 개인 계획 학년에 맞춰 안내합니다.'
-                  : '$academicYear학년 개인 계획을 위한 우선 링크입니다. 공식 학적 판정이나 서버 추천이 아닙니다.',
-              style: const TextStyle(color: Color(0xff607386)),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                for (final step in steps)
-                  OutlinedButton.icon(
-                    onPressed: () => onOpenPage(step.page),
-                    icon: Icon(step.icon),
-                    label: Text(step.label),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  List<_PlanLink> _linksFor(int? academicYear) => switch (academicYear) {
-    1 || 2 => const [
-      _PlanLink('수강 계획 정리', Icons.menu_book_outlined, 2),
-      _PlanLink('활동 기록 시작', Icons.volunteer_activism_outlined, 4),
-    ],
-    3 => const [
-      _PlanLink('경험 정리', Icons.business_center_outlined, 5),
-      _PlanLink('수강 계획 확인', Icons.menu_book_outlined, 2),
-    ],
-    4 => const [
-      _PlanLink('졸업 요건 확인', Icons.school_outlined, 3),
-      _PlanLink('포트폴리오 정리', Icons.collections_bookmark_outlined, 7),
-    ],
-    _ => const [
-      _PlanLink('수강 관리', Icons.menu_book_outlined, 2),
-      _PlanLink('활동 기록', Icons.volunteer_activism_outlined, 4),
-      _PlanLink('경험 정리', Icons.business_center_outlined, 5),
-    ],
-  };
-}
-
-class _ChecklistItem {
-  const _ChecklistItem({
-    required this.title,
-    required this.description,
-    required this.action,
-    required this.onTap,
-  });
-  final String title;
-  final String description;
-  final String action;
-  final VoidCallback onTap;
 }
 
 class _PlanLink {
-  const _PlanLink(this.label, this.icon, this.page);
+  const _PlanLink(this.label, this.description, this.icon, this.page);
   final String label;
+  final String description;
   final IconData icon;
   final int page;
 }
-
-List<PlanningEvent> _eventsThisWeek(
-  List<PlanningEvent> events,
-  WeekStartDay weekStartsOn,
-) {
-  final now = DateTime.now();
-  final start = _weekDays(now, weekStartsOn).first;
-  final end = start.add(const Duration(days: 7));
-  return events
-      .where((event) => event.start.isBefore(end) && event.end.isAfter(start))
-      .toList();
-}
-
-List<DateTime> _weekDays(DateTime date, WeekStartDay weekStartsOn) {
-  final start = DateTime(
-    date.year,
-    date.month,
-    date.day,
-  ).subtract(Duration(days: (date.weekday - weekStartsOn.weekday + 7) % 7));
-  return List.generate(7, (index) => start.add(Duration(days: index)));
-}
-
-List<PlanningEvent> _eventsForDay(List<PlanningEvent> events, DateTime day) {
-  final start = DateTime(day.year, day.month, day.day);
-  final end = start.add(const Duration(days: 1));
-  return events
-      .where((event) => event.start.isBefore(end) && event.end.isAfter(start))
-      .toList();
-}
-
-bool _sameDay(DateTime left, DateTime right) =>
-    left.year == right.year &&
-    left.month == right.month &&
-    left.day == right.day;
-
-String _weekdayLabel(int weekday) => switch (weekday) {
-  DateTime.monday => '월',
-  DateTime.tuesday => '화',
-  DateTime.wednesday => '수',
-  DateTime.thursday => '목',
-  DateTime.friday => '금',
-  DateTime.saturday => '토',
-  DateTime.sunday => '일',
-  _ => '',
-};

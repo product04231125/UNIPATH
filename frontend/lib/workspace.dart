@@ -59,6 +59,7 @@ class _WorkspaceState extends State<Workspace> {
   var _chatWidth = 360.0;
   final _assistantConversation = AssistantConversation();
   final _planningRepository = PlanningRepository();
+  DateTime? _scheduleInitialDay;
   StreamSubscription<bool>? _detachedChatSubscription;
   StreamSubscription<bool>? _mainWindowMaximizeSubscription;
 
@@ -140,8 +141,15 @@ class _WorkspaceState extends State<Workspace> {
       repository: _planningRepository,
       onOpenPage: (value) => setState(() => _page = value),
       onOpenSettings: () => setState(() => _page = settingsPage - 1),
+      onOpenSchedule: (day) => setState(() {
+        _scheduleInitialDay = day;
+        _page = 1;
+      }),
     ),
-    1 => SchedulePage(repository: _planningRepository),
+    1 => SchedulePage(
+      repository: _planningRepository,
+      initialDay: _scheduleInitialDay,
+    ),
     2 => CoursePage(showMockData: _showMockData),
     3 => const GraduationPage(),
     4 => ActivityPage(showMockData: _showMockData),

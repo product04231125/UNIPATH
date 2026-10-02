@@ -209,7 +209,11 @@ class _Sidebar extends StatelessWidget {
     padding: const EdgeInsets.all(12),
     child: LayoutBuilder(
       builder: (context, constraints) {
-        final shouldScroll = compact || constraints.maxHeight < 660;
+        final shouldScroll =
+            compact ||
+            constraints.maxHeight < 660 ||
+            MediaQuery.textScalerOf(context).scale(AppTypography.body) >
+                AppTypography.body * 1.2;
         final content = _buildContent(scrollable: shouldScroll);
         return shouldScroll ? SingleChildScrollView(child: content) : content;
       },
@@ -388,11 +392,15 @@ class _NavigationTile extends StatelessWidget {
                 Icon(item.icon, size: 18, color: const Color(0xff25465f)),
                 if (!compact) const SizedBox(width: 10),
                 if (!compact)
-                  Text(
-                    item.label,
-                    style: TextStyle(
-                      fontSize: AppTypography.body,
-                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  Expanded(
+                    child: Text(
+                      item.label,
+                      style: TextStyle(
+                        fontSize: AppTypography.body,
+                        fontWeight: selected
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                      ),
                     ),
                   ),
               ],
