@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:university_path_frontend/shared/app_typography.dart';
 
 import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/surface_card.dart';
@@ -58,7 +59,10 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                 children: [
                   Text(
                     '${widget.title} 메뉴에 내 기록을 추가합니다. 학교 공식 기준이나 졸업 판정은 바꾸지 않습니다.',
-                    style: const TextStyle(fontSize: 13, height: 1.45),
+                    style: const TextStyle(
+                      fontSize: AppTypography.body,
+                      height: 1.45,
+                    ),
                   ),
                   const SizedBox(height: 18),
                   TextField(
@@ -133,7 +137,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         Text(
           widget.kicker,
           style: const TextStyle(
-            fontSize: 11,
+            fontSize: AppTypography.caption,
             letterSpacing: .5,
             fontWeight: FontWeight.w800,
             color: Color(0xff738ba0),
@@ -142,7 +146,10 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         const SizedBox(height: 4),
         Text(
           widget.title,
-          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+          style: const TextStyle(
+            fontSize: AppTypography.page,
+            fontWeight: FontWeight.w800,
+          ),
         ),
         const SizedBox(height: 5),
         Text(
@@ -160,7 +167,10 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           ),
           child: Text(
             widget.notice,
-            style: const TextStyle(fontSize: 12, color: Color(0xff795a22)),
+            style: const TextStyle(
+              fontSize: AppTypography.caption,
+              color: Color(0xff795a22),
+            ),
           ),
         ),
         const SizedBox(height: 14),
@@ -174,14 +184,17 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                     Text(
                       widget.listTitle,
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: AppTypography.section,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 4),
                     const Text(
                       '학교에서 확인한 정보가 없으면 내 기록을 직접 추가할 수 있습니다.',
-                      style: TextStyle(fontSize: 12, color: Color(0xff607386)),
+                      style: TextStyle(
+                        fontSize: AppTypography.caption,
+                        color: Color(0xff607386),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     FilledButton.icon(
@@ -201,7 +214,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                     Text(
                       widget.guideTitle,
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: AppTypography.section,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -211,7 +224,10 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                         padding: const EdgeInsets.only(bottom: 11),
                         child: Text(
                           '• $guide',
-                          style: const TextStyle(fontSize: 13, height: 1.4),
+                          style: const TextStyle(
+                            fontSize: AppTypography.body,
+                            height: 1.4,
+                          ),
                         ),
                       ),
                   ],
@@ -258,14 +274,17 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               Text(
                 entry.title,
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: AppTypography.body,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 entry.detail,
-                style: const TextStyle(fontSize: 12, color: Color(0xff607386)),
+                style: const TextStyle(
+                  fontSize: AppTypography.caption,
+                  color: Color(0xff607386),
+                ),
               ),
             ],
           ),

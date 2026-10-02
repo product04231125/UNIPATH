@@ -4,6 +4,7 @@ import 'chat_window.dart' as chat_window;
 import 'features/auth/login_page.dart';
 import 'features/assistant/detached_chat_page.dart';
 import 'workspace.dart';
+import 'shared/app_typography.dart';
 
 Future<void> runUniversityPathApp() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,12 +17,31 @@ Future<void> runUniversityPathApp() async {
   runApp(detached ? const DetachedChatApp() : const UniversityPathApp());
 }
 
-ThemeData universityPathTheme() => ThemeData(
-  useMaterial3: true,
-  fontFamily: 'Malgun Gothic',
-  scaffoldBackgroundColor: const Color(0xfff7f8f8),
-  colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff193f59)),
-);
+ThemeData universityPathTheme() {
+  final base = ThemeData(
+    useMaterial3: true,
+    fontFamily: 'Malgun Gothic',
+    scaffoldBackgroundColor: const Color(0xfff7f8f8),
+    colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff193f59)),
+  );
+  return base.copyWith(
+    textTheme: AppTypography.apply(base.textTheme),
+    inputDecorationTheme: const InputDecorationTheme(
+      border: OutlineInputBorder(),
+      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+    ),
+    dialogTheme: const DialogThemeData(
+      alignment: Alignment.center,
+      constraints: BoxConstraints(maxWidth: 640),
+      titleTextStyle: AppTypography.sectionStyle,
+      contentTextStyle: AppTypography.bodyStyle,
+    ),
+    listTileTheme: const ListTileThemeData(
+      titleTextStyle: AppTypography.bodyStyle,
+      subtitleTextStyle: AppTypography.captionStyle,
+    ),
+  );
+}
 
 class UniversityPathApp extends StatefulWidget {
   const UniversityPathApp({super.key, this.startAuthenticated = false});

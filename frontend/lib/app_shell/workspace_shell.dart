@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:university_path_frontend/shared/app_typography.dart';
 
 class WorkspaceNavigationItem {
   const WorkspaceNavigationItem({required this.label, required this.icon});
@@ -240,9 +241,15 @@ class _Sidebar extends StatelessWidget {
             dense: true,
             title: const Text(
               '목업용',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: AppTypography.body,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-            subtitle: const Text('예시 데이터 표시', style: TextStyle(fontSize: 10)),
+            subtitle: const Text(
+              '예시 데이터 표시',
+              style: TextStyle(fontSize: AppTypography.caption),
+            ),
             value: showMockData,
             onChanged: onMockDataChanged,
           ),
@@ -261,17 +268,29 @@ class _Sidebar extends StatelessWidget {
         leading: const CircleAvatar(
           radius: 15,
           backgroundColor: Color(0xff19344d),
-          child: Text('정', style: TextStyle(color: Colors.white, fontSize: 12)),
+          child: Text(
+            '정',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: AppTypography.caption,
+            ),
+          ),
         ),
         title: compact
             ? null
             : const Text(
                 '정민서',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontSize: AppTypography.body,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
         subtitle: compact
             ? null
-            : const Text('2024학번 · 컴퓨터공학과', style: TextStyle(fontSize: 10)),
+            : const Text(
+                '2024학번 · 컴퓨터공학과',
+                style: TextStyle(fontSize: AppTypography.caption),
+              ),
       ),
       if (!compact)
         TextButton.icon(
@@ -317,13 +336,16 @@ class _Brand extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontFamily: 'serif',
-                  fontSize: 17,
+                  fontSize: AppTypography.section,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               Text(
                 '화면 목업',
-                style: TextStyle(fontSize: 11, color: Color(0xff708192)),
+                style: TextStyle(
+                  fontSize: AppTypography.caption,
+                  color: Color(0xff708192),
+                ),
               ),
             ],
           ),
@@ -369,7 +391,7 @@ class _NavigationTile extends StatelessWidget {
                   Text(
                     item.label,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: AppTypography.body,
                       fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                     ),
                   ),

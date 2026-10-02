@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../planning/planning_repository.dart';
+import '../../shared/widgets/anchored_select_field.dart';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key, required this.repository});
@@ -403,17 +404,14 @@ class _EventEditorState extends State<_EventEditor> {
                 (value) => setState(() => _end = value),
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<PlanningEventCategory>(
-                initialValue: _category,
-                decoration: const InputDecoration(labelText: '분류'),
-                items: [
+              AnchoredSelectField<PlanningEventCategory>(
+                value: _category,
+                label: '분류',
+                options: [
                   for (final category in PlanningEventCategory.values)
-                    DropdownMenuItem(
-                      value: category,
-                      child: Text(category.label),
-                    ),
+                    SelectOption(category, category.label),
                 ],
-                onChanged: (value) => setState(() => _category = value!),
+                onChanged: (value) => setState(() => _category = value),
               ),
               const SizedBox(height: 12),
               TextFormField(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:university_path_frontend/shared/app_typography.dart';
 
 /// Temporary entry screen. It has no API, token, or role behavior yet.
 class LoginPage extends StatefulWidget {
@@ -64,7 +65,7 @@ class _LoginPageState extends State<LoginPage> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Color(0xff5d7786),
-                        fontSize: 12,
+                        fontSize: AppTypography.caption,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.5,
                       ),
@@ -86,7 +87,7 @@ class _LoginPageState extends State<LoginPage> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Color(0xff607386),
-                        fontSize: 15,
+                        fontSize: AppTypography.body,
                         height: 1.5,
                       ),
                     ),
@@ -117,7 +118,7 @@ class _LoginPageState extends State<LoginPage> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Color(0xff607386),
-                        fontSize: 12,
+                        fontSize: AppTypography.caption,
                         height: 1.5,
                       ),
                     ),
@@ -134,7 +135,10 @@ class _LoginPageState extends State<LoginPage> {
                     const Text(
                       '관리자 역할과 학교 검색은 API·권한 계약 확정 후 연결합니다.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Color(0xff778894), fontSize: 12),
+                      style: TextStyle(
+                        color: Color(0xff778894),
+                        fontSize: AppTypography.caption,
+                      ),
                     ),
                   ],
                 ),
@@ -254,13 +258,16 @@ class _BrandHeader extends StatelessWidget {
             'UniversityPath',
             style: TextStyle(
               color: Color(0xff193f59),
-              fontSize: 20,
+              fontSize: AppTypography.section,
               fontWeight: FontWeight.w800,
             ),
           ),
           Text(
             '화면 목업',
-            style: TextStyle(color: Color(0xff607386), fontSize: 12),
+            style: TextStyle(
+              color: Color(0xff607386),
+              fontSize: AppTypography.caption,
+            ),
           ),
         ],
       ),

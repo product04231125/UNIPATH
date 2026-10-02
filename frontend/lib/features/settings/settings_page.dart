@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:university_path_frontend/shared/app_typography.dart';
 
 import '../planning/planning_repository.dart';
+import '../../shared/widgets/anchored_select_field.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key, required this.repository});
@@ -46,9 +48,10 @@ class _SettingsPageState extends State<SettingsPage> {
     animation: widget.repository,
     builder: (context, _) {
       final suggestedYear = _suggestedYear();
-      return Center(
+      return Align(
+        alignment: Alignment.topLeft,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 760),
+          constraints: const BoxConstraints(maxWidth: 960),
           child: SingleChildScrollView(
             padding: const EdgeInsets.only(bottom: 28),
             child: Form(
@@ -114,25 +117,18 @@ class _SettingsPageState extends State<SettingsPage> {
                           },
                         ),
                         const SizedBox(height: 18),
-                        DropdownButtonFormField<int?>(
-                          initialValue: _academicYearOverride,
-                          decoration: const InputDecoration(
-                            labelText: '개인 계획 학년',
-                          ),
-                          items: [
-                            DropdownMenuItem<int?>(
-                              value: null,
-                              child: Text(
-                                suggestedYear == null
-                                    ? '자동 계산 (입학연도 필요)'
-                                    : '자동 계산 ($suggestedYear학년 제안)',
-                              ),
+                        AnchoredSelectField<int?>(
+                          value: _academicYearOverride,
+                          label: '개인 계획 학년',
+                          options: [
+                            SelectOption<int?>(
+                              null,
+                              suggestedYear == null
+                                  ? '자동 계산 (입학연도 필요)'
+                                  : '자동 계산 ($suggestedYear학년 제안)',
                             ),
                             for (var year = 1; year <= 4; year++)
-                              DropdownMenuItem(
-                                value: year,
-                                child: Text('$year학년으로 직접 설정'),
-                              ),
+                              SelectOption<int?>(year, '$year학년으로 직접 설정'),
                           ],
                           onChanged: (value) => setState(() {
                             _academicYearOverride = value;
@@ -146,25 +142,20 @@ class _SettingsPageState extends State<SettingsPage> {
                             '개인 계획을 위한 안내값입니다. 공식 학적 상태나 서버 추천이 아닙니다.',
                             style: TextStyle(
                               color: Color(0xff607386),
-                              fontSize: 12,
+                              fontSize: AppTypography.caption,
                             ),
                           ),
                         ),
                         const SizedBox(height: 18),
-                        DropdownButtonFormField<WeekStartDay>(
-                          initialValue: _weekStartsOn,
-                          decoration: const InputDecoration(
-                            labelText: '주 시작 요일',
-                          ),
-                          items: [
+                        AnchoredSelectField<WeekStartDay>(
+                          key: const Key('week-start-select'),
+                          value: _weekStartsOn,
+                          label: '주 시작 요일',
+                          options: [
                             for (final day in WeekStartDay.values)
-                              DropdownMenuItem(
-                                value: day,
-                                child: Text(day.label),
-                              ),
+                              SelectOption(day, day.label),
                           ],
                           onChanged: (value) {
-                            if (value == null) return;
                             setState(() {
                               _weekStartsOn = value;
                               _saved = false;
@@ -178,7 +169,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             '홈과 일정의 7일 표는 일요일부터 시작하며, 원하는 요일로 바꿀 수 있습니다.',
                             style: TextStyle(
                               color: Color(0xff607386),
-                              fontSize: 12,
+                              fontSize: AppTypography.caption,
                             ),
                           ),
                         ),

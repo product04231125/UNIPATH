@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:university_path_frontend/shared/app_typography.dart';
 
 import '../planning/planning_repository.dart';
 
@@ -42,7 +43,7 @@ class HomePage extends StatelessWidget {
                       ? '오늘 무엇을 정리해볼까요?'
                       : '${profile.school} · ${profile.department}',
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: AppTypography.caption,
                     color: Color(0xff946c2e),
                     fontWeight: FontWeight.w700,
                   ),
@@ -186,7 +187,7 @@ class HomePage extends StatelessWidget {
           Text(
             '${_weekdayLabel(day.weekday)} ${day.month}/${day.day}',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: AppTypography.caption,
               fontWeight: isToday ? FontWeight.w800 : FontWeight.w700,
             ),
           ),
@@ -194,7 +195,10 @@ class HomePage extends StatelessWidget {
           if (events.isEmpty)
             const Text(
               '일정 없음',
-              style: TextStyle(fontSize: 11, color: Color(0xff607386)),
+              style: TextStyle(
+                fontSize: AppTypography.caption,
+                color: Color(0xff607386),
+              ),
             )
           else ...[
             for (final event in events.take(2))
@@ -203,14 +207,17 @@ class HomePage extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: AppTypography.caption,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             if (events.length > 2)
               Text(
                 '+ ${events.length - 2}개',
-                style: const TextStyle(fontSize: 11, color: Color(0xff607386)),
+                style: const TextStyle(
+                  fontSize: AppTypography.caption,
+                  color: Color(0xff607386),
+                ),
               ),
           ],
         ],
