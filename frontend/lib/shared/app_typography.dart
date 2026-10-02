@@ -24,20 +24,28 @@ abstract final class AppTypography {
   );
 
   static TextTheme apply(TextTheme base) => base.copyWith(
-    displayLarge: pageStyle,
-    displayMedium: pageStyle,
-    displaySmall: pageStyle,
-    headlineLarge: pageStyle,
-    headlineMedium: pageStyle,
-    headlineSmall: pageStyle,
-    titleLarge: sectionStyle,
-    titleMedium: bodyStyle.copyWith(fontWeight: FontWeight.w700),
-    titleSmall: bodyStyle.copyWith(fontWeight: FontWeight.w700),
-    bodyLarge: bodyStyle,
-    bodyMedium: bodyStyle,
-    bodySmall: captionStyle,
-    labelLarge: bodyStyle.copyWith(fontWeight: FontWeight.w600),
-    labelMedium: captionStyle.copyWith(fontWeight: FontWeight.w600),
-    labelSmall: captionStyle,
+    displayLarge: base.displayLarge?.merge(pageStyle),
+    displayMedium: base.displayMedium?.merge(pageStyle),
+    displaySmall: base.displaySmall?.merge(pageStyle),
+    headlineLarge: base.headlineLarge?.merge(pageStyle),
+    headlineMedium: base.headlineMedium?.merge(pageStyle),
+    headlineSmall: base.headlineSmall?.merge(pageStyle),
+    titleLarge: base.titleLarge?.merge(sectionStyle),
+    titleMedium: base.titleMedium?.merge(
+      bodyStyle.copyWith(fontWeight: FontWeight.w700),
+    ),
+    titleSmall: base.titleSmall?.merge(
+      bodyStyle.copyWith(fontWeight: FontWeight.w700),
+    ),
+    bodyLarge: base.bodyLarge?.merge(bodyStyle),
+    bodyMedium: base.bodyMedium?.merge(bodyStyle),
+    bodySmall: base.bodySmall?.merge(captionStyle),
+    labelLarge: base.labelLarge?.merge(
+      bodyStyle.copyWith(fontWeight: FontWeight.w600),
+    ),
+    labelMedium: base.labelMedium?.merge(
+      captionStyle.copyWith(fontWeight: FontWeight.w600),
+    ),
+    labelSmall: base.labelSmall?.merge(captionStyle),
   );
 }

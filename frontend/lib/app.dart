@@ -24,21 +24,22 @@ ThemeData universityPathTheme() {
     scaffoldBackgroundColor: const Color(0xfff7f8f8),
     colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff193f59)),
   );
+  final textTheme = AppTypography.apply(base.textTheme);
   return base.copyWith(
-    textTheme: AppTypography.apply(base.textTheme),
+    textTheme: textTheme,
     inputDecorationTheme: const InputDecorationTheme(
       border: OutlineInputBorder(),
       contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 16),
     ),
-    dialogTheme: const DialogThemeData(
+    dialogTheme: DialogThemeData(
       alignment: Alignment.center,
-      constraints: BoxConstraints(maxWidth: 640),
-      titleTextStyle: AppTypography.sectionStyle,
-      contentTextStyle: AppTypography.bodyStyle,
+      constraints: const BoxConstraints(maxWidth: 640),
+      titleTextStyle: textTheme.titleLarge,
+      contentTextStyle: textTheme.bodyMedium,
     ),
-    listTileTheme: const ListTileThemeData(
-      titleTextStyle: AppTypography.bodyStyle,
-      subtitleTextStyle: AppTypography.captionStyle,
+    listTileTheme: ListTileThemeData(
+      titleTextStyle: textTheme.bodyMedium,
+      subtitleTextStyle: textTheme.bodySmall,
     ),
   );
 }
