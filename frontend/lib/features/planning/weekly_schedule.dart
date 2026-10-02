@@ -10,10 +10,12 @@ class WeeklySchedule extends StatefulWidget {
     required this.events,
     required this.startsOn,
     required this.onSelectDay,
+    this.compact = false,
   });
   final List<PlanningEvent> events;
   final WeekStartDay startsOn;
   final ValueChanged<DateTime> onSelectDay;
+  final bool compact;
 
   @override
   State<WeeklySchedule> createState() => _WeeklyScheduleState();
@@ -79,7 +81,7 @@ class _WeeklyScheduleState extends State<WeeklySchedule> {
                   92.0,
                   double.infinity,
                 );
-                final overflow = width * 7 + 48 > constraints.maxWidth;
+                final overflow = 92 * 7 + 48 > constraints.maxWidth;
                 return Scrollbar(
                   controller: _scroll,
                   thumbVisibility: overflow,
@@ -144,7 +146,7 @@ class _WeeklyScheduleState extends State<WeeklySchedule> {
                 if (events.isEmpty)
                   Text('일정 없음', style: Theme.of(context).textTheme.bodySmall)
                 else ...[
-                  for (final event in events.take(2))
+                  for (final event in events.take(widget.compact ? 1 : 2))
                     Padding(
                       padding: const EdgeInsets.only(bottom: 6),
                       child: Column(
@@ -152,7 +154,7 @@ class _WeeklyScheduleState extends State<WeeklySchedule> {
                         children: [
                           Text(
                             event.title,
-                            maxLines: 2,
+                            maxLines: widget.compact ? 1 : 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
@@ -164,9 +166,9 @@ class _WeeklyScheduleState extends State<WeeklySchedule> {
                         ],
                       ),
                     ),
-                  if (events.length > 2)
+                  if (events.length > (widget.compact ? 1 : 2))
                     Text(
-                      '+ ${events.length - 2}개',
+                      '+ ${events.length - (widget.compact ? 1 : 2)}개',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                 ],

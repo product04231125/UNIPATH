@@ -32,88 +32,125 @@ class HomePage extends StatelessWidget {
           .where((e) => e.end.isAfter(now))
           .take(3)
           .toList();
-      return SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              key: const Key('home-overview'),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${now.month}월 ${now.day}일 ${weekdayLabel(now.weekday)}요일',
-                    style: Theme.of(context).textTheme.bodySmall,
+      return LayoutBuilder(
+        builder: (context, viewport) {
+          final compact =
+              viewport.maxWidth >= 1000 &&
+              MediaQuery.textScalerOf(context).scale(14) <= 16.8;
+          return SingleChildScrollView(
+            key: const Key('home-scroll'),
+            padding: const EdgeInsets.only(bottom: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  key: const Key('home-overview'),
+                  padding: EdgeInsets.all(compact ? 16 : 20),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '나의 대학생활 경로',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    profile.isConfigured
-                        ? '${profile.school} · ${profile.department}'
-                        : '학교·학과와 첫 일정을 입력하고 나의 계획을 시작하세요.',
-                  ),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                  child: Flex(
+                    direction: compact ? Axis.horizontal : Axis.vertical,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Chip(label: Text('오늘 일정 ${todayEvents.length}개')),
-                      Chip(
-                        label: Text(
-                          year == null ? '개인 계획 미설정' : '개인 계획 $year학년',
+                      Flexible(
+                        flex: compact ? 3 : 0,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${now.month}월 ${now.day}일 ${weekdayLabel(now.weekday)}요일',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '나의 대학생활 경로',
+                              style: Theme.of(context).textTheme.headlineMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              profile.isConfigured
+                                  ? '${profile.school} · ${profile.department}'
+                                  : '학교·학과와 첫 일정을 입력하고 나의 계획을 시작하세요.',
+                            ),
+                          ],
                         ),
                       ),
-                      const Chip(label: Text('기기 로컬 저장')),
+                      SizedBox(
+                        width: compact ? 24 : 0,
+                        height: compact ? 0 : 14,
+                      ),
+                      Flexible(
+                        flex: compact ? 2 : 0,
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            Chip(label: Text('오늘 일정 ${todayEvents.length}개')),
+                            Chip(
+                              label: Text(
+                                year == null ? '개인 계획 미설정' : '개인 계획 $year학년',
+                              ),
+                            ),
+                            const Chip(label: Text('기기 로컬 저장')),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 16),
+                WeeklySchedule(
+                  compact: compact,
+                  events: repository.events,
+                  startsOn: profile.weekStartsOn,
+                  onSelectDay: onOpenSchedule,
+                ),
+                const SizedBox(height: 16),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final upcomingCard = _upcoming(
+                      context,
+                      upcoming,
+                      compact: compact,
+                    );
+                    final prepare = _prepare(context, profile);
+                    if (constraints.maxWidth < 820) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          upcomingCard,
+                          const SizedBox(height: 16),
+                          prepare,
+                        ],
+                      );
+                    }
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(flex: compact ? 1 : 3, child: upcomingCard),
+                        const SizedBox(width: 16),
+                        Expanded(flex: compact ? 1 : 2, child: prepare),
+                        if (compact) ...[
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _nextSteps(context, year, compact: true),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                ),
+                if (!compact) ...[
+                  const SizedBox(height: 16),
+                  _nextSteps(context, year),
                 ],
-              ),
+              ],
             ),
-            const SizedBox(height: 16),
-            WeeklySchedule(
-              events: repository.events,
-              startsOn: profile.weekStartsOn,
-              onSelectDay: onOpenSchedule,
-            ),
-            const SizedBox(height: 16),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final upcomingCard = _upcoming(context, upcoming);
-                final prepare = _prepare(context, profile);
-                if (constraints.maxWidth < 820) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      upcomingCard,
-                      const SizedBox(height: 16),
-                      prepare,
-                    ],
-                  );
-                }
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 3, child: upcomingCard),
-                    const SizedBox(width: 16),
-                    Expanded(flex: 2, child: prepare),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-            _nextSteps(context, year),
-          ],
-        ),
+          );
+        },
       );
     },
   );
@@ -132,7 +169,11 @@ class HomePage extends StatelessWidget {
     ),
   );
 
-  Widget _upcoming(BuildContext context, List<PlanningEvent> events) => _card(
+  Widget _upcoming(
+    BuildContext context,
+    List<PlanningEvent> events, {
+    bool compact = false,
+  }) => _card(
     context,
     '다가오는 일정',
     events.isEmpty
@@ -163,7 +204,7 @@ class HomePage extends StatelessWidget {
                   leading: const Icon(Icons.event_outlined),
                   title: Text(
                     event.title,
-                    maxLines: 2,
+                    maxLines: compact ? 1 : 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   subtitle: Text(
@@ -240,7 +281,7 @@ class HomePage extends StatelessWidget {
     onTap: action,
   );
 
-  Widget _nextSteps(BuildContext context, int? year) {
+  Widget _nextSteps(BuildContext context, int? year, {bool compact = false}) {
     final steps = switch (year) {
       1 || 2 => const [
         _PlanLink(
@@ -313,54 +354,66 @@ class HomePage extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final columns = constraints.maxWidth >= 820 ? steps.length : 1;
-              final width =
-                  (constraints.maxWidth - (columns - 1) * 12) / columns;
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  for (final step in steps)
-                    SizedBox(
-                      width: width,
-                      child: Material(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(12),
-                        child: InkWell(
+          if (compact)
+            for (final step in steps)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(step.icon),
+                title: Text(step.label),
+                subtitle: Text(step.description),
+                onTap: () => onOpenPage(step.page),
+              )
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth >= 820 ? steps.length : 1;
+                final width =
+                    (constraints.maxWidth - (columns - 1) * 12) / columns;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final step in steps)
+                      SizedBox(
+                        width: width,
+                        child: Material(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerLow,
                           borderRadius: BorderRadius.circular(12),
-                          onTap: () => onOpenPage(step.page),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(step.icon),
-                                const SizedBox(height: 10),
-                                Text(
-                                  step.label,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  step.description,
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => onOpenPage(step.page),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(step.icon),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    step.label,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    step.description,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                ],
-              );
-            },
-          ),
+                  ],
+                );
+              },
+            ),
         ],
       ),
     );

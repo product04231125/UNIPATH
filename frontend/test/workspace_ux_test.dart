@@ -12,6 +12,54 @@ import 'package:university_path_frontend/features/planning/weekly_schedule.dart'
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  for (final populated in [false, true]) {
+    testWidgets(
+      'Windows initial client area has no home scroll, populated=$populated',
+      (tester) async {
+        // 1440x900 native outer window, excluding its title bar and borders.
+        await tester.binding.setSurfaceSize(const Size(1424, 861));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        if (populated) {
+          final repository = PlanningRepository();
+          await repository.load();
+          final now = DateTime.now();
+          for (var i = 0; i < 3; i++) {
+            await repository.saveEvent(
+              PlanningEvent(
+                id: 'initial-$i',
+                title: '개인 프로젝트와 수강 계획을 점검하는 긴 일정 제목 $i',
+                start: now.add(Duration(hours: i + 1)),
+                end: now.add(Duration(hours: i + 2)),
+                category: PlanningEventCategory.personal,
+              ),
+            );
+          }
+          repository.dispose();
+        }
+        await tester.pumpWidget(
+          const UniversityPathApp(startAuthenticated: true),
+        );
+        await tester.pumpAndSettle();
+        final scroll = tester.state<ScrollableState>(
+          find
+              .descendant(
+                of: find.byKey(const Key('home-scroll')),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
+        expect(scroll.position.maxScrollExtent, 0);
+        expect(find.text('다음에 이어갈 기록').hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.binding.setSurfaceSize(const Size(1424, 600));
+        await tester.pumpAndSettle();
+        expect(scroll.position.maxScrollExtent, greaterThan(0));
+        expect(tester.takeException(), isNull);
+      },
+      variant: TargetPlatformVariant({TargetPlatform.windows}),
+    );
+  }
+
   test('seven-day ranges and midnight boundaries are consistent', () {
     for (final start in WeekStartDay.values) {
       final days = planningWeek(DateTime(2027, 1, 1), start);
@@ -153,6 +201,19 @@ void main() {
           await tester.pumpAndSettle();
           expect(find.byType(WeeklySchedule), findsOneWidget);
           expect(find.text('일정 없음'), findsNWidgets(7));
+          if (size.width >= 1440 && scale == 1.0) {
+            for (final element
+                in find
+                    .descendant(
+                      of: find.byType(HomePage),
+                      matching: find.byType(Scrollable),
+                    )
+                    .evaluate()) {
+              final scroll =
+                  (element as StatefulElement).state as ScrollableState;
+              expect(scroll.position.maxScrollExtent, closeTo(0, 0.000001));
+            }
+          }
           expect(tester.takeException(), isNull);
         },
       );
