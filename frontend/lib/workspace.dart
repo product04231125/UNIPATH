@@ -8,26 +8,40 @@ import 'features/assistant/assistant_conversation.dart';
 import 'features/assistant/assistant_panel.dart';
 import 'features/graduation/graduation_page.dart';
 import 'features/home/home_page.dart';
+import 'features/planning/planning_repository.dart';
 import 'features/records/activity/activity_page.dart';
 import 'features/records/course/course_page.dart';
 import 'features/records/credential/credential_page.dart';
 import 'features/records/experience/experience_page.dart';
 import 'features/records/portfolio/portfolio_page.dart';
 import 'features/settings/settings_page.dart';
+import 'features/schedule/schedule_page.dart';
 
 /// Coordinates navigation, mock-data visibility, and the assistant window.
 /// Feature pages own their own mock state and input interactions.
 class Workspace extends StatefulWidget {
-  const Workspace({super.key});
+  const Workspace({super.key, required this.onSignedOut});
+
+  final VoidCallback onSignedOut;
 
   @override
   State<Workspace> createState() => _WorkspaceState();
 }
 
 class _WorkspaceState extends State<Workspace> {
-  static const _labels = ['홈', '수강 관리', '졸업 요건', '활동', '경험', '자격', '포트폴리오·성과'];
+  static const _labels = [
+    '홈',
+    '일정',
+    '수강 관리',
+    '졸업 요건',
+    '활동',
+    '경험',
+    '자격',
+    '포트폴리오·성과',
+  ];
   static const _icons = [
     Icons.home_outlined,
+    Icons.calendar_month_outlined,
     Icons.menu_book_outlined,
     Icons.school_outlined,
     Icons.volunteer_activism_outlined,
@@ -44,12 +58,14 @@ class _WorkspaceState extends State<Workspace> {
   var _mainWindowMaximized = false;
   var _chatWidth = 360.0;
   final _assistantConversation = AssistantConversation();
+  final _planningRepository = PlanningRepository();
   StreamSubscription<bool>? _detachedChatSubscription;
   StreamSubscription<bool>? _mainWindowMaximizeSubscription;
 
   @override
   void initState() {
     super.initState();
+    _planningRepository.load();
     chat_window.isMainWindowMaximized().then((maximized) {
       if (mounted) setState(() => _mainWindowMaximized = maximized);
     });
@@ -65,11 +81,11 @@ class _WorkspaceState extends State<Workspace> {
       setState(() {
         final wasDetached = _detachedChatActive;
         _detachedChatActive = isOpen;
-        // Preserve the current mock behavior; the desired closed-icon behavior
-        // is tracked as a separate follow-up in the local development notes.
+        // Closing a detached Windows window returns to the same closed state as
+        // closing the dock: the user can reopen the assistant from its button.
         if (wasDetached && !isOpen) {
-          _chatOpen = true;
-          _chatManuallyOpened = true;
+          _chatOpen = false;
+          _chatManuallyOpened = false;
         }
       });
     });
@@ -80,6 +96,7 @@ class _WorkspaceState extends State<Workspace> {
     _detachedChatSubscription?.cancel();
     _mainWindowMaximizeSubscription?.cancel();
     _assistantConversation.dispose();
+    _planningRepository.dispose();
     super.dispose();
   }
 
@@ -96,6 +113,7 @@ class _WorkspaceState extends State<Workspace> {
       onPageSelected: (value) => setState(() => _page = value),
       showMockData: _showMockData,
       onMockDataChanged: (value) => setState(() => _showMockData = value),
+      onSignedOut: widget.onSignedOut,
       isAssistantOpen: _chatOpen,
       isAssistantManuallyOpened: _chatManuallyOpened,
       assistantWidth: _chatWidth,
@@ -108,21 +126,31 @@ class _WorkspaceState extends State<Workspace> {
       assistantBuilder: (context, width) => AssistantPanel(
         conversation: _assistantConversation,
         onClose: _closeChat,
-        onDetach: _mainWindowMaximized ? null : _openDetachedChat,
+        onDetach:
+            chat_window.supportsDetachedChatWindow && !_mainWindowMaximized
+            ? _openDetachedChat
+            : null,
         width: width,
       ),
     );
   }
 
   Widget _buildPage(int settingsPage) => switch (_page) {
-    0 => HomePage(onOpenPage: (value) => setState(() => _page = value)),
-    1 => CoursePage(showMockData: _showMockData),
-    2 => const GraduationPage(),
-    3 => ActivityPage(showMockData: _showMockData),
-    4 => ExperiencePage(showMockData: _showMockData),
-    5 => CredentialPage(showMockData: _showMockData),
-    6 => PortfolioPage(showMockData: _showMockData),
-    _ when _page == settingsPage - 1 => const SettingsPage(),
+    0 => HomePage(
+      repository: _planningRepository,
+      onOpenPage: (value) => setState(() => _page = value),
+      onOpenSettings: () => setState(() => _page = settingsPage - 1),
+    ),
+    1 => SchedulePage(repository: _planningRepository),
+    2 => CoursePage(showMockData: _showMockData),
+    3 => const GraduationPage(),
+    4 => ActivityPage(showMockData: _showMockData),
+    5 => ExperiencePage(showMockData: _showMockData),
+    6 => CredentialPage(showMockData: _showMockData),
+    7 => PortfolioPage(showMockData: _showMockData),
+    _ when _page == settingsPage - 1 => SettingsPage(
+      repository: _planningRepository,
+    ),
     _ => const SizedBox.shrink(),
   };
 

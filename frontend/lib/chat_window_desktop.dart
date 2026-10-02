@@ -219,6 +219,8 @@ Future<bool> isMainWindowMaximized() async {
 Stream<bool> mainWindowMaximizeChanges() =>
     _mainWindowMaximizeController.stream;
 
+bool get supportsDetachedChatWindow => true;
+
 Future<void> _dockDetachedChatInMainWindow() async {
   if (!_mainDetachedChatOpen) return;
   final windows = await WindowController.getAll();
@@ -237,9 +239,10 @@ Future<void> _dockDetachedChatInMainWindow() async {
 
 Future<void> initializeMainWindowCloseBehavior() async {
   await windowManager.ensureInitialized();
-  // This is the smallest workspace that preserves the 220px navigation,
-  // readable content area, and the 300px AI dock without layout collapse.
-  await windowManager.setMinimumSize(const Size(1365, 768));
+  // The shell switches to compact navigation and then to a scroll fallback
+  // below its reflow threshold, so a desktop-only 1365px minimum is not used.
+  await windowManager.setMinimumSize(const Size(480, 520));
+  await _applyMainWindowDefaultSize();
   final controller = await WindowController.fromCurrentEngine();
   await controller.setWindowMethodHandler((call) async {
     if (call.method == 'detached_chat_closed') {
@@ -259,6 +262,25 @@ Future<void> initializeMainWindowCloseBehavior() async {
   await windowManager.setPreventClose(true);
   windowManager.addListener(_mainWindowCloseListener);
   unawaited(_shutdownTrace('main close listener initialized'));
+}
+
+Future<void> _applyMainWindowDefaultSize() async {
+  if (await windowManager.isMaximized()) return;
+  final displays = await screenRetriever.getAllDisplays();
+  if (displays.isEmpty) return;
+  final display = displays.first;
+  final workPosition = display.visiblePosition ?? Offset.zero;
+  final workSize = display.visibleSize ?? display.size;
+  const margin = 32.0;
+  final width = (workSize.width - margin).clamp(480.0, 1440.0).toDouble();
+  final height = (workSize.height - margin).clamp(520.0, 900.0).toDouble();
+  await windowManager.setSize(Size(width, height));
+  await windowManager.setPosition(
+    Offset(
+      workPosition.dx + (workSize.width - width) / 2,
+      workPosition.dy + (workSize.height - height) / 2,
+    ),
+  );
 }
 
 Future<void> openDetachedChatWindow({double width = 360}) async {

@@ -42,7 +42,7 @@ class _UniversityPathAppState extends State<UniversityPathApp> {
     title: 'UniversityPath',
     theme: universityPathTheme(),
     home: authenticated
-        ? const Workspace()
+        ? Workspace(onSignedOut: () => setState(() => authenticated = false))
         : LoginPage(onSignedIn: () => setState(() => authenticated = true)),
   );
 }
