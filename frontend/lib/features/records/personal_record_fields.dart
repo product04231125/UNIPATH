@@ -187,6 +187,14 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
     ],
     PersonalRecordKind.portfolio => const [
       PersonalRecordField('type', '성과 종류', required: true),
+      PersonalRecordField('thesisType', '논문·캡스톤 유형 (해당 시)'),
+      PersonalRecordField('thesisStatus', '논문·캡스톤 개인 기록 상태'),
+      PersonalRecordField('thesisGrade', '논문·캡스톤 원 성적 표기'),
+      PersonalRecordField(
+        'thesisApprovedOn',
+        '직접 확인한 논문·캡스톤 승인일',
+        type: PersonalFieldType.date,
+      ),
       PersonalRecordField('startedOn', '시작일', type: PersonalFieldType.date),
       PersonalRecordField('endedOn', '종료일', type: PersonalFieldType.date),
       PersonalRecordField('role', '나의 역할', required: true),

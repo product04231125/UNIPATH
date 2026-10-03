@@ -13,6 +13,7 @@
 | 경험 | Experience | 종류·제목·기관·시작/종료일·진행 상태·역할·결과 | 역량 판정·ExperienceSkill 관계는 생성하지 않음 |
 | 자격 | UserCertificate, CertificateProvider/Certificate | 자격명·기관·점수/등급·취득/만료일·상태·증빙 링크 | 마스터 FK·유효성 정책·기관 인증은 확정하지 않음; 자격증 번호는 수집하지 않음 |
 | 성과·포트폴리오 | Experience.details 및 HTML 성과 목업 | 성과 메타데이터 CRUD, 구성·항목 순서·사용 의도, 지원처별 직접 작성 문서·경험/성과 참조 | ERD에 별도 구성·문서 테이블 없음; 로컬 확장이며 공개 게시·파일 업로드·AI 생성은 하지 않음 |
+| 논문·캡스톤 (성과 기록 안) | ThesisRecord | 제목·논문 유형·개인 기록 상태·원 성적·사용자가 확인한 승인일, 역할·결과·기간·링크 | 별도 공식 ThesisRecord/서버 FK를 생성하지 않음; 승인 처리·성적 환산·졸업 충족 판정 없음 |
 | 일정 | 현재 ERD에 독립 일정 엔터티 없음 | 기존 기기 로컬 일정 CRUD | 학교 공식 일정이 아님 |
 | 설정 | User, Institution/Department/Curriculum 범위 | 기존 개인 학교·학과·입학연도·계획 학년·시작 요일 | 학교·학과 마스터와 관리자 범위는 수정하지 않음 |
 | 졸업 | Curriculum/CurriculumCourse, GraduationRuleSet/Rule의 개인 분리 정책 | 개인 교육과정·과목·규칙 CRUD, 개인 기록 UUID 연결, 조건·단위·직접 확인한 현재 값·기간·출처 | 공식 마스터/FK·규칙·감사·충족 계산은 서버 Rule Engine 책임 |

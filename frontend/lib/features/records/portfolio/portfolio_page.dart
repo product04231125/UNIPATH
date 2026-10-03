@@ -65,6 +65,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
     guideTitle: '성과 구성',
     guides: const [
       '설명·역할·결과·링크를 함께 보관',
+      '논문·캡스톤은 유형·상태·원 성적·확인한 승인일을 선택 기록 · 학교 승인 처리 아님',
       '파일은 올리지 않으며 공개 가능한 링크만 기록',
       '2단계에서 항목·순서·사용 의도 선택',
       '3단계에서 지원처별 문서 초안 직접 편집',
