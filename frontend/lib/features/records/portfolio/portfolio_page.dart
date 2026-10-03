@@ -56,7 +56,6 @@ class _PortfolioPageState extends State<PortfolioPage> {
   Widget _records() => RecordMenuPage(
     key: const ValueKey(PersonalRecordKind.portfolio),
     kind: PersonalRecordKind.portfolio,
-    kicker: 'PORTFOLIO & OUTCOMES',
     title: '포트폴리오·성과',
     description: '프로젝트, 논문, 수상과 산출물을 포트폴리오로 구성합니다.',
     notice: '학교 정보가 없어도 내 프로젝트·논문·수상과 산출물을 직접 기록할 수 있습니다. 파일 업로드·게시 없이 역할·결과·공개 가능한 링크를 기록합니다.',

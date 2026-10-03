@@ -7,6 +7,8 @@
 
 ## 현재 구현
 
+- 공통 `PageHeader`로 한글 제목·설명을 표시하며 중복 영어 라벨은 제거했다.
+  읽기 대기·실패에도 제목을 유지하고 학교 미연결·개인 기록 안내는 보존한다.
 - `frontend/lib/features/records/activity/activity_page.dart`가 화면·입력 상태를 소유한다.
 - 예시 행은 `frontend/lib/features/records/fixtures/activity_fixture.dart`에 있다.
 - 기관·기간·역할·직접 입력 봉사 시간·사용자가 확인한 승인 시간/상태/확인일을 분리 입력한다.

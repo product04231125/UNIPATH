@@ -55,7 +55,7 @@ class _PersonalGraduationWorkspaceState
           child: RecordMenuPage(
             key: ValueKey(_kind),
             kind: _kind,
-            kicker: '개인 학업 작업 공간',
+            contextLabel: '개인 학업 작업 공간',
             title: title,
             description: '학교 연동 없이 내 교육과정과 규칙을 기기에 기록합니다.',
             notice: '개인 자료 · 학교 공식 규칙이나 판정이 아닙니다. 현재 값은 직접 기록한 값이며 충족 여부를 계산하지 않습니다.',

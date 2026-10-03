@@ -7,6 +7,8 @@
 
 ## 현재 구현
 
+- 제목은 공통 `PageHeader`의 한글 제목·설명이며 중복 영어 라벨을 표시하지 않는다.
+  읽기 대기·실패에도 제목을 유지하고, 학교 미연결·개인 기록 안내는 보존한다.
 - `frontend/lib/features/records/course/course_page.dart`가 화면과 직접 입력 상태를 소유한다.
 - 예시 행은 `frontend/lib/features/records/fixtures/course_fixture.dart`에 분리돼 있다.
 - 과목명·학기·이수구분·학점·분반·과목 코드·원 성적·개인 상태를 분리 입력한다.

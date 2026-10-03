@@ -11,7 +11,6 @@ class CoursePage extends StatelessWidget {
   Widget build(BuildContext context) => RecordMenuPage(
     key: const ValueKey(PersonalRecordKind.course),
     kind: PersonalRecordKind.course,
-    kicker: 'ACADEMIC RECORDS',
     title: '수강 관리',
     description: '학교 수강 내역을 기준으로 이번 학기 계획과 이수 기록을 정리합니다.',
     notice: '학교 정보가 없어도 내 수강 기록을 직접 입력할 수 있습니다. 졸업 반영은 학교의 확정 기록을 기준으로 확인합니다.',
