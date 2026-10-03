@@ -18,7 +18,8 @@ fixture 또는 로컬 상태이며, 제품 계약이나 학교 공식 데이터�
 | 기능 | 문서 | 현재 상태 |
 | --- | --- | --- |
 | 인증 | [auth](features/auth.md) | 로그인·회원가입 목업 |
-| 홈 | [home](features/home.md) | 빠른 이동 시작 화면 |
+| 홈 | [home](features/home.md) | 개인 계획 기반 시작 화면 |
+| 일정 | [schedule](features/schedule.md) | 기기 로컬 개인 일정 |
 | 수강 관리 | [course](features/course.md) | fixture와 직접 입력 목업 |
 | 졸업 요건 | [graduation](features/graduation.md) | 개인 기준 설정 목업 |
 | 활동 | [activity](features/activity.md) | fixture와 직접 입력 목업 |
@@ -26,4 +27,4 @@ fixture 또는 로컬 상태이며, 제품 계약이나 학교 공식 데이터�
 | 자격 | [credential](features/credential.md) | fixture와 직접 입력 목업 |
 | 포트폴리오·성과 | [portfolio](features/portfolio.md) | fixture와 직접 입력 목업 |
 | AI 도우미 | [assistant](features/assistant.md) | 로컬 대화·도킹/분리 창 목업 |
-| 설정 | [settings](features/settings.md) | 준비 중 진입 화면 |
+| 설정 | [settings](features/settings.md) | 학업과 계획 로컬 설정 |

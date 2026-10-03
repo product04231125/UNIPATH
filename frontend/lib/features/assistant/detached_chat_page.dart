@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:university_path_frontend/shared/app_typography.dart';
 
 class DetachedChatWindow extends StatefulWidget {
   const DetachedChatWindow({super.key});
@@ -53,7 +54,7 @@ class _DetachedChatWindowState extends State<DetachedChatWindow> {
                       Text(
                         'RAG 기반 대화',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: AppTypography.caption,
                           color: Color(0xff946c2e),
                           fontWeight: FontWeight.w800,
                         ),
@@ -61,7 +62,7 @@ class _DetachedChatWindowState extends State<DetachedChatWindow> {
                       Text(
                         'AI 도우미 · 독립 창',
                         style: TextStyle(
-                          fontSize: 19,
+                          fontSize: AppTypography.section,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -77,7 +78,10 @@ class _DetachedChatWindowState extends State<DetachedChatWindow> {
               alignment: Alignment.centerLeft,
               child: Text(
                 '현재 문맥 · 졸업 요건 / 경동대학교 컴퓨터공학과 / 2024학번',
-                style: TextStyle(fontSize: 12, color: Color(0xff607386)),
+                style: TextStyle(
+                  fontSize: AppTypography.caption,
+                  color: Color(0xff607386),
+                ),
               ),
             ),
           ),
@@ -105,7 +109,7 @@ class _DetachedChatWindowState extends State<DetachedChatWindow> {
                     child: Text(
                       messages[index],
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: AppTypography.body,
                         height: 1.45,
                         color: user ? Colors.white : const Color(0xff243d52),
                       ),

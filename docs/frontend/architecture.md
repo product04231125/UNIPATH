@@ -9,6 +9,9 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
 - `workspace.dart`: 선택 메뉴, 목업 데이터 표시, AI 도킹·분리 창 상태 조정
 - `app_shell/workspace_shell.dart`: 좌측 탐색, 반응형 본문, AI 도킹/오버레이 배치
 - `shared/widgets/`: 카드·상태 배지처럼 도메인 상태가 없는 표현 위젯
+- `shared/app_typography.dart`: 역할별 공통 글자 크기·줄높이, 앱 테마 적용
+- `shared/widgets/anchored_select_field.dart`: 트리거 기준 배치·키보드 포커스를 공유하는 선택 제어
+- `features/planning/planning_dates.dart`, `weekly_schedule.dart`: 홈·일정의 공통 날짜 범위·7일 표
 - `chat_window*.dart`: 플랫폼별 AI 분리 창 어댑터
 
 ## 기능 소유권
@@ -16,7 +19,9 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
 | 모듈 | 소유 화면·로컬 상태 |
 | --- | --- |
 | `features/auth` | 로그인·회원가입 목업 |
-| `features/home` | 빠른 이동 카드가 있는 시작 화면 |
+| `features/home` | 개인 계획 기반 이번 주 일정·준비 목록·우선 링크 |
+| `features/planning` | 기기 로컬 개인 계획 프로필·일정 repository |
+| `features/schedule` | 월간 개인 일정과 이번 주 목록, 일정 CRUD |
 | `features/graduation` | 탭, 개인 기준 설정 폼, 개인 기준 상태, 졸업요건 fixture |
 | `features/records/course` | 수강 관리와 수강 직접 입력 상태 |
 | `features/records/activity` | 활동 입력 상태 |
@@ -30,6 +35,8 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
 
 - 기록 예시 행은 `features/records/fixtures/`, 졸업요건 표 행은
   `features/graduation/graduation_mock_fixture.dart`에 둔다.
+- `planning`의 프로필·일정은 `SharedPreferences`에 저장하는 기기 로컬 개인 계획이다. 학교 공식
+  학사정보·일정·졸업 판정 데이터가 아니며, API 계약이 정해지면 repository를 교체한다.
 - `목업용` 스위치는 예시 행만 표시·숨김 처리한다. 이번 실행에서 직접 추가한 기록은 유지한다.
 - OpenAPI 계약이 확정되면 feature별 fixture와 로컬 상태를 repository/adapter로 교체한다.
   클라이언트는 OpenAPI에 없는 필드·상태·판정을 제품 계약으로 만들지 않는다.

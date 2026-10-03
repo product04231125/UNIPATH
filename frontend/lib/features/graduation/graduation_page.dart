@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:university_path_frontend/shared/app_typography.dart';
 
 import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/surface_card.dart';
@@ -30,43 +31,44 @@ class _GraduationPageState extends State<GraduationPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        _isPersonalMode
-            ? '$_personalSchool $_personalDepartment · $_personalAdmissionYear학번 · 개인 기준'
-            : '경동대학교 컴퓨터공학과 · 2024학번',
-        style: const TextStyle(
-          fontSize: 12,
-          color: Color(0xff946c2e),
-          fontWeight: FontWeight.w700,
+  Widget build(BuildContext context) => SingleChildScrollView(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _isPersonalMode
+              ? '$_personalSchool $_personalDepartment · $_personalAdmissionYear학번 · 개인 기준'
+              : '경동대학교 컴퓨터공학과 · 2024학번',
+          style: const TextStyle(
+            fontSize: AppTypography.caption,
+            color: Color(0xff946c2e),
+            fontWeight: FontWeight.w700,
+          ),
         ),
-      ),
-      const SizedBox(height: 4),
-      Wrap(
-        spacing: 12,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          const Text(
-            '졸업 요건',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
-          ),
-          OutlinedButton.icon(
-            onPressed: _showPersonalAcademicSetup,
-            icon: const Icon(Icons.tune, size: 18),
-            label: Text(_isPersonalMode ? '개인 기준 수정' : '내 학교·학과 기준 설정'),
-          ),
-        ],
-      ),
-      const SizedBox(height: 16),
-      Expanded(
-        child: _isPersonalMode
-            ? SingleChildScrollView(child: _personalContent())
-            : _officialContent(),
-      ),
-    ],
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            const Text(
+              '졸업 요건',
+              style: TextStyle(
+                fontSize: AppTypography.page,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: _showPersonalAcademicSetup,
+              icon: const Icon(Icons.tune, size: 18),
+              label: Text(_isPersonalMode ? '개인 기준 수정' : '내 학교·학과 기준 설정'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _isPersonalMode ? _personalContent() : _officialContent(),
+      ],
+    ),
   );
 
   Widget _officialContent() => Column(
@@ -77,11 +79,17 @@ class _GraduationPageState extends State<GraduationPage> {
           children: [
             const Text(
               '기준 선택',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                fontSize: AppTypography.section,
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const Text(
               '대학 공통 기준부터 봅니다. 탭을 누르면 해당 기준의 상세 표로 전환됩니다.',
-              style: TextStyle(fontSize: 12, color: Color(0xff607386)),
+              style: TextStyle(
+                fontSize: AppTypography.caption,
+                color: Color(0xff607386),
+              ),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -104,7 +112,7 @@ class _GraduationPageState extends State<GraduationPage> {
         ),
       ),
       const SizedBox(height: 12),
-      Expanded(child: SingleChildScrollView(child: _officialTable())),
+      _officialTable(),
     ],
   );
 
@@ -163,7 +171,10 @@ class _GraduationPageState extends State<GraduationPage> {
                   SizedBox(width: 8),
                   Text(
                     '내 학교·학과 기준',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      fontSize: AppTypography.section,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ],
               ),
@@ -175,7 +186,7 @@ class _GraduationPageState extends State<GraduationPage> {
               const SizedBox(height: 10),
               const Text(
                 '지원되지 않는 학교·학과용 개인 규칙 세트입니다. 입력한 기준과 내 기록으로 계산하지만, 학교의 공식 졸업 판정은 아닙니다.',
-                style: TextStyle(fontSize: 12, height: 1.45),
+                style: TextStyle(fontSize: AppTypography.caption, height: 1.45),
               ),
               const SizedBox(height: 14),
               Wrap(
@@ -223,12 +234,18 @@ class _GraduationPageState extends State<GraduationPage> {
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          style: const TextStyle(
+            fontSize: AppTypography.section,
+            fontWeight: FontWeight.w800,
+          ),
         ),
         const SizedBox(height: 5),
         Text(
           description,
-          style: const TextStyle(fontSize: 12, color: Color(0xff607386)),
+          style: const TextStyle(
+            fontSize: AppTypography.caption,
+            color: Color(0xff607386),
+          ),
         ),
         const SizedBox(height: 14),
         _auditTable(
@@ -263,7 +280,10 @@ class _GraduationPageState extends State<GraduationPage> {
                 children: [
                   const Text(
                     '학교가 지원되지 않아도 내 기준으로 학업 현황을 계산할 수 있습니다. 이 결과는 개인용이며 학교 공식 졸업 판정을 대체하지 않습니다.',
-                    style: TextStyle(fontSize: 13, height: 1.45),
+                    style: TextStyle(
+                      fontSize: AppTypography.body,
+                      height: 1.45,
+                    ),
                   ),
                   if (!addRule) ...[
                     const SizedBox(height: 18),
@@ -480,7 +500,7 @@ class _GraduationPageState extends State<GraduationPage> {
             value,
             textAlign: compact ? TextAlign.center : TextAlign.left,
             style: TextStyle(
-              fontSize: compact ? 11 : 12,
+              fontSize: AppTypography.caption,
               color: header ? const Color(0xff28465f) : const Color(0xff314b60),
               fontWeight: header ? FontWeight.w800 : FontWeight.w500,
             ),

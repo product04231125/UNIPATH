@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:university_path_frontend/shared/app_typography.dart';
 
 import 'assistant_conversation.dart';
 
@@ -33,7 +34,7 @@ class AssistantPanel extends StatelessWidget {
                     Text(
                       'RAG 기반 대화',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: AppTypography.caption,
                         color: Color(0xff946c2e),
                         fontWeight: FontWeight.w800,
                       ),
@@ -41,7 +42,7 @@ class AssistantPanel extends StatelessWidget {
                     Text(
                       'AI 도우미',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: AppTypography.section,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -70,7 +71,10 @@ class AssistantPanel extends StatelessWidget {
           padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Text(
             '현재 화면의 기록을 읽고 답합니다. 규정 질문에는 공식 문서 근거를 자동으로 붙입니다.',
-            style: TextStyle(fontSize: 12, color: Color(0xff607386)),
+            style: TextStyle(
+              fontSize: AppTypography.caption,
+              color: Color(0xff607386),
+            ),
           ),
         ),
         const Divider(height: 1),
@@ -100,7 +104,7 @@ class AssistantPanel extends StatelessWidget {
                     child: Text(
                       message,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: AppTypography.body,
                         height: 1.45,
                         color: user ? Colors.white : const Color(0xff243d52),
                       ),
