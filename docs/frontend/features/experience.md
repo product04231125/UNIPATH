@@ -6,12 +6,16 @@
 
 ## 현재 구현
 
+- 공통 `PageHeader`로 한글 제목·설명을 표시하며 중복 영어 라벨은 제거했다.
+  읽기 대기·실패에도 제목을 유지하고 학교 미연결·개인 기록 안내는 보존한다.
 - `frontend/lib/features/records/experience/experience_page.dart`가 화면·입력 상태를 소유한다.
 - 예시 행은 `frontend/lib/features/records/fixtures/experience_fixture.dart`에 있다.
+- 종류·기관·기간·역할·결과/개인 기여·진행 상태를 분리 입력하며 개인 기록을 추가·수정·삭제한다.
+  메뉴 전환·재시작 뒤 기기 로컬에서 복원한다. [ERD 대조](../manual-input-boundaries.md)를 따른다.
 
 ## 목업 경계
 
-- 팀 성과와 개인 기여, 증빙, 임시저장, 이탈 경고는 아직 실제 저장 기능이 아니다.
+- 증빙 파일 업로드·임시저장·이탈 경고·서버 저장은 아직 구현하지 않았다.
 - AI는 후속 계약 전 경험 원본을 저장하거나 확정하지 않는다.
 
 ## 후속 계약·검증

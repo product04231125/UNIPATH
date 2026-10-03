@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:university_path_frontend/shared/app_typography.dart';
 
 import 'assistant_conversation.dart';
 
@@ -31,9 +32,9 @@ class AssistantPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'RAG 기반 대화',
+                      '대화 목업',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: AppTypography.caption,
                         color: Color(0xff946c2e),
                         fontWeight: FontWeight.w800,
                       ),
@@ -41,7 +42,7 @@ class AssistantPanel extends StatelessWidget {
                     Text(
                       'AI 도우미',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: AppTypography.section,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -66,11 +67,16 @@ class AssistantPanel extends StatelessWidget {
             ],
           ),
         ),
-        const Padding(
+        Padding(
           padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Text(
-            '현재 화면의 기록을 읽고 답합니다. 규정 질문에는 공식 문서 근거를 자동으로 붙입니다.',
-            style: TextStyle(fontSize: 12, color: Color(0xff607386)),
+            width < 300 || MediaQuery.textScalerOf(context).scale(14) > 16.8
+                ? '화면 목업 · 서버 미연결'
+                : '화면 설명용 대화입니다. 실제 RAG·공식 문서 근거·서버 대화 이력은 아직 연결되지 않았습니다.',
+            style: TextStyle(
+              fontSize: AppTypography.caption,
+              color: Color(0xff607386),
+            ),
           ),
         ),
         const Divider(height: 1),
@@ -100,7 +106,7 @@ class AssistantPanel extends StatelessWidget {
                     child: Text(
                       message,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: AppTypography.body,
                         height: 1.45,
                         color: user ? Colors.white : const Color(0xff243d52),
                       ),
@@ -127,10 +133,17 @@ class AssistantPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              FilledButton(
-                onPressed: conversation.send,
-                child: const Text('보내기'),
-              ),
+              if (width < 300)
+                IconButton.filled(
+                  tooltip: '보내기',
+                  onPressed: conversation.send,
+                  icon: const Icon(Icons.send),
+                )
+              else
+                FilledButton(
+                  onPressed: conversation.send,
+                  child: const Text('보내기'),
+                ),
             ],
           ),
         ),

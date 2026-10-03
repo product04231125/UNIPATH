@@ -37,9 +37,12 @@ dependencies:
   desktop_multi_window:
     path: third_party/desktop_multi_window
   screen_retriever: ^0.2.2
+  shared_preferences: ^2.5.4
+  url_launcher: ^6.3.2
   window_manager: ^0.5.2
 
 dev_dependencies:
+  url_launcher_platform_interface: ^2.3.2
   flutter_test:
     sdk: flutter
 
