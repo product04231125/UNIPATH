@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../planning/planning_dates.dart';
 import '../planning/planning_repository.dart';
@@ -128,8 +129,7 @@ class HomePage extends StatelessWidget {
                         ],
                       );
                     }
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    return _EqualHeightRow(
                       children: [
                         Expanded(flex: compact ? 1 : 3, child: upcomingCard),
                         const SizedBox(width: 16),
@@ -157,6 +157,7 @@ class HomePage extends StatelessWidget {
   );
 
   Widget _card(BuildContext context, String title, Widget child) => Card(
+    key: ValueKey('home-card-$title'),
     child: Padding(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -418,6 +419,47 @@ class HomePage extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Measures actual wrapped content first, then stretches only this row's cards.
+/// ListTile's intrinsic estimate can be shorter than its real scaled-text layout.
+class _EqualHeightRow extends MultiChildRenderObjectWidget {
+  const _EqualHeightRow({required super.children});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderEqualHeightRow(textDirection: Directionality.of(context));
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderEqualHeightRow renderObject,
+  ) {
+    renderObject.textDirection = Directionality.of(context);
+  }
+}
+
+class _RenderEqualHeightRow extends RenderFlex {
+  _RenderEqualHeightRow({required TextDirection textDirection})
+    : super(
+        direction: Axis.horizontal,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        textDirection: textDirection,
+      );
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    var child = firstChild;
+    while (child != null) {
+      final data = child.parentData! as FlexParentData;
+      child.layout(
+        BoxConstraints.tightFor(width: child.size.width, height: size.height),
+        parentUsesSize: true,
+      );
+      child = data.nextSibling;
+    }
   }
 }
 

@@ -13,6 +13,101 @@ import 'package:university_path_frontend/app_shell/workspace_shell.dart';
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  for (final populated in [false, true]) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('home lower cards align populated=$populated scale=$scale', (
+        tester,
+      ) async {
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final repository = PlanningRepository();
+        addTearDown(repository.dispose);
+        await repository.load();
+        if (populated) {
+          final now = DateTime.now();
+          for (var i = 0; i < 3; i++) {
+            await repository.saveEvent(
+              PlanningEvent(
+                id: 'card-$i',
+                title: '긴 개인 일정 제목으로 카드 내용과 동작 유지 확인 $i',
+                start: now.add(Duration(hours: i + 1)),
+                end: now.add(Duration(hours: i + 2)),
+                category: PlanningEventCategory.personal,
+              ),
+            );
+          }
+        }
+        var openedSchedule = false;
+        var openedSettings = false;
+        int? openedPage;
+        for (final width in [1100.0, 900.0, 700.0]) {
+          await tester.binding.setSurfaceSize(Size(width, 900));
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: universityPathTheme(),
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: TextScaler.linear(scale)),
+                child: child!,
+              ),
+              home: Scaffold(
+                body: HomePage(
+                  repository: repository,
+                  onOpenPage: (page) => openedPage = page,
+                  onOpenSettings: () => openedSettings = true,
+                  onOpenSchedule: (_) => openedSchedule = true,
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          Finder card(String title) => find.byKey(ValueKey('home-card-$title'));
+          final upcoming = tester.getRect(card('다가오는 일정'));
+          final prepare = tester.getRect(card('준비 목록'));
+          final next = tester.getRect(card('다음에 이어갈 기록'));
+          if (width >= 820) {
+            expect(upcoming.top, closeTo(prepare.top, 0.01));
+            expect(upcoming.bottom, closeTo(prepare.bottom, 0.01));
+            if (width >= 1000 && scale == 1) {
+              expect(upcoming.top, closeTo(next.top, 0.01));
+              expect(upcoming.bottom, closeTo(next.bottom, 0.01));
+            } else {
+              expect(next.top, greaterThan(prepare.bottom));
+            }
+          } else {
+            expect(prepare.top, greaterThan(upcoming.bottom));
+            expect(next.top, greaterThan(prepare.bottom));
+            // Stacked cards retain their own natural content height.
+            expect((upcoming.height - prepare.height).abs(), greaterThan(1));
+          }
+          final scheduleAction = populated
+              ? find.text('전체 일정 보기 →')
+              : find.text('일정 추가');
+          await tester.ensureVisible(scheduleAction);
+          await tester.pumpAndSettle();
+          await tester.tap(scheduleAction);
+          expect(populated ? openedPage == 1 : openedSchedule, isTrue);
+          final settingsAction = find.text('학업과 계획 정보');
+          await tester.ensureVisible(settingsAction);
+          await tester.pumpAndSettle();
+          await tester.tap(settingsAction);
+          expect(openedSettings, isTrue);
+          final nextAction = find.descendant(
+            of: card('다음에 이어갈 기록'),
+            matching: find.text('수강 관리'),
+          );
+          await tester.ensureVisible(nextAction);
+          await tester.pumpAndSettle();
+          await tester.tap(nextAction);
+          expect(openedPage, 2);
+          openedPage = null;
+          openedSchedule = false;
+          openedSettings = false;
+          expect(tester.takeException(), isNull);
+        }
+      });
+    }
+  }
+
   double horizontalExtent(WidgetTester tester, Finder parent) => find
       .descendant(of: parent, matching: find.byType(Scrollable))
       .evaluate()
