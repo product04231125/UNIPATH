@@ -23,8 +23,10 @@ class _HorizontalScrollAreaState extends State<HorizontalScrollArea> {
   bool _refreshScheduled = false;
 
   bool _metricsChanged(ScrollMetricsNotification notification) {
-    if (notification.metrics.axis != Axis.horizontal || notification.depth != 0)
+    if (notification.metrics.axis != Axis.horizontal ||
+        notification.depth != 0) {
       return false;
+    }
     if (!_refreshScheduled &&
         _overflow != (notification.metrics.maxScrollExtent > 1e-6)) {
       _refreshScheduled = true;

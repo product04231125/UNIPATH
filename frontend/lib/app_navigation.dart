@@ -29,9 +29,10 @@ class AppLocationParser extends RouteInformationParser<AppLocation> {
 
   @override
   Future<AppLocation> parseRouteInformation(
-    RouteInformation information,
-  ) async =>
-      AppLocation(information.uri.path.isEmpty ? '/' : information.uri.path);
+    RouteInformation routeInformation,
+  ) async => AppLocation(
+    routeInformation.uri.path.isEmpty ? '/' : routeInformation.uri.path,
+  );
 
   @override
   RouteInformation restoreRouteInformation(AppLocation configuration) =>

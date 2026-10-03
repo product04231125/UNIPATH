@@ -12,10 +12,7 @@ class EqualHeightRow extends MultiChildRenderObjectWidget {
       _RenderEqualHeightRow(textDirection: Directionality.of(context));
 
   @override
-  void updateRenderObject(
-    BuildContext context,
-    _RenderEqualHeightRow renderObject,
-  ) {
+  void updateRenderObject(BuildContext context, RenderFlex renderObject) {
     renderObject.textDirection = Directionality.of(context);
   }
 }
