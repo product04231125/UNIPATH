@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/widgets/equal_height_row.dart';
+import '../../shared/widgets/content_scroll_view.dart';
 
 import '../planning/planning_dates.dart';
 import '../planning/planning_repository.dart';
@@ -42,7 +43,7 @@ class HomePage extends StatelessWidget {
           final compact =
               viewport.maxWidth >= 1000 &&
               MediaQuery.textScalerOf(context).scale(14) <= 16.8;
-          return SingleChildScrollView(
+          return ContentScrollView(
             key: const Key('home-scroll'),
             padding: const EdgeInsets.only(bottom: 24),
             child: Column(

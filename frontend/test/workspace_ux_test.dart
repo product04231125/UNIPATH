@@ -206,7 +206,7 @@ void main() {
     tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.binding.setSurfaceSize(const Size(1008, 900));
+    await tester.binding.setSurfaceSize(const Size(1024, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     await tester.pumpAndSettle();
     expect(find.text('홈'), findsOneWidget);
@@ -214,7 +214,7 @@ void main() {
       horizontalExtent(tester, find.byType(WeeklySchedule)),
       closeTo(0, 1e-6),
     );
-    for (final width in [1007.0, 950.0, 900.0, 836.0]) {
+    for (final width in [1023.0, 950.0, 900.0, 852.0]) {
       await tester.binding.setSurfaceSize(Size(width, 900));
       await tester.pumpAndSettle();
       expect(find.byTooltip('홈'), findsOneWidget);
@@ -224,14 +224,14 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     }
-    await tester.binding.setSurfaceSize(const Size(835, 900));
+    await tester.binding.setSurfaceSize(const Size(851, 900));
     await tester.pumpAndSettle();
     expect(find.byTooltip('홈'), findsOneWidget);
     expect(
       horizontalExtent(tester, find.byType(WeeklySchedule)),
       greaterThan(0),
     );
-    await tester.binding.setSurfaceSize(const Size(1008, 900));
+    await tester.binding.setSurfaceSize(const Size(1024, 900));
     await tester.pumpAndSettle();
     expect(find.text('홈'), findsOneWidget);
     expect(
@@ -245,7 +245,8 @@ void main() {
     tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    // Includes the 16px vertical scrollbar gutter beside the matrix.
+    await tester.binding.setSurfaceSize(const Size(1456, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     await tester.pumpAndSettle();
     await tester.tap(find.text('졸업 요건').first);
@@ -267,7 +268,7 @@ void main() {
     );
     await tester.tap(find.byTooltip('AI 도우미 닫기'));
     await tester.pumpAndSettle();
-    for (final width in [1217.0, 1046.0]) {
+    for (final width in [1233.0, 1062.0]) {
       await tester.binding.setSurfaceSize(Size(width, 900));
       await tester.pumpAndSettle();
       expect(find.byTooltip('홈'), findsOneWidget);
@@ -276,7 +277,7 @@ void main() {
         0,
       );
     }
-    await tester.binding.setSurfaceSize(const Size(1045, 900));
+    await tester.binding.setSurfaceSize(const Size(1061, 900));
     await tester.pumpAndSettle();
     expect(find.byTooltip('홈'), findsOneWidget);
     expect(
@@ -287,7 +288,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(450, 900));
     await tester.pumpAndSettle();
     expect(find.byType(Table), findsOneWidget);
-    await tester.binding.setSurfaceSize(const Size(1045, 900));
+    await tester.binding.setSurfaceSize(const Size(1061, 900));
     await tester.pumpAndSettle();
     expect(find.byTooltip('홈'), findsOneWidget);
     expect(
@@ -300,7 +301,7 @@ void main() {
     await tester.tap(find.text('내 교육과정'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('홈'), findsOneWidget);
-    await tester.binding.setSurfaceSize(const Size(1218, 900));
+    await tester.binding.setSurfaceSize(const Size(1234, 900));
     await tester.pumpAndSettle();
     expect(find.text('홈'), findsOneWidget);
     expect(

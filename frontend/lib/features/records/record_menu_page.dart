@@ -4,6 +4,7 @@ import 'package:university_path_frontend/shared/app_typography.dart';
 
 import '../../shared/widgets/equal_height_row.dart';
 import '../../shared/widgets/input_dialog.dart';
+import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/surface_card.dart';
@@ -361,7 +362,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         .where((r) => _term.isEmpty || r.value('term') == _term)
         .toList();
     final entries = [if (widget.showMockData) ...widget.fixture];
-    return SingleChildScrollView(
+    return ContentScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -467,19 +468,17 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                   ],
                 ),
               );
-              return SingleChildScrollView(
-                child: constraints.maxWidth >= 760
-                    ? EqualHeightRow(
-                        children: [
-                          Expanded(flex: 6, child: records),
-                          const SizedBox(width: 14),
-                          Expanded(flex: 4, child: guide),
-                        ],
-                      )
-                    : Column(
-                        children: [records, const SizedBox(height: 14), guide],
-                      ),
-              );
+              return constraints.maxWidth >= 760
+                  ? EqualHeightRow(
+                      children: [
+                        Expanded(flex: 6, child: records),
+                        const SizedBox(width: 14),
+                        Expanded(flex: 4, child: guide),
+                      ],
+                    )
+                  : Column(
+                      children: [records, const SizedBox(height: 14), guide],
+                    );
             },
           ),
         ],
@@ -493,7 +492,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     description: widget.description,
   );
 
-  Widget _statePage({required Widget child}) => SingleChildScrollView(
+  Widget _statePage({required Widget child}) => ContentScrollView(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [_header(), child],

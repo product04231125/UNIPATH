@@ -6,6 +6,7 @@ import '../../shared/app_typography.dart';
 import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/surface_card.dart';
+import '../../shared/widgets/content_scroll_view.dart';
 import 'graduation_mock_fixture.dart';
 import 'personal_graduation_workspace.dart';
 
@@ -41,7 +42,7 @@ class _GraduationPageState extends State<GraduationPage> {
         },
       );
     }
-    return SingleChildScrollView(
+    return ContentScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

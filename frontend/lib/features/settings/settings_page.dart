@@ -5,6 +5,7 @@ import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/page_header.dart';
+import '../../shared/widgets/content_scroll_view.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key, required this.repository});
@@ -55,7 +56,7 @@ class _SettingsPageState extends State<SettingsPage> {
     animation: widget.repository,
     builder: (context, _) {
       if (widget.repository.isLoading || widget.repository.loadFailed) {
-        return SingleChildScrollView(
+        return ContentScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -79,7 +80,7 @@ class _SettingsPageState extends State<SettingsPage> {
         alignment: Alignment.topLeft,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 960),
-          child: SingleChildScrollView(
+          child: ContentScrollView(
             padding: const EdgeInsets.only(bottom: 28),
             child: Form(
               key: _formKey,

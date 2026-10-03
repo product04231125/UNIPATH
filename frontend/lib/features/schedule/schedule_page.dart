@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/widgets/equal_height_row.dart';
+import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/pending_ui_action.dart';
 import '../planning/planning_repository.dart';
@@ -42,7 +43,7 @@ class _SchedulePageState extends State<SchedulePage> {
     animation: widget.repository,
     builder: (context, _) {
       if (widget.repository.isLoading || widget.repository.loadFailed) {
-        return SingleChildScrollView(
+        return ContentScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -68,7 +69,7 @@ class _SchedulePageState extends State<SchedulePage> {
         });
       }
       return LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
+        builder: (context, constraints) => ContentScrollView(
           padding: EdgeInsets.only(
             bottom: constraints.maxHeight < 620 ? 28 : 8,
           ),

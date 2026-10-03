@@ -20,7 +20,8 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
   암묵적 닫기 차단을 공유한다. 기능은 `hasContent`, 변경 신호와 저장 상태를 제공한다.
   `showInputDialog`는 종료 애니메이션 완료 뒤 반환해 입력 controller의 조기 폐기를 방지한다.
 - `shared/widgets/content_scroll_view.dart`: 자체 controller와 16px 스크롤바 여백을 소유한다.
-  새 세로 본문·입력 폼에서 내용과 스크롤바를 분리하는 공통 표현 위젯이다.
+  모든 메뉴의 세로 본문·입력 폼·초안 미리보기에서 내용과 스크롤바를 분리한다.
+  작업 공간의 화면 최소 폭에는 여백을 포함하며, 기록 카드 안의 중첩 세로 스크롤은 제거했다.
 - `shared/widgets/page_header.dart`: 한글 제목·선택 문맥/설명·헤더 버튼의 정렬과 재배치,
   접근성 heading 표현. 문구·상태·데이터 소유권은 각 기능에 유지한다.
 - `shared/app_typography.dart`: 역할별 공통 글자 크기·줄높이, 앱 테마 적용

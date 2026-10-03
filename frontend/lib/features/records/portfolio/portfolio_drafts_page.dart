@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/widgets/input_dialog.dart';
+import '../../../shared/widgets/content_scroll_view.dart';
 
 import 'package:flutter/services.dart';
 
@@ -174,7 +175,7 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
   Widget build(BuildContext context) {
     if (_loading) return _statePage(const CircularProgressIndicator());
     if (_failed) {
-      return SingleChildScrollView(
+      return ContentScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -186,7 +187,7 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
       );
     }
     final document = widget.isDocument;
-    return SingleChildScrollView(
+    return ContentScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -243,7 +244,7 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
         : '개인 성과 중 사용할 항목과 순서를 선택합니다. 나만 보기·제출 검토용·공개 검토용은 기기 로컬 사용 의도이며 실제 게시·권한 설정이 아닙니다.',
   );
 
-  Widget _statePage(Widget child) => SingleChildScrollView(
+  Widget _statePage(Widget child) => ContentScrollView(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [_header(), child],
@@ -276,7 +277,7 @@ class _DraftPreviewState extends State<_DraftPreview> {
     title: const Text('로컬 초안 미리보기'),
     content: SizedBox(
       width: 560,
-      child: SingleChildScrollView(
+      child: ContentScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
