@@ -39,6 +39,22 @@ Rule Engine, RAG의 책임을 바꾸지 않으며, **현재 구현된 정책**�
 
 ## 2. 레이아웃·입력·접근성
 
+### 메뉴 제목과 헤더
+
+- 기록·일정·설정·졸업 요건 및 하위 작업 화면은 공통 `PageHeader`를 사용한다.
+  장식용 영어 라벨과 제목의 번역 반복은 넣지 않는다. 한글 제목 → 필요한 문맥 → 기존 설명
+  순서로 표시하며, 문맥·설명은 필요할 때만 사용한다. 학교·학과·적용 연도·개인/예시 상태 같은
+  실제 정보는 유지하지만 데이터가 없을 때 임의로 생성하지 않는다.
+- 제목은 공통 26px, 설명 14px, 문맥 13px 스타일과 시스템 글자 확대를 따른다. 선택 문구 사이
+  간격은 8px, 헤더 뒤 본문 간격은 16px이며 없는 문구의 공간은 예약하지 않는다.
+- 작업 공간이 외부 여백을 소유한다. 헤더·탭·설명·본문은 왼쪽 시작선을 공유하며, 읽기 폭 제한은
+  왼쪽 정렬한다. 포트폴리오·개인 졸업 작업 공간은 탭 아래 12px 간격으로 현재 단계 제목을 표시한다.
+  카드 내부 콘텐츠는 기존 카드 여백을 유지한다.
+- 기존 헤더 버튼은 넓은 폭에서 제목 옆, 헤더 가용 폭 600px 미만 또는 본문 글자 배율이 1.2를
+  넘으면 제목 아래 행에 배치한다. 문구는 자연스럽게 줄바꿈하며 고정 높이·말줄임으로 숨기지 않는다.
+  제목은 접근성 heading 의미를 갖고 읽기 대기·실패에도 표시한다.
+- 홈의 날짜·요약 카드는 대시보드 역할이므로 유지하고 별도 메뉴 헤더를 중복 추가하지 않는다.
+
 ### 정보 밀도와 표
 
 - 홈은 일반 데스크톱 높이에서 핵심 행동과 상태를 한 화면에 보이게 한다. 좁아질 때는
@@ -135,5 +151,12 @@ Rule Engine, RAG의 책임을 바꾸지 않으며, **현재 구현된 정책**�
 - [W3C WAI — Reflow](https://www.w3.org/WAI/WCAG21/Understanding/reflow), [Target Size](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum), [Focus Appearance](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance), [Error Identification](https://www.w3.org/WAI/WCAG22/Understanding/error-identification)
 - [Microsoft Learn — App settings](https://learn.microsoft.com/en-us/windows/apps/design/app-settings/guidelines-for-app-settings), [Apple HIG — Settings](https://developer.apple.com/design/human-interface-guidelines/settings)
 - [GOV.UK — Check answers](https://design-system.service.gov.uk/patterns/check-answers/), [W3C WAI — Forms](https://www.w3.org/WAI/tutorials/forms/)
+- 헤더 판단 근거: [W3C — Headings and Labels](https://www.w3.org/WAI/WCAG22/Understanding/headings-and-labels.html),
+  [GOV.UK — Headings with captions](https://design-system.service.gov.uk/styles/headings/),
+  [NN/g — Layer-cake scanning](https://www.nngroup.com/articles/layer-cake-pattern-scanning/),
+  [NN/g — Usability heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/).
+  제목의 명확성·시각적 계층·사용자 언어 원칙을 현재 한글 UI에 적용한 설계 판단이다.
+  영어 제거의 성능 개선을 직접 입증한 비교 실험이나 특정 언어를 강제하는 규정으로 해석하지 않는다.
 
 참고 자료 확인일: 2026-09-30.
+헤더 참고 자료 확인일: 2026-10-03.

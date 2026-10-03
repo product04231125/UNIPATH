@@ -12,6 +12,8 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
     홈은 공통 주간표 최소 폭을 사용하고, 졸업요건은 탭·개인 작업 공간 전환에서
     `onMinimumWidthChanged`로 필요한 폭을 전달한다. 목업 표가 숨겨지면 요구 폭도 제외한다.
 - `shared/widgets/`: 카드·상태 배지처럼 도메인 상태가 없는 표현 위젯
+- `shared/widgets/page_header.dart`: 한글 제목·선택 문맥/설명·헤더 버튼의 정렬과 재배치,
+  접근성 heading 표현. 문구·상태·데이터 소유권은 각 기능에 유지한다.
 - `shared/app_typography.dart`: 역할별 공통 글자 크기·줄높이, 앱 테마 적용
 - `shared/widgets/anchored_select_field.dart`: 트리거 기준 배치·키보드 포커스를 공유하는 선택 제어
 - `shared/external_links.dart`, `widgets/external_link_button.dart`: 브라우저 URL 검증·플랫폼 열기와
