@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../fixtures/experience_fixture.dart';
 import '../record_menu_page.dart';
+import '../personal_record_repository.dart';
 
 class ExperiencePage extends StatelessWidget {
   const ExperiencePage({super.key, required this.showMockData});
   final bool showMockData;
   @override
   Widget build(BuildContext context) => RecordMenuPage(
+    key: const ValueKey(PersonalRecordKind.experience),
+    kind: PersonalRecordKind.experience,
     kicker: 'EXPERIENCE RECORDS',
     title: '경험',
     description: '프로젝트·인턴·동아리 경험을 이력 문장과 강점으로 정리합니다.',

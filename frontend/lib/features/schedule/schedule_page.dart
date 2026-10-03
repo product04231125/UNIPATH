@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../planning/planning_repository.dart';
+import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../planning/planning_dates.dart';
 import '../planning/weekly_schedule.dart';
@@ -30,8 +31,8 @@ class _SchedulePageState extends State<SchedulePage> {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: widget.repository,
     builder: (context, _) {
-      if (widget.repository.isLoading) {
-        return const Center(child: CircularProgressIndicator());
+      if (widget.repository.isLoading || widget.repository.loadFailed) {
+        return PlanningStorageState(repository: widget.repository);
       }
       final selectedEvents = _eventsForDay(_selectedDay);
       return LayoutBuilder(
@@ -279,31 +280,27 @@ class _SchedulePageState extends State<SchedulePage> {
       eventsOnDay(widget.repository.events, day);
 
   Future<void> _editEvent([PlanningEvent? existing]) async {
-    final result = await showDialog<_EventChange>(
+    await showDialog<void>(
       context: context,
-      builder: (context) =>
-          _EventEditor(event: existing, initialDay: _selectedDay),
+      barrierDismissible: false,
+      builder: (context) => _EventEditor(
+        event: existing,
+        initialDay: _selectedDay,
+        repository: widget.repository,
+      ),
     );
-    if (result == null) return;
-    if (result.delete) {
-      await widget.repository.deleteEvent(existing!.id);
-    } else {
-      await widget.repository.saveEvent(result.event!);
-    }
   }
 }
 
-class _EventChange {
-  const _EventChange.save(this.event) : delete = false;
-  const _EventChange.delete() : event = null, delete = true;
-  final PlanningEvent? event;
-  final bool delete;
-}
-
 class _EventEditor extends StatefulWidget {
-  const _EventEditor({this.event, required this.initialDay});
+  const _EventEditor({
+    this.event,
+    required this.initialDay,
+    required this.repository,
+  });
   final PlanningEvent? event;
   final DateTime initialDay;
+  final PlanningRepository repository;
 
   @override
   State<_EventEditor> createState() => _EventEditorState();
@@ -316,6 +313,8 @@ class _EventEditorState extends State<_EventEditor> {
   late DateTime _end;
   late PlanningEventCategory _category;
   final _formKey = GlobalKey<FormState>();
+  bool _saving = false;
+  String? _error;
 
   @override
   void initState() {
@@ -343,79 +342,94 @@ class _EventEditorState extends State<_EventEditor> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text(widget.event == null ? '일정 추가' : '일정 수정'),
-    content: SizedBox(
-      width: 440,
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _title,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: '제목',
-                  hintText: '예: 자료구조 과제 제출',
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_saving,
+    child: AlertDialog(
+      title: Text(widget.event == null ? '일정 추가' : '일정 수정'),
+      content: SizedBox(
+        width: 440,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  enabled: !_saving,
+                  controller: _title,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: '제목',
+                    hintText: '예: 자료구조 과제 제출',
+                  ),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? '제목을 입력해 주세요.'
+                      : null,
                 ),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? '제목을 입력해 주세요.'
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              _dateTimeField(
-                '시작 일시',
-                _start,
-                (value) => setState(() {
-                  _start = value;
-                  if (_end.isBefore(_start)) {
-                    _end = _start.add(const Duration(hours: 1));
-                  }
-                }),
-              ),
-              const SizedBox(height: 8),
-              _dateTimeField(
-                '종료 일시',
-                _end,
-                (value) => setState(() => _end = value),
-              ),
-              const SizedBox(height: 12),
-              AnchoredSelectField<PlanningEventCategory>(
-                value: _category,
-                label: '분류',
-                options: [
-                  for (final category in PlanningEventCategory.values)
-                    SelectOption(category, category.label),
-                ],
-                onChanged: (value) => setState(() => _category = value),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _memo,
-                minLines: 2,
-                maxLines: 4,
-                decoration: const InputDecoration(labelText: '메모 (선택)'),
-              ),
-            ],
+                const SizedBox(height: 12),
+                _dateTimeField(
+                  '시작 일시',
+                  _start,
+                  (value) => setState(() {
+                    _start = value;
+                    if (_end.isBefore(_start)) {
+                      _end = _start.add(const Duration(hours: 1));
+                    }
+                  }),
+                ),
+                const SizedBox(height: 8),
+                _dateTimeField(
+                  '종료 일시',
+                  _end,
+                  (value) => setState(() => _end = value),
+                ),
+                const SizedBox(height: 12),
+                AnchoredSelectField<PlanningEventCategory>(
+                  value: _category,
+                  label: '분류',
+                  options: [
+                    for (final category in PlanningEventCategory.values)
+                      SelectOption(category, category.label),
+                  ],
+                  onChanged: (value) => setState(() => _category = value),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  enabled: !_saving,
+                  controller: _memo,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(labelText: '메모 (선택)'),
+                ),
+                if (_error != null)
+                  Text(
+                    _error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-    actions: [
-      if (widget.event != null)
-        TextButton.icon(
-          onPressed: () => Navigator.pop(context, const _EventChange.delete()),
-          icon: const Icon(Icons.delete_outline),
-          label: const Text('삭제'),
+      actions: [
+        if (widget.event != null)
+          TextButton.icon(
+            onPressed: _saving ? null : _delete,
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('삭제'),
+          ),
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.pop(context),
+          child: const Text('취소'),
         ),
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('취소'),
-      ),
-      FilledButton(onPressed: _save, child: const Text('저장')),
-    ],
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: Text(_saving ? '저장 중…' : '저장'),
+        ),
+      ],
+    ),
   );
 
   Widget _dateTimeField(
@@ -423,23 +437,25 @@ class _EventEditorState extends State<_EventEditor> {
     DateTime value,
     ValueChanged<DateTime> onChanged,
   ) => OutlinedButton(
-    onPressed: () async {
-      final date = await showDatePicker(
-        context: context,
-        initialDate: value,
-        firstDate: DateTime(2000),
-        lastDate: DateTime(2100),
-      );
-      if (date == null || !mounted) return;
-      final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(value),
-      );
-      if (time == null) return;
-      onChanged(
-        DateTime(date.year, date.month, date.day, time.hour, time.minute),
-      );
-    },
+    onPressed: _saving
+        ? null
+        : () async {
+            final date = await showDatePicker(
+              context: context,
+              initialDate: value,
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2100),
+            );
+            if (date == null || !mounted) return;
+            final time = await showTimePicker(
+              context: context,
+              initialTime: TimeOfDay.fromDateTime(value),
+            );
+            if (time == null || !mounted) return;
+            onChanged(
+              DateTime(date.year, date.month, date.day, time.hour, time.minute),
+            );
+          },
     child: Align(
       alignment: Alignment.centerLeft,
       child: Text(
@@ -448,7 +464,47 @@ class _EventEditorState extends State<_EventEditor> {
     ),
   );
 
-  void _save() {
+  Future<void> _delete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('개인 일정 삭제'),
+        content: Text('${widget.event!.title} 일정을 이 기기에서 삭제할까요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await _persist(() => widget.repository.deleteEvent(widget.event!.id));
+    }
+  }
+
+  Future<void> _persist(Future<void> Function() write) async {
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await write();
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = '기기에 저장하지 못했습니다. 입력과 기존 일정을 유지했으니 다시 시도하세요.');
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_end.isAfter(_start)) {
       ScaffoldMessenger.of(
@@ -456,21 +512,15 @@ class _EventEditorState extends State<_EventEditor> {
       ).showSnackBar(const SnackBar(content: Text('종료 일시는 시작 일시보다 뒤여야 합니다.')));
       return;
     }
-    Navigator.pop(
-      context,
-      _EventChange.save(
-        PlanningEvent(
-          id:
-              widget.event?.id ??
-              DateTime.now().microsecondsSinceEpoch.toString(),
-          title: _title.text.trim(),
-          start: _start,
-          end: _end,
-          category: _category,
-          memo: _memo.text.trim(),
-        ),
-      ),
+    final event = PlanningEvent(
+      id: widget.event?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      title: _title.text.trim(),
+      start: _start,
+      end: _end,
+      category: _category,
+      memo: _memo.text.trim(),
     );
+    await _persist(() => widget.repository.saveEvent(event));
   }
 }
 

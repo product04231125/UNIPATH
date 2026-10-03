@@ -7,41 +7,61 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// school records and will be replaced by an API adapter once that contract is
 /// available.
 class PlanningRepository extends ChangeNotifier {
-  PlanningRepository({this._preferences});
+  PlanningRepository({this.writer});
+
+  final Future<bool> Function(String key, String value)? writer;
 
   static const _storageKey = 'university_path.personal_planning.v1';
 
   SharedPreferences? _preferences;
   bool _isLoading = true;
+  bool _loadFailed = false;
+  bool _loaded = false;
   PlanningProfile _profile = const PlanningProfile();
   List<PlanningEvent> _events = const [];
 
   bool get isLoading => _isLoading;
+  bool get loadFailed => _loadFailed;
   PlanningProfile get profile => _profile;
   List<PlanningEvent> get events => List.unmodifiable(_events);
 
   Future<void> load() async {
+    _isLoading = true;
+    _loadFailed = false;
+    _loaded = false;
+    notifyListeners();
     try {
       _preferences ??= await SharedPreferences.getInstance();
       final raw = _preferences!.getString(_storageKey);
-      if (raw != null) {
-        final decoded = jsonDecode(raw) as Map<String, dynamic>;
-        _profile = PlanningProfile.fromJson(
-          Map<String, dynamic>.from(decoded['profile'] as Map? ?? const {}),
-        );
-        _events =
-            (decoded['events'] as List? ?? const [])
-                .whereType<Map>()
-                .map(
-                  (value) =>
-                      PlanningEvent.fromJson(Map<String, dynamic>.from(value)),
-                )
-                .toList()
-              ..sort((a, b) => a.start.compareTo(b.start));
+      final decoded = raw == null
+          ? <String, dynamic>{'profile': {}, 'events': []}
+          : jsonDecode(raw) as Map<String, dynamic>;
+      final profile = PlanningProfile.fromJson(
+        Map<String, dynamic>.from(decoded['profile'] as Map),
+      );
+      final events =
+          (decoded['events'] as List)
+              .map(
+                (value) => PlanningEvent.fromJson(
+                  Map<String, dynamic>.from(value as Map),
+                ),
+              )
+              .toList()
+            ..sort((a, b) => a.start.compareTo(b.start));
+      if (events.any(
+            (e) =>
+                e.id.isEmpty ||
+                e.title.trim().isEmpty ||
+                !e.end.isAfter(e.start),
+          ) ||
+          events.map((e) => e.id).toSet().length != events.length) {
+        throw const FormatException('Invalid personal events');
       }
-    } on FormatException {
-      _profile = const PlanningProfile();
-      _events = const [];
+      _profile = profile;
+      _events = events;
+      _loaded = true;
+    } catch (_) {
+      _loadFailed = true;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -49,8 +69,8 @@ class PlanningRepository extends ChangeNotifier {
   }
 
   Future<void> saveProfile(PlanningProfile profile) async {
+    await _save(profile, _events);
     _profile = profile;
-    await _save();
     notifyListeners();
   }
 
@@ -63,26 +83,32 @@ class PlanningRepository extends ChangeNotifier {
       updated[index] = event;
     }
     updated.sort((a, b) => a.start.compareTo(b.start));
+    await _save(_profile, updated);
     _events = updated;
-    await _save();
     notifyListeners();
   }
 
   Future<void> deleteEvent(String id) async {
-    _events = _events.where((item) => item.id != id).toList();
-    await _save();
+    final updated = _events.where((item) => item.id != id).toList();
+    await _save(_profile, updated);
+    _events = updated;
     notifyListeners();
   }
 
-  Future<void> _save() async {
+  Future<void> _save(
+    PlanningProfile profile,
+    List<PlanningEvent> events,
+  ) async {
+    if (!_loaded) throw StateError('Read personal planning before writing');
     _preferences ??= await SharedPreferences.getInstance();
-    await _preferences!.setString(
-      _storageKey,
-      jsonEncode({
-        'profile': _profile.toJson(),
-        'events': _events.map((event) => event.toJson()).toList(),
-      }),
-    );
+    final encoded = jsonEncode({
+      'profile': profile.toJson(),
+      'events': events.map((event) => event.toJson()).toList(),
+    });
+    final saved =
+        await (writer?.call(_storageKey, encoded) ??
+            _preferences!.setString(_storageKey, encoded));
+    if (!saved) throw StateError('Personal planning storage rejected write');
   }
 }
 
@@ -163,7 +189,6 @@ extension WeekStartDayText on WeekStartDay {
   };
 
   String get storageValue => name;
-
 }
 
 WeekStartDay weekStartDayFromStorage(Object? value) =>
@@ -220,8 +245,8 @@ class PlanningEvent {
   factory PlanningEvent.fromJson(Map<String, dynamic> json) => PlanningEvent(
     id: json['id'] as String? ?? '',
     title: json['title'] as String? ?? '',
-    start: DateTime.tryParse(json['start'] as String? ?? '') ?? DateTime.now(),
-    end: DateTime.tryParse(json['end'] as String? ?? '') ?? DateTime.now(),
+    start: DateTime.parse(json['start'] as String),
+    end: DateTime.parse(json['end'] as String),
     category: PlanningEventCategoryText.fromStorage(json['category']),
     memo: json['memo'] as String? ?? '',
   );
