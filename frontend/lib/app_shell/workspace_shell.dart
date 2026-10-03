@@ -84,7 +84,8 @@ class WorkspaceShell extends StatelessWidget {
     final showDockedAssistant = maxWidth >= 1180 && isAssistantOpen;
     final showAssistantOverlay =
         maxWidth < 1180 && isAssistantOpen && isAssistantManuallyOpened;
-    final overlayWidth = maxWidth < 480 ? maxWidth : 360.0;
+    // Leave a usable strip beside the compact overlay even at the 480px fallback.
+    final overlayWidth = ((maxWidth - 72) / 2).clamp(200.0, 360.0);
     final dockWidth = showDockedAssistant ? assistantWidth + 6 : 0.0;
     final compactNavigation =
         maxWidth < 900 || maxWidth - 220 - 56 - dockWidth < minimumContentWidth;

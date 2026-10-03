@@ -16,12 +16,14 @@ class HomePage extends StatelessWidget {
     required this.onOpenSettings,
     required this.onOpenSchedule,
     required this.onAddSchedule,
+    this.coveredRightWidth = 0,
   });
   final PlanningRepository repository;
   final ValueChanged<int> onOpenPage;
   final VoidCallback onOpenSettings;
   final ValueChanged<DateTime> onOpenSchedule;
   final VoidCallback onAddSchedule;
+  final double coveredRightWidth;
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -108,11 +110,22 @@ class HomePage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                WeeklySchedule(
-                  compact: compact,
-                  events: repository.events,
-                  startsOn: profile.weekStartsOn,
-                  onSelectDay: onOpenSchedule,
+                LayoutBuilder(
+                  builder: (context, constraints) => Align(
+                    alignment: Alignment.topLeft,
+                    child: SizedBox(
+                      width: (constraints.maxWidth - coveredRightWidth).clamp(
+                        0.0,
+                        constraints.maxWidth,
+                      ),
+                      child: WeeklySchedule(
+                        compact: compact,
+                        events: repository.events,
+                        startsOn: profile.weekStartsOn,
+                        onSelectDay: onOpenSchedule,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 LayoutBuilder(

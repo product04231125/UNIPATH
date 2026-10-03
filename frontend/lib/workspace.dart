@@ -136,7 +136,8 @@ class _WorkspaceState extends State<Workspace> {
       onAssistantWidthChanged: (delta) => setState(() {
         _chatWidth = (_chatWidth - delta).clamp(300.0, 480.0);
       }),
-      pageBuilder: (context, layout) => _buildPage(navigationItems.length),
+      pageBuilder: (context, layout) =>
+          _buildPage(navigationItems.length, layout),
       assistantBuilder: (context, width) => AssistantPanel(
         conversation: _assistantConversation,
         onClose: _closeChat,
@@ -149,44 +150,48 @@ class _WorkspaceState extends State<Workspace> {
     );
   }
 
-  Widget _buildPage(int settingsPage) => switch (_page) {
-    0 => HomePage(
-      repository: _planningRepository,
-      onOpenPage: _selectPage,
-      onOpenSettings: () => _selectPage(settingsPage - 1),
-      onOpenSchedule: (day) => setState(() {
-        _scheduleAddRequest = null;
-        _scheduleInitialDay = day;
-        _page = 1;
-      }),
-      onAddSchedule: () => setState(() {
-        _scheduleInitialDay = DateTime.now();
-        _scheduleAddRequest = PendingUiAction();
-        _page = 1;
-      }),
-    ),
-    1 => SchedulePage(
-      repository: _planningRepository,
-      initialDay: _scheduleInitialDay,
-      addRequest: _scheduleAddRequest,
-    ),
-    2 => CoursePage(showMockData: _showMockData),
-    3 => GraduationPage(
-      key: _graduationPageKey,
-      showMockData: _showMockData,
-      onMinimumWidthChanged: (width) => setState(() {
-        _graduationMinimumWidth = width;
-      }),
-    ),
-    4 => ActivityPage(showMockData: _showMockData),
-    5 => ExperiencePage(showMockData: _showMockData),
-    6 => CredentialPage(showMockData: _showMockData),
-    7 => PortfolioPage(showMockData: _showMockData),
-    _ when _page == settingsPage - 1 => SettingsPage(
-      repository: _planningRepository,
-    ),
-    _ => const SizedBox.shrink(),
-  };
+  Widget _buildPage(int settingsPage, WorkspaceShellLayout layout) =>
+      switch (_page) {
+        0 => HomePage(
+          repository: _planningRepository,
+          coveredRightWidth: layout.showAssistantOverlay
+              ? layout.assistantOverlayWidth
+              : 0,
+          onOpenPage: _selectPage,
+          onOpenSettings: () => _selectPage(settingsPage - 1),
+          onOpenSchedule: (day) => setState(() {
+            _scheduleAddRequest = null;
+            _scheduleInitialDay = day;
+            _page = 1;
+          }),
+          onAddSchedule: () => setState(() {
+            _scheduleInitialDay = DateTime.now();
+            _scheduleAddRequest = PendingUiAction();
+            _page = 1;
+          }),
+        ),
+        1 => SchedulePage(
+          repository: _planningRepository,
+          initialDay: _scheduleInitialDay,
+          addRequest: _scheduleAddRequest,
+        ),
+        2 => CoursePage(showMockData: _showMockData),
+        3 => GraduationPage(
+          key: _graduationPageKey,
+          showMockData: _showMockData,
+          onMinimumWidthChanged: (width) => setState(() {
+            _graduationMinimumWidth = width;
+          }),
+        ),
+        4 => ActivityPage(showMockData: _showMockData),
+        5 => ExperiencePage(showMockData: _showMockData),
+        6 => CredentialPage(showMockData: _showMockData),
+        7 => PortfolioPage(showMockData: _showMockData),
+        _ when _page == settingsPage - 1 => SettingsPage(
+          repository: _planningRepository,
+        ),
+        _ => const SizedBox.shrink(),
+      };
 
   void _selectPage(int value) => setState(() {
     _scheduleAddRequest = null;

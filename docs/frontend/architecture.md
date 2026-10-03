@@ -22,6 +22,9 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
 - `shared/widgets/content_scroll_view.dart`: 자체 controller와 16px 스크롤바 여백을 소유한다.
   모든 메뉴의 세로 본문·입력 폼·초안 미리보기에서 내용과 스크롤바를 분리한다.
   작업 공간의 화면 최소 폭에는 여백을 포함하며, 기록 카드 안의 중첩 세로 스크롤은 제거했다.
+- `shared/widgets/horizontal_scroll_area.dart`: 비교 축의 하단 여백과 폭 전환 후 손잡이·가로 입력을
+  공유한다. controller/비교 내용은 기능 소유다. 홈은 작업 공간에서 전달한 가려지는 폭을 제외해
+  주간표를 배치하며 채팅 상태를 주간표 도메인에 넣지 않는다.
 - `shared/widgets/page_header.dart`: 한글 제목·선택 문맥/설명·헤더 버튼의 정렬과 재배치,
   접근성 heading 표현. 문구·상태·데이터 소유권은 각 기능에 유지한다.
 - `shared/app_typography.dart`: 역할별 공통 글자 크기·줄높이, 앱 테마 적용

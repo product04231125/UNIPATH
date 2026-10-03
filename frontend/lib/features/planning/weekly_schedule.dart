@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/horizontal_scroll_area.dart';
+
 import 'planning_dates.dart';
 import 'planning_repository.dart';
 
@@ -56,8 +58,8 @@ class _WeeklyScheduleState extends State<WeeklySchedule> {
                   '${days.first.month}.${days.first.day}–${days.last.month}.${days.last.day}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     IconButton(
                       tooltip: '이전 주',
@@ -84,23 +86,17 @@ class _WeeklyScheduleState extends State<WeeklySchedule> {
                   92.0,
                   double.infinity,
                 );
-                final overflow = 92 * 7 + 48 > constraints.maxWidth;
-                return Scrollbar(
+                return HorizontalScrollArea(
+                  scrollbarKey: const Key('weekly-horizontal-scrollbar'),
                   controller: _scroll,
-                  thumbVisibility: overflow,
-                  child: SingleChildScrollView(
-                    controller: _scroll,
-                    scrollDirection: Axis.horizontal,
-                    padding: EdgeInsets.only(bottom: overflow ? 14 : 0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (var i = 0; i < 7; i++) ...[
-                          SizedBox(width: width, child: _day(context, days[i])),
-                          if (i < 6) const SizedBox(width: 8),
-                        ],
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (var i = 0; i < 7; i++) ...[
+                        SizedBox(width: width, child: _day(context, days[i])),
+                        if (i < 6) const SizedBox(width: 8),
                       ],
-                    ),
+                    ],
                   ),
                 );
               },
