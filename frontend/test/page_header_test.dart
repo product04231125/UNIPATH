@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/shared/widgets/page_header.dart';
+import 'package:university_path_frontend/shared/widgets/content_scroll_view.dart';
 import 'package:university_path_frontend/features/records/course/course_page.dart';
 import 'package:university_path_frontend/features/records/activity/activity_page.dart';
 import 'package:university_path_frontend/features/records/experience/experience_page.dart';
@@ -60,6 +61,13 @@ void main() {
           final header = find.byType(PageHeader);
           expect(header, findsOneWidget);
           expect(tester.getTopLeft(header), const Offset(28, 28));
+          final scroll = find
+              .ancestor(of: header, matching: find.byType(ContentScrollView))
+              .first;
+          expect(
+            tester.getRect(scroll).right - tester.getRect(header).right,
+            greaterThanOrEqualTo(16),
+          );
           expect(tester.takeException(), isNull, reason: '$page');
         }
 

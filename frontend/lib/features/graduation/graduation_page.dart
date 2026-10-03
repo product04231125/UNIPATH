@@ -6,6 +6,8 @@ import '../../shared/app_typography.dart';
 import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/surface_card.dart';
+import '../../shared/widgets/content_scroll_view.dart';
+import '../../shared/widgets/horizontal_scroll_area.dart';
 import 'graduation_mock_fixture.dart';
 import 'personal_graduation_workspace.dart';
 
@@ -41,7 +43,7 @@ class _GraduationPageState extends State<GraduationPage> {
         },
       );
     }
-    return SingleChildScrollView(
+    return ContentScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -180,15 +182,9 @@ class _GraduationPageState extends State<GraduationPage> {
               );
               if (!compact) return table;
               final width = 92 + cellWidth * (headers.length - 1);
-              return Scrollbar(
+              return HorizontalScrollArea(
                 controller: _curriculumScrollController,
-                thumbVisibility: width > constraints.maxWidth,
-                scrollbarOrientation: ScrollbarOrientation.bottom,
-                child: SingleChildScrollView(
-                  controller: _curriculumScrollController,
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(width: width, child: table),
-                ),
+                child: SizedBox(width: width, child: table),
               );
             },
           ),

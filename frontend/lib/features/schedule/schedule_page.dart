@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/equal_height_row.dart';
+import '../../shared/widgets/content_scroll_view.dart';
+import '../../shared/widgets/input_dialog.dart';
+import '../../shared/pending_ui_action.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
@@ -7,10 +11,16 @@ import '../../shared/widgets/page_header.dart';
 import '../planning/planning_dates.dart';
 
 class SchedulePage extends StatefulWidget {
-  const SchedulePage({super.key, required this.repository, this.initialDay});
+  const SchedulePage({
+    super.key,
+    required this.repository,
+    this.initialDay,
+    this.addRequest,
+  });
 
   final PlanningRepository repository;
   final DateTime? initialDay;
+  final PendingUiAction? addRequest;
 
   @override
   State<SchedulePage> createState() => _SchedulePageState();
@@ -19,6 +29,7 @@ class SchedulePage extends StatefulWidget {
 class _SchedulePageState extends State<SchedulePage> {
   late DateTime _month;
   late DateTime _selectedDay;
+  bool _autoAddScheduled = false;
 
   @override
   void initState() {
@@ -32,7 +43,7 @@ class _SchedulePageState extends State<SchedulePage> {
     animation: widget.repository,
     builder: (context, _) {
       if (widget.repository.isLoading || widget.repository.loadFailed) {
-        return SingleChildScrollView(
+        return ContentScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -43,8 +54,22 @@ class _SchedulePageState extends State<SchedulePage> {
         );
       }
       final selectedEvents = _eventsForDay(_selectedDay);
+      final request = widget.addRequest;
+      if (!_autoAddScheduled && request?.isPending == true) {
+        _autoAddScheduled = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _autoAddScheduled = false;
+          if (!mounted ||
+              !identical(widget.addRequest, request) ||
+              widget.repository.isLoading ||
+              widget.repository.loadFailed) {
+            return;
+          }
+          if (request!.consume()) _editEvent();
+        });
+      }
       return LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
+        builder: (context, constraints) => ContentScrollView(
           padding: EdgeInsets.only(
             bottom: constraints.maxHeight < 620 ? 28 : 8,
           ),
@@ -65,8 +90,7 @@ class _SchedulePageState extends State<SchedulePage> {
                     ],
                   ),
                   if (constraints.maxWidth >= 820)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    EqualHeightRow(
                       children: [
                         Expanded(flex: 3, child: _calendar()),
                         const SizedBox(width: 18),
@@ -270,9 +294,8 @@ class _SchedulePageState extends State<SchedulePage> {
       eventsOnDay(widget.repository.events, day);
 
   Future<void> _editEvent([PlanningEvent? existing]) async {
-    await showDialog<void>(
+    await showInputDialog<void>(
       context: context,
-      barrierDismissible: false,
       builder: (context) => _EventEditor(
         event: existing,
         initialDay: _selectedDay,
@@ -302,6 +325,7 @@ class _EventEditorState extends State<_EventEditor> {
   late DateTime _start;
   late DateTime _end;
   late PlanningEventCategory _category;
+  late DateTime _defaultStart, _defaultEnd;
   final _formKey = GlobalKey<FormState>();
   bool _saving = false;
   String? _error;
@@ -322,6 +346,8 @@ class _EventEditorState extends State<_EventEditor> {
         );
     _end = event?.end ?? _start.add(const Duration(hours: 1));
     _category = event?.category ?? PlanningEventCategory.academic;
+    _defaultStart = _start;
+    _defaultEnd = _end;
   }
 
   @override
@@ -332,94 +358,92 @@ class _EventEditorState extends State<_EventEditor> {
   }
 
   @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: !_saving,
-    child: AlertDialog(
-      title: Text(widget.event == null ? '일정 추가' : '일정 수정'),
-      content: SizedBox(
-        width: 440,
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  enabled: !_saving,
-                  controller: _title,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    labelText: '제목',
-                    hintText: '예: 자료구조 과제 제출',
-                  ),
-                  validator: (value) => value == null || value.trim().isEmpty
-                      ? '제목을 입력해 주세요.'
-                      : null,
-                ),
-                const SizedBox(height: 12),
-                _dateTimeField(
-                  '시작 일시',
-                  _start,
-                  (value) => setState(() {
-                    _start = value;
-                    if (_end.isBefore(_start)) {
-                      _end = _start.add(const Duration(hours: 1));
-                    }
-                  }),
-                ),
-                const SizedBox(height: 8),
-                _dateTimeField(
-                  '종료 일시',
-                  _end,
-                  (value) => setState(() => _end = value),
-                ),
-                const SizedBox(height: 12),
-                AnchoredSelectField<PlanningEventCategory>(
-                  value: _category,
-                  label: '분류',
-                  options: [
-                    for (final category in PlanningEventCategory.values)
-                      SelectOption(category, category.label),
-                  ],
-                  onChanged: (value) => setState(() => _category = value),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  enabled: !_saving,
-                  controller: _memo,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(labelText: '메모 (선택)'),
-                ),
-                if (_error != null)
-                  Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-              ],
+  Widget build(BuildContext context) => InputDialog(
+    changes: Listenable.merge([_title, _memo]),
+    editing: widget.event != null,
+    saving: _saving,
+    hasContent: () =>
+        _title.text.trim().isNotEmpty ||
+        _memo.text.trim().isNotEmpty ||
+        _category != PlanningEventCategory.academic ||
+        _start != _defaultStart ||
+        _end != _defaultEnd,
+    title: Text(widget.event == null ? '일정 추가' : '일정 수정'),
+    content: Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextFormField(
+            enabled: !_saving,
+            controller: _title,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: '제목',
+              hintText: '예: 자료구조 과제 제출',
             ),
+            validator: (value) =>
+                value == null || value.trim().isEmpty ? '제목을 입력해 주세요.' : null,
           ),
-        ),
+          const SizedBox(height: 12),
+          _dateTimeField(
+            '시작 일시',
+            _start,
+            (value) => setState(() {
+              _start = value;
+              if (_end.isBefore(_start)) {
+                _end = _start.add(const Duration(hours: 1));
+              }
+            }),
+          ),
+          const SizedBox(height: 8),
+          _dateTimeField(
+            '종료 일시',
+            _end,
+            (value) => setState(() => _end = value),
+          ),
+          const SizedBox(height: 12),
+          AnchoredSelectField<PlanningEventCategory>(
+            value: _category,
+            label: '분류',
+            options: [
+              for (final category in PlanningEventCategory.values)
+                SelectOption(category, category.label),
+            ],
+            onChanged: (value) => setState(() => _category = value),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            enabled: !_saving,
+            controller: _memo,
+            minLines: 2,
+            maxLines: 4,
+            decoration: const InputDecoration(labelText: '메모 (선택)'),
+          ),
+          if (_error != null)
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+        ],
       ),
-      actions: [
-        if (widget.event != null)
-          TextButton.icon(
-            onPressed: _saving ? null : _delete,
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('삭제'),
-          ),
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.pop(context),
-          child: const Text('취소'),
-        ),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          child: Text(_saving ? '저장 중…' : '저장'),
-        ),
-      ],
     ),
+    actions: [
+      if (widget.event != null)
+        TextButton.icon(
+          onPressed: _saving ? null : _delete,
+          icon: const Icon(Icons.delete_outline),
+          label: const Text('삭제'),
+        ),
+      TextButton(
+        onPressed: _saving ? null : () => Navigator.pop(context),
+        child: const Text('취소'),
+      ),
+      FilledButton(
+        onPressed: _saving ? null : _save,
+        child: Text(_saving ? '저장 중…' : '저장'),
+      ),
+    ],
   );
 
   Widget _dateTimeField(

@@ -8,6 +8,7 @@ OpenAPI(`/api/v1/docs`)가 기준이다.
 
 - [architecture.md](architecture.md): 모듈 경계, 상태 소유권, fixture와 API 전환 방식
 - [platform-differences.md](platform-differences.md): 현재 구현된 Web·Windows 동작 차이
+- [ux-ui-verification.md](ux-ui-verification.md): 공통 카드·입력/탐색의 검증 근거와 Windows 최종 확인
 - [manual-input-boundaries.md](manual-input-boundaries.md): ERD 기준 개인 입력·공식 데이터 경계와 현재 구현
 - [manual-input-audit.md](manual-input-audit.md): ERD·HTML 개인 입력 대조, 구현·테스트 근거와 계약 의존 범위
 - `features/`: 로그인부터 메뉴별 목적, 현재 구현, 목업 경계, 후속 계약과 검증
@@ -20,6 +21,7 @@ fixture 또는 로컬 상태이며, 제품 계약이나 학교 공식 데이터�
 | 기능 | 문서 | 현재 상태 |
 | --- | --- | --- |
 | 인증 | [auth](features/auth.md) | 로그인·회원가입 목업 |
+| 메뉴 탐색 | [navigation](features/navigation.md) | 주요 메뉴 hash URL·뒤로/앞으로·직접 진입 |
 | 홈 | [home](features/home.md) | 개인 계획 기반 시작 화면 |
 | 일정 | [schedule](features/schedule.md) | 기기 로컬 개인 일정 |
 | 수강 관리 | [course](features/course.md) | 기기 로컬 개인 수강 CRUD·학기 필터 |

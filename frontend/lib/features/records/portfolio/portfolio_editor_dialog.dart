@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../shared/widgets/input_dialog.dart';
+
 import '../../../shared/widgets/anchored_select_field.dart';
 import '../personal_record_repository.dart';
 import 'portfolio_workspace_repository.dart';
@@ -192,149 +194,155 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
           (s) => widget.isDocument || s.kind == PersonalRecordKind.portfolio,
         )
         .toList();
-    return AlertDialog(
+    return InputDialog(
+      changes: Listenable.merge([_title, _description, _target, _role, _body]),
+      editing: widget.composition != null || widget.document != null,
+      saving: _saving,
+      hasContent: () =>
+          [
+            _title,
+            _description,
+            _target,
+            _role,
+            _body,
+          ].any((c) => c.text.trim().isNotEmpty) ||
+          _selected.isNotEmpty ||
+          _audience != PortfolioAudience.private ||
+          _type != '이력서' ||
+          _reviewed,
       title: Text(widget.isDocument ? '지원 문서 초안 편집' : '포트폴리오 구성 편집'),
-      content: SizedBox(
-        width: 560,
-        child: SingleChildScrollView(
-          child: Form(
-            key: _form,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text('기기 로컬 초안 · 온라인 게시·제출·파일 업로드·AI 생성은 하지 않습니다.'),
-                const SizedBox(height: 16),
-                _field(
-                  _title,
-                  'title',
-                  widget.isDocument ? '문서 이름' : '구성 이름',
-                  required: true,
+      content: Form(
+        key: _form,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('기기 로컬 초안 · 온라인 게시·제출·파일 업로드·AI 생성은 하지 않습니다.'),
+            const SizedBox(height: 16),
+            _field(
+              _title,
+              'title',
+              widget.isDocument ? '문서 이름' : '구성 이름',
+              required: true,
+            ),
+            if (widget.isDocument) ...[
+              _field(_target, 'target', '지원처', required: true),
+              _field(_role, 'role', '지원 직무', required: true),
+              IgnorePointer(
+                ignoring: _saving,
+                child: AnchoredSelectField<String>(
+                  key: const ValueKey('portfolio-document-type'),
+                  value: _type,
+                  label: '문서 종류',
+                  options: [
+                    for (final type in {'이력서', '자기소개서', '기타', _type})
+                      SelectOption(type, type),
+                  ],
+                  onChanged: (type) => setState(() => _type = type),
                 ),
-                if (widget.isDocument) ...[
-                  _field(_target, 'target', '지원처', required: true),
-                  _field(_role, 'role', '지원 직무', required: true),
-                  IgnorePointer(
-                    ignoring: _saving,
-                    child: AnchoredSelectField<String>(
-                      key: const ValueKey('portfolio-document-type'),
-                      value: _type,
-                      label: '문서 종류',
-                      options: [
-                        for (final type in {'이력서', '자기소개서', '기타', _type})
-                          SelectOption(type, type),
-                      ],
-                      onChanged: (type) => setState(() => _type = type),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  _field(_body, 'body', '직접 작성할 본문', maxLines: 8),
-                ] else ...[
-                  _field(_description, 'description', '소개', maxLines: 3),
-                  IgnorePointer(
-                    ignoring: _saving,
-                    child: AnchoredSelectField<PortfolioAudience>(
-                      key: const ValueKey('portfolio-audience'),
-                      value: _audience,
-                      label: '사용 의도 · 실제 공개 설정 아님',
-                      options: [
-                        for (final audience in PortfolioAudience.values)
-                          SelectOption(audience, audienceLabel(audience)),
-                      ],
-                      onChanged: (audience) => setState(() {
-                        _audience = audience;
-                        _reviewed = false;
-                      }),
-                    ),
-                  ),
-                  if (_audience == PortfolioAudience.publicReview)
-                    CheckboxListTile(
-                      key: const ValueKey('portfolio-review'),
-                      value: _reviewed,
-                      onChanged: _saving
-                          ? null
-                          : (value) => setState(() => _reviewed = value!),
-                      title: const Text('내용·권한·개인정보·링크의 공개 가능 여부를 직접 확인했습니다.'),
-                    ),
-                ],
-                const SizedBox(height: 16),
-                const Text('선택한 기록 · 위에서 아래로 구성됩니다.'),
-                for (var i = 0; i < _selected.length; i++)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              const SizedBox(height: 14),
+              _field(_body, 'body', '직접 작성할 본문', maxLines: 8),
+            ] else ...[
+              _field(_description, 'description', '소개', maxLines: 3),
+              IgnorePointer(
+                ignoring: _saving,
+                child: AnchoredSelectField<PortfolioAudience>(
+                  key: const ValueKey('portfolio-audience'),
+                  value: _audience,
+                  label: '사용 의도 · 실제 공개 설정 아님',
+                  options: [
+                    for (final audience in PortfolioAudience.values)
+                      SelectOption(audience, audienceLabel(audience)),
+                  ],
+                  onChanged: (audience) => setState(() {
+                    _audience = audience;
+                    _reviewed = false;
+                  }),
+                ),
+              ),
+              if (_audience == PortfolioAudience.publicReview)
+                CheckboxListTile(
+                  key: const ValueKey('portfolio-review'),
+                  value: _reviewed,
+                  onChanged: _saving
+                      ? null
+                      : (value) => setState(() => _reviewed = value!),
+                  title: const Text('내용·권한·개인정보·링크의 공개 가능 여부를 직접 확인했습니다.'),
+                ),
+            ],
+            const SizedBox(height: 16),
+            const Text('선택한 기록 · 위에서 아래로 구성됩니다.'),
+            for (var i = 0; i < _selected.length; i++)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${i + 1}. ${widget.repository.sources[_selected[i]]?.label ?? '원본 기록 삭제됨 · 연결 없음'}',
+                      ),
+                      Wrap(
                         children: [
-                          Text(
-                            '${i + 1}. ${widget.repository.sources[_selected[i]]?.label ?? '원본 기록 삭제됨 · 연결 없음'}',
+                          IconButton(
+                            key: ValueKey('portfolio-up-${_selected[i]}'),
+                            tooltip: '위로 이동',
+                            onPressed: _saving || i == 0
+                                ? null
+                                : () => _move(i, i - 1),
+                            icon: const Icon(Icons.arrow_upward),
                           ),
-                          Wrap(
-                            children: [
-                              IconButton(
-                                key: ValueKey('portfolio-up-${_selected[i]}'),
-                                tooltip: '위로 이동',
-                                onPressed: _saving || i == 0
-                                    ? null
-                                    : () => _move(i, i - 1),
-                                icon: const Icon(Icons.arrow_upward),
-                              ),
-                              IconButton(
-                                key: ValueKey('portfolio-down-${_selected[i]}'),
-                                tooltip: '아래로 이동',
-                                onPressed: _saving || i == _selected.length - 1
-                                    ? null
-                                    : () => _move(i, i + 1),
-                                icon: const Icon(Icons.arrow_downward),
-                              ),
-                              TextButton(
-                                key: ValueKey(
-                                  'portfolio-remove-${_selected[i]}',
-                                ),
-                                onPressed: _saving
-                                    ? null
-                                    : () => _select(_selected[i], false),
-                                child: const Text('구성에서 제외'),
-                              ),
-                            ],
+                          IconButton(
+                            key: ValueKey('portfolio-down-${_selected[i]}'),
+                            tooltip: '아래로 이동',
+                            onPressed: _saving || i == _selected.length - 1
+                                ? null
+                                : () => _move(i, i + 1),
+                            icon: const Icon(Icons.arrow_downward),
+                          ),
+                          TextButton(
+                            key: ValueKey('portfolio-remove-${_selected[i]}'),
+                            onPressed: _saving
+                                ? null
+                                : () => _select(_selected[i], false),
+                            child: const Text('구성에서 제외'),
                           ),
                         ],
                       ),
-                    ),
+                    ],
                   ),
-                const Text('추가할 개인 기록 선택 · 예시 데이터는 제외됩니다.'),
-                if (candidates.isEmpty)
-                  const Text('개인 기록이 없습니다. 성과 기록 또는 경험 메뉴에서 먼저 추가하세요.'),
-                for (final source in candidates.where(
-                  (s) => !_selected.contains(s.ref),
-                ))
-                  CheckboxListTile(
-                    key: ValueKey('portfolio-source-${source.ref}'),
-                    value: false,
-                    onChanged: _saving
-                        ? null
-                        : (value) => _select(source.ref, value!),
-                    title: Text(source.label),
-                    controlAffinity: ListTileControlAffinity.leading,
-                  ),
-                if (widget.isDocument)
-                  OutlinedButton(
-                    onPressed: _saving ? null : _importFacts,
-                    child: const Text('선택한 기록을 본문에 가져오기'),
-                  ),
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      _error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+                ),
+              ),
+            const Text('추가할 개인 기록 선택 · 예시 데이터는 제외됩니다.'),
+            if (candidates.isEmpty)
+              const Text('개인 기록이 없습니다. 성과 기록 또는 경험 메뉴에서 먼저 추가하세요.'),
+            for (final source in candidates.where(
+              (s) => !_selected.contains(s.ref),
+            ))
+              CheckboxListTile(
+                key: ValueKey('portfolio-source-${source.ref}'),
+                value: false,
+                onChanged: _saving
+                    ? null
+                    : (value) => _select(source.ref, value!),
+                title: Text(source.label),
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+            if (widget.isDocument)
+              OutlinedButton(
+                onPressed: _saving ? null : _importFacts,
+                child: const Text('선택한 기록을 본문에 가져오기'),
+              ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+          ],
         ),
       ),
       actions: [

@@ -5,13 +5,28 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
 
 ## 진입과 공통 영역
 
-- `app.dart`: 로그인 목업과 작업 공간의 최상위 전환
+- `app.dart`: 테마와 Router 구성, 플랫폼 URL 제공자 수명주기
+- `app_navigation.dart`: 주요 메뉴 경로 parser/delegate와 기존 메모리 로그인 목업 경계.
+  주소와 Workspace 선택 메뉴를 연결하며 개인 기록·팝업·빠른 추가 의도는 경로에 저장하지 않는다.
 - `workspace.dart`: 선택 메뉴, 목업 데이터 표시, AI 도킹·분리 창 상태 조정
+- `shared/pending_ui_action.dart`: 메뉴 이동에 동반되는 일회성 UI 의도. 목적 화면은 필요한 상태가
+  준비된 뒤 소비한다. URL·저장소에 영속화하지 않으며 일반 탐색과 명시적 빠른 추가를 구분한다.
 - `app_shell/workspace_shell.dart`: 좌측 탐색, 반응형 본문, AI 도킹/오버레이 배치
   - 화면의 `minimumContentWidth`와 도킹 폭으로 메뉴를 먼저 접을지 결정한다.
     홈은 공통 주간표 최소 폭을 사용하고, 졸업요건은 탭·개인 작업 공간 전환에서
     `onMinimumWidthChanged`로 필요한 폭을 전달한다. 목업 표가 숨겨지면 요구 폭도 제외한다.
 - `shared/widgets/`: 카드·상태 배지처럼 도메인 상태가 없는 표현 위젯
+- `shared/widgets/equal_height_row.dart`: 같은 행의 관련 카드 높이를 실제 콘텐츠에 맞춰 정렬한다.
+  홈·기록 메뉴·일정이 재사용하며 세로 배치 임계값과 데이터 소유권은 각 기능에 유지한다.
+- `shared/widgets/input_dialog.dart`: 다중 입력 모달·최신 작성 내용의 바깥 클릭 보호·수정/저장 중
+  암묵적 닫기 차단을 공유한다. 기능은 `hasContent`, 변경 신호와 저장 상태를 제공한다.
+  `showInputDialog`는 종료 애니메이션 완료 뒤 반환해 입력 controller의 조기 폐기를 방지한다.
+- `shared/widgets/content_scroll_view.dart`: 자체 controller와 16px 스크롤바 여백을 소유한다.
+  모든 메뉴의 세로 본문·입력 폼·초안 미리보기에서 내용과 스크롤바를 분리한다.
+  작업 공간의 화면 최소 폭에는 여백을 포함하며, 기록 카드 안의 중첩 세로 스크롤은 제거했다.
+- `shared/widgets/horizontal_scroll_area.dart`: 비교 축의 하단 여백과 폭 전환 후 손잡이·가로 입력을
+  공유한다. controller/비교 내용은 기능 소유다. 홈은 작업 공간에서 전달한 가려지는 폭을 제외해
+  주간표를 배치하며 채팅 상태를 주간표 도메인에 넣지 않는다.
 - `shared/widgets/page_header.dart`: 한글 제목·선택 문맥/설명·헤더 버튼의 정렬과 재배치,
   접근성 heading 표현. 문구·상태·데이터 소유권은 각 기능에 유지한다.
 - `shared/app_typography.dart`: 역할별 공통 글자 크기·줄높이, 앱 테마 적용
@@ -20,6 +35,10 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
   이동 확인·실패·복사 UI. 저장 입력도 같은 URL 검증을 사용한다.
 - `features/planning/planning_dates.dart`, `weekly_schedule.dart`: 홈·일정의 공통 날짜 계산과 홈 7일 표
 - `chat_window*.dart`: 플랫폼별 AI 분리 창 어댑터
+- `features/assistant/assistant_window_host.dart`: 작업 공간의 native 창 호출/상태 신호 경계.
+  테스트는 가짜 host를 사용하며 실제 창 검증과 구분한다.
+- `features/settings/chat_preferences.dart`: 별도 기기 로컬 키의 채팅 열기 방식과 실패/재시도 상태.
+  Workspace가 소유하고 설정 UI에 주입한다. 학업 repository·계정·대화 데이터와 독립이다.
 
 ## 기능 소유권
 

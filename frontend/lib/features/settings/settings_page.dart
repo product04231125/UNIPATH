@@ -5,11 +5,19 @@ import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/page_header.dart';
+import '../../shared/widgets/content_scroll_view.dart';
+import 'chat_preferences.dart';
+import 'chat_settings_section.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key, required this.repository});
+  const SettingsPage({
+    super.key,
+    required this.repository,
+    this.chatPreferences,
+  });
 
   final PlanningRepository repository;
+  final ChatPreferences? chatPreferences;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -55,12 +63,14 @@ class _SettingsPageState extends State<SettingsPage> {
     animation: widget.repository,
     builder: (context, _) {
       if (widget.repository.isLoading || widget.repository.loadFailed) {
-        return SingleChildScrollView(
+        return ContentScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const PageHeader(title: '설정', contextLabel: '일반'),
               PlanningStorageState(repository: widget.repository),
+              if (widget.chatPreferences != null)
+                ChatSettingsSection(preferences: widget.chatPreferences!),
             ],
           ),
         );
@@ -79,7 +89,7 @@ class _SettingsPageState extends State<SettingsPage> {
         alignment: Alignment.topLeft,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 960),
-          child: SingleChildScrollView(
+          child: ContentScrollView(
             padding: const EdgeInsets.only(bottom: 28),
             child: Form(
               key: _formKey,
@@ -203,7 +213,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       FilledButton(
                         onPressed: _saving ? null : _save,
@@ -227,6 +238,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         color: Theme.of(context).colorScheme.error,
                       ),
                     ),
+                  if (widget.chatPreferences != null)
+                    ChatSettingsSection(preferences: widget.chatPreferences!),
                 ],
               ),
             ),

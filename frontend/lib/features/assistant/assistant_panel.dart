@@ -32,7 +32,7 @@ class AssistantPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'RAG 기반 대화',
+                      '대화 목업',
                       style: TextStyle(
                         fontSize: AppTypography.caption,
                         color: Color(0xff946c2e),
@@ -67,10 +67,12 @@ class AssistantPanel extends StatelessWidget {
             ],
           ),
         ),
-        const Padding(
+        Padding(
           padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Text(
-            '현재 화면의 기록을 읽고 답합니다. 규정 질문에는 공식 문서 근거를 자동으로 붙입니다.',
+            width < 300 || MediaQuery.textScalerOf(context).scale(14) > 16.8
+                ? '화면 목업 · 서버 미연결'
+                : '화면 설명용 대화입니다. 실제 RAG·공식 문서 근거·서버 대화 이력은 아직 연결되지 않았습니다.',
             style: TextStyle(
               fontSize: AppTypography.caption,
               color: Color(0xff607386),
@@ -131,10 +133,17 @@ class AssistantPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              FilledButton(
-                onPressed: conversation.send,
-                child: const Text('보내기'),
-              ),
+              if (width < 300)
+                IconButton.filled(
+                  tooltip: '보내기',
+                  onPressed: conversation.send,
+                  icon: const Icon(Icons.send),
+                )
+              else
+                FilledButton(
+                  onPressed: conversation.send,
+                  child: const Text('보내기'),
+                ),
             ],
           ),
         ),
