@@ -24,7 +24,7 @@ class _PersonalGraduationWorkspaceState
       _ => ('개인 졸업 규칙', '개인 규칙 추가'),
     };
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Wrap(
           spacing: 8,
@@ -50,7 +50,7 @@ class _PersonalGraduationWorkspaceState
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Expanded(
           child: RecordMenuPage(
             key: ValueKey(_kind),

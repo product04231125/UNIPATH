@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../shared/app_typography.dart';
 import '../../shared/widgets/status_badge.dart';
+import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/surface_card.dart';
 import 'graduation_mock_fixture.dart';
 import 'personal_graduation_workspace.dart';
@@ -44,20 +45,12 @@ class _GraduationPageState extends State<GraduationPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('예시 데이터 · 학교 연동·공식 판정 API 미연결'),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const Text(
-                '졸업 요건',
-                style: TextStyle(
-                  fontSize: AppTypography.page,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+          PageHeader(
+            title: '졸업 요건',
+            contextLabel: widget.showMockData
+                ? '예시 데이터 · 학교 연동·공식 판정 API 미연결'
+                : '학교 연동·공식 판정 API 미연결',
+            actions: [
               OutlinedButton.icon(
                 onPressed: () {
                   setState(() => _personal = true);
@@ -68,7 +61,6 @@ class _GraduationPageState extends State<GraduationPage> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
           SurfaceCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
