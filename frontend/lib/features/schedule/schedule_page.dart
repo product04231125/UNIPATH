@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/page_header.dart';
 import '../planning/planning_dates.dart';
-import '../planning/weekly_schedule.dart';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key, required this.repository, this.initialDay});
@@ -32,7 +32,15 @@ class _SchedulePageState extends State<SchedulePage> {
     animation: widget.repository,
     builder: (context, _) {
       if (widget.repository.isLoading || widget.repository.loadFailed) {
-        return PlanningStorageState(repository: widget.repository);
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _header(),
+              PlanningStorageState(repository: widget.repository),
+            ],
+          ),
+        );
       }
       final selectedEvents = _eventsForDay(_selectedDay);
       return LayoutBuilder(
@@ -40,67 +48,49 @@ class _SchedulePageState extends State<SchedulePage> {
           padding: EdgeInsets.only(
             bottom: constraints.maxHeight < 620 ? 28 : 8,
           ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1100),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '일정',
-                            style: Theme.of(context).textTheme.headlineMedium,
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            '개인 계획을 이 기기에 저장합니다. 학교 공식 일정·알림·반복 일정은 아직 연결되지 않았습니다.',
-                            style: TextStyle(color: Color(0xff607386)),
-                          ),
-                        ],
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _header(
+                    actions: [
+                      FilledButton.icon(
+                        onPressed: () => _editEvent(),
+                        icon: const Icon(Icons.add),
+                        label: const Text('일정 추가'),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    FilledButton.icon(
-                      onPressed: () => _editEvent(),
-                      icon: const Icon(Icons.add),
-                      label: const Text('일정 추가'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                if (constraints.maxWidth >= 820)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: _calendar()),
-                      const SizedBox(width: 18),
-                      Expanded(flex: 2, child: _dayList(selectedEvents)),
                     ],
-                  )
-                else ...[
-                  _calendar(),
-                  const SizedBox(height: 18),
-                  _dayList(selectedEvents),
+                  ),
+                  if (constraints.maxWidth >= 820)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(flex: 3, child: _calendar()),
+                        const SizedBox(width: 18),
+                        Expanded(flex: 2, child: _dayList(selectedEvents)),
+                      ],
+                    )
+                  else ...[
+                    _calendar(),
+                    const SizedBox(height: 18),
+                    _dayList(selectedEvents),
+                  ],
                 ],
-                const SizedBox(height: 18),
-                WeeklySchedule(
-                  events: widget.repository.events,
-                  startsOn: widget.repository.profile.weekStartsOn,
-                  onSelectDay: (day) => setState(() {
-                    _selectedDay = day;
-                    _month = DateTime(day.year, day.month);
-                  }),
-                ),
-              ],
+              ),
             ),
           ),
         ),
       );
     },
+  );
+
+  Widget _header({List<Widget> actions = const []}) => PageHeader(
+    title: '일정',
+    description: '개인 계획을 이 기기에 저장합니다. 학교 공식 일정·알림·반복 일정은 아직 연결되지 않았습니다.',
+    actions: actions,
   );
 
   Widget _calendar() => Card(

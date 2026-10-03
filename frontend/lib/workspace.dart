@@ -9,6 +9,7 @@ import 'features/assistant/assistant_panel.dart';
 import 'features/graduation/graduation_page.dart';
 import 'features/home/home_page.dart';
 import 'features/planning/planning_repository.dart';
+import 'features/planning/weekly_schedule.dart';
 import 'features/records/activity/activity_page.dart';
 import 'features/records/course/course_page.dart';
 import 'features/records/credential/credential_page.dart';
@@ -57,6 +58,8 @@ class _WorkspaceState extends State<Workspace> {
   var _detachedChatActive = false;
   var _mainWindowMaximized = false;
   var _chatWidth = 360.0;
+  double _graduationMinimumWidth = 0;
+  final _graduationPageKey = GlobalKey();
   final _assistantConversation = AssistantConversation();
   final _planningRepository = PlanningRepository();
   DateTime? _scheduleInitialDay;
@@ -111,7 +114,12 @@ class _WorkspaceState extends State<Workspace> {
     return WorkspaceShell(
       selectedPage: _page,
       navigationItems: navigationItems,
-      onPageSelected: (value) => setState(() => _page = value),
+      onPageSelected: _selectPage,
+      minimumContentWidth: switch (_page) {
+        0 => WeeklySchedule.minimumWidth,
+        3 => _showMockData ? _graduationMinimumWidth : 0,
+        _ => 0,
+      },
       showMockData: _showMockData,
       onMockDataChanged: (value) => setState(() => _showMockData = value),
       onSignedOut: widget.onSignedOut,
@@ -139,8 +147,8 @@ class _WorkspaceState extends State<Workspace> {
   Widget _buildPage(int settingsPage) => switch (_page) {
     0 => HomePage(
       repository: _planningRepository,
-      onOpenPage: (value) => setState(() => _page = value),
-      onOpenSettings: () => setState(() => _page = settingsPage - 1),
+      onOpenPage: _selectPage,
+      onOpenSettings: () => _selectPage(settingsPage - 1),
       onOpenSchedule: (day) => setState(() {
         _scheduleInitialDay = day;
         _page = 1;
@@ -151,7 +159,13 @@ class _WorkspaceState extends State<Workspace> {
       initialDay: _scheduleInitialDay,
     ),
     2 => CoursePage(showMockData: _showMockData),
-    3 => GraduationPage(showMockData: _showMockData),
+    3 => GraduationPage(
+      key: _graduationPageKey,
+      showMockData: _showMockData,
+      onMinimumWidthChanged: (width) => setState(() {
+        _graduationMinimumWidth = width;
+      }),
+    ),
     4 => ActivityPage(showMockData: _showMockData),
     5 => ExperiencePage(showMockData: _showMockData),
     6 => CredentialPage(showMockData: _showMockData),
@@ -161,6 +175,11 @@ class _WorkspaceState extends State<Workspace> {
     ),
     _ => const SizedBox.shrink(),
   };
+
+  void _selectPage(int value) => setState(() {
+    if (_page != value) _graduationMinimumWidth = 0;
+    _page = value;
+  });
 
   Future<void> _openAssistant() async {
     if (_detachedChatActive) {

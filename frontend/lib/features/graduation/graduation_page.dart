@@ -4,13 +4,19 @@ import 'package:flutter/material.dart';
 
 import '../../shared/app_typography.dart';
 import '../../shared/widgets/status_badge.dart';
+import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/surface_card.dart';
 import 'graduation_mock_fixture.dart';
 import 'personal_graduation_workspace.dart';
 
 class GraduationPage extends StatefulWidget {
-  const GraduationPage({super.key, this.showMockData = true});
+  const GraduationPage({
+    super.key,
+    this.showMockData = true,
+    this.onMinimumWidthChanged,
+  });
   final bool showMockData;
+  final ValueChanged<double>? onMinimumWidthChanged;
   @override
   State<GraduationPage> createState() => _GraduationPageState();
 }
@@ -29,35 +35,32 @@ class _GraduationPageState extends State<GraduationPage> {
   Widget build(BuildContext context) {
     if (_personal) {
       return PersonalGraduationWorkspace(
-        onBack: () => setState(() => _personal = false),
+        onBack: () {
+          setState(() => _personal = false);
+          _reportMinimumWidth();
+        },
       );
     }
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('예시 데이터 · 학교 연동·공식 판정 API 미연결'),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const Text(
-                '졸업 요건',
-                style: TextStyle(
-                  fontSize: AppTypography.page,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+          PageHeader(
+            title: '졸업 요건',
+            contextLabel: widget.showMockData
+                ? '예시 데이터 · 학교 연동·공식 판정 API 미연결'
+                : '학교 연동·공식 판정 API 미연결',
+            actions: [
               OutlinedButton.icon(
-                onPressed: () => setState(() => _personal = true),
+                onPressed: () {
+                  setState(() => _personal = true);
+                  _reportMinimumWidth();
+                },
                 icon: const Icon(Icons.tune, size: 18),
                 label: const Text('내 학교·학과 기준 설정'),
               ),
             ],
           ),
-          const SizedBox(height: 16),
           SurfaceCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,7 +82,10 @@ class _GraduationPageState extends State<GraduationPage> {
                   children: [
                     for (final value in ['대학 공통', '내 교육과정', '학과 기준'])
                       OutlinedButton(
-                        onPressed: () => setState(() => _tab = value),
+                        onPressed: () {
+                          setState(() => _tab = value);
+                          _reportMinimumWidth();
+                        },
                         style: OutlinedButton.styleFrom(
                           backgroundColor: _tab == value
                               ? Theme.of(context).colorScheme.secondaryContainer
@@ -105,6 +111,14 @@ class _GraduationPageState extends State<GraduationPage> {
       ),
     );
   }
+
+  void _reportMinimumWidth() => widget.onMinimumWidthChanged?.call(
+    !_personal && _tab == '내 교육과정'
+        ? 92 +
+              58.0 * (curriculumHeaders.length - 1) +
+              SurfaceCard.horizontalInsets
+        : 0,
+  );
 
   Widget _table() {
     final (title, headers, rows) = switch (_tab) {

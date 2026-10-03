@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class SurfaceCard extends StatelessWidget {
+  static const horizontalInsets = 38.0;
+
   const SurfaceCard({super.key, required this.child});
 
   final Widget child;

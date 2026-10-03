@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../shared/app_typography.dart';
 import '../../../shared/widgets/surface_card.dart';
+import '../../../shared/widgets/page_header.dart';
 import 'portfolio_editor_dialog.dart';
 import 'portfolio_workspace_repository.dart';
 
@@ -169,11 +170,13 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return _statePage(const CircularProgressIndicator());
     if (_failed) {
       return SingleChildScrollView(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _header(),
             const Text('초안 또는 연결 기록을 읽지 못했습니다. 기존 저장 내용은 덮어쓰지 않습니다.'),
             TextButton(onPressed: _load, child: const Text('다시 시도')),
           ],
@@ -185,20 +188,7 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            document ? '지원 문서' : '포트폴리오 구성',
-            style: const TextStyle(
-              fontSize: AppTypography.page,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            document
-                ? '지원처별 이력서·자기소개서 초안을 직접 편집합니다. 개인 경험·성과를 선택하여 본문에 가져올 수 있습니다. AI가 작성하거나 지원처로 제출하지 않습니다.'
-                : '개인 성과 중 사용할 항목과 순서를 선택합니다. 나만 보기·제출 검토용·공개 검토용은 기기 로컬 사용 의도이며 실제 게시·권한 설정이 아닙니다.',
-          ),
-          const SizedBox(height: 14),
+          _header(),
           FilledButton.icon(
             onPressed: _busy ? null : () => _edit(),
             icon: const Icon(Icons.add),
@@ -243,6 +233,20 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
       ),
     );
   }
+
+  Widget _header() => PageHeader(
+    title: widget.isDocument ? '지원 문서' : '포트폴리오 구성',
+    description: widget.isDocument
+        ? '지원처별 이력서·자기소개서 초안을 직접 편집합니다. 개인 경험·성과를 선택하여 본문에 가져올 수 있습니다. AI가 작성하거나 지원처로 제출하지 않습니다.'
+        : '개인 성과 중 사용할 항목과 순서를 선택합니다. 나만 보기·제출 검토용·공개 검토용은 기기 로컬 사용 의도이며 실제 게시·권한 설정이 아닙니다.',
+  );
+
+  Widget _statePage(Widget child) => SingleChildScrollView(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [_header(), child],
+    ),
+  );
 }
 
 class _DraftPreview extends StatefulWidget {

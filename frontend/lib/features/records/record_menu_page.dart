@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:university_path_frontend/shared/app_typography.dart';
 
 import '../../shared/widgets/status_badge.dart';
+import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/surface_card.dart';
 import 'fixtures/record_mock_entry.dart';
 import 'personal_record_repository.dart';
@@ -14,7 +15,7 @@ import '../../shared/widgets/external_link_button.dart';
 class RecordMenuPage extends StatefulWidget {
   const RecordMenuPage({
     super.key,
-    required this.kicker,
+    this.contextLabel,
     required this.kind,
     required this.title,
     required this.description,
@@ -32,7 +33,7 @@ class RecordMenuPage extends StatefulWidget {
   });
 
   final PersonalRecordKind kind;
-  final String kicker;
+  final String? contextLabel;
   final String title;
   final String description;
   final String notice;
@@ -349,9 +350,9 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return _statePage(child: const CircularProgressIndicator());
     if (_loadFailed) {
-      return Center(
+      return _statePage(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -369,29 +370,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            widget.kicker,
-            style: const TextStyle(
-              fontSize: AppTypography.caption,
-              letterSpacing: .5,
-              fontWeight: FontWeight.w800,
-              color: Color(0xff738ba0),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            widget.title,
-            style: const TextStyle(
-              fontSize: AppTypography.page,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            widget.description,
-            style: const TextStyle(color: Color(0xff607386)),
-          ),
-          const SizedBox(height: 16),
+          _header(),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -513,6 +492,19 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       ),
     );
   }
+
+  Widget _header() => PageHeader(
+    title: widget.title,
+    contextLabel: widget.contextLabel,
+    description: widget.description,
+  );
+
+  Widget _statePage({required Widget child}) => SingleChildScrollView(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [_header(), child],
+    ),
+  );
 
   Widget _entry(RecordMockEntry entry) => Container(
     padding: const EdgeInsets.symmetric(vertical: 11),

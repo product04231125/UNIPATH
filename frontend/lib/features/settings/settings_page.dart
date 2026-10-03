@@ -4,6 +4,7 @@ import 'package:university_path_frontend/shared/app_typography.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/page_header.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key, required this.repository});
@@ -54,7 +55,15 @@ class _SettingsPageState extends State<SettingsPage> {
     animation: widget.repository,
     builder: (context, _) {
       if (widget.repository.isLoading || widget.repository.loadFailed) {
-        return PlanningStorageState(repository: widget.repository);
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const PageHeader(title: '설정', contextLabel: '일반'),
+              PlanningStorageState(repository: widget.repository),
+            ],
+          ),
+        );
       }
       if (!_profileInitialized) {
         final profile = widget.repository.profile;
@@ -77,16 +86,7 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('설정', style: Theme.of(context).textTheme.headlineMedium),
-                  const SizedBox(height: 6),
-                  const Text(
-                    '일반',
-                    style: TextStyle(
-                      color: Color(0xff607386),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
+                  const PageHeader(title: '설정', contextLabel: '일반'),
                   Text('학업과 계획', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 6),
                   const Text(

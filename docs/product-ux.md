@@ -10,6 +10,10 @@ Rule Engine, RAG의 책임을 바꾸지 않으며, **현재 구현된 정책**�
   늘어나고, 작은 창에서는 겹침·잘림 없이 재배치·숨김·오버레이로 전환한다.
 - 일반 본문·목록·표는 줄바꿈과 유동 폭을 우선한다. 비교 축이 많은 교육과정 행렬만
   하나의 가로 스크롤 컨테이너 안에 그룹 헤더·열·데이터 행을 함께 둔다.
+- 창을 좁힐 때는 좌측 메뉴 아이콘화가 가로 스크롤보다 먼저다. `900px` 미만이거나 펼친
+  메뉴·본문 여백·열린 AI 도킹 폭을 제외한 공간이 현재 화면의 최소 폭보다 작으면 메뉴를
+  접는다. 홈 주간표와 졸업요건 교육과정 행렬에 적용하며, 아이콘 메뉴에서도 부족할
+  때만 해당 표에 가로 스크롤바를 표시한다. 일반 본문은 계속 재배치한다.
 - AI는 기록·탐색·문서 설명을 돕는 보조 영역이다. 학점·필수과목·승인 여부의 충족
   판정은 Rule Engine 결과로만 보인다. RAG/LLM은 근거와 설명을 제공하며 판정을 바꾸지
   않는다.
@@ -34,6 +38,22 @@ Rule Engine, RAG의 책임을 바꾸지 않으며, **현재 구현된 정책**�
   있게 한다. 대화 실패·근거 부족은 토스트만 쓰지 말고 재시도 가능한 인라인 상태로 남긴다.
 
 ## 2. 레이아웃·입력·접근성
+
+### 메뉴 제목과 헤더
+
+- 기록·일정·설정·졸업 요건 및 하위 작업 화면은 공통 `PageHeader`를 사용한다.
+  장식용 영어 라벨과 제목의 번역 반복은 넣지 않는다. 한글 제목 → 필요한 문맥 → 기존 설명
+  순서로 표시하며, 문맥·설명은 필요할 때만 사용한다. 학교·학과·적용 연도·개인/예시 상태 같은
+  실제 정보는 유지하지만 데이터가 없을 때 임의로 생성하지 않는다.
+- 제목은 공통 26px, 설명 14px, 문맥 13px 스타일과 시스템 글자 확대를 따른다. 선택 문구 사이
+  간격은 8px, 헤더 뒤 본문 간격은 16px이며 없는 문구의 공간은 예약하지 않는다.
+- 작업 공간이 외부 여백을 소유한다. 헤더·탭·설명·본문은 왼쪽 시작선을 공유하며, 읽기 폭 제한은
+  왼쪽 정렬한다. 포트폴리오·개인 졸업 작업 공간은 탭 아래 12px 간격으로 현재 단계 제목을 표시한다.
+  카드 내부 콘텐츠는 기존 카드 여백을 유지한다.
+- 기존 헤더 버튼은 넓은 폭에서 제목 옆, 헤더 가용 폭 600px 미만 또는 본문 글자 배율이 1.2를
+  넘으면 제목 아래 행에 배치한다. 문구는 자연스럽게 줄바꿈하며 고정 높이·말줄임으로 숨기지 않는다.
+  제목은 접근성 heading 의미를 갖고 읽기 대기·실패에도 표시한다.
+- 홈의 날짜·요약 카드는 대시보드 역할이므로 유지하고 별도 메뉴 헤더를 중복 추가하지 않는다.
 
 ### 정보 밀도와 표
 
@@ -118,7 +138,7 @@ Rule Engine, RAG의 책임을 바꾸지 않으며, **현재 구현된 정책**�
 | 시나리오 | 확인 기준 |
 | --- | --- |
 | Windows `480×520`, `900×768`, `1440×900`, `1920×1080` | 넓은 폭에서는 좌측 탐색·본문·도킹 AI가 겹치지 않고, 좁은 폭에서는 아이콘 탐색·스크롤 fallback으로 모든 조작에 접근 가능 |
-| Web 좁은 폭·확대 | `900px` 미만에서 탐색을 아이콘 모드로 줄이고, AI는 오버레이로 바뀌며 일반 콘텐츠는 재배치됨. `480px` 미만은 작업 공간 가로 스크롤 fallback을 제공 |
+| Web 좁은 폭·확대 | `900px` 미만 또는 펼친 메뉴 상태에서 현재 표의 최소 폭이 부족하면 아이콘 모드로 전환. AI는 좁은 폭에서 오버레이로 바뀌고 일반 콘텐츠는 재배치됨. `480px` 미만은 조작 가능한 스크롤바가 있는 작업 공간 가로 스크롤 fallback을 제공 |
 | AI·분리 창 | 닫기·전면화·최대화 복귀·포커스 복귀가 일관되고 창이 본문을 가리지 않음 |
 | 폼·상태 | 라벨·오류·저장 결과·재시도가 보이고 작성 값이 보존됨 |
 | 개인 기준 | 직접 입력이 개인 계산에만 쓰이며 공식 졸업 판정·RAG 근거와 혼동되지 않음 |
@@ -131,5 +151,12 @@ Rule Engine, RAG의 책임을 바꾸지 않으며, **현재 구현된 정책**�
 - [W3C WAI — Reflow](https://www.w3.org/WAI/WCAG21/Understanding/reflow), [Target Size](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum), [Focus Appearance](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance), [Error Identification](https://www.w3.org/WAI/WCAG22/Understanding/error-identification)
 - [Microsoft Learn — App settings](https://learn.microsoft.com/en-us/windows/apps/design/app-settings/guidelines-for-app-settings), [Apple HIG — Settings](https://developer.apple.com/design/human-interface-guidelines/settings)
 - [GOV.UK — Check answers](https://design-system.service.gov.uk/patterns/check-answers/), [W3C WAI — Forms](https://www.w3.org/WAI/tutorials/forms/)
+- 헤더 판단 근거: [W3C — Headings and Labels](https://www.w3.org/WAI/WCAG22/Understanding/headings-and-labels.html),
+  [GOV.UK — Headings with captions](https://design-system.service.gov.uk/styles/headings/),
+  [NN/g — Layer-cake scanning](https://www.nngroup.com/articles/layer-cake-pattern-scanning/),
+  [NN/g — Usability heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/).
+  제목의 명확성·시각적 계층·사용자 언어 원칙을 현재 한글 UI에 적용한 설계 판단이다.
+  영어 제거의 성능 개선을 직접 입증한 비교 실험이나 특정 언어를 강제하는 규정으로 해석하지 않는다.
 
 참고 자료 확인일: 2026-09-30.
+헤더 참고 자료 확인일: 2026-10-03.
