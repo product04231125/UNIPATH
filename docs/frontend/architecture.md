@@ -5,7 +5,9 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
 
 ## 진입과 공통 영역
 
-- `app.dart`: 로그인 목업과 작업 공간의 최상위 전환
+- `app.dart`: 테마와 Router 구성, 플랫폼 URL 제공자 수명주기
+- `app_navigation.dart`: 주요 메뉴 경로 parser/delegate와 기존 메모리 로그인 목업 경계.
+  주소와 Workspace 선택 메뉴를 연결하며 개인 기록·팝업·빠른 추가 의도는 경로에 저장하지 않는다.
 - `workspace.dart`: 선택 메뉴, 목업 데이터 표시, AI 도킹·분리 창 상태 조정
 - `shared/pending_ui_action.dart`: 메뉴 이동에 동반되는 일회성 UI 의도. 목적 화면은 필요한 상태가
   준비된 뒤 소비한다. URL·저장소에 영속화하지 않으며 일반 탐색과 명시적 빠른 추가를 구분한다.

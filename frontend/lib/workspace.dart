@@ -28,11 +28,15 @@ class Workspace extends StatefulWidget {
     required this.onSignedOut,
     this.windowHost = const AssistantWindowHost(),
     this.chatPreferences,
+    this.selectedPage,
+    this.onPageChanged,
   });
 
   final VoidCallback onSignedOut;
   final AssistantWindowHost windowHost;
   final ChatPreferences? chatPreferences;
+  final int? selectedPage;
+  final ValueChanged<int>? onPageChanged;
 
   @override
   State<Workspace> createState() => _WorkspaceState();
@@ -82,6 +86,7 @@ class _WorkspaceState extends State<Workspace> {
   @override
   void initState() {
     super.initState();
+    _page = widget.selectedPage ?? 0;
     _planningRepository.load();
     _chatPreferences = widget.chatPreferences ?? ChatPreferences();
     _chatPreferences.load();
@@ -116,6 +121,16 @@ class _WorkspaceState extends State<Workspace> {
         _chatManuallyOpened = true;
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant Workspace oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedPage != null && widget.selectedPage != _page) {
+      _scheduleAddRequest = null;
+      _graduationMinimumWidth = 0;
+      _page = widget.selectedPage!;
+    }
   }
 
   @override
@@ -180,16 +195,15 @@ class _WorkspaceState extends State<Workspace> {
               : 0,
           onOpenPage: _selectPage,
           onOpenSettings: () => _selectPage(settingsPage - 1),
-          onOpenSchedule: (day) => setState(() {
+          onOpenSchedule: (day) {
             _scheduleAddRequest = null;
             _scheduleInitialDay = day;
-            _page = 1;
-          }),
-          onAddSchedule: () => setState(() {
+            _selectPage(1);
+          },
+          onAddSchedule: () {
             _scheduleInitialDay = DateTime.now();
-            _scheduleAddRequest = PendingUiAction();
-            _page = 1;
-          }),
+            _selectPage(1, addRequest: PendingUiAction());
+          },
         ),
         1 => SchedulePage(
           repository: _planningRepository,
@@ -217,11 +231,14 @@ class _WorkspaceState extends State<Workspace> {
         _ => const SizedBox.shrink(),
       };
 
-  void _selectPage(int value) => setState(() {
-    _scheduleAddRequest = null;
-    if (_page != value) _graduationMinimumWidth = 0;
-    _page = value;
-  });
+  void _selectPage(int value, {PendingUiAction? addRequest}) {
+    setState(() {
+      _scheduleAddRequest = addRequest;
+      if (_page != value) _graduationMinimumWidth = 0;
+      _page = value;
+    });
+    widget.onPageChanged?.call(value);
+  }
 
   Future<void> _openAssistant() async {
     if (_openingChat) return;

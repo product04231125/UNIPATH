@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'chat_window.dart' as chat_window;
-import 'features/auth/login_page.dart';
 import 'features/assistant/detached_chat_page.dart';
-import 'workspace.dart';
 import 'shared/app_typography.dart';
+import 'app_navigation.dart';
 
 Future<void> runUniversityPathApp() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,26 +44,51 @@ ThemeData universityPathTheme() {
 }
 
 class UniversityPathApp extends StatefulWidget {
-  const UniversityPathApp({super.key, this.startAuthenticated = false});
+  const UniversityPathApp({
+    super.key,
+    this.startAuthenticated = false,
+    this.routeInformationProvider,
+  });
 
   /// Used by workspace widget tests until a real authentication contract exists.
   final bool startAuthenticated;
+  final RouteInformationProvider? routeInformationProvider;
 
   @override
   State<UniversityPathApp> createState() => _UniversityPathAppState();
 }
 
 class _UniversityPathAppState extends State<UniversityPathApp> {
-  late bool authenticated = widget.startAuthenticated;
+  late final _navigation = AppNavigation(
+    authenticated: widget.startAuthenticated,
+  );
+  late final RouteInformationProvider _information =
+      widget.routeInformationProvider ??
+      PlatformRouteInformationProvider(
+        initialRouteInformation: RouteInformation(
+          uri: Uri.parse(
+            WidgetsBinding.instance.platformDispatcher.defaultRouteName,
+          ),
+        ),
+      );
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
+  void dispose() {
+    _navigation.dispose();
+    if (widget.routeInformationProvider == null) {
+      (_information as PlatformRouteInformationProvider).dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => MaterialApp.router(
     debugShowCheckedModeBanner: false,
     title: 'UniversityPath',
     theme: universityPathTheme(),
-    home: authenticated
-        ? Workspace(onSignedOut: () => setState(() => authenticated = false))
-        : LoginPage(onSignedIn: () => setState(() => authenticated = true)),
+    routeInformationProvider: _information,
+    routeInformationParser: const AppLocationParser(),
+    routerDelegate: _navigation,
   );
 }
 

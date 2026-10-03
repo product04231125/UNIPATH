@@ -20,6 +20,7 @@ fixture 또는 로컬 상태이며, 제품 계약이나 학교 공식 데이터�
 | 기능 | 문서 | 현재 상태 |
 | --- | --- | --- |
 | 인증 | [auth](features/auth.md) | 로그인·회원가입 목업 |
+| 메뉴 탐색 | [navigation](features/navigation.md) | 주요 메뉴 hash URL·뒤로/앞으로·직접 진입 |
 | 홈 | [home](features/home.md) | 개인 계획 기반 시작 화면 |
 | 일정 | [schedule](features/schedule.md) | 기기 로컬 개인 일정 |
 | 수강 관리 | [course](features/course.md) | 기기 로컬 개인 수강 CRUD·학기 필터 |
