@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 
 import 'app_shell/workspace_shell.dart';
 import 'shared/pending_ui_action.dart';
-import 'chat_window.dart' as chat_window;
+import 'features/assistant/assistant_window_host.dart';
+import 'features/settings/chat_preferences.dart';
 import 'features/assistant/assistant_conversation.dart';
 import 'features/assistant/assistant_panel.dart';
 import 'features/graduation/graduation_page.dart';
@@ -22,9 +23,16 @@ import 'features/schedule/schedule_page.dart';
 /// Coordinates navigation, mock-data visibility, and the assistant window.
 /// Feature pages own their own mock state and input interactions.
 class Workspace extends StatefulWidget {
-  const Workspace({super.key, required this.onSignedOut});
+  const Workspace({
+    super.key,
+    required this.onSignedOut,
+    this.windowHost = const AssistantWindowHost(),
+    this.chatPreferences,
+  });
 
   final VoidCallback onSignedOut;
+  final AssistantWindowHost windowHost;
+  final ChatPreferences? chatPreferences;
 
   @override
   State<Workspace> createState() => _WorkspaceState();
@@ -58,6 +66,9 @@ class _WorkspaceState extends State<Workspace> {
   var _chatManuallyOpened = false;
   var _detachedChatActive = false;
   var _mainWindowMaximized = false;
+  bool _openingChat = false;
+  bool _detachingChat = false;
+  late final ChatPreferences _chatPreferences;
   var _chatWidth = 360.0;
   double _graduationMinimumWidth = 0;
   final _graduationPageKey = GlobalKey();
@@ -72,15 +83,14 @@ class _WorkspaceState extends State<Workspace> {
   void initState() {
     super.initState();
     _planningRepository.load();
-    chat_window.isMainWindowMaximized().then((maximized) {
-      if (mounted) setState(() => _mainWindowMaximized = maximized);
-    });
-    _mainWindowMaximizeSubscription = chat_window
-        .mainWindowMaximizeChanges()
-        .listen((maximized) {
-          if (mounted) setState(() => _mainWindowMaximized = maximized);
-        });
-    _detachedChatSubscription = chat_window.detachedChatWindowChanges().listen((
+    _chatPreferences = widget.chatPreferences ?? ChatPreferences();
+    _chatPreferences.load();
+    widget.windowHost.isMaximized().then(_onMaximized, onError: (Object _) {});
+    _mainWindowMaximizeSubscription = widget.windowHost.maximizeChanges.listen(
+      _onMaximized,
+      onError: (Object _) {},
+    );
+    _detachedChatSubscription = widget.windowHost.detachedChanges.listen((
       isOpen,
     ) {
       if (!mounted || _detachedChatActive == isOpen) return;
@@ -90,10 +100,21 @@ class _WorkspaceState extends State<Workspace> {
         // Closing a detached Windows window returns to the same closed state as
         // closing the dock: the user can reopen the assistant from its button.
         if (wasDetached && !isOpen) {
-          _chatOpen = false;
-          _chatManuallyOpened = false;
+          _chatOpen = _mainWindowMaximized;
+          _chatManuallyOpened = _mainWindowMaximized;
         }
       });
+    }, onError: (Object _) {});
+  }
+
+  void _onMaximized(bool value) {
+    if (!mounted) return;
+    setState(() {
+      _mainWindowMaximized = value;
+      if (value && _detachedChatActive) {
+        _chatOpen = true;
+        _chatManuallyOpened = true;
+      }
     });
   }
 
@@ -103,6 +124,7 @@ class _WorkspaceState extends State<Workspace> {
     _mainWindowMaximizeSubscription?.cancel();
     _assistantConversation.dispose();
     _planningRepository.dispose();
+    if (widget.chatPreferences == null) _chatPreferences.dispose();
     super.dispose();
   }
 
@@ -141,8 +163,7 @@ class _WorkspaceState extends State<Workspace> {
       assistantBuilder: (context, width) => AssistantPanel(
         conversation: _assistantConversation,
         onClose: _closeChat,
-        onDetach:
-            chat_window.supportsDetachedChatWindow && !_mainWindowMaximized
+        onDetach: widget.windowHost.supportsDetached && !_mainWindowMaximized
             ? _openDetachedChat
             : null,
         width: width,
@@ -189,6 +210,9 @@ class _WorkspaceState extends State<Workspace> {
         7 => PortfolioPage(showMockData: _showMockData),
         _ when _page == settingsPage - 1 => SettingsPage(
           repository: _planningRepository,
+          chatPreferences: widget.windowHost.supportsDetached
+              ? _chatPreferences
+              : null,
         ),
         _ => const SizedBox.shrink(),
       };
@@ -200,19 +224,26 @@ class _WorkspaceState extends State<Workspace> {
   });
 
   Future<void> _openAssistant() async {
-    if (_detachedChatActive) {
-      final exists = await chat_window.hasDetachedChatWindow();
-      if (exists) {
+    if (_openingChat) return;
+    _openingChat = true;
+    try {
+      await _chatPreferences.load();
+      if (!mounted) return;
+      if (widget.windowHost.supportsDetached &&
+          !_mainWindowMaximized &&
+          (_detachedChatActive ||
+              _chatPreferences.mode == ChatOpeningMode.detached)) {
         await _openDetachedChat();
-      } else if (mounted) {
-        setState(() {
-          _detachedChatActive = false;
-          _chatOpen = true;
-          _chatManuallyOpened = true;
-        });
+      } else {
+        _showDock();
       }
-      return;
+    } finally {
+      _openingChat = false;
     }
+  }
+
+  void _showDock() {
+    if (!mounted) return;
     setState(() {
       _chatOpen = true;
       _chatManuallyOpened = true;
@@ -225,12 +256,29 @@ class _WorkspaceState extends State<Workspace> {
   });
 
   Future<void> _openDetachedChat() async {
-    await chat_window.openDetachedChatWindow(width: _chatWidth);
+    if (_detachingChat || _mainWindowMaximized) return;
+    _detachingChat = true;
+    try {
+      await widget.windowHost.openDetached(_chatWidth);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _detachedChatActive = false);
+      _showDock();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('분리 창을 열지 못해 내부 패널로 열었습니다. 다시 시도할 수 있습니다.'),
+        ),
+      );
+      return;
+    } finally {
+      _detachingChat = false;
+    }
     if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     setState(() {
       _detachedChatActive = true;
-      _chatOpen = false;
-      _chatManuallyOpened = false;
+      _chatOpen = _mainWindowMaximized;
+      _chatManuallyOpened = _mainWindowMaximized;
     });
   }
 }

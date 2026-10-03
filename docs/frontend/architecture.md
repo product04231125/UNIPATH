@@ -33,6 +33,10 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
   이동 확인·실패·복사 UI. 저장 입력도 같은 URL 검증을 사용한다.
 - `features/planning/planning_dates.dart`, `weekly_schedule.dart`: 홈·일정의 공통 날짜 계산과 홈 7일 표
 - `chat_window*.dart`: 플랫폼별 AI 분리 창 어댑터
+- `features/assistant/assistant_window_host.dart`: 작업 공간의 native 창 호출/상태 신호 경계.
+  테스트는 가짜 host를 사용하며 실제 창 검증과 구분한다.
+- `features/settings/chat_preferences.dart`: 별도 기기 로컬 키의 채팅 열기 방식과 실패/재시도 상태.
+  Workspace가 소유하고 설정 UI에 주입한다. 학업 repository·계정·대화 데이터와 독립이다.
 
 ## 기능 소유권
 
