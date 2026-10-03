@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import 'package:university_path_frontend/shared/app_typography.dart';
 
+import '../../shared/widgets/equal_height_row.dart';
 import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/surface_card.dart';
@@ -474,8 +476,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               );
               return SingleChildScrollView(
                 child: constraints.maxWidth >= 760
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    ? EqualHeightRow(
                         children: [
                           Expanded(flex: 6, child: records),
                           const SizedBox(width: 14),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/equal_height_row.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
@@ -65,8 +66,7 @@ class _SchedulePageState extends State<SchedulePage> {
                     ],
                   ),
                   if (constraints.maxWidth >= 820)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    EqualHeightRow(
                       children: [
                         Expanded(flex: 3, child: _calendar()),
                         const SizedBox(width: 18),
