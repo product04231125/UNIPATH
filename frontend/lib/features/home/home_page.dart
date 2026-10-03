@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../planning/planning_dates.dart';
 import '../planning/planning_repository.dart';
+import '../planning/planning_storage_state.dart';
 import '../planning/weekly_schedule.dart';
 
 class HomePage extends StatelessWidget {
@@ -21,8 +22,8 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: repository,
     builder: (context, _) {
-      if (repository.isLoading) {
-        return const Center(child: CircularProgressIndicator());
+      if (repository.isLoading || repository.loadFailed) {
+        return PlanningStorageState(repository: repository);
       }
       final profile = repository.profile;
       final now = DateTime.now();
