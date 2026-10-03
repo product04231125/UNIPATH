@@ -1,4 +1,5 @@
 import 'personal_record_repository.dart';
+import '../../shared/external_links.dart';
 
 enum PersonalFieldType { text, number, date, url }
 
@@ -41,11 +42,7 @@ class PersonalRecordField {
       }
     }
     if (type == PersonalFieldType.url) {
-      final uri = Uri.tryParse(value);
-      if (uri == null ||
-          !['http', 'https'].contains(uri.scheme) ||
-          uri.host.isEmpty ||
-          uri.userInfo.isNotEmpty) {
+      if (browserLink(value) == null) {
         return '로그인 정보 없는 http/https 링크를 입력하세요.';
       }
     }

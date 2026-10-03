@@ -29,3 +29,4 @@ fixture 또는 로컬 상태이며, 제품 계약이나 학교 공식 데이터�
 | 포트폴리오·성과 | [portfolio](features/portfolio.md) | 기기 로컬 개인 성과 CRUD |
 | AI 도우미 | [assistant](features/assistant.md) | 로컬 대화·도킹/분리 창 목업 |
 | 설정 | [settings](features/settings.md) | 학업과 계획 로컬 설정 |
+| 외부 링크 | [external-links](features/external-links.md) | 1365·개인 증빙 URL 확인·열기·복사 |

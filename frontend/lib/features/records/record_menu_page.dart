@@ -7,6 +7,7 @@ import 'fixtures/record_mock_entry.dart';
 import 'personal_record_repository.dart';
 import 'personal_record_fields.dart';
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/external_link_button.dart';
 
 /// Temporary shared presentation only. Each feature entry owns its own
 /// configuration, fixture and mounted local input state.
@@ -27,6 +28,7 @@ class RecordMenuPage extends StatefulWidget {
     required this.showMockData,
     this.fieldsLoader,
     this.validateValues,
+    this.guideActions = const [],
   });
 
   final PersonalRecordKind kind;
@@ -43,6 +45,7 @@ class RecordMenuPage extends StatefulWidget {
   final bool showMockData;
   final Future<List<PersonalRecordField>> Function()? fieldsLoader;
   final Future<String?> Function(Map<String, String>)? validateValues;
+  final List<Widget> guideActions;
 
   @override
   State<RecordMenuPage> createState() => _RecordMenuPageState();
@@ -325,6 +328,15 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       ),
       Wrap(
         children: [
+          for (final field in _fields.where(
+            (f) =>
+                f.type == PersonalFieldType.url &&
+                record.value(f.key).isNotEmpty,
+          ))
+            ExternalLinkButton(
+              url: record.value(field.key),
+              label: field.label,
+            ),
           TextButton(
             onPressed: () => _showForm(record),
             child: const Text('수정'),
@@ -477,6 +489,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                           ),
                         ),
                       ),
+                    ...widget.guideActions,
                   ],
                 ),
               );

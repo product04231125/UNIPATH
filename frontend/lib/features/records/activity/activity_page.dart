@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../fixtures/activity_fixture.dart';
 import '../record_menu_page.dart';
 import '../personal_record_repository.dart';
+import '../../../shared/widgets/external_link_button.dart';
 
 class ActivityPage extends StatelessWidget {
   const ActivityPage({super.key, required this.showMockData});
@@ -19,6 +20,13 @@ class ActivityPage extends StatelessWidget {
     fixture: activityMockEntries,
     guideTitle: '활동 준비',
     guides: const ['봉사 시간·증빙 자료 점검', '교내 활동 인정 절차 확인', '필요할 때 외부 봉사 사이트 안내'],
+    guideActions: const [
+      ExternalLinkButton(
+        url: 'https://www.1365.go.kr/',
+        label: '1365 봉사 찾기',
+        description: '1365에서 활동을 찾아 직접 신청하고, 학교 인정이 필요한 활동은 학교에 등록·승인받으세요. 링크 열기로 봉사 시간이나 승인 상태를 자동 변경하지 않습니다.',
+      ),
+    ],
     addLabel: '활동 직접 기록',
     detailLabel: '기관 · 기간 · 역할',
     showMockData: showMockData,
