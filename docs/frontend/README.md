@@ -8,6 +8,7 @@ OpenAPI(`/api/v1/docs`)가 기준이다.
 
 - [architecture.md](architecture.md): 모듈 경계, 상태 소유권, fixture와 API 전환 방식
 - [platform-differences.md](platform-differences.md): 현재 구현된 Web·Windows 동작 차이
+- [ux-ui-verification.md](ux-ui-verification.md): 공통 카드·입력/탐색의 검증 근거와 Windows 최종 확인
 - [manual-input-boundaries.md](manual-input-boundaries.md): ERD 기준 개인 입력·공식 데이터 경계와 현재 구현
 - [manual-input-audit.md](manual-input-audit.md): ERD·HTML 개인 입력 대조, 구현·테스트 근거와 계약 의존 범위
 - `features/`: 로그인부터 메뉴별 목적, 현재 구현, 목업 경계, 후속 계약과 검증

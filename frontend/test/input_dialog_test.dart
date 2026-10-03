@@ -305,4 +305,62 @@ void main() {
       await tester.pumpAndSettle();
     });
   }
+
+  testWidgets(
+    'saving protects even empty dialog and disables explicit cancel',
+    (tester) async {
+      final saving = ValueNotifier(false);
+      addTearDown(saving.dispose);
+      await tester.pumpWidget(
+        host(
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showInputDialog<void>(
+                context: context,
+                builder: (context) => ValueListenableBuilder<bool>(
+                  valueListenable: saving,
+                  builder: (context, busy, _) => InputDialog(
+                    changes: saving,
+                    saving: busy,
+                    hasContent: () => false,
+                    title: const Text('저장 보호 확인'),
+                    content: const Text('비어 있는 폼'),
+                    actions: [
+                      TextButton(
+                        onPressed: busy ? null : () => Navigator.pop(context),
+                        child: const Text('취소'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              child: const Text('열기'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('열기'));
+      await tester.pumpAndSettle();
+      saving.value = true;
+      await tester.pump();
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, '취소'))
+            .onPressed,
+        isNull,
+      );
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+      expect(find.byType(InputDialog), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(InputDialog), findsOneWidget);
+      saving.value = false;
+      await tester.pump();
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+      expect(find.byType(InputDialog), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
