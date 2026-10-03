@@ -29,7 +29,7 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
 | `features/records/activity` | 활동 입력 상태 |
 | `features/records/experience` | 경험 입력 상태 |
 | `features/records/credential` | 자격 입력 상태 |
-| `features/records/portfolio` | 포트폴리오·성과 입력 상태 |
+| `features/records/portfolio` | 성과 원본, 포트폴리오 구성·지원 문서의 독립 로컬 초안 |
 | `features/assistant` | 도킹 AI 패널, 목업 대화, 분리 창 본문 |
 | `features/settings` | 설정 진입 화면 |
 
@@ -45,6 +45,9 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
 - 개인 졸업 작업 공간도 같은 저장소의 세 종류를 사용한다. `personal_graduation_fields.dart`는
   저장된 개인 교육과정·과목·기록의 선택 목록과 관계 검증을 소유하며 규칙을 실행하지 않는다.
 - `목업용` 스위치는 예시 행만 표시·숨김 처리한다. 개인 기록은 메뉴 전환·재시작 뒤에도 유지한다.
+- `portfolio_workspace_repository.dart`는 구성·지원 문서를 별도 v1 키에 저장하고, 경험·성과
+  원본 저장소를 참조한다. `portfolio_editor_dialog.dart`는 입력·선택·정렬,
+  `portfolio_drafts_page.dart`는 읽기·실패·목록·미리보기·삭제 UI를 소유한다.
 - OpenAPI 계약이 확정되면 feature별 fixture와 로컬 상태를 repository/adapter로 교체한다.
   클라이언트는 OpenAPI에 없는 필드·상태·판정을 제품 계약으로 만들지 않는다.
 
