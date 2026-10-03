@@ -5,6 +5,8 @@ import 'planning_repository.dart';
 
 /// Shared seven-day personal calendar, including an explicit empty state.
 class WeeklySchedule extends StatefulWidget {
+  static const minimumWidth = 7 * 92.0 + 6 * 8 + 32 + 8;
+
   const WeeklySchedule({
     super.key,
     required this.events,
@@ -38,6 +40,7 @@ class _WeeklyScheduleState extends State<WeeklySchedule> {
       widget.startsOn,
     );
     return Card(
+      margin: const EdgeInsets.all(4),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

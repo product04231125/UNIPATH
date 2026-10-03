@@ -257,7 +257,7 @@ void main() {
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('일정'));
+    await tester.tap(find.byTooltip('일정'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('일정 추가'));
     await tester.pumpAndSettle();

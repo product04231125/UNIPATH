@@ -9,8 +9,13 @@ import 'graduation_mock_fixture.dart';
 import 'personal_graduation_workspace.dart';
 
 class GraduationPage extends StatefulWidget {
-  const GraduationPage({super.key, this.showMockData = true});
+  const GraduationPage({
+    super.key,
+    this.showMockData = true,
+    this.onMinimumWidthChanged,
+  });
   final bool showMockData;
+  final ValueChanged<double>? onMinimumWidthChanged;
   @override
   State<GraduationPage> createState() => _GraduationPageState();
 }
@@ -29,7 +34,10 @@ class _GraduationPageState extends State<GraduationPage> {
   Widget build(BuildContext context) {
     if (_personal) {
       return PersonalGraduationWorkspace(
-        onBack: () => setState(() => _personal = false),
+        onBack: () {
+          setState(() => _personal = false);
+          _reportMinimumWidth();
+        },
       );
     }
     return SingleChildScrollView(
@@ -51,7 +59,10 @@ class _GraduationPageState extends State<GraduationPage> {
                 ),
               ),
               OutlinedButton.icon(
-                onPressed: () => setState(() => _personal = true),
+                onPressed: () {
+                  setState(() => _personal = true);
+                  _reportMinimumWidth();
+                },
                 icon: const Icon(Icons.tune, size: 18),
                 label: const Text('내 학교·학과 기준 설정'),
               ),
@@ -79,7 +90,10 @@ class _GraduationPageState extends State<GraduationPage> {
                   children: [
                     for (final value in ['대학 공통', '내 교육과정', '학과 기준'])
                       OutlinedButton(
-                        onPressed: () => setState(() => _tab = value),
+                        onPressed: () {
+                          setState(() => _tab = value);
+                          _reportMinimumWidth();
+                        },
                         style: OutlinedButton.styleFrom(
                           backgroundColor: _tab == value
                               ? Theme.of(context).colorScheme.secondaryContainer
@@ -105,6 +119,14 @@ class _GraduationPageState extends State<GraduationPage> {
       ),
     );
   }
+
+  void _reportMinimumWidth() => widget.onMinimumWidthChanged?.call(
+    !_personal && _tab == '내 교육과정'
+        ? 92 +
+              58.0 * (curriculumHeaders.length - 1) +
+              SurfaceCard.horizontalInsets
+        : 0,
+  );
 
   Widget _table() {
     final (title, headers, rows) = switch (_tab) {

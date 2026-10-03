@@ -41,6 +41,7 @@ class WorkspaceShell extends StatelessWidget {
     required this.onAssistantWidthChanged,
     required this.pageBuilder,
     required this.assistantBuilder,
+    this.minimumContentWidth = 0,
   });
 
   final int selectedPage;
@@ -58,6 +59,7 @@ class WorkspaceShell extends StatelessWidget {
   final Widget Function(BuildContext context, WorkspaceShellLayout layout)
   pageBuilder;
   final Widget Function(BuildContext context, double width) assistantBuilder;
+  final double minimumContentWidth;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -71,10 +73,7 @@ class WorkspaceShell extends StatelessWidget {
               : constraints.maxWidth;
           final workspace = _buildWorkspace(context, workspaceWidth);
           return usesScrollFallback
-              ? SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(width: fallbackWidth, child: workspace),
-                )
+              ? _WorkspaceScrollFallback(width: fallbackWidth, child: workspace)
               : workspace;
         },
       ),
@@ -86,6 +85,9 @@ class WorkspaceShell extends StatelessWidget {
     final showAssistantOverlay =
         maxWidth < 1180 && isAssistantOpen && isAssistantManuallyOpened;
     final overlayWidth = maxWidth < 480 ? maxWidth : 360.0;
+    final dockWidth = showDockedAssistant ? assistantWidth + 6 : 0.0;
+    final compactNavigation =
+        maxWidth < 900 || maxWidth - 220 - 56 - dockWidth < minimumContentWidth;
     final layout = WorkspaceShellLayout(
       maxWidth: maxWidth,
       showDockedAssistant: showDockedAssistant,
@@ -97,7 +99,7 @@ class WorkspaceShell extends StatelessWidget {
         Row(
           children: [
             _Sidebar(
-              compact: maxWidth < 900,
+              compact: compactNavigation,
               selectedPage: selectedPage,
               navigationItems: navigationItems,
               onPageSelected: onPageSelected,
@@ -128,9 +130,9 @@ class WorkspaceShell extends StatelessWidget {
                     Expanded(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(
-                          maxWidth < 900 ? 16 : 28,
+                          compactNavigation ? 16 : 28,
                           26,
-                          maxWidth < 900 ? 16 : 28,
+                          compactNavigation ? 16 : 28,
                           30,
                         ),
                         child: pageBuilder(context, layout),
@@ -181,6 +183,40 @@ class WorkspaceShell extends StatelessWidget {
       ],
     );
   }
+}
+
+class _WorkspaceScrollFallback extends StatefulWidget {
+  const _WorkspaceScrollFallback({required this.width, required this.child});
+  final double width;
+  final Widget child;
+
+  @override
+  State<_WorkspaceScrollFallback> createState() =>
+      _WorkspaceScrollFallbackState();
+}
+
+class _WorkspaceScrollFallbackState extends State<_WorkspaceScrollFallback> {
+  final _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scrollbar(
+    key: const Key('workspace-horizontal-scrollbar'),
+    controller: _controller,
+    thumbVisibility: true,
+    interactive: true,
+    scrollbarOrientation: ScrollbarOrientation.bottom,
+    child: SingleChildScrollView(
+      controller: _controller,
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(width: widget.width, child: widget.child),
+    ),
+  );
 }
 
 class _Sidebar extends StatelessWidget {

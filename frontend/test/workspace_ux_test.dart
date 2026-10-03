@@ -8,9 +8,157 @@ import 'package:university_path_frontend/features/home/home_page.dart';
 import 'package:university_path_frontend/features/planning/planning_dates.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
 import 'package:university_path_frontend/features/planning/weekly_schedule.dart';
+import 'package:university_path_frontend/app_shell/workspace_shell.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  double horizontalExtent(WidgetTester tester, Finder parent) => find
+      .descendant(of: parent, matching: find.byType(Scrollable))
+      .evaluate()
+      .map((element) => (element as StatefulElement).state as ScrollableState)
+      .where((state) => state.widget.axisDirection == AxisDirection.right)
+      .fold(0.0, (total, state) => total + state.position.maxScrollExtent);
+
+  testWidgets('responsive order collapses navigation before weekly scrolling', (
+    tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.binding.setSurfaceSize(const Size(1008, 900));
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+    await tester.pumpAndSettle();
+    expect(find.text('홈'), findsOneWidget);
+    expect(
+      horizontalExtent(tester, find.byType(WeeklySchedule)),
+      closeTo(0, 1e-6),
+    );
+    for (final width in [1007.0, 950.0, 900.0, 836.0]) {
+      await tester.binding.setSurfaceSize(Size(width, 900));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('홈'), findsOneWidget);
+      expect(
+        horizontalExtent(tester, find.byType(WeeklySchedule)),
+        closeTo(0, 1e-6),
+      );
+      expect(tester.takeException(), isNull);
+    }
+    await tester.binding.setSurfaceSize(const Size(835, 900));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('홈'), findsOneWidget);
+    expect(
+      horizontalExtent(tester, find.byType(WeeklySchedule)),
+      greaterThan(0),
+    );
+    await tester.binding.setSurfaceSize(const Size(1008, 900));
+    await tester.pumpAndSettle();
+    expect(find.text('홈'), findsOneWidget);
+    expect(
+      horizontalExtent(tester, find.byType(WeeklySchedule)),
+      closeTo(0, 1e-6),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('responsive order includes curriculum tabs and dock width', (
+    tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('졸업 요건').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('내 교육과정'));
+    await tester.pumpAndSettle();
+    expect(find.text('홈'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.chat_bubble_outline));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('홈'), findsOneWidget);
+    expect(horizontalExtent(tester, find.byType(Table)), 0);
+    // Inspect the table's ancestor scroll view, not its descendants.
+    final matrixScroll = find
+        .ancestor(of: find.byType(Table), matching: find.byType(Scrollable))
+        .first;
+    expect(
+      tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
+      0,
+    );
+    await tester.tap(find.byTooltip('AI 도우미 닫기'));
+    await tester.pumpAndSettle();
+    for (final width in [1217.0, 1046.0]) {
+      await tester.binding.setSurfaceSize(Size(width, 900));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('홈'), findsOneWidget);
+      expect(
+        tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
+        0,
+      );
+    }
+    await tester.binding.setSurfaceSize(const Size(1045, 900));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('홈'), findsOneWidget);
+    expect(
+      tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
+      greaterThan(0),
+    );
+    // Entering/leaving the outer Web fallback must preserve the active tab.
+    await tester.binding.setSurfaceSize(const Size(450, 900));
+    await tester.pumpAndSettle();
+    expect(find.byType(Table), findsOneWidget);
+    await tester.binding.setSurfaceSize(const Size(1045, 900));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('홈'), findsOneWidget);
+    expect(
+      tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
+      greaterThan(0),
+    );
+    await tester.tap(find.text('대학 공통'));
+    await tester.pumpAndSettle();
+    expect(find.text('홈'), findsOneWidget);
+    await tester.tap(find.text('내 교육과정'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('홈'), findsOneWidget);
+    await tester.binding.setSurfaceSize(const Size(1218, 900));
+    await tester.pumpAndSettle();
+    expect(find.text('홈'), findsOneWidget);
+    expect(
+      tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
+      0,
+    );
+    await tester.tap(find.text('설정').first);
+    await tester.pumpAndSettle();
+    await tester.binding.setSurfaceSize(const Size(950, 900));
+    await tester.pumpAndSettle();
+    expect(find.text('홈'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('responsive order exposes an interactive workspace scrollbar', (
+    tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.binding.setSurfaceSize(const Size(320, 900));
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('홈'), findsOneWidget);
+    final scrollbar = find.byKey(const Key('workspace-horizontal-scrollbar'));
+    final widget = tester.widget<Scrollbar>(scrollbar);
+    expect(widget.thumbVisibility, isTrue);
+    expect(widget.interactive, isTrue);
+    expect(widget.controller!.position.maxScrollExtent, 160);
+    final frame = tester.getRect(scrollbar);
+    await tester.dragFrom(
+      Offset(frame.left + 90, frame.bottom - 4),
+      const Offset(70, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(widget.controller!.offset, greaterThan(0));
+    await tester.binding.setSurfaceSize(const Size(480, 900));
+    await tester.pumpAndSettle();
+    expect(scrollbar, findsNothing);
+    expect(find.byType(WorkspaceShell), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   for (final populated in [false, true]) {
     testWidgets(
