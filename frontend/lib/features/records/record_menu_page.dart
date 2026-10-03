@@ -25,6 +25,8 @@ class RecordMenuPage extends StatefulWidget {
     required this.addLabel,
     required this.detailLabel,
     required this.showMockData,
+    this.fieldsLoader,
+    this.validateValues,
   });
 
   final PersonalRecordKind kind;
@@ -39,6 +41,8 @@ class RecordMenuPage extends StatefulWidget {
   final String addLabel;
   final String detailLabel;
   final bool showMockData;
+  final Future<List<PersonalRecordField>> Function()? fieldsLoader;
+  final Future<String?> Function(Map<String, String>)? validateValues;
 
   @override
   State<RecordMenuPage> createState() => _RecordMenuPageState();
@@ -49,6 +53,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
   bool _loading = true;
   bool _loadFailed = false;
   String _term = '';
+  List<PersonalRecordField> _fields = [];
 
   @override
   void initState() {
@@ -66,6 +71,9 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     }
     try {
       await _repository.load();
+      _fields =
+          await widget.fieldsLoader?.call() ??
+          personalRecordFields(widget.kind);
     } catch (_) {
       if (mounted) setState(() => _loadFailed = true);
     } finally {
@@ -74,7 +82,21 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
   }
 
   Future<void> _showForm([PersonalRecord? record]) async {
-    final fields = personalRecordFields(widget.kind);
+    List<PersonalRecordField> fields;
+    try {
+      fields =
+          await widget.fieldsLoader?.call() ??
+          personalRecordFields(widget.kind);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('연결할 개인 기록을 읽지 못했습니다. 다시 시도하세요.')),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _fields = fields);
     final controllers = {
       for (final field in fields)
         field.key: TextEditingController(text: record?.value(field.key) ?? ''),
@@ -131,12 +153,32 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                                     IgnorePointer(
                                       ignoring: saving,
                                       child: AnchoredSelectField<String>(
+                                        key: ValueKey(
+                                          'record-select-${field.key}',
+                                        ),
                                         value: controllers[field.key]!.text,
                                         label: field.label,
                                         options: [
                                           const SelectOption('', '미선택'),
-                                          for (final option in field.options)
-                                            SelectOption(option, option),
+                                          for (final option
+                                              in field.options.where(
+                                                (o) => o.isNotEmpty,
+                                              ))
+                                            SelectOption(
+                                              option,
+                                              field.optionLabels[option] ??
+                                                  option,
+                                            ),
+                                          if (controllers[field.key]!
+                                                  .text
+                                                  .isNotEmpty &&
+                                              !field.options.contains(
+                                                controllers[field.key]!.text,
+                                              ))
+                                            SelectOption(
+                                              controllers[field.key]!.text,
+                                              '연결 대상 없음 · 다시 선택하세요',
+                                            ),
                                         ],
                                         onChanged: (value) {
                                           controllers[field.key]!.text = value;
@@ -193,6 +235,17 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                         error = null;
                       });
                       try {
+                        final linkError = await widget.validateValues?.call(
+                          values,
+                        );
+                        if (!dialogContext.mounted) return;
+                        if (linkError != null) {
+                          updateDialog(() {
+                            saving = false;
+                            error = linkError;
+                          });
+                          return;
+                        }
                         await _repository.save(
                           PersonalRecord(
                             id: record?.id ?? PersonalRecord.newId(),
@@ -260,9 +313,12 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       _entry(
         RecordMockEntry(
           title: record.value('title'),
-          detail: personalRecordFields(widget.kind)
+          detail: _fields
               .where((f) => f.key != 'title' && record.value(f.key).isNotEmpty)
-              .map((f) => '${f.label}: ${record.value(f.key)}')
+              .map(
+                (f) =>
+                    '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
+              )
               .join(' · '),
           status: '개인 기록',
         ),

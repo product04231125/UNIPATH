@@ -277,16 +277,24 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('내 학교·학과 기준 설정'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).at(0), '테스트대학교');
-    await tester.enterText(find.byType(TextField).at(1), '소프트웨어학과');
-    await tester.enterText(find.byType(TextField).at(2), '2024');
-    await tester.enterText(find.byType(TextField).at(3), '최소 총 취득학점');
-    await tester.enterText(find.byType(TextField).at(4), '120');
-    await tester.enterText(find.byType(TextField).at(5), '90');
-    await tester.tap(find.text('개인 기준으로 저장'));
+    await tester.tap(find.text('교육과정 추가'));
+    await tester.pumpAndSettle();
+    for (final entry in {
+      'title': '개인 교육과정 A',
+      'school': '테스트대학교',
+      'department': '소프트웨어학과',
+      'admissionYear': '2024',
+      'curriculumYear': '2024',
+    }.entries) {
+      final field = find.byKey(ValueKey('record-field-${entry.key}'));
+      await tester.ensureVisible(field);
+      await tester.enterText(field, entry.value);
+    }
+    await tester.tap(find.text('내 기록에 저장'));
     await tester.pumpAndSettle();
 
-    expect(find.text('개인 기준 계산'), findsOneWidget);
+    expect(find.text('개인 교육과정 A'), findsOneWidget);
+    expect(find.text('개인 기준 계산'), findsNothing);
     expect(find.textContaining('테스트대학교'), findsWidgets);
     await tester.binding.setSurfaceSize(null);
   });

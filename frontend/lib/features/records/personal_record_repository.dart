@@ -3,7 +3,16 @@ import 'dart:math';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum PersonalRecordKind { course, activity, experience, credential, portfolio }
+enum PersonalRecordKind {
+  course,
+  activity,
+  experience,
+  credential,
+  portfolio,
+  personalCurriculum,
+  personalCurriculumCourse,
+  personalGraduationRule,
+}
 
 /// Client-local personal data, never a transport DTO or official school record.
 class PersonalRecord {

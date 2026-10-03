@@ -22,7 +22,7 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
 | `features/home` | 개인 계획 기반 이번 주 일정·준비 목록·우선 링크 |
 | `features/planning` | 기기 로컬 개인 계획 프로필·일정 repository |
 | `features/schedule` | 월간 개인 일정과 이번 주 목록, 일정 CRUD |
-| `features/graduation` | 탭, 개인 기준 설정 폼, 개인 기준 상태, 졸업요건 fixture |
+| `features/graduation` | 졸업요건 fixture, 개인 교육과정·과목·규칙 입력과 로컬 관계 검증 |
 | `features/records/course` | 수강 관리와 수강 직접 입력 상태 |
 | `features/records/activity` | 활동 입력 상태 |
 | `features/records/experience` | 경험 입력 상태 |
@@ -40,6 +40,8 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
 - `features/records/personal_record_repository.dart`는 메뉴별 v1 키의 기기 로컬 개인 기록을 소유한다.
   `personal_record_fields.dart`는 메뉴별 로컬 입력 스키마·검증이며 서버 DTO가 아니다.
   `RecordMenuPage`는 해당 메뉴 저장소를 읽고 구조화 입력·수정·삭제를 제공한다.
+- 개인 졸업 작업 공간도 같은 저장소의 세 종류를 사용한다. `personal_graduation_fields.dart`는
+  저장된 개인 교육과정·과목·기록의 선택 목록과 관계 검증을 소유하며 규칙을 실행하지 않는다.
 - `목업용` 스위치는 예시 행만 표시·숨김 처리한다. 개인 기록은 메뉴 전환·재시작 뒤에도 유지한다.
 - OpenAPI 계약이 확정되면 feature별 fixture와 로컬 상태를 repository/adapter로 교체한다.
   클라이언트는 OpenAPI에 없는 필드·상태·판정을 제품 계약으로 만들지 않는다.

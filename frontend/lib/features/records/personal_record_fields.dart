@@ -9,6 +9,7 @@ class PersonalRecordField {
     this.required = false,
     this.type = PersonalFieldType.text,
     this.options = const [],
+    this.optionLabels = const {},
     this.multiline = false,
   });
   final String key;
@@ -16,6 +17,7 @@ class PersonalRecordField {
   final bool required;
   final PersonalFieldType type;
   final List<String> options;
+  final Map<String, String> optionLabels;
   final bool multiline;
 
   String? validate(String? raw) {
@@ -48,6 +50,10 @@ class PersonalRecordField {
       }
     }
     if (options.isNotEmpty && !options.contains(value)) return '항목을 선택하세요.';
+    if (['curriculumYear', 'admissionYear'].contains(key) &&
+        !RegExp(r'^\d{4}$').hasMatch(value)) {
+      return '연도는 네 자리 숫자로 입력하세요.';
+    }
     return null;
   }
 }
@@ -56,6 +62,71 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
   const PersonalRecordField('title', '이름', required: true),
   const PersonalRecordField('detail', '설명 · 메모', multiline: true),
   ...switch (kind) {
+    PersonalRecordKind.personalCurriculum => const [
+      PersonalRecordField('school', '개인 학교명', required: true),
+      PersonalRecordField('department', '개인 학과명', required: true),
+      PersonalRecordField('admissionYear', '입학연도', required: true),
+      PersonalRecordField('curriculumYear', '교육과정 연도', required: true),
+      PersonalRecordField('evidenceUrl', '출처 링크', type: PersonalFieldType.url),
+    ],
+    PersonalRecordKind.personalCurriculumCourse => const [
+      PersonalRecordField('courseCode', '개인 과목 코드'),
+      PersonalRecordField('category', '교육과정 이수구분', required: true),
+      PersonalRecordField(
+        'credits',
+        '과목 학점',
+        required: true,
+        type: PersonalFieldType.number,
+      ),
+      PersonalRecordField(
+        'requiredCourse',
+        '개인 필수 여부',
+        required: true,
+        options: ['필수', '선택'],
+      ),
+    ],
+    PersonalRecordKind.personalGraduationRule => const [
+      PersonalRecordField('ruleCode', '개인 규칙 코드'),
+      PersonalRecordField('ruleType', '규칙 종류', required: true),
+      PersonalRecordField(
+        'scope',
+        '개인 적용 범위',
+        required: true,
+        options: ['학교 공통', '학과', '교육과정'],
+      ),
+      PersonalRecordField(
+        'requiredValue',
+        '필요한 값',
+        type: PersonalFieldType.number,
+      ),
+      PersonalRecordField(
+        'currentValue',
+        '직접 확인한 현재 값',
+        type: PersonalFieldType.number,
+      ),
+      PersonalRecordField('unit', '값의 단위'),
+      PersonalRecordField(
+        'condition',
+        '조건 · 대체 요건 · 성적 기준',
+        required: true,
+        multiline: true,
+      ),
+      PersonalRecordField(
+        'effectiveFrom',
+        '적용 시작일',
+        type: PersonalFieldType.date,
+      ),
+      PersonalRecordField(
+        'effectiveTo',
+        '적용 종료일',
+        type: PersonalFieldType.date,
+      ),
+      PersonalRecordField(
+        'evidenceUrl',
+        '규칙 출처 링크',
+        type: PersonalFieldType.url,
+      ),
+    ],
     PersonalRecordKind.course => const [
       PersonalRecordField('term', '학기', required: true),
       PersonalRecordField('category', '이수구분', required: true),
@@ -133,7 +204,11 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
 ];
 
 String? personalRecordCrossError(Map<String, String> values) {
-  for (final pair in [('startedOn', 'endedOn'), ('earnedOn', 'expiresOn')]) {
+  for (final pair in [
+    ('startedOn', 'endedOn'),
+    ('earnedOn', 'expiresOn'),
+    ('effectiveFrom', 'effectiveTo'),
+  ]) {
     final start = DateTime.tryParse(values[pair.$1] ?? '');
     final end = DateTime.tryParse(values[pair.$2] ?? '');
     if (start != null && end != null && end.isBefore(start)) {

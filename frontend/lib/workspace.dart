@@ -151,7 +151,7 @@ class _WorkspaceState extends State<Workspace> {
       initialDay: _scheduleInitialDay,
     ),
     2 => CoursePage(showMockData: _showMockData),
-    3 => const GraduationPage(),
+    3 => GraduationPage(showMockData: _showMockData),
     4 => ActivityPage(showMockData: _showMockData),
     5 => ExperiencePage(showMockData: _showMockData),
     6 => CredentialPage(showMockData: _showMockData),
