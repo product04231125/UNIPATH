@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'app_shell/workspace_shell.dart';
+import 'shared/pending_ui_action.dart';
 import 'chat_window.dart' as chat_window;
 import 'features/assistant/assistant_conversation.dart';
 import 'features/assistant/assistant_panel.dart';
@@ -63,6 +64,7 @@ class _WorkspaceState extends State<Workspace> {
   final _assistantConversation = AssistantConversation();
   final _planningRepository = PlanningRepository();
   DateTime? _scheduleInitialDay;
+  PendingUiAction? _scheduleAddRequest;
   StreamSubscription<bool>? _detachedChatSubscription;
   StreamSubscription<bool>? _mainWindowMaximizeSubscription;
 
@@ -150,13 +152,20 @@ class _WorkspaceState extends State<Workspace> {
       onOpenPage: _selectPage,
       onOpenSettings: () => _selectPage(settingsPage - 1),
       onOpenSchedule: (day) => setState(() {
+        _scheduleAddRequest = null;
         _scheduleInitialDay = day;
+        _page = 1;
+      }),
+      onAddSchedule: () => setState(() {
+        _scheduleInitialDay = DateTime.now();
+        _scheduleAddRequest = PendingUiAction();
         _page = 1;
       }),
     ),
     1 => SchedulePage(
       repository: _planningRepository,
       initialDay: _scheduleInitialDay,
+      addRequest: _scheduleAddRequest,
     ),
     2 => CoursePage(showMockData: _showMockData),
     3 => GraduationPage(
@@ -177,6 +186,7 @@ class _WorkspaceState extends State<Workspace> {
   };
 
   void _selectPage(int value) => setState(() {
+    _scheduleAddRequest = null;
     if (_page != value) _graduationMinimumWidth = 0;
     _page = value;
   });

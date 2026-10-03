@@ -7,6 +7,8 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
 
 - `app.dart`: 로그인 목업과 작업 공간의 최상위 전환
 - `workspace.dart`: 선택 메뉴, 목업 데이터 표시, AI 도킹·분리 창 상태 조정
+- `shared/pending_ui_action.dart`: 메뉴 이동에 동반되는 일회성 UI 의도. 목적 화면은 필요한 상태가
+  준비된 뒤 소비한다. URL·저장소에 영속화하지 않으며 일반 탐색과 명시적 빠른 추가를 구분한다.
 - `app_shell/workspace_shell.dart`: 좌측 탐색, 반응형 본문, AI 도킹/오버레이 배치
   - 화면의 `minimumContentWidth`와 도킹 폭으로 메뉴를 먼저 접을지 결정한다.
     홈은 공통 주간표 최소 폭을 사용하고, 졸업요건은 탭·개인 작업 공간 전환에서

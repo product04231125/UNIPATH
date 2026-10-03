@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/shared/widgets/input_dialog.dart';
+import 'package:university_path_frontend/shared/pending_ui_action.dart';
 import 'package:university_path_frontend/shared/widgets/content_scroll_view.dart';
 import 'package:university_path_frontend/features/records/record_menu_page.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
@@ -21,6 +22,69 @@ Widget host(Widget child, {double scale = 1}) => MaterialApp(
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets(
+    'home add navigates and opens once while ordinary navigation does not',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        const UniversityPathApp(startAuthenticated: true),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SchedulePage), findsOneWidget);
+      expect(find.byType(InputDialog), findsOneWidget);
+      await tester.tap(find.text('취소'));
+      await tester.pumpAndSettle();
+      expect(find.byType(InputDialog), findsNothing);
+      await tester.tap(find.text('홈').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('일정').first);
+      await tester.pumpAndSettle();
+      expect(find.byType(InputDialog), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'schedule add intent waits for load recovery and is consumed once',
+    (tester) async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('university_path.personal_planning.v1', 'invalid');
+      final repo = PlanningRepository();
+      addTearDown(repo.dispose);
+      final request = PendingUiAction();
+      await tester.pumpWidget(
+        host(SchedulePage(repository: repo, addRequest: request)),
+      );
+      await repo.load();
+      await tester.pumpAndSettle();
+      expect(repo.loadFailed, isTrue);
+      expect(request.isPending, isTrue);
+      expect(find.byType(InputDialog), findsNothing);
+      await prefs.setString(
+        'university_path.personal_planning.v1',
+        '{"profile":{},"events":[]}',
+      );
+      await repo.load();
+      await tester.pumpAndSettle();
+      expect(find.byType(InputDialog), findsOneWidget);
+      expect(request.isPending, isFalse);
+      await repo.saveProfile(const PlanningProfile(school: '합성 학교'));
+      await tester.pumpAndSettle();
+      expect(find.byType(InputDialog), findsOneWidget);
+      await tester.tap(find.text('취소'));
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        host(SchedulePage(repository: repo, addRequest: request)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(InputDialog), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   for (final document in [false, true]) {
     testWidgets(

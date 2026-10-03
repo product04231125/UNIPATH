@@ -203,6 +203,7 @@ void main() {
             onOpenPage: (_) {},
             onOpenSettings: () {},
             onOpenSchedule: (_) {},
+            onAddSchedule: () {},
           ),
           'schedule' => SchedulePage(repository: repo),
           _ => SettingsPage(repository: repo),

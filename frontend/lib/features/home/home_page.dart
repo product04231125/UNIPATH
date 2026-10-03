@@ -14,11 +14,13 @@ class HomePage extends StatelessWidget {
     required this.onOpenPage,
     required this.onOpenSettings,
     required this.onOpenSchedule,
+    required this.onAddSchedule,
   });
   final PlanningRepository repository;
   final ValueChanged<int> onOpenPage;
   final VoidCallback onOpenSettings;
   final ValueChanged<DateTime> onOpenSchedule;
+  final VoidCallback onAddSchedule;
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -193,7 +195,7 @@ class HomePage extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               FilledButton.icon(
-                onPressed: () => onOpenSchedule(DateTime.now()),
+                onPressed: onAddSchedule,
                 icon: const Icon(Icons.add),
                 label: const Text('일정 추가'),
               ),

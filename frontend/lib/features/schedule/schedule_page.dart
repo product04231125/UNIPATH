@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../shared/widgets/equal_height_row.dart';
 import '../../shared/widgets/input_dialog.dart';
+import '../../shared/pending_ui_action.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
@@ -9,10 +10,16 @@ import '../../shared/widgets/page_header.dart';
 import '../planning/planning_dates.dart';
 
 class SchedulePage extends StatefulWidget {
-  const SchedulePage({super.key, required this.repository, this.initialDay});
+  const SchedulePage({
+    super.key,
+    required this.repository,
+    this.initialDay,
+    this.addRequest,
+  });
 
   final PlanningRepository repository;
   final DateTime? initialDay;
+  final PendingUiAction? addRequest;
 
   @override
   State<SchedulePage> createState() => _SchedulePageState();
@@ -21,6 +28,7 @@ class SchedulePage extends StatefulWidget {
 class _SchedulePageState extends State<SchedulePage> {
   late DateTime _month;
   late DateTime _selectedDay;
+  bool _autoAddScheduled = false;
 
   @override
   void initState() {
@@ -45,6 +53,20 @@ class _SchedulePageState extends State<SchedulePage> {
         );
       }
       final selectedEvents = _eventsForDay(_selectedDay);
+      final request = widget.addRequest;
+      if (!_autoAddScheduled && request?.isPending == true) {
+        _autoAddScheduled = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _autoAddScheduled = false;
+          if (!mounted ||
+              !identical(widget.addRequest, request) ||
+              widget.repository.isLoading ||
+              widget.repository.loadFailed) {
+            return;
+          }
+          if (request!.consume()) _editEvent();
+        });
+      }
       return LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
           padding: EdgeInsets.only(
