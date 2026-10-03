@@ -21,6 +21,50 @@ Widget host(Widget child, double scale) => MaterialApp(
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  testWidgets('card row remeasures when a child changes after layout', (
+    tester,
+  ) async {
+    final text = ValueNotifier('짧은 기록');
+    addTearDown(text.dispose);
+    await tester.pumpWidget(
+      host(
+        SingleChildScrollView(
+          child: EqualHeightRow(
+            children: [
+              Expanded(
+                child: SurfaceCard(
+                  child: ValueListenableBuilder<String>(
+                    valueListenable: text,
+                    builder: (context, value, _) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [Text(value)],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: SurfaceCard(child: Column(children: [Text('준비')])),
+              ),
+            ],
+          ),
+        ),
+        2,
+      ),
+    );
+    await tester.pumpAndSettle();
+    final cards = find.byType(SurfaceCard);
+    final before = tester.getSize(cards.first).height;
+    text.value = '추가된 긴 기록 ' * 50;
+    await tester.pumpAndSettle();
+    expect(tester.getSize(cards.first).height, greaterThan(before));
+    expect(
+      tester.getSize(cards.first).height,
+      tester.getSize(cards.last).height,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   for (final scale in [1.0, 2.0]) {
     for (final populated in [false, true]) {
       testWidgets('record cards align scale=$scale populated=$populated', (

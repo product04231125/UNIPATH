@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../../shared/widgets/input_dialog.dart';
+
 import 'package:flutter/services.dart';
 
 import '../../../shared/app_typography.dart';
@@ -51,9 +54,8 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
     try {
       await _repository.reloadSources();
       if (!mounted) return;
-      final saved = await showDialog<bool>(
+      final saved = await showInputDialog<bool>(
         context: context,
-        barrierDismissible: false,
         builder: (_) => PortfolioEditorDialog(
           repository: _repository,
           isDocument: widget.isDocument,

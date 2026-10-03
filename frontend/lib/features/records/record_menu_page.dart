@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:university_path_frontend/shared/app_typography.dart';
 
 import '../../shared/widgets/equal_height_row.dart';
+import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/surface_card.dart';
@@ -110,111 +111,105 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     final form = GlobalKey<FormState>();
     bool saving = false;
     String? error;
-    final route = DialogRoute<void>(
+    await showInputDialog<void>(
       context: context,
-      barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, updateDialog) => AlertDialog(
+        builder: (context, updateDialog) => InputDialog(
+          changes: Listenable.merge(controllers.values.toList()),
+          editing: record != null,
+          saving: saving,
+          hasContent: () =>
+              controllers.values.any((c) => c.text.trim().isNotEmpty),
           title: Text(record == null ? widget.addLabel : '개인 기록 수정'),
-          content: SizedBox(
-            width: 560,
-            child: SingleChildScrollView(
-              child: Form(
-                key: form,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text(
-                      '기기 로컬 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드·서버 전송은 하지 않습니다.',
-                    ),
-                    const SizedBox(height: 16),
-                    for (final field in fields)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: field.options.isEmpty
-                            ? TextFormField(
-                                key: ValueKey('record-field-${field.key}'),
-                                controller: controllers[field.key],
-                                enabled: !saving,
-                                maxLines: field.multiline ? 3 : 1,
-                                keyboardType:
-                                    field.type == PersonalFieldType.number
-                                    ? const TextInputType.numberWithOptions(
-                                        decimal: true,
-                                      )
-                                    : TextInputType.text,
-                                decoration: InputDecoration(
-                                  labelText:
-                                      '${field.label}${field.required ? ' *' : ' (선택)'}',
-                                ),
-                                validator: field.validate,
-                              )
-                            : FormField<String>(
-                                initialValue: controllers[field.key]!.text,
-                                validator: field.validate,
-                                builder: (state) => Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    IgnorePointer(
-                                      ignoring: saving,
-                                      child: AnchoredSelectField<String>(
-                                        key: ValueKey(
-                                          'record-select-${field.key}',
-                                        ),
-                                        value: controllers[field.key]!.text,
-                                        label: field.label,
-                                        options: [
-                                          const SelectOption('', '미선택'),
-                                          for (final option
-                                              in field.options.where(
-                                                (o) => o.isNotEmpty,
-                                              ))
-                                            SelectOption(
-                                              option,
-                                              field.optionLabels[option] ??
-                                                  option,
-                                            ),
-                                          if (controllers[field.key]!
-                                                  .text
-                                                  .isNotEmpty &&
-                                              !field.options.contains(
-                                                controllers[field.key]!.text,
-                                              ))
-                                            SelectOption(
-                                              controllers[field.key]!.text,
-                                              '연결 대상 없음 · 다시 선택하세요',
-                                            ),
-                                        ],
-                                        onChanged: (value) {
-                                          controllers[field.key]!.text = value;
-                                          state.didChange(value);
-                                        },
-                                      ),
-                                    ),
-                                    if (state.hasError)
-                                      Text(
-                                        state.errorText!,
-                                        style: TextStyle(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .error,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                      ),
-                    if (error != null)
-                      Text(
-                        error!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                  ],
+          content: Form(
+            key: form,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  '기기 로컬 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드·서버 전송은 하지 않습니다.',
                 ),
-              ),
+                const SizedBox(height: 16),
+                for (final field in fields)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: field.options.isEmpty
+                        ? TextFormField(
+                            key: ValueKey('record-field-${field.key}'),
+                            controller: controllers[field.key],
+                            enabled: !saving,
+                            maxLines: field.multiline ? 3 : 1,
+                            keyboardType: field.type == PersonalFieldType.number
+                                ? const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  )
+                                : TextInputType.text,
+                            decoration: InputDecoration(
+                              labelText:
+                                  '${field.label}${field.required ? ' *' : ' (선택)'}',
+                            ),
+                            validator: field.validate,
+                          )
+                        : FormField<String>(
+                            initialValue: controllers[field.key]!.text,
+                            validator: field.validate,
+                            builder: (state) => Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                IgnorePointer(
+                                  ignoring: saving,
+                                  child: AnchoredSelectField<String>(
+                                    key: ValueKey('record-select-${field.key}'),
+                                    value: controllers[field.key]!.text,
+                                    label: field.label,
+                                    options: [
+                                      const SelectOption('', '미선택'),
+                                      for (final option in field.options.where(
+                                        (o) => o.isNotEmpty,
+                                      ))
+                                        SelectOption(
+                                          option,
+                                          field.optionLabels[option] ?? option,
+                                        ),
+                                      if (controllers[field.key]!
+                                              .text
+                                              .isNotEmpty &&
+                                          !field.options.contains(
+                                            controllers[field.key]!.text,
+                                          ))
+                                        SelectOption(
+                                          controllers[field.key]!.text,
+                                          '연결 대상 없음 · 다시 선택하세요',
+                                        ),
+                                    ],
+                                    onChanged: (value) {
+                                      controllers[field.key]!.text = value;
+                                      state.didChange(value);
+                                    },
+                                  ),
+                                ),
+                                if (state.hasError)
+                                  Text(
+                                    state.errorText!,
+                                    style: TextStyle(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .error,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                  ),
+                if (error != null)
+                  Text(
+                    error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+              ],
             ),
           ),
           actions: [
@@ -275,8 +270,6 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         ),
       ),
     );
-    await Navigator.of(context).push(route);
-    await route.completed;
     for (final controller in controllers.values) {
       controller.dispose();
     }

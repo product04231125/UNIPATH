@@ -35,7 +35,13 @@ class _RenderEqualHeightRow extends RenderFlex {
     while (child != null) {
       final data = child.parentData! as FlexParentData;
       child.layout(
-        BoxConstraints.tightFor(width: child.size.width, height: size.height),
+        // Keep height unbounded above: content changes must invalidate this
+        // measured row, not become an independent tight-height layout boundary.
+        BoxConstraints(
+          minWidth: child.size.width,
+          maxWidth: child.size.width,
+          minHeight: size.height,
+        ),
         parentUsesSize: true,
       );
       child = data.nextSibling;
