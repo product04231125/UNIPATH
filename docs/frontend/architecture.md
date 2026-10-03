@@ -9,14 +9,14 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
 - `workspace.dart`: 선택 메뉴, 목업 데이터 표시, AI 도킹·분리 창 상태 조정
 - `app_shell/workspace_shell.dart`: 좌측 탐색, 반응형 본문, AI 도킹/오버레이 배치
   - 화면의 `minimumContentWidth`와 도킹 폭으로 메뉴를 먼저 접을지 결정한다.
-    홈·일정은 공통 주간표 최소 폭을 사용하고, 졸업요건은 탭·개인 작업 공간 전환에서
+    홈은 공통 주간표 최소 폭을 사용하고, 졸업요건은 탭·개인 작업 공간 전환에서
     `onMinimumWidthChanged`로 필요한 폭을 전달한다. 목업 표가 숨겨지면 요구 폭도 제외한다.
 - `shared/widgets/`: 카드·상태 배지처럼 도메인 상태가 없는 표현 위젯
 - `shared/app_typography.dart`: 역할별 공통 글자 크기·줄높이, 앱 테마 적용
 - `shared/widgets/anchored_select_field.dart`: 트리거 기준 배치·키보드 포커스를 공유하는 선택 제어
 - `shared/external_links.dart`, `widgets/external_link_button.dart`: 브라우저 URL 검증·플랫폼 열기와
   이동 확인·실패·복사 UI. 저장 입력도 같은 URL 검증을 사용한다.
-- `features/planning/planning_dates.dart`, `weekly_schedule.dart`: 홈·일정의 공통 날짜 범위·7일 표
+- `features/planning/planning_dates.dart`, `weekly_schedule.dart`: 홈·일정의 공통 날짜 계산과 홈 7일 표
 - `chat_window*.dart`: 플랫폼별 AI 분리 창 어댑터
 
 ## 기능 소유권
@@ -26,7 +26,7 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
 | `features/auth` | 로그인·회원가입 목업 |
 | `features/home` | 개인 계획 기반 이번 주 일정·준비 목록·우선 링크 |
 | `features/planning` | 기기 로컬 개인 계획 프로필·일정 repository |
-| `features/schedule` | 월간 개인 일정과 이번 주 목록, 일정 CRUD |
+| `features/schedule` | 월간 개인 일정과 선택 날짜 목록, 일정 CRUD |
 | `features/graduation` | 졸업요건 fixture, 개인 교육과정·과목·규칙 입력과 로컬 관계 검증 |
 | `features/records/course` | 수강 관리와 수강 직접 입력 상태 |
 | `features/records/activity` | 활동 입력 상태 |

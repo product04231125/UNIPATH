@@ -9,9 +9,95 @@ import 'package:university_path_frontend/features/planning/planning_dates.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
 import 'package:university_path_frontend/features/planning/weekly_schedule.dart';
 import 'package:university_path_frontend/app_shell/workspace_shell.dart';
+import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  for (final size in [const Size(480, 520), const Size(1440, 900)]) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets(
+        'monthly schedule has no duplicate week at $size scale=$scale',
+        (tester) async {
+          await tester.binding.setSurfaceSize(size);
+          addTearDown(() => tester.binding.setSurfaceSize(null));
+          final repository = PlanningRepository();
+          addTearDown(repository.dispose);
+          await repository.load();
+          await repository.saveProfile(
+            const PlanningProfile(weekStartsOn: WeekStartDay.tuesday),
+          );
+          final initial = DateTime(2026, 10, 6);
+          final target = initial.add(const Duration(days: 1));
+          await repository.saveEvent(
+            PlanningEvent(
+              id: 'month-only',
+              title: '월간 달력 개인 일정',
+              start: target.add(const Duration(hours: 9)),
+              end: target.add(const Duration(hours: 10)),
+              category: PlanningEventCategory.personal,
+            ),
+          );
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: universityPathTheme(),
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: TextScaler.linear(scale)),
+                child: child!,
+              ),
+              home: Scaffold(
+                body: SchedulePage(repository: repository, initialDay: initial),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(find.byType(WeeklySchedule), findsNothing);
+          expect(find.text('이번 주 일정'), findsNothing);
+          expect(find.text('2026년 10월'), findsOneWidget);
+          expect(find.text('10월 6일 일정'), findsOneWidget);
+          expect(find.byType(GridView), findsOneWidget);
+          final weekdays = ['화', '수', '목', '금', '토', '일', '월'];
+          for (var i = 1; i < weekdays.length; i++) {
+            expect(
+              tester.getTopLeft(find.text(weekdays[i])).dx,
+              greaterThan(tester.getTopLeft(find.text(weekdays[i - 1])).dx),
+            );
+          }
+          final targetCell = find.byWidgetPredicate(
+            (widget) =>
+                widget is Semantics &&
+                widget.properties.label == '10월 7일, 일정 1개',
+          );
+          await tester.ensureVisible(targetCell);
+          await tester.pumpAndSettle();
+          await tester.tap(targetCell);
+          await tester.pumpAndSettle();
+          expect(find.text('10월 7일 일정'), findsOneWidget);
+          final title = find.text('월간 달력 개인 일정');
+          await tester.ensureVisible(title);
+          await tester.pumpAndSettle();
+          expect(title.hitTestable(), findsOneWidget);
+          final edit = find.byTooltip('월간 달력 개인 일정 수정');
+          await tester.ensureVisible(edit);
+          await tester.pumpAndSettle();
+          await tester.tap(edit);
+          await tester.pumpAndSettle();
+          expect(find.text('일정 수정'), findsOneWidget);
+          await tester.enterText(find.byType(TextFormField).first, '수정한 월간 일정');
+          await tester.tap(find.text('저장'));
+          await tester.pumpAndSettle();
+          expect(repository.events.single.title, '수정한 월간 일정');
+          expect(
+            repository.events.single.start,
+            target.add(const Duration(hours: 9)),
+          );
+          expect(find.text('수정한 월간 일정'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
 
   for (final populated in [false, true]) {
     for (final scale in [1.0, 2.0]) {

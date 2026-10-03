@@ -116,7 +116,7 @@ class _WorkspaceState extends State<Workspace> {
       navigationItems: navigationItems,
       onPageSelected: _selectPage,
       minimumContentWidth: switch (_page) {
-        0 || 1 => WeeklySchedule.minimumWidth,
+        0 => WeeklySchedule.minimumWidth,
         3 => _showMockData ? _graduationMinimumWidth : 0,
         _ => 0,
       },

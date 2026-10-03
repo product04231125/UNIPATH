@@ -4,7 +4,6 @@ import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../planning/planning_dates.dart';
-import '../planning/weekly_schedule.dart';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key, required this.repository, this.initialDay});
@@ -86,15 +85,6 @@ class _SchedulePageState extends State<SchedulePage> {
                   const SizedBox(height: 18),
                   _dayList(selectedEvents),
                 ],
-                const SizedBox(height: 18),
-                WeeklySchedule(
-                  events: widget.repository.events,
-                  startsOn: widget.repository.profile.weekStartsOn,
-                  onSelectDay: (day) => setState(() {
-                    _selectedDay = day;
-                    _month = DateTime(day.year, day.month);
-                  }),
-                ),
               ],
             ),
           ),
