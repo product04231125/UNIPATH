@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../fixtures/activity_fixture.dart';
 import '../record_menu_page.dart';
+import '../personal_record_repository.dart';
 
 class ActivityPage extends StatelessWidget {
   const ActivityPage({super.key, required this.showMockData});
   final bool showMockData;
   @override
   Widget build(BuildContext context) => RecordMenuPage(
+    key: const ValueKey(PersonalRecordKind.activity),
+    kind: PersonalRecordKind.activity,
     kicker: 'ACTIVITY RECORDS',
     title: '활동',
     description: '교내외 활동과 봉사 내역을 한곳에 기록합니다.',

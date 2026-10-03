@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../fixtures/course_fixture.dart';
 import '../record_menu_page.dart';
+import '../personal_record_repository.dart';
 
 class CoursePage extends StatelessWidget {
   const CoursePage({super.key, required this.showMockData});
   final bool showMockData;
   @override
   Widget build(BuildContext context) => RecordMenuPage(
+    key: const ValueKey(PersonalRecordKind.course),
+    kind: PersonalRecordKind.course,
     kicker: 'ACADEMIC RECORDS',
     title: '수강 관리',
     description: '학교 수강 내역을 기준으로 이번 학기 계획과 이수 기록을 정리합니다.',

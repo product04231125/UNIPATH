@@ -37,7 +37,10 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
   `features/graduation/graduation_mock_fixture.dart`에 둔다.
 - `planning`의 프로필·일정은 `SharedPreferences`에 저장하는 기기 로컬 개인 계획이다. 학교 공식
   학사정보·일정·졸업 판정 데이터가 아니며, API 계약이 정해지면 repository를 교체한다.
-- `목업용` 스위치는 예시 행만 표시·숨김 처리한다. 이번 실행에서 직접 추가한 기록은 유지한다.
+- `features/records/personal_record_repository.dart`는 메뉴별 v1 키의 기기 로컬 개인 기록을 소유한다.
+  `personal_record_fields.dart`는 메뉴별 로컬 입력 스키마·검증이며 서버 DTO가 아니다.
+  `RecordMenuPage`는 해당 메뉴 저장소를 읽고 구조화 입력·수정·삭제를 제공한다.
+- `목업용` 스위치는 예시 행만 표시·숨김 처리한다. 개인 기록은 메뉴 전환·재시작 뒤에도 유지한다.
 - OpenAPI 계약이 확정되면 feature별 fixture와 로컬 상태를 repository/adapter로 교체한다.
   클라이언트는 OpenAPI에 없는 필드·상태·판정을 제품 계약으로 만들지 않는다.
 

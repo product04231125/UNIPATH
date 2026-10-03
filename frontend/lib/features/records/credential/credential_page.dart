@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../fixtures/credential_fixture.dart';
 import '../record_menu_page.dart';
+import '../personal_record_repository.dart';
 
 class CredentialPage extends StatelessWidget {
   const CredentialPage({super.key, required this.showMockData});
@@ -10,6 +11,8 @@ class CredentialPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => RecordMenuPage(
+    key: const ValueKey(PersonalRecordKind.credential),
+    kind: PersonalRecordKind.credential,
     kicker: 'CERTIFICATE RECORDS',
     title: '자격',
     description: '자격증·어학·교육 이수 내역을 관리합니다.',

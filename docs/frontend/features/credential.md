@@ -8,6 +8,9 @@
 
 - `frontend/lib/features/records/credential/credential_page.dart`가 화면·입력 상태를 소유한다.
 - 예시 행은 `frontend/lib/features/records/fixtures/credential_fixture.dart`에 있다.
+- 자격명·발급 기관·점수/등급·취득/만료일·보유 상태·증빙 링크를 분리 입력한다.
+  기기 로컬 개인 기록 CRUD를 제공하며 자격증 번호는 수집하지 않는다.
+  상세 경계는 [ERD 대조](../manual-input-boundaries.md)를 따른다.
 
 ## 목업 경계
 

@@ -4,6 +4,9 @@ import 'package:university_path_frontend/shared/app_typography.dart';
 import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/surface_card.dart';
 import 'fixtures/record_mock_entry.dart';
+import 'personal_record_repository.dart';
+import 'personal_record_fields.dart';
+import '../../shared/widgets/anchored_select_field.dart';
 
 /// Temporary shared presentation only. Each feature entry owns its own
 /// configuration, fixture and mounted local input state.
@@ -11,6 +14,7 @@ class RecordMenuPage extends StatefulWidget {
   const RecordMenuPage({
     super.key,
     required this.kicker,
+    required this.kind,
     required this.title,
     required this.description,
     required this.notice,
@@ -23,6 +27,7 @@ class RecordMenuPage extends StatefulWidget {
     required this.showMockData,
   });
 
+  final PersonalRecordKind kind;
   final String kicker;
   final String title;
   final String description;
@@ -40,97 +45,258 @@ class RecordMenuPage extends StatefulWidget {
 }
 
 class _RecordMenuPageState extends State<RecordMenuPage> {
-  final _manualEntries = <RecordMockEntry>[];
+  late final PersonalRecordRepository _repository;
+  bool _loading = true;
+  bool _loadFailed = false;
+  String _term = '';
 
-  Future<void> _showForm() async {
-    final title = TextEditingController();
-    final detail = TextEditingController();
-    var showErrors = false;
-    await showDialog<void>(
+  @override
+  void initState() {
+    super.initState();
+    _repository = PersonalRecordRepository(widget.kind);
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _loadFailed = false;
+      });
+    }
+    try {
+      await _repository.load();
+    } catch (_) {
+      if (mounted) setState(() => _loadFailed = true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _showForm([PersonalRecord? record]) async {
+    final fields = personalRecordFields(widget.kind);
+    final controllers = {
+      for (final field in fields)
+        field.key: TextEditingController(text: record?.value(field.key) ?? ''),
+    };
+    final form = GlobalKey<FormState>();
+    bool saving = false;
+    String? error;
+    final route = DialogRoute<void>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(widget.addLabel),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
+        builder: (context, updateDialog) => AlertDialog(
+          title: Text(record == null ? widget.addLabel : '개인 기록 수정'),
+          content: SizedBox(
+            width: 560,
             child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${widget.title} 메뉴에 내 기록을 추가합니다. 학교 공식 기준이나 졸업 판정은 바꾸지 않습니다.',
-                    style: const TextStyle(
-                      fontSize: AppTypography.body,
-                      height: 1.45,
+              child: Form(
+                key: form,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      '기기 로컬 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드·서버 전송은 하지 않습니다.',
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  TextField(
-                    controller: title,
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      labelText: '${widget.title} 이름',
-                      errorText: showErrors && title.text.trim().isEmpty
-                          ? '이름을 입력해 주세요.'
-                          : null,
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: detail,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: widget.detailLabel,
-                      errorText: showErrors && detail.text.trim().isEmpty
-                          ? '${widget.detailLabel} 정보를 입력해 주세요.'
-                          : null,
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    for (final field in fields)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: field.options.isEmpty
+                            ? TextFormField(
+                                key: ValueKey('record-field-${field.key}'),
+                                controller: controllers[field.key],
+                                enabled: !saving,
+                                maxLines: field.multiline ? 3 : 1,
+                                keyboardType:
+                                    field.type == PersonalFieldType.number
+                                    ? const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      )
+                                    : TextInputType.text,
+                                decoration: InputDecoration(
+                                  labelText:
+                                      '${field.label}${field.required ? ' *' : ' (선택)'}',
+                                ),
+                                validator: field.validate,
+                              )
+                            : FormField<String>(
+                                initialValue: controllers[field.key]!.text,
+                                validator: field.validate,
+                                builder: (state) => Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    IgnorePointer(
+                                      ignoring: saving,
+                                      child: AnchoredSelectField<String>(
+                                        value: controllers[field.key]!.text,
+                                        label: field.label,
+                                        options: [
+                                          const SelectOption('', '미선택'),
+                                          for (final option in field.options)
+                                            SelectOption(option, option),
+                                        ],
+                                        onChanged: (value) {
+                                          controllers[field.key]!.text = value;
+                                          state.didChange(value);
+                                        },
+                                      ),
+                                    ),
+                                    if (state.hasError)
+                                      Text(
+                                        state.errorText!,
+                                        style: TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .error,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                      ),
+                    if (error != null)
+                      Text(
+                        error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
+              onPressed: saving ? null : () => Navigator.pop(dialogContext),
               child: const Text('취소'),
             ),
             FilledButton(
-              onPressed: () {
-                if (title.text.trim().isEmpty || detail.text.trim().isEmpty) {
-                  setDialogState(() => showErrors = true);
-                  return;
-                }
-                setState(
-                  () => _manualEntries.add(
-                    RecordMockEntry(
-                      title: title.text.trim(),
-                      detail: detail.text.trim(),
-                      status: '직접 입력',
-                    ),
-                  ),
-                );
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('내 기록에 저장'),
+              onPressed: saving
+                  ? null
+                  : () async {
+                      if (!form.currentState!.validate()) return;
+                      final values = {
+                        for (final field in fields)
+                          field.key: controllers[field.key]!.text.trim(),
+                      };
+                      final crossError = personalRecordCrossError(values);
+                      if (crossError != null) {
+                        updateDialog(() => error = crossError);
+                        return;
+                      }
+                      updateDialog(() {
+                        saving = true;
+                        error = null;
+                      });
+                      try {
+                        await _repository.save(
+                          PersonalRecord(
+                            id: record?.id ?? PersonalRecord.newId(),
+                            values: values,
+                          ),
+                        );
+                        if (mounted) setState(() {});
+                        if (dialogContext.mounted) Navigator.pop(dialogContext);
+                      } catch (_) {
+                        if (dialogContext.mounted) {
+                          updateDialog(() {
+                            saving = false;
+                            error = '기기에 저장하지 못했습니다. 입력을 유지했으니 다시 시도하세요.';
+                          });
+                        }
+                      }
+                    },
+              child: Text(saving ? '저장 중…' : '내 기록에 저장'),
             ),
           ],
         ),
       ),
     );
-    await Future<void>.delayed(kThemeAnimationDuration);
-    title.dispose();
-    detail.dispose();
+    await Navigator.of(context).push(route);
+    await route.completed;
+    for (final controller in controllers.values) {
+      controller.dispose();
+    }
   }
+
+  Future<void> _delete(PersonalRecord record) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('개인 기록 삭제'),
+        content: Text('${record.value('title')} 기록을 이 기기에서 삭제할까요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _repository.delete(record.id);
+      if (mounted) setState(() {});
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('삭제하지 못했습니다. 기록은 유지됩니다.')));
+      }
+    }
+  }
+
+  Widget _personalEntry(PersonalRecord record) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _entry(
+        RecordMockEntry(
+          title: record.value('title'),
+          detail: personalRecordFields(widget.kind)
+              .where((f) => f.key != 'title' && record.value(f.key).isNotEmpty)
+              .map((f) => '${f.label}: ${record.value(f.key)}')
+              .join(' · '),
+          status: '개인 기록',
+        ),
+      ),
+      Wrap(
+        children: [
+          TextButton(
+            onPressed: () => _showForm(record),
+            child: const Text('수정'),
+          ),
+          TextButton(onPressed: () => _delete(record), child: const Text('삭제')),
+        ],
+      ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
-    final entries = [
-      if (widget.showMockData) ...widget.fixture,
-      ..._manualEntries,
-    ];
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loadFailed) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('개인 기록을 읽지 못했습니다. 기존 저장 내용은 덮어쓰지 않습니다.'),
+            TextButton(onPressed: _load, child: const Text('다시 시도')),
+          ],
+        ),
+      );
+    }
+    final personal = _repository.records
+        .where((r) => _term.isEmpty || r.value('term') == _term)
+        .toList();
+    final entries = [if (widget.showMockData) ...widget.fixture];
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,7 +369,32 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                       label: Text(widget.addLabel),
                     ),
                     const SizedBox(height: 10),
+                    if (widget.kind == PersonalRecordKind.course) ...[
+                      AnchoredSelectField<String>(
+                        value: _term,
+                        label: '학기 필터',
+                        options: [
+                          const SelectOption('', '전체 학기'),
+                          for (final term
+                              in _repository.records
+                                  .map((r) => r.value('term'))
+                                  .toSet())
+                            SelectOption(term, term),
+                        ],
+                        onChanged: (value) => setState(() => _term = value),
+                      ),
+                      Text(
+                        '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점 · 공식 이수학점 아님',
+                      ),
+                    ],
+                    if (widget.kind == PersonalRecordKind.activity)
+                      Text(
+                        '사용자가 승인됨으로 기록한 봉사 시간 합계 ${personal.where((r) => r.value('approval') == 'approved').fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('approvedHours')) ?? 0))}시간 · 학교 검증 아님',
+                      ),
+                    if (entries.isEmpty && personal.isEmpty)
+                      const Text('개인 기록이 없습니다. 직접 입력해 주세요.'),
                     for (final entry in entries) _entry(entry),
+                    for (final record in personal) _personalEntry(record),
                   ],
                 ),
               );

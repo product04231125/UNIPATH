@@ -9,6 +9,9 @@
 
 - `frontend/lib/features/records/activity/activity_page.dart`가 화면·입력 상태를 소유한다.
 - 예시 행은 `frontend/lib/features/records/fixtures/activity_fixture.dart`에 있다.
+- 기관·기간·역할·직접 입력 봉사 시간·사용자가 확인한 승인 시간/상태/확인일을 분리 입력한다.
+  개인 기록 CRUD와 기기 로컬 저장, 사용자가 승인됨으로 기록한 봉사 시간 합계를 제공한다.
+  상세 경계는 [ERD 대조](../manual-input-boundaries.md)를 따른다.
 
 ## 목업 경계
 

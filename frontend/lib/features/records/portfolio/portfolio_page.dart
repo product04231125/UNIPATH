@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../fixtures/portfolio_fixture.dart';
 import '../record_menu_page.dart';
+import '../personal_record_repository.dart';
 
 class PortfolioPage extends StatelessWidget {
   const PortfolioPage({super.key, required this.showMockData});
@@ -10,6 +11,8 @@ class PortfolioPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => RecordMenuPage(
+    key: const ValueKey(PersonalRecordKind.portfolio),
+    kind: PersonalRecordKind.portfolio,
     kicker: 'PORTFOLIO & OUTCOMES',
     title: '포트폴리오·성과',
     description: '프로젝트, 논문, 수상과 산출물을 포트폴리오로 구성합니다.',

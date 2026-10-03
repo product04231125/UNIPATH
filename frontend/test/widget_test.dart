@@ -198,8 +198,16 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('수강 과목 직접 입력'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).at(0), '운영체제');
-    await tester.enterText(find.byType(TextField).at(1), '전공선택 · 3학점');
+    for (final entry in {
+      'title': '운영체제',
+      'term': '2026-2',
+      'category': '전공선택',
+      'credits': '3',
+    }.entries) {
+      final field = find.byKey(ValueKey('record-field-${entry.key}'));
+      await tester.ensureVisible(field);
+      await tester.enterText(field, entry.value);
+    }
     await tester.tap(find.text('내 기록에 저장'));
     await tester.pumpAndSettle();
 

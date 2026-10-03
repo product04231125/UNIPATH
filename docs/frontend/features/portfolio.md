@@ -9,6 +9,8 @@
 
 - `frontend/lib/features/records/portfolio/portfolio_page.dart`가 화면·입력 상태를 소유한다.
 - 예시 행은 `frontend/lib/features/records/fixtures/portfolio_fixture.dart`에 있다.
+- 성과 종류·기간·나의 역할·결과·공개 가능한 링크를 분리 입력하고 기기 로컬 CRUD를 제공한다.
+  링크 입력은 게시·파일 업로드가 아니다. [ERD 대조](../manual-input-boundaries.md)를 따른다.
 
 ## 목업 경계
 
