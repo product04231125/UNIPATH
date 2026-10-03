@@ -7,6 +7,7 @@ import 'package:url_launcher_platform_interface/link.dart';
 import 'package:university_path_frontend/shared/external_links.dart';
 import 'package:university_path_frontend/shared/widgets/external_link_button.dart';
 import 'package:university_path_frontend/features/records/activity/activity_page.dart';
+import 'package:university_path_frontend/features/records/credential/credential_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_page.dart';
 import 'package:university_path_frontend/features/records/personal_record_fields.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
@@ -250,6 +251,68 @@ void main() {
       expect(find.text('합성 성과'), findsOneWidget);
     },
   );
+
+  for (final size in [const Size(1440, 900), const Size(480, 520)]) {
+    testWidgets(
+      'Q-Net requires confirmation without changing credentials at $size',
+      (tester) async {
+        await tester.binding.setSurfaceSize(size);
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final previous = UrlLauncherPlatform.instance;
+        final launcher = TestLauncher();
+        UrlLauncherPlatform.instance = launcher;
+        addTearDown(() => UrlLauncherPlatform.instance = previous);
+        final repository = PersonalRecordRepository(
+          PersonalRecordKind.credential,
+        );
+        await repository.load();
+        await repository.save(
+          PersonalRecord(
+            id: 'synthetic-credential',
+            values: {'title': '합성 자격', 'status': '직접 기록'},
+          ),
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: TextScaler.linear(size.width == 480 ? 2 : 1),
+              ),
+              child: child!,
+            ),
+            home: const Scaffold(body: CredentialPage(showMockData: false)),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final button = find.text('Q-Net에서 확인 · 외부 열기');
+        await tester.ensureVisible(button);
+        await tester.pumpAndSettle();
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+        expect(launcher.url, isNull);
+        expect(find.text('https://www.q-net.or.kr/'), findsOneWidget);
+        expect(
+          find.textContaining('자동 조회나 자격 취득·보유 내역 변경은 하지 않습니다.'),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('취소'));
+        await tester.pumpAndSettle();
+        expect(launcher.url, isNull);
+        await tester.ensureVisible(button);
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+        expect(openButton().hitTestable(), findsOneWidget);
+        await tester.tap(openButton());
+        await tester.pumpAndSettle();
+        expect(launcher.url, 'https://www.q-net.or.kr/');
+        expect(launcher.options!.mode, PreferredLaunchMode.externalApplication);
+        final reload = PersonalRecordRepository(PersonalRecordKind.credential);
+        await reload.load();
+        expect(reload.records.single.values, repository.records.single.values);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   testWidgets('long link dialog fits a narrow enlarged window', (tester) async {
     await tester.binding.setSurfaceSize(const Size(480, 520));
