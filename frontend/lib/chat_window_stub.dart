@@ -1,4 +1,5 @@
 Future<bool> isDetachedChatWindow() async => false;
+Future<void> closeDetachedChatWindow() async {}
 
 Future<void> initializeDetachedChatWindow() async {}
 

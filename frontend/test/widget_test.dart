@@ -1,4 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:university_path_frontend/features/assistant/assistant_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
@@ -116,9 +121,33 @@ void main() {
   testWidgets('opens and sends a message through the assistant panel', (
     tester,
   ) async {
+    final semantics = tester.ensureSemantics();
     await tester.binding.setSurfaceSize(const Size(1440, 900));
-    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+    await tester.pumpWidget(
+      UniversityPathApp(
+        startAuthenticated: true,
+        assistantFactory: () => AssistantApi(
+          client: MockClient((request) async {
+            expect(request.url.path, '/api/v1/assistant/queries');
+            expect(jsonDecode(request.body)['question'], '졸업 요건을 확인해줘');
+            return http.Response(
+              jsonEncode({
+                'query_id': '280b7c97-4827-4b7b-baf8-11359d316b99',
+                'status': 'needs_user_input',
+                'reason': 'school_context_required',
+                'answer': null,
+                'citations': [],
+                'missing_fields': ['institution', 'department'],
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }),
+        ),
+      ),
+    );
 
+    expect(find.bySemanticsLabel('AI 도우미 열기'), findsOneWidget);
     await tester.tap(find.byIcon(Icons.chat_bubble_outline));
     await tester.pumpAndSettle();
     expect(find.text('AI 도우미'), findsOneWidget);
@@ -128,7 +157,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('나: 졸업 요건을 확인해줘'), findsOneWidget);
-    expect(find.textContaining('문서 근거 답변'), findsOneWidget);
+    expect(find.text('추가 확인 필요'), findsOneWidget);
+    expect(find.text('필요한 정보: 학교, 학과'), findsOneWidget);
+    semantics.dispose();
     await tester.binding.setSurfaceSize(null);
   });
 

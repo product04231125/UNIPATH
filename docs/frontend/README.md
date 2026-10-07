@@ -30,6 +30,6 @@ fixture 또는 로컬 상태이며, 제품 계약이나 학교 공식 데이터�
 | 경험 | [experience](features/experience.md) | 기기 로컬 개인 경험 CRUD |
 | 자격 | [credential](features/credential.md) | 기기 로컬 개인 자격 CRUD |
 | 포트폴리오·성과 | [portfolio](features/portfolio.md) | 로컬 성과 CRUD·구성/순서/사용 의도·지원 문서 초안 |
-| AI 도우미 | [assistant](features/assistant.md) | 로컬 대화·도킹/분리 창 목업 |
+| AI 도우미 | [assistant](features/assistant.md) | 학교 질의 API·상태/인용 표시·창별 메모리 대화 |
 | 설정 | [settings](features/settings.md) | 학업과 계획 로컬 설정 |
 | 외부 링크 | [external-links](features/external-links.md) | 1365·Q-Net·개인 증빙 URL 확인·열기·복사 |

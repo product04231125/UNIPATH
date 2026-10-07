@@ -7,6 +7,7 @@ import 'shared/pending_ui_action.dart';
 import 'features/assistant/assistant_window_host.dart';
 import 'features/settings/chat_preferences.dart';
 import 'features/assistant/assistant_conversation.dart';
+import 'features/assistant/assistant_api.dart';
 import 'features/assistant/assistant_panel.dart';
 import 'features/graduation/graduation_page.dart';
 import 'features/home/home_page.dart';
@@ -30,6 +31,7 @@ class Workspace extends StatefulWidget {
     this.chatPreferences,
     this.selectedPage,
     this.onPageChanged,
+    this.assistantFactory,
   });
 
   final VoidCallback onSignedOut;
@@ -37,6 +39,7 @@ class Workspace extends StatefulWidget {
   final ChatPreferences? chatPreferences;
   final int? selectedPage;
   final ValueChanged<int>? onPageChanged;
+  final AssistantGateway Function()? assistantFactory;
 
   @override
   State<Workspace> createState() => _WorkspaceState();
@@ -76,7 +79,9 @@ class _WorkspaceState extends State<Workspace> {
   var _chatWidth = 360.0;
   double _graduationMinimumWidth = 0;
   final _graduationPageKey = GlobalKey();
-  final _assistantConversation = AssistantConversation();
+  late final _assistantConversation = AssistantConversation(
+    api: widget.assistantFactory?.call(),
+  );
   final _planningRepository = PlanningRepository();
   DateTime? _scheduleInitialDay;
   PendingUiAction? _scheduleAddRequest;
@@ -177,6 +182,18 @@ class _WorkspaceState extends State<Workspace> {
           _buildPage(navigationItems.length, layout),
       assistantBuilder: (context, width) => AssistantPanel(
         conversation: _assistantConversation,
+        suggestContext: () {
+          final profile = _planningRepository.profile;
+          return SchoolQueryContext(
+            institution: profile.school.trim().isEmpty
+                ? null
+                : profile.school.trim(),
+            department: profile.department.trim().isEmpty
+                ? null
+                : profile.department.trim(),
+            admissionYear: profile.admissionYear,
+          );
+        },
         onClose: _closeChat,
         onDetach: widget.windowHost.supportsDetached && !_mainWindowMaximized
             ? _openDetachedChat

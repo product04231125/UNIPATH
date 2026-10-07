@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'features/auth/login_page.dart';
+import 'features/assistant/assistant_api.dart';
 import 'workspace.dart';
 
 class AppLocation {
@@ -42,7 +43,8 @@ class AppLocationParser extends RouteInformationParser<AppLocation> {
 /// Navigation only. Authentication remains the existing in-memory mock.
 class AppNavigation extends RouterDelegate<AppLocation>
     with ChangeNotifier, PopNavigatorRouterDelegateMixin<AppLocation> {
-  AppNavigation({required this.authenticated});
+  AppNavigation({required this.authenticated, this.assistantFactory});
+  final AssistantGateway Function()? assistantFactory;
 
   bool authenticated;
   AppLocation _location = const AppLocation('/');
@@ -101,6 +103,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
     } else {
       key = 'workspace';
       page = Workspace(
+        assistantFactory: assistantFactory,
         selectedPage: menu!,
         onPageChanged: (value) => _select(context, value),
         onSignedOut: () => _signedOut(context),

@@ -171,13 +171,14 @@ class WorkspaceShell extends StatelessWidget {
           Positioned(
             right: 18,
             bottom: 18,
-            child: Tooltip(
-              message: assistantTooltip,
-              child: FloatingActionButton(
-                onPressed: onOpenAssistant,
-                backgroundColor: const Color(0xff193f59),
-                foregroundColor: Colors.white,
-                child: const Icon(Icons.chat_bubble_outline),
+            child: FloatingActionButton(
+              tooltip: assistantTooltip,
+              onPressed: onOpenAssistant,
+              backgroundColor: const Color(0xff193f59),
+              foregroundColor: Colors.white,
+              child: Icon(
+                Icons.chat_bubble_outline,
+                semanticLabel: assistantTooltip,
               ),
             ),
           ),

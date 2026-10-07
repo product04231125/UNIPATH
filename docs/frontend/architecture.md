@@ -1,7 +1,8 @@
 # Flutter 프론트엔드 구조
 
-`frontend/lib`은 Flutter Web과 Windows에서 같은 화면 코드를 사용한다. API 계약이 아직 없으므로
-fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 서버 모델이 아니다.
+`frontend/lib`은 Flutter Web과 Windows에서 같은 화면 코드를 사용한다. 학교 질의는
+`POST /api/v1/assistant/queries`를 호출한다. 다른 도메인의 fixture와 기기 로컬 상태는
+실제 서버 모델이 아니며 인증·기록 CRUD·졸업 판정 API는 연결하지 않았다.
 
 ## 진입과 공통 영역
 
@@ -54,10 +55,18 @@ fixture와 로컬 상태는 화면 구조 검증용 임시 구현이며 실제 �
 | `features/records/experience` | 경험 입력 상태 |
 | `features/records/credential` | 자격 입력 상태 |
 | `features/records/portfolio` | 성과 원본, 포트폴리오 구성·지원 문서의 독립 로컬 초안 |
-| `features/assistant` | 도킹 AI 패널, 목업 대화, 분리 창 본문 |
+| `features/assistant` | 학교 질의 HTTP 어댑터·응답 DTO, 창별 대화 상태, 도킹/분리 창의 공통 응답 UI |
 | `features/settings` | 설정 진입 화면 |
 
 ## 임시 데이터와 API 전환
+
+- `assistant_api.dart`는 Web/Windows 공통 `http.Client`와 명시적 요청·응답 모델을 사용한다.
+  `API_BASE_URL`은 빌드 환경에서 주입한다. `AssistantGateway`는 테스트 주입 경계다.
+- `AssistantConversation`은 요청 중복 차단, 늦은 응답 폐기, 입력 보존과 같은 항목의 재시도를
+  담당한다. 서버에는 질문과 사용자가 확인한 학교 문맥만 보내며 로컬 예시·개인 기록·로그인
+  입력을 보내지 않는다. 도킹과 분리 창은 같은 API를 사용하지만 대화 이력은 공유하지 않는다.
+- 질의 문맥은 창별 메모리 값이다. 메인 창의 질의 정보 폼은 저장된 학업 프로필을 초깃값으로
+  제안할 수 있으나 사용자가 `질의에 사용`을 눌러야 전송 문맥에 반영한다.
 
 - 기록 예시 행은 `features/records/fixtures/`, 졸업요건 표 행은
   `features/graduation/graduation_mock_fixture.dart`에 둔다.

@@ -68,7 +68,9 @@ uv run --frozen uvicorn app.main:app --host 127.0.0.1 --port 8011 --reload --no-
 `db:5432`로 덮어쓰므로 호스트 포트와 독립적으로 동작한다.
 Flutter Web은 예를 들어 `flutter run -d chrome --web-port 3000`으로 고정 포트를
 사용한다. 다른 포트를 쓰면 `.env`의 `CORS_ORIGINS` JSON 배열도 갱신한다.
-프론트엔드는 현재 목업이며 실제 API 연동은 다음 작업이다.
+프론트엔드 학교 질의는 백엔드 PR #8의 `POST /api/v1/assistant/queries`와 연결한다.
+인증과 개인 기록·졸업 판정 화면은 아직 서버와 연결하지 않았다. Web 실행 주소는
+`http://localhost:3000`, 빌드 설정 `API_BASE_URL`은 실제 API 주소에 맞춘다.
 
 ## 검증과 마이그레이션
 

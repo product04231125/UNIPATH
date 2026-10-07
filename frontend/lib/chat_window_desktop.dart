@@ -72,6 +72,8 @@ Future<bool> isDetachedChatWindow() async {
   return _DetachedChatWindowConfig.matches(controller.arguments);
 }
 
+Future<void> closeDetachedChatWindow() => windowManager.close();
+
 Future<bool> hasDetachedChatWindow() async {
   final windows = await WindowController.getAll();
   return windows.any(
