@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'backend/**'
+      - 'docs/sources/**'
+      - 'docs/api/**'
       - 'compose*.yaml'
       - '.env.example'
       - '.dockerignore'
@@ -12,6 +14,8 @@ on:
     branches: [main, develop]
     paths:
       - 'backend/**'
+      - 'docs/sources/**'
+      - 'docs/api/**'
       - 'compose*.yaml'
       - '.env.example'
       - '.dockerignore'
@@ -46,19 +50,22 @@ jobs:
         env:
           POSTGRES_PASSWORD: synthetic-ci-password
         run: uv run --frozen pytest -q -m 'not integration'
+      - name: RAG extraction and development evaluation
+        working-directory: backend
+        run: |
+          uv run --frozen python -m app.rag.ingestion
+          uv run --frozen python -m app.rag.evals
       - name: Prepare synthetic local settings
         run: cp .env.example .env
       - name: Build and start common environment
-        run: docker compose up --build --wait --wait-timeout 120
+        run: docker compose -f compose.yaml -f compose.rag.yaml up --build --wait --wait-timeout 120
       - name: Database integration and container tests
-        run: docker compose --profile test run --build --rm test
+        run: docker compose -f compose.yaml -f compose.rag.yaml --profile test run --build --rm test
       - name: Smoke check
-        run: |
-          curl --fail http://127.0.0.1:8010/api/v1/health/ready
-          curl --fail http://127.0.0.1:8010/api/v1/openapi.json > /dev/null
+        run: python3 backend/scripts/smoke_api.py
       - name: Container status
         if: always()
-        run: docker compose ps -a
+        run: docker compose -f compose.yaml -f compose.rag.yaml ps -a
       - name: Clean up CI environment
         if: always()
-        run: docker compose down --volumes
+        run: docker compose -f compose.yaml -f compose.rag.yaml down --volumes

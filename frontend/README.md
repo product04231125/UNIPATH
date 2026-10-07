@@ -7,8 +7,13 @@ Flutter Web/Windows 팀 작업에 학교 질의 API 연동을 추가했다. 기�
 ## 로컬 실행
 
 프로젝트의 Dart 요구 버전은 `^3.13.4`다. 이 변경은 Flutter 3.47.6 / Dart 3.13.5로 검증했다.
-먼저 [백엔드 PR #8](https://github.com/product04231125/UNIPATH/pull/8)의 API를 8010에서 실행한다.
-기본 Compose와 PDF 추출을 포함하는 Compose 모두 학교 질의를 지원한다.
+백엔드 학교 질의 구현을 함께 포함한다. 저장소 루트에서 `.env.example`을 참고해 `.env`와
+로컬 DB 비밀번호를 설정하고 API를 8010에서 실행한다. 기본 Compose와 PDF 추출을 포함하는
+Compose 모두 학교 질의를 지원한다. [백엔드 실행 문서](../backend/README.md)를 따른다.
+
+```bash
+docker compose -f compose.yaml -f compose.rag.yaml up --build -d
+```
 
 ```bash
 cd frontend
