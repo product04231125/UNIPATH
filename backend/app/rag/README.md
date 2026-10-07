@@ -1,8 +1,10 @@
 # AI/RAG 개발 모듈
 
-기존 FastAPI, 프론트엔드, DB 모델, 마이그레이션, 공통 의존성을 변경하지 않고
-실행하는 문서 처리·학교 근거 검색·질의 제어·평가 모듈이다. 기본 로컬 실행에는
-API 키·DB·네트워크가 필요하지 않다. 공용 API에 아직 연결하지 않았다.
+문서 처리·학교 근거 검색·질의 제어·평가 모듈이다. 최초 구현은 FastAPI·DB와
+독립적이었으며 현재 백엔드가 `POST /api/v1/assistant/queries`로 연결했다.
+로컬 CLI 실행에는 API 키·DB·네트워크가 필요하지 않다. 공통 설치·Docker는
+[`../../README.md`](../../README.md), 공개 계약은
+[`../../../docs/api/assistant.md`](../../../docs/api/assistant.md)를 따른다.
 
 | 기능 | 구현 상태 |
 | --- | --- |
@@ -12,7 +14,8 @@ API 키·DB·네트워크가 필요하지 않다. 공용 API에 아직 연결하
 | 질의 상태·검토 자료 격리·인용 검증 | 로컬 서비스로 구현 |
 | 임베딩 | 공급자 인터페이스와 코사인 검색 구현, 실제 모델 미연결 |
 | LLM | 공급자 인터페이스·근거 프롬프트·응답 검증 구현, 실제 모델 미연결 |
-| DB·HTTP API·인증·프론트 연동 | 다른 담당자와 통합할 영역, 변경하지 않음 |
+| HTTP API | 백엔드 학교 질의 어댑터 연결, preview 제외 |
+| DB·인증·프론트 연동 | 후속 통합 영역 |
 | OCR·공식 졸업 판정·자격증 전용 검색 | 미구현 |
 
 기본 검색은 **단어·한국어 글자 조합을 이용하는 BM25 기준선**이다. 학습된 임베딩이나
@@ -66,8 +69,8 @@ tests/             네트워크 없는 독립 테스트
 ```
 
 백엔드 담당자를 위한 호출 예시와 통합 전제는 [INTEGRATION.md](INTEGRATION.md),
-평가 해석은 [evals/README.md](evals/README.md)를 참고한다. 루트 README, API·DB 모델,
-공통 의존성·CI, 기존 `__init__.py` 파일은 수정하지 않았다.
+평가 해석은 [evals/README.md](evals/README.md)를 참고한다. 내부 데이터 클래스는
+공개 API 스키마와 분리한다. 실제 테이블·관리자 승인·벡터 저장은 아직 구현하지 않았다.
 
 ## 설치와 실행
 
@@ -84,8 +87,9 @@ app/rag/.venv/bin/python -m unittest discover -s app/rag/tests -v
 
 Windows에서는 `python3.12` 대신 `py -3.12`, `bin/python` 대신
 `Scripts/python.exe`를 사용한다. 의존성은 pdfplumber 0.11.9 한 개를 명시했다.
-통합 시 공용 `pyproject.toml`/`uv.lock` 반영은 백엔드 담당자와 조율한다.
-현재 공용 Docker 이미지에는 이 선택 의존성이 설치되지 않는다.
+공용 `pyproject.toml`의 `ingestion` 그룹과 `uv.lock`에도 같은 의존성을 반영했다.
+일반 API Docker 이미지에는 포함하지 않고 `ingestion`·`test` 대상에만 설치한다.
+공통 `uv sync --frozen`으로도 개발·RAG 테스트 환경을 설치할 수 있다.
 
 기본 입력은 이 폴더의 `sources.json`이며 경로는 저장소 루트를 기준으로 한다.
 현재 저장된 학교 PDF 2개의 SHA-256을 검증한 후 처리한다.
@@ -151,7 +155,8 @@ app/rag/.venv/bin/python -m app.rag.ingestion \
 
 테스트는 합성 PDF의 텍스트·빈 페이지·손상·해시 변경·잘못된 경로·표 추출 실패,
 청크의 재현성·출처·배치 보존, 실제 PDF 2개의 6쪽 추출 및 반복 실행을 검증한다.
-단위 테스트는 위 명령으로 독립 실행한다. 공용 테스트·CI 파일은 변경하지 않았다.
+단위 테스트는 위 명령으로 독립 실행할 수 있고 공통 `uv run --frozen pytest -q`와
+Docker 테스트에서도 자동 수집한다. CI 템플릿도 PDF→API 검증을 포함한다.
 
 추가 테스트는 학교·학과·연도·이수경로 분리, 미승인·불완전 문서 차단, 질의 상태,
 허구의 인용 ID 거부, 생성기 오류 정보 비노출, 벡터 차원·모델 변경 검증을 포함한다.

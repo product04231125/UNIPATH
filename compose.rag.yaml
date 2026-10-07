@@ -1,0 +1,23 @@
+# Optional local PDF extraction and school-corpus integration.
+# docker compose -f compose.yaml -f compose.rag.yaml up --build -d
+services:
+  rag-ingest:
+    image: unipath-rag-ingestion:local
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: ingestion
+    volumes:
+      - rag_data:/rag-data
+
+  api:
+    environment:
+      SCHOOL_RAG_CORPUS_PATH: /rag-data/chunks.jsonl
+    volumes:
+      - rag_data:/rag-data:ro
+    depends_on:
+      rag-ingest:
+        condition: service_completed_successfully
+
+volumes:
+  rag_data:

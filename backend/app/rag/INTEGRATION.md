@@ -1,8 +1,10 @@
 # 백엔드 담당자에게 전달할 AI/RAG 인터페이스
 
-이 문서는 연결 방법을 제안한다. 공용 FastAPI 라우터·외부 API 스키마를 추가하거나
-변경하지 않았다. `app/rag/` 내 데이터 클래스는 내부 모듈용이며, 공개 API 계약은
-백엔드 담당자와 합의하여 `app/schemas/`에서 정의해야 한다.
+이 문서는 내부 RAG 호출 경계와 후속 통합 전제를 설명한다. 현재 백엔드의
+`app/api/assistant.py`·`app/services/assistant.py`가 아래 내부 인터페이스를 연결하며,
+공개 스키마는 `app/schemas/assistant.py`에 별도로 정의한다.
+HTTP 계약은 [`../../../docs/api/assistant.md`](../../../docs/api/assistant.md)를 따른다.
+내부 함수와 CLI의 preview는 유지하지만 공개 API에는 노출하지 않는다.
 
 ## 실제 호출 예시
 

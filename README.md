@@ -377,9 +377,23 @@ API 문서는 `http://localhost:8010/api/v1/docs`, DB 준비 상태 확인은
 `http://localhost:8010/api/v1/health/ready`입니다. PostgreSQL 호스트 포트는 5433입니다.
 Docker 내부에서는 API 8000과 DB 5432를 사용합니다. 기존 서비스와 충돌하면
 `.env`에서 호스트 포트를 변경합니다. 실행 시 Alembic으로 pgvector를 활성화하며,
-도메인 테이블·인증·졸업 판정·RAG는 후속 구현 범위입니다.
+도메인 테이블·인증·졸업 판정은 후속 구현 범위입니다.
 자세한 호스트 개발, 자동 재시작, 테스트 및 마이그레이션 방법은
 [`backend/README.md`](backend/README.md)를 참고합니다.
+
+RAG 팀의 PDF 추출·학교 검색 모듈은 `POST /api/v1/assistant/queries`로 연결했습니다.
+[질의 API 계약](docs/api/assistant.md)과 [OpenAPI 사본](docs/api/openapi.json)을
+기준으로 프론트엔드 모델과 상태 처리를 연결합니다. 현재 PDF는 검토 대기 상태이며
+실제 LLM 생성기는 연결하지 않았습니다. 기본 실행은 빈 인덱스를 사용합니다.
+PDF 추출까지 포함한 로컬 통합은 아래 명령으로 실행합니다.
+
+```bash
+docker compose -f compose.yaml -f compose.rag.yaml up --build -d
+python3 backend/scripts/smoke_api.py
+```
+
+`compose.rag.yaml`은 추출 결과를 별도 볼륨에 저장하고 API에는 읽기 전용으로
+연결합니다. 파일 코퍼스 설정은 `APP_ENV=local`에서만 지원합니다.
 
 ### Flutter 프론트엔드 설치 및 실행 (Windows)
 
