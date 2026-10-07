@@ -397,7 +397,8 @@ python3 backend/scripts/smoke_api.py
 
 ### Flutter 프론트엔드 설치 및 실행 (Windows)
 
-`frontend/`는 Flutter Web과 Windows 목업을 함께 제공합니다. Flutter SDK를 내려받아
+`frontend/`는 Flutter Web과 Windows 화면을 함께 제공합니다. 학교 질의는 실제 API와
+연결하며 인증·개인 기록·졸업 판정은 목업 또는 기기 로컬 상태입니다. Flutter SDK를 내려받아
 예를 들어 `C:\develop\flutter`에 압축을 풀고, `C:\develop\flutter\bin`을 사용자
 `Path`에 추가합니다. Windows 앱도 빌드하려면 Visual Studio의 **Desktop development
 with C++** 워크로드가 필요합니다. 자세한 설치 절차는 [Flutter 수동 설치 안내](https://docs.flutter.dev/install/manual)와 [Windows 개발 환경 안내](https://docs.flutter.dev/platform-integration/windows/setup)를 따른다.
@@ -414,8 +415,8 @@ flutter devices
 ```powershell
 cd frontend
 flutter pub get
-flutter run -d chrome      # Web 목업 실행
-flutter run -d windows     # Windows 앱 실행
+flutter run -d chrome --web-port 3000 --dart-define=API_BASE_URL=http://127.0.0.1:8010
+flutter run -d windows --dart-define=API_BASE_URL=http://127.0.0.1:8010
 flutter analyze
 flutter test
 flutter build web
