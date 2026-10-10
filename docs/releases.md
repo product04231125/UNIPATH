@@ -1,0 +1,156 @@
+# 앱 통합·빌드·다운로드·서버 배포
+
+팀 담당은 **신우철: RAG**, **이어진: 백엔드·팀 변경 통합·빌드·릴리스·서버 배포**,
+**홍요아: 프론트엔드·UX**다. 기능 담당자가 자신의 변경과 테스트를 PR로 공유하면
+이어진이 팀 브랜치의 변경을 통합하고 공통 검증 후 빌드한다.
+
+## 채널과 다운로드
+
+| 구분 | 브랜치 | API·웹 주소 | GitHub 릴리스 | 용도 |
+|---|---|---|---|---|
+| 개발용 | `develop` | `https://staging-unipath.duckdns.org` | `dev-*`, prerelease | 팀 통합·검증 |
+| 배포용 프리뷰 | `main` | `https://unipath.duckdns.org` | `v0.1.0-preview.*`, prerelease | 현재 기능 시연 |
+| 실제 운영 | 검증한 `main` 커밋 | 검증한 HTTPS 운영 주소 | `v0.1.0` 등 | 인증·API·운영 준비 완료 후 |
+
+`unipath.dcukdns.org`는 DNS가 없으며 실제 등록된 주소는 `unipath.duckdns.org`다.
+두 도메인의 A 레코드는 이 서버의 공인 IP `168.138.45.63`을 가리켜야 한다.
+
+[GitHub Releases](https://github.com/product04231125/UNIPATH/releases)에서 필요한
+채널의 릴리스를 선택하고 **Assets**에서 ZIP을 받는다. 소스 코드 자동 ZIP과
+빌드한 앱 ZIP은 구분한다. 실행 파일이 실제로 첨부됐는지 릴리스 설명을 확인한다.
+
+- Windows: `*-windows.zip` 전체를 압축 해제한 뒤 `university_path_frontend.exe`를
+  실행한다. EXE만 복사하지 말고 DLL 및 `data/`를 함께 보관한다. x64 대상이며
+  Visual C++ 런타임 DLL도 포함한다. 코드 서명·설치 프로그램은 아직 구성하지 않았다.
+- Web: `*-web.zip`을 풀고 Python이 있는 PC에서 `python -m http.server 3000`을
+  실행한 뒤 `http://localhost:3000`을 연다. 배포 시 웹 서버에서 정적 파일을 제공하고
+  화면 경로를 `index.html`로 돌려주는 SPA fallback을 설정한다.
+- ZIP 내부의 `DOWNLOAD-README.txt`와 `build-info.json`에는 채널, API 주소,
+  소스 커밋, SDK 및 버전이 기록된다. 첨부된 `.zip.sha256`으로 무결성을 확인한다.
+
+두 채널은 동일한 코드와 잠금 의존성을 **Release 모드**로 빌드한다. 개발용은
+Debug 바이너리를 배포한다는 뜻이 아니다. 빌드별 API 주소와 채널·프리뷰 표시로 구분한다.
+
+현재 인증·개인 기록은 목업 또는 기기 로컬 상태이고, 실제 PDF는 검토 대기이며
+LLM 생성기와 공식 졸업감사는 미연결이다. 배포 채널과 HTTPS 제공이 운영 기능 완성을
+뜻하지 않으므로 초기 앱은 프리뷰로 발행한다. Staging과 Production DB는 분리한다.
+
+## 이어진의 수동 빌드·릴리스
+
+SDK는 `frontend/.flutter-version`의 Flutter 3.47.6으로 고정한다. Windows 빌드는
+Windows의 Visual Studio **Desktop development with C++** 워크로드와 Python 3.12
+이상이 필요하다. Web만 빌드할 때는 Linux에서도 가능하다. 공식 릴리스 메타데이터
+접근이 불가하면 공식 Git 태그 `3.47.6`을 clone하고 `bin/`을 PATH에 넣어 사용한다.
+
+팀 변경을 병합·커밋하고 작업 트리가 깨끗한 상태에서 저장소 루트에서 실행한다.
+개인 에이전트 설정·`.env`·DB 데이터·생성 코퍼스는 다운로드 ZIP에 포함하지 않는다.
+
+```powershell
+git switch develop
+git pull --ff-only
+cd frontend
+flutter pub get --enforce-lockfile
+flutter analyze
+flutter test
+cd ..
+python -m unittest discover -s scripts/tests -v
+docker compose --profile test run --build --rm test
+
+python scripts/build_app.py --channel develop --target all --api-base-url https://staging-unipath.duckdns.org
+python scripts/build_app.py --channel product --target all --api-base-url https://unipath.duckdns.org --preview
+```
+
+배포용은 통합 검증한 `main` 커밋에서 빌드한다. `--target web` 또는 `--target windows`로
+한 플랫폼만 빌드할 수도 있다. API URL은 `/api/v1`이 없는 HTTP(S) 원점이어야 하며
+토큰·비밀값을 넣지 않는다. 실제 운영 빌드는 `--preview` 없이 빌드하며 HTTPS를 요구한다.
+
+```powershell
+# GitHub CLI 로그인에는 repo 권한이 필요하다. 태그는 각 빌드 소스 커밋을 가리킨다.
+python scripts/publish_app.py --assets-dir dist/develop --tag dev-소스커밋앞8자리
+python scripts/publish_app.py --assets-dir dist/product --tag v0.1.0-preview.소스커밋앞8자리
+```
+
+게시 스크립트는 기본적으로 Windows·Web이 모두 있어야 실행되며 체크섬과 커밋·설정의
+일치를 검증한다. Windows 대기 중 웹만 제공할 때는 `--allow-web-only`를 명시하며
+릴리스에 Windows 파일이 없다고 표시한다. 서로 다른 커밋의 파일은 합치지 않는다.
+
+## GitHub Actions 활성화
+
+워크플로는 [app-release.yaml](../.github/workflow-templates/app-release.yaml)에 있다.
+현재 연결 토큰에는 `workflow` 권한이 없어 템플릿으로 보관한다. 워크플로 등록 권한이
+있는 계정으로 다음 파일을 **기본 브랜치 `main`**의 `.github/workflows/`에 추가한다.
+
+```powershell
+New-Item -ItemType Directory -Force .github/workflows
+Copy-Item .github/workflow-templates/app-release.yaml .github/workflows/app-release.yaml
+Copy-Item .github/workflow-templates/backend-ci.yaml .github/workflows/backend-ci.yaml
+git add .github/workflows
+git commit -m "ci: enable backend checks and app downloads"
+git push origin main
+```
+
+필요하면 `gh auth refresh --hostname github.com --scopes workflow`로 연결 권한을 갱신한다.
+사용자가 GitHub 인증 화면에서 승인해야 하며 토큰을 채팅이나 저장소에 붙여넣지 않는다.
+활성화 후 **Actions → App downloads → Run workflow**에서 채널을 선택한다. `develop`
+푸시는 개발용, `main` 푸시는 배포용 프리뷰를 검증·빌드·릴리스한다. 수동 실행은 두 채널을
+함께 선택할 수도 있고 API URL을 지정할 수도 있다. 앱 자체가 서버를 자동 배포하지는 않는다.
+
+선택적 repository variables는 `DEVELOP_API_BASE_URL`, `PRODUCT_API_BASE_URL`이다.
+미설정 시 위 두 HTTPS 도메인을 사용한다. 실제 운영 전환은 `product_preview=false`를
+명시한 수동 실행에서만 가능하다. 검증 실패나 한 플랫폼 빌드 실패 시 릴리스를 발행하지 않는다.
+출력은 Actions Artifacts와 GitHub Releases에 저장하며 ZIP에는 SDK나 소스 코드를 넣지 않는다.
+
+## 이 서버의 도메인 배포
+
+공통 게이트웨이(`/opt/gateway`)가 80·443을 소유한다. UNIPATH Web 컨테이너는 외부
+`pawmaru-edge` 네트워크에 연결하고, API·DB는 환경별 내부 네트워크에 둔다. DB·API의
+호스트 포트는 loopback에서만 연다. 다른 프로젝트의 게이트웨이 라우팅은 보존한다.
+
+로컬 전용 `.env.staging`, `.env.production`은 서로 다른 비밀번호를 사용하고 권한을
+`600`으로 둔다. 다음 공개 설정을 넣고 `POSTGRES_PASSWORD`는 각각 별도로 생성한다.
+실제 `.env` 파일은 커밋하지 않는다.
+
+| 설정 | `.env.staging` | `.env.production` |
+|---|---|---|
+| `APP_ENV` | `staging` | `production` |
+| `APP_CHANNEL` | `develop` | `product` |
+| `WEB_NETWORK_ALIAS` | `unipath-staging-web` | `unipath-product-web` |
+| `API_PORT` | `8012` | `8013` |
+| `POSTGRES_PORT` | `5434` | `5435` |
+| `POSTGRES_DB` | `unipath_staging` | `unipath_product` |
+| `POSTGRES_USER` | `unipath_staging` | `unipath_product` |
+
+`CORS_ORIGINS`에는 해당 HTTPS 도메인을 넣는다. 다운로드한 Web ZIP의 로컬 시연을
+지원하는 프리뷰에서는 `http://localhost:3000`, `http://127.0.0.1:3000`도 명시한다.
+실제 운영 전환 시 허용 주소를 운영 프론트엔드 원점으로 제한한다. JSONL 파일 코퍼스는
+`APP_ENV=local` 전용이므로 이 두 환경에서는 `compose.rag.yaml`을 함께 사용하지 않는다.
+현재 공식 승인 코퍼스가 없으므로 학교 질의의 근거 부족 안내가 정상이다.
+
+두 채널 Web 빌드 후 다음 명령으로 분리된 프로젝트·볼륨에서 실행한다.
+
+```bash
+docker compose -p unipath-staging --env-file .env.staging -f compose.yaml -f compose.server.yaml up --build --wait
+docker compose -p unipath-product --env-file .env.production -f compose.yaml -f compose.server.yaml up --build --wait
+```
+
+현재 공통 게이트웨이는 `default.conf`를 파일 단위로 bind mount한다. 기존 내용에
+[`unipath-http.conf`](../deploy/gateway/unipath-http.conf) 내용을 추가한 뒤 `nginx -t`
+검증과 reload를 수행한다. A 레코드가 올바른 IP로 반영되면 공통 Certbot webroot로
+두 도메인을 묶은 인증서를 발급한다.
+
+```bash
+docker run --rm \
+  -v /opt/gateway/letsencrypt:/etc/letsencrypt \
+  -v /opt/gateway/certbot/www:/var/www/certbot \
+  certbot/certbot:latest certonly --webroot -w /var/www/certbot \
+  --cert-name unipath.duckdns.org \
+  -d staging-unipath.duckdns.org -d unipath.duckdns.org \
+  --non-interactive --agree-tos --register-unsafely-without-email
+```
+
+발급 성공 후 UNIPATH HTTP 블록을
+[`unipath-https.conf`](../deploy/gateway/unipath-https.conf)로 교체하고 `nginx -t`와 reload를
+수행한다. 기존 Certbot 갱신 타이머가 이 인증서도 갱신한다. DNS·인증서 검증 전에는
+HTTPS 개통 완료로 간주하지 않는다. SPA 화면 경로와 API readiness·학교 질의를
+두 도메인에서 확인한다. 배포 실패 시 게이트웨이 설정의 작업 전 백업으로 되돌리며
+DB 볼륨은 삭제하지 않는다.

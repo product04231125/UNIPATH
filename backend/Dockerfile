@@ -10,9 +10,17 @@ COPY backend/migrations ./migrations
 COPY backend/alembic.ini ./
 RUN useradd --uid 10001 --create-home appuser
 
+FROM base AS ingestion
+RUN uv sync --frozen --no-dev --group ingestion --no-install-project
+COPY docs/sources /sources/docs/sources
+RUN mkdir /rag-data && chown appuser:appuser /rag-data
+USER appuser
+CMD ["python", "-m", "app.rag.ingestion", "--source-root", "/sources", "--output-dir", "/rag-data"]
+
 FROM base AS test
 RUN uv sync --frozen --no-install-project
 COPY backend/tests ./tests
+COPY docs/sources /docs/sources
 ENV PYTEST_ADDOPTS="-o cache_dir=/tmp/pytest-cache"
 USER appuser
 CMD ["pytest", "-q"]

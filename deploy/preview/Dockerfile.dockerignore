@@ -1,0 +1,11 @@
+**
+!deploy/
+!deploy/preview/
+!deploy/preview/nginx.conf
+!dist/
+!dist/product/
+!dist/product/web/
+!dist/product/web/**
+!dist/develop/
+!dist/develop/web/
+!dist/develop/web/**

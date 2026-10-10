@@ -31,10 +31,14 @@ DB가 준비되면 `migrate` 서비스가 `alembic upgrade head`를 실행한 �
 
 `/health`는 README의 Smoke Test를 위한 별칭이다. 준비 상태 API는 pgvector 확장과
 Alembic revision을 확인하며 연결 실패나 초기화 누락에 HTTP 503 공통 오류를 반환한다.
-공개 API는 `/api/v1` 아래에 둔다. 현재 구현된 API는 위 상태 확인 API뿐이다.
+공개 API는 `/api/v1` 아래에 둔다. 상태 확인 API와 학교 질의
+`POST /api/v1/assistant/queries`가 구현되어 있다. 요청·응답은
+[`../docs/api/assistant.md`](../docs/api/assistant.md)를 따른다.
 
 포트 충돌 시 `.env`의 `API_PORT`와 `POSTGRES_PORT`를 바꾼다. 기본 공개 주소는
-로컬 루프백이다. 다른 PC에서 접근하는 Staging 구성은 별도로 설정한다.
+로컬 루프백이다. 도메인을 사용하는 Staging·배포 채널은
+[`docs/releases.md`](../docs/releases.md)의 환경별 Compose 프로젝트·DB·HTTPS 게이트웨이
+설정을 따른다. 팀 통합·앱 빌드·릴리스·서버 배포 담당은 이어진이다.
 
 ```bash
 # Python 소스 변경 시 자동 재시작
@@ -68,7 +72,54 @@ uv run --frozen uvicorn app.main:app --host 127.0.0.1 --port 8011 --reload --no-
 `db:5432`로 덮어쓰므로 호스트 포트와 독립적으로 동작한다.
 Flutter Web은 예를 들어 `flutter run -d chrome --web-port 3000`으로 고정 포트를
 사용한다. 다른 포트를 쓰면 `.env`의 `CORS_ORIGINS` JSON 배열도 갱신한다.
-프론트엔드는 현재 목업이며 실제 API 연동은 다음 작업이다.
+프론트엔드 학교 질의는 `POST /api/v1/assistant/queries`와 연결한다.
+인증과 개인 기록·졸업 판정 화면은 아직 서버와 연결하지 않았다. Web 실행 주소는
+`http://localhost:3000`, 빌드 설정 `API_BASE_URL`은 실제 API 주소에 맞춘다.
+
+## RAG 팀 모듈과 학교 질의 API
+
+RAG 팀의 PDF 추출·학교별 BM25 검색 모듈을 공통 백엔드에 연결했다.
+`uv sync --frozen`은 PDF 추출·기존 RAG 테스트 의존성도 설치한다. 추출 의존성은
+별도 `ingestion` 그룹에 있으며 일반 API 런타임에는 설치하지 않는다.
+
+```bash
+# backend/에서 실행: 검토용 청크 생성과 개발용 평가
+uv run --frozen python -m app.rag.ingestion
+uv run --frozen python -m app.rag.evals
+```
+
+호스트 API에 청크를 연결하려면 루트 `.env`에
+`SCHOOL_RAG_CORPUS_PATH=backend/app/rag/output/chunks.jsonl`을 설정하고 API를 재시작한다.
+설정이 없으면 빈 인덱스로 시작하고, 문맥이 충분한 질의에 `insufficient_evidence`를
+반환한다. 경로를 명시했는데 파일이 없거나 내용 검증이 실패하면 시작을 거부한다.
+인덱스는 수명주기당 한 번만 읽으므로 청크 변경 후 재시작이 필요하다.
+
+Docker는 저장소 루트에서 다음과 같이 실행한다.
+
+```bash
+docker compose -f compose.yaml -f compose.rag.yaml up --build -d
+docker compose -f compose.yaml -f compose.rag.yaml ps -a
+python3 backend/scripts/smoke_api.py
+```
+
+`rag-ingest`는 선택 의존성과 저장소 PDF를 포함하는 별도 이미지로 추출한 뒤 종료한다.
+산출물은 `rag_data` 볼륨에 남고 API는 읽기 전용으로 연결한다. `Exited (0)`은 정상이다.
+입력 문서 변경 후에는 `rag-ingest`를 다시 실행하고 API를 재시작한다.
+기본 `compose.yaml`만 실행하면 파일 코퍼스를 연결하지 않는다.
+
+Smoke Test는 DB 준비, OpenAPI, 근거 부족·문맥 부족·졸업 판정 분리와 검증 오류를
+확인한다. 포트를 바꿨다면 `--base-url http://127.0.0.1:변경한포트`를 지정한다.
+PowerShell에서 Python 실행 명령이 `python`이면 `python3` 대신 사용한다.
+
+현재 PDF는 모두 미승인이며 공식 출처 URL·적용 범위가 확인되지 않았다. HTTP API에는
+preview 옵션이 없어 이 자료로 답변이나 인용을 만들지 않는다. 실제 LLM·임베딩 공급자는
+연결하지 않았다. 파일의 승인 플래그는 관리자 승인 시스템이 아니므로 JSONL 코퍼스는
+`APP_ENV=local`에서만 허용한다. 인증·공식 문서 승인·DB의 범위/버전/유효기간 관리가
+구현되기 전에는 운영 질의 시스템으로 배포하지 않는다.
+
+동기 RAG 함수는 FastAPI 작업 스레드에서 실행하며 질문·답변·후보를 저장하거나 로그에
+기록하지 않는다. 졸업 가능 여부 질문은 `rule_engine_required`와 `graduation_audit`
+추가 정보 요구를 반환한다. 실제 졸업감사 API는 아직 없다.
 
 ## 검증과 마이그레이션
 
@@ -119,8 +170,9 @@ PowerShell에서는 `$env:RUN_DB_TESTS='1'`을 설정한 뒤 테스트 명령을
 - `migrations/`: Alembic 마이그레이션
 - `tests/`: API·설정·PostgreSQL/pgvector 검증
 
-빈 도메인 패키지는 모듈 경계만 마련했다. 졸업 판정, RAG, 인증과 CRUD 기능은
-아직 구현되지 않았다. 신규 패키지는 용도에 맞춰 최소한으로 추가한다.
+졸업 판정, 인증과 CRUD 패키지는 아직 모듈 경계만 마련했다. 학교 RAG는 팀의
+오프라인 모듈과 HTTP 어댑터를 연결했으며 공식 문서 승인·운영 DB·실제 생성기는
+후속 구현 대상이다. 신규 패키지는 용도에 맞춰 최소한으로 추가한다.
 
 | 의존성 | 용도 |
 |---|---|
@@ -130,6 +182,7 @@ PowerShell에서는 `$env:RUN_DB_TESTS='1'`을 설정한 뒤 테스트 명령을
 | pydantic-settings | 환경변수와 `.env` 설정 |
 | pytest / httpx2 | 자동 테스트 / ASGI 테스트 클라이언트 |
 | Ruff | 린트와 포맷 |
+| pdfplumber (ingestion 그룹) | 팀의 PDF 텍스트·표 추출과 RAG 테스트 |
 
 `.env.example`이 환경변수 목록의 기준이다. `APP_ENV`는 `local`, `staging`,
 `production` 중 하나이며 각 환경의 DB와 비밀값을 분리한다. `DATABASE_URL`은

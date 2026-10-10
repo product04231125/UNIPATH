@@ -115,6 +115,10 @@ def test_cors_only_allows_configured_origins(client):
 
 def test_openapi_contract(client):
     schema = client.get("/api/v1/openapi.json").json()
-    assert set(schema["paths"]) == {"/api/v1/health", "/api/v1/health/ready"}
+    assert set(schema["paths"]) == {
+        "/api/v1/health",
+        "/api/v1/health/ready",
+        "/api/v1/assistant/queries",
+    }
     assert "503" in schema["paths"]["/api/v1/health/ready"]["get"]["responses"]
     assert "ErrorResponse" in schema["components"]["schemas"]

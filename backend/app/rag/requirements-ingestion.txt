@@ -1,0 +1,2 @@
+# Isolated offline ingestion dependency; does not change the backend's uv.lock.
+pdfplumber==0.11.9

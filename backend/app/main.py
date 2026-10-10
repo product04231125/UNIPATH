@@ -3,12 +3,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.assistant import router as assistant_router
 from app.api.health import health, router
 from app.core.config import Settings, get_settings
 from app.core.database import create_session_factory
 from app.core.errors import register_error_handlers
 from app.schemas.common import ErrorResponse
 from app.schemas.health import HealthResponse
+from app.services.assistant import create_school_rag_service
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -16,6 +18,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
+        application.state.school_rag_service = create_school_rag_service(config)
         application.state.session_factory = create_session_factory(config)
         try:
             yield
@@ -44,6 +47,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         expose_headers=["X-Request-ID"],
     )
     application.include_router(router, prefix="/api/v1")
+    application.include_router(assistant_router, prefix="/api/v1")
     # Compatibility alias for the README's infrastructure smoke check.
     application.add_api_route(
         "/health", health, response_model=HealthResponse, include_in_schema=False

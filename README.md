@@ -27,8 +27,9 @@ git switch -c feature/your-task
 - 팀 공통: `compose.yaml`, `.env.example`, `docs/`에서 실행 환경과 API·DB 계약을 관리합니다.
 
 기능 브랜치는 `develop`을 기준으로 만들고 Pull Request의 대상도 `develop`로 설정합니다.
-통합 검증을 마친 변경은 `develop`에서 `main`으로 반영합니다. 실제 Staging/Production
-배포는 아직 구성되지 않았으며 브랜치에 푸시하는 것만으로 배포되지는 않습니다.
+통합 검증을 마친 변경은 `develop`에서 `main`으로 반영합니다. 개발용과 배포용 다운로드·서버 실행 절차는
+[`docs/releases.md`](docs/releases.md)를 따릅니다. 브랜치에 푸시하는 것만으로 서버가
+자동 배포되지는 않습니다. 배포용 채널도 현재 기능 범위에서는 프리뷰입니다.
 각 담당자는 자신의 변경과 관련된 테스트를 실행하고, API·DB 계약을 바꾸면 영향받는
 팀원과 문서·모델을 함께 확인합니다. `.env`와 실제 학생 데이터는 커밋하지 않습니다.
 
@@ -38,6 +39,21 @@ git switch -c feature/your-task
 권한을 갖춘 팀원이 파일을 `.github/workflows/backend-ci.yaml`로 옮겨 푸시하면
 PR 및 `main`/`develop` 푸시에 자동 검증이 실행됩니다. 그 전에는 아래 Docker
 테스트 명령으로 공통 환경을 검증합니다.
+
+## 앱 다운로드와 서버 주소
+
+[GitHub Releases](https://github.com/product04231125/UNIPATH/releases)에서 개발용(`dev-*`)과
+배포용 프리뷰(`v*-preview.*`) 파일을 구분합니다. Windows는 `*-windows.zip` 전체를
+압축 해제하고 EXE를 실행하며, Web은 `*-web.zip`을 웹 서버에서 제공합니다. 다운로드한
+앱 실행에는 Flutter SDK가 필요하지 않습니다. 릴리스에 명시된 실제 첨부 파일을 확인하세요.
+
+- 개발·통합: `develop`, `https://staging-unipath.duckdns.org`
+- 배포 채널: `main`, `https://unipath.duckdns.org`
+- 통합·빌드·릴리스 담당: 이어진
+
+현재 로그인·개인 기록은 목업/기기 로컬 상태이며 공식 졸업감사·LLM은 미연결입니다.
+배포 채널 제공과 실제 운영 서비스 완성은 구분합니다. 상세 빌드·다운로드·도메인 및
+HTTPS 설정은 [`docs/releases.md`](docs/releases.md)에 있습니다.
 
 ## 1. MVP 범위
 
@@ -133,13 +149,13 @@ Flutter Web은 역할에 따라 학생 사용자 화면과 학교 관리자 화�
 
 ## 3. 역할 분담
 
-실제 담당자 이름은 팀 합의 후 작성합니다.
+팀 담당은 다음과 같이 확정했습니다. 팀원 변경을 통합하고 앱을 빌드·릴리스하는 담당은 이어진입니다.
 
 | 역할 | 담당자 | 소유 영역 | 주요 업무 |
 |---|---|---|---|
-| 백엔드·통합 | 미정 | FastAPI, PostgreSQL, Rule Engine, 인증·배포 | API 및 DB 설계, 사용자 데이터 관리, 졸업요건 판정, 인증, 모듈 통합, Docker 기반 배포 |
-| AI·RAG·데이터 | 미정 | 문서 처리, 검색, LLM, 데이터 파이프라인 | 공식 문서 수집·정제, 청킹, 메타데이터, 임베딩, RAG, 채용공고 정보 추출, 검색 품질 평가 |
-| 프론트엔드·UX·QA | 미정 | Flutter Web(1차)·Windows 애플리케이션(3차), 화면·상태 관리·사용성 검증 | 학사 대시보드, AI 채팅, 활동·포트폴리오, 채용공고 비교 UI, API 연동, E2E 테스트, 데모 시나리오 및 사용자 흐름 검증 |
+| 백엔드·통합·빌드·배포 | 이어진 | FastAPI, PostgreSQL, Rule Engine, 인증·배포 | API 및 DB 설계, 사용자 데이터 관리, 졸업요건 판정, 인증, 팀 변경 통합, Web·Windows 빌드 및 GitHub 릴리스, Docker 기반 배포 |
+| AI·RAG·데이터 | 신우철 | 문서 처리, 검색, LLM, 데이터 파이프라인 | 공식 문서 수집·정제, 청킹, 메타데이터, 임베딩, RAG, 채용공고 정보 추출, 검색 품질 평가 |
+| 프론트엔드·UX·QA | 홍요아 | Flutter Web(1차)·Windows 애플리케이션(3차), 화면·상태 관리·사용성 검증 | 학사 대시보드, AI 채팅, 활동·포트폴리오, 채용공고 비교 UI, API 연동, E2E 테스트, 데모 시나리오 및 사용자 흐름 검증 |
 
 ### 역할 운영 원칙
 
@@ -147,7 +163,7 @@ Flutter Web은 역할에 따라 학생 사용자 화면과 학교 관리자 화�
 - 프론트엔드 담당은 단순 화면 구현에 한정하지 않고, 화면 설계·API 통합·E2E 테스트·사용성 및 데모 흐름 검증을 함께 책임진다.
 - 백엔드 담당은 졸업요건의 결정론적 판정을 담당한다. RAG 또는 LLM이 판정 결과를 대신 결정하지 않는다.
 - AI·RAG·데이터 담당은 검색 기능뿐 아니라 공식 문서 수집·정제, 청킹, 출처 메타데이터, 검색 품질 평가를 책임진다.
-- 배포와 통합은 백엔드 담당이 주도하되, 각 담당자는 자신의 모듈이 Docker 공통 환경에서 동작하도록 검증한다.
+- 이어진이 신우철의 RAG, 홍요아의 프론트엔드 및 백엔드 변경을 통합하고, 검증 후 Web·Windows 빌드와 GitHub 릴리스·서버 배포를 담당한다. 각 담당자는 자신의 모듈을 검증하고 변경 사항을 PR로 공유한다.
 
 ### 세부 과제 수행 분담
 
@@ -168,7 +184,7 @@ Flutter Web은 역할에 따라 학생 사용자 화면과 학교 관리자 화�
 | 배포 | Staging 구성, Docker 이미지, 로그·환경변수·비밀값 관리 | 백엔드·통합 | 전원 | 실제 개인정보·비밀값 없이 Staging에서 공통 시나리오를 실행함 |
 | 2차 MVP | 진로 RAG 및 채용공고 요구사항 추출·경험 비교 | AI·RAG·데이터 | 백엔드·통합, 프론트엔드·UX·QA | 요구사항 근거와 개인 경험 비교 결과를 제공함 |
 | 2차 MVP | 채용공고 비교·결과 표시 화면 | 프론트엔드·UX·QA | AI·RAG·데이터, 백엔드·통합 | 추출 결과·비교 결과·오류 상태를 이해하기 쉽게 표시함 |
-| 3차 MVP | Windows 애플리케이션 빌드·배포 검증 | 프론트엔드·UX·QA | 백엔드·통합 | Web과 같은 API로 핵심 흐름이 Windows에서 동작함 |
+| 3차 MVP | Windows 애플리케이션 빌드·배포 검증 | 백엔드·통합 (이어진) | 프론트엔드·UX·QA (홍요아) | Web과 같은 API로 핵심 흐름이 Windows에서 동작함 |
 
 ### 공동 결정 영역
 
@@ -330,7 +346,11 @@ university-path/
 │  ├─ specialized-ai-and-supporting-tools-proposal.md
 │  ├─ job-matching-decision-layer-proposal.md
 │  ├─ product-ux.md
-│  └─ student-menu-ux.md
+│  └─ frontend/
+│     ├─ README.md
+│     ├─ architecture.md
+│     ├─ platform-differences.md
+│     └─ features/
 ├─ compose.yaml
 ├─ .env.example
 └─ README.md
@@ -373,13 +393,28 @@ API 문서는 `http://localhost:8010/api/v1/docs`, DB 준비 상태 확인은
 `http://localhost:8010/api/v1/health/ready`입니다. PostgreSQL 호스트 포트는 5433입니다.
 Docker 내부에서는 API 8000과 DB 5432를 사용합니다. 기존 서비스와 충돌하면
 `.env`에서 호스트 포트를 변경합니다. 실행 시 Alembic으로 pgvector를 활성화하며,
-도메인 테이블·인증·졸업 판정·RAG는 후속 구현 범위입니다.
+도메인 테이블·인증·졸업 판정은 후속 구현 범위입니다.
 자세한 호스트 개발, 자동 재시작, 테스트 및 마이그레이션 방법은
 [`backend/README.md`](backend/README.md)를 참고합니다.
 
+RAG 팀의 PDF 추출·학교 검색 모듈은 `POST /api/v1/assistant/queries`로 연결했습니다.
+[질의 API 계약](docs/api/assistant.md)과 [OpenAPI 사본](docs/api/openapi.json)을
+기준으로 프론트엔드 모델과 상태 처리를 연결합니다. 현재 PDF는 검토 대기 상태이며
+실제 LLM 생성기는 연결하지 않았습니다. 기본 실행은 빈 인덱스를 사용합니다.
+PDF 추출까지 포함한 로컬 통합은 아래 명령으로 실행합니다.
+
+```bash
+docker compose -f compose.yaml -f compose.rag.yaml up --build -d
+python3 backend/scripts/smoke_api.py
+```
+
+`compose.rag.yaml`은 추출 결과를 별도 볼륨에 저장하고 API에는 읽기 전용으로
+연결합니다. 파일 코퍼스 설정은 `APP_ENV=local`에서만 지원합니다.
+
 ### Flutter 프론트엔드 설치 및 실행 (Windows)
 
-`frontend/`는 Flutter Web과 Windows 목업을 함께 제공합니다. Flutter SDK를 내려받아
+`frontend/`는 Flutter Web과 Windows 화면을 함께 제공합니다. 학교 질의는 실제 API와
+연결하며 인증·개인 기록·졸업 판정은 목업 또는 기기 로컬 상태입니다. Flutter SDK를 내려받아
 예를 들어 `C:\develop\flutter`에 압축을 풀고, `C:\develop\flutter\bin`을 사용자
 `Path`에 추가합니다. Windows 앱도 빌드하려면 Visual Studio의 **Desktop development
 with C++** 워크로드가 필요합니다. 자세한 설치 절차는 [Flutter 수동 설치 안내](https://docs.flutter.dev/install/manual)와 [Windows 개발 환경 안내](https://docs.flutter.dev/platform-integration/windows/setup)를 따른다.
@@ -396,8 +431,8 @@ flutter devices
 ```powershell
 cd frontend
 flutter pub get
-flutter run -d chrome      # Web 목업 실행
-flutter run -d windows     # Windows 앱 실행
+flutter run -d chrome --web-port 3000 --dart-define=API_BASE_URL=http://127.0.0.1:8010
+flutter run -d windows --dart-define=API_BASE_URL=http://127.0.0.1:8010
 flutter analyze
 flutter test
 flutter build web

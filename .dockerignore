@@ -7,4 +7,13 @@
 **/.ruff_cache
 frontend
 data
-docs
+docs/*
+!docs/sources/
+**/AGENTS.md
+**/SKILL.md
+**/.codex
+**/.agents
+**/.claude
+**/.cursor
+backend/app/rag/output/
+dist/
