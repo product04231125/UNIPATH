@@ -1,6 +1,11 @@
 # Use a different Compose project and env file for each domain (see docs/releases.md).
 services:
+  db:
+    restart: unless-stopped
+  api:
+    restart: unless-stopped
   web:
+    restart: unless-stopped
     image: unipath-web:${APP_CHANNEL:?Set APP_CHANNEL}
     build:
       context: .
