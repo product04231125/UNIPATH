@@ -29,6 +29,7 @@ class ReleaseTests(unittest.TestCase):
             "https://example.org#fragment",
             "https://example.org:bad",
             "https://example.org:99999",
+            "https://example.org&whoami",
             "file:///tmp/config",
         ]:
             with self.subTest(url=url), self.assertRaises(ValueError):

@@ -337,6 +337,16 @@ flowchart TB
 
 ## 운영 환경 경계
 
+앱 통합·빌드·릴리스·서버 배포는 이어진이 담당한다. `compose.server.yaml`은
+환경별 정적 Web 서비스와 공통 HTTPS 게이트웨이 연결을 추가한다.
+`staging-unipath.duckdns.org`는 `unipath-staging` 프로젝트에, `unipath.duckdns.org`는
+`unipath-product` 프로젝트에 연결한다. 각 프로젝트의 API·DB 네트워크, DB 볼륨과
+비밀번호는 분리하고 동일한 FastAPI 이미지를 사용한다. 공개 게이트웨이에는 Web만
+연결하며 Web이 학교 질의와 readiness API를 내부 FastAPI로 프록시한다.
+다운로드 앱의 API도 해당 HTTPS 원점을 사용한다. 현재 배포 채널은 목업 인증·로컬
+기록·근거 부족 안내를 제공하는 프리뷰이며 실제 운영 기능의 완성을 의미하지 않는다.
+구체적인 설정·HTTPS 개통·GitHub 다운로드 절차는 [`releases.md`](releases.md)를 따른다.
+
 ```mermaid
 flowchart LR
     subgraph Local[Local]

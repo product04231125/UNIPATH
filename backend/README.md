@@ -36,7 +36,9 @@ Alembic revision을 확인하며 연결 실패나 초기화 누락에 HTTP 503 �
 [`../docs/api/assistant.md`](../docs/api/assistant.md)를 따른다.
 
 포트 충돌 시 `.env`의 `API_PORT`와 `POSTGRES_PORT`를 바꾼다. 기본 공개 주소는
-로컬 루프백이다. 다른 PC에서 접근하는 Staging 구성은 별도로 설정한다.
+로컬 루프백이다. 도메인을 사용하는 Staging·배포 채널은
+[`docs/releases.md`](../docs/releases.md)의 환경별 Compose 프로젝트·DB·HTTPS 게이트웨이
+설정을 따른다. 팀 통합·앱 빌드·릴리스·서버 배포 담당은 이어진이다.
 
 ```bash
 # Python 소스 변경 시 자동 재시작
