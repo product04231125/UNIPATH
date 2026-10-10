@@ -50,3 +50,19 @@ dart run tool/smoke_assistant_api.dart
 `dart -DAPI_BASE_URL=http://서버주소:포트 run tool/smoke_assistant_api.dart`로 실행한다.
 테스트의 승인 문서·답변은 합성 자료이며 실제 PDF 승인을 의미하지 않는다.
 Windows 네이티브 창/빌드는 Windows 개발 환경에서 별도로 확인한다.
+
+## 개발용·배포용 다운로드
+
+팀 변경 통합과 앱 빌드·릴리스는 **이어진**이 담당한다. Flutter 화면·UX 담당은
+**홍요아**, RAG 담당은 **신우철**이다. [Releases](https://github.com/product04231125/UNIPATH/releases)와
+[빌드·배포 절차](../docs/releases.md)를 따른다. `frontend/.flutter-version`으로 SDK를 고정한다.
+
+```powershell
+# 저장소 루트에서 실행. Windows에는 Python 3.12와 Visual Studio C++ 도구가 필요하다.
+python scripts/build_app.py --channel develop --target all --api-base-url https://staging-unipath.duckdns.org
+python scripts/build_app.py --channel product --target all --api-base-url https://unipath.duckdns.org --preview
+```
+
+출력은 `dist/develop/`, `dist/product/`다. 두 채널 모두 Release 모드로 빌드한다.
+`develop`은 개발·통합용, `product --preview`는 현재 기능으로 시연하는 배포용 프리뷰다.
+운영 전환 시 인증·API·데이터 검증을 마친 뒤 `--preview`를 제거한다.

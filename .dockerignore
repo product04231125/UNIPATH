@@ -16,3 +16,4 @@ docs/*
 **/.claude
 **/.cursor
 backend/app/rag/output/
+dist/
