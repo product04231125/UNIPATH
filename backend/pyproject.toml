@@ -13,13 +13,19 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=9.1,<10", "httpx2>=2,<3", "ruff>=0.16,<0.17"]
+dev = [
+  "pytest>=9.1,<10",
+  "httpx2>=2,<3",
+  "ruff>=0.16,<0.17",
+  { include-group = "ingestion" },
+]
+ingestion = ["pdfplumber==0.11.9"]
 
 [tool.uv]
 package = false
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "app/rag/tests"]
 pythonpath = ["."]
 markers = ["integration: requires migrated PostgreSQL with pgvector"]
 

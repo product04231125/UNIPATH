@@ -13,15 +13,39 @@ DB 준비 → 마이그레이션 성공 → API 시작 순서이며 도메인을
 호스트에서는 API 8010과 DB 5433을 사용하고 Docker 내부에서는 8000/5432를 사용한다.
 `backend/app/`에는 API·스키마·DB·서비스·Rule Engine·RAG 경계를 마련했다.
 아래 다이어그램의 도메인 기능과 외부 어댑터는 목표 구조이며 현재 기능 구현이 아니다.
-현재 API는 상태 확인과 DB 준비 상태 확인을 제공한다. 상세 실행 방법은
+현재 API는 상태 확인, DB 준비 상태 확인과 `POST /api/v1/assistant/queries`를
+제공한다. 학교 질의의 공개 Pydantic 계약을 내부 RAG 서비스와 분리하고,
+동기 검색은 FastAPI의 스레드풀에서 실행한다. 파일 인덱스는 앱 시작 시 한 번 읽는다.
+기본 실행은 빈 인덱스이며 선택적 `compose.rag.yaml`은 PDF 추출 후 API에 읽기 전용
+JSONL을 연결한다. 파일 코퍼스는 로컬 환경에서만 사용한다.
+현재 PDF는 미승인이고 실제 생성기는 없으므로 공식 답변은 생성하지 않는다.
+졸업 판정 요청은 `rule_engine_required`로 안내하며 Rule Engine 실행은 후속 구현이다.
+현재 구현 흐름은 아래와 같다. 상세 API 계약은
+[`api/assistant.md`](api/assistant.md), 실행 방법은
 [`../backend/README.md`](../backend/README.md)를 따른다.
 
-### 독립 AI 대화창 목업
+```mermaid
+flowchart LR
+    Pdf[로컬 학교 PDF] --> Extract[일회성 PDF 추출]
+    Extract --> Jsonl[청크 JSONL · 로컬 볼륨]
+    Jsonl -->|시작 시 읽기 전용 로드| Index[메모리 BM25 검색]
+    Client[Flutter AI 도우미] --> API[학교 질의 API]
+    API --> Context[학교 문맥 · 질의 종류 확인]
+    Context -->|검색 가능한 질의| Index
+    Context -->|정보 부족 · 졸업 판정| Needs[needs_user_input]
+    Index --> Approval[공식 승인 · 적용 범위 필터]
+    Approval -->|승인 근거 없음| Missing[insufficient_evidence]
+    Approval -->|승인 근거 있음 · 생성기 없음| Failed[failed]
+```
 
-- Windows에서는 우측 AI 패널을 별도 Flutter OS 창으로 분리할 수 있고, Web에서는
-  같은 이름의 브라우저 팝업 창을 재사용한다.
-- 독립 창은 현재 목업에서 화면 문맥만 전달받는다. 실제 대화 이력과 RAG 응답 동기화는
-  메모리 공유가 아니라 conversation_id를 포함한 동일 API 계약으로 처리한다.
+### 학교 질의와 독립 AI 대화창
+
+- Windows에서는 우측 AI 패널을 별도 Flutter OS 창으로 분리할 수 있다. Web은 도킹 패널과
+  좁은 폭 오버레이를 사용한다.
+- 도킹·분리 창은 같은 학교 질의 HTTP 어댑터와 응답 위젯을 사용한다. 질문과 사용자가 확인한
+  학교 문맥만 전송한다. 학교 질의 API와 Flutter 연동 코드가 이 브랜치에 함께 포함된다.
+- 대화 이력과 질의 문맥은 창별 메모리이며 서로 동기화하지 않는다. 서버 대화 저장·동기화는
+  conversation_id 등의 별도 계약이 필요한 후속 구현이다.
 - 메인 창의 채팅 아이콘은 기존 독립 창이 있으면 새 창을 만들지 않고 해당 창을
   전면화한다. Windows 목업에서 메인 창을 닫으면 분리 AI 창을 먼저 명시적으로
   종료한 뒤 전체 앱을 종료한다.
@@ -312,6 +336,16 @@ flowchart TB
   채용공고의 자격증 요건과 비교해 매칭 근거를 생성한다.
 
 ## 운영 환경 경계
+
+앱 통합·빌드·릴리스·서버 배포는 이어진이 담당한다. `compose.server.yaml`은
+환경별 정적 Web 서비스와 공통 HTTPS 게이트웨이 연결을 추가한다.
+`staging-unipath.duckdns.org`는 `unipath-staging` 프로젝트에, `unipath.duckdns.org`는
+`unipath-product` 프로젝트에 연결한다. 각 프로젝트의 API·DB 네트워크, DB 볼륨과
+비밀번호는 분리하고 동일한 FastAPI 이미지를 사용한다. 공개 게이트웨이에는 Web만
+연결하며 Web이 학교 질의와 readiness API를 내부 FastAPI로 프록시한다.
+다운로드 앱의 API도 해당 HTTPS 원점을 사용한다. 현재 배포 채널은 목업 인증·로컬
+기록·근거 부족 안내를 제공하는 프리뷰이며 실제 운영 기능의 완성을 의미하지 않는다.
+구체적인 설정·HTTPS 개통·GitHub 다운로드 절차는 [`releases.md`](releases.md)를 따른다.
 
 ```mermaid
 flowchart LR

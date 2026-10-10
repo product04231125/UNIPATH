@@ -1,0 +1,27 @@
+# Use a different Compose project and env file for each domain (see docs/releases.md).
+services:
+  web:
+    image: unipath-web:${APP_CHANNEL:?Set APP_CHANNEL}
+    build:
+      context: .
+      dockerfile: deploy/preview/Dockerfile
+      args:
+        APP_CHANNEL: ${APP_CHANNEL:?Set APP_CHANNEL}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      default:
+        aliases: ["${WEB_NETWORK_ALIAS:?Set WEB_NETWORK_ALIAS}"]
+      gateway:
+        aliases: ["${WEB_NETWORK_ALIAS:?Set WEB_NETWORK_ALIAS}"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+networks:
+  gateway:
+    external: true
+    name: ${GATEWAY_NETWORK:-pawmaru-edge}

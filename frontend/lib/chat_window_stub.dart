@@ -1,4 +1,5 @@
 Future<bool> isDetachedChatWindow() async => false;
+Future<void> closeDetachedChatWindow() async {}
 
 Future<void> initializeDetachedChatWindow() async {}
 
@@ -11,6 +12,8 @@ Stream<bool> detachedChatWindowChanges() => const Stream<bool>.empty();
 Future<bool> isMainWindowMaximized() async => false;
 
 Stream<bool> mainWindowMaximizeChanges() => const Stream<bool>.empty();
+
+bool get supportsDetachedChatWindow => false;
 
 Future<void> openDetachedChatWindow({double width = 360}) {
   throw UnsupportedError('Independent chat windows are not supported here.');

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:university_path_frontend/shared/app_typography.dart';
 
 class StatusBadge extends StatelessWidget {
   const StatusBadge({super.key, required this.status});
@@ -21,7 +22,7 @@ class StatusBadge extends StatelessWidget {
       child: Text(
         status,
         style: TextStyle(
-          fontSize: 11,
+          fontSize: AppTypography.caption,
           fontWeight: FontWeight.w800,
           color: color,
         ),

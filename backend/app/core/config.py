@@ -2,7 +2,7 @@ from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import SecretStr
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
@@ -28,6 +28,21 @@ class Settings(BaseSettings):
     postgres_password: SecretStr
     database_url: SecretStr | None = None
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+    school_rag_corpus_path: Path | None = None
+
+    @model_validator(mode="after")
+    def validate_local_corpus(self):
+        if self.school_rag_corpus_path is not None and self.app_env != Environment.LOCAL:
+            raise ValueError("The JSONL school corpus is supported only in the local environment")
+        return self
+
+    @property
+    def resolved_school_corpus_path(self) -> Path | None:
+        if self.school_rag_corpus_path is None:
+            return None
+        if self.school_rag_corpus_path.is_absolute():
+            return self.school_rag_corpus_path
+        return Path(__file__).resolve().parents[3] / self.school_rag_corpus_path
 
     @property
     def sqlalchemy_url(self) -> URL | str:

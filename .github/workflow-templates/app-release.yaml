@@ -1,0 +1,225 @@
+name: App downloads
+
+on:
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Download channel
+        type: choice
+        options: [both, develop, product]
+        default: both
+      api_base_url:
+        description: Public API origin (blank uses repository variables or team preview)
+        type: string
+      product_preview:
+        description: Product preview (disable only for verified HTTPS Production)
+        type: boolean
+        default: true
+      release_tag:
+        description: Optional tag; only when building one channel
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-downloads-${{ github.ref }}-${{ inputs.channel || 'branch' }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      channels: ${{ steps.plan.outputs.channels }}
+    steps:
+      - name: Select branches, channels and public API
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          BRANCH: ${{ github.ref_name }}
+          CHANNEL: ${{ inputs.channel }}
+          API_URL: ${{ inputs.api_base_url }}
+          PRODUCT_PREVIEW: ${{ inputs.product_preview }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          DEVELOP_API: ${{ vars.DEVELOP_API_BASE_URL }}
+          PRODUCT_API: ${{ vars.PRODUCT_API_BASE_URL }}
+        run: |
+          python - <<'PY'
+          import json, os
+          requested = os.environ['CHANNEL'] if os.environ['EVENT'] == 'workflow_dispatch' else ('develop' if os.environ['BRANCH'] == 'develop' else 'product')
+          channels = ['develop', 'product'] if requested == 'both' else [requested]
+          if os.environ['RELEASE_TAG'] and len(channels) != 1:
+              raise SystemExit('A custom release tag requires exactly one channel')
+          product_preview = os.environ['EVENT'] != 'workflow_dispatch' or os.environ['PRODUCT_PREVIEW'] == 'true'
+          matrix = []
+          for channel in channels:
+              preview = channel == 'develop' or product_preview
+              configured = os.environ['DEVELOP_API' if channel == 'develop' else 'PRODUCT_API']
+              api = os.environ['API_URL'] or configured
+              if not api and not preview:
+                  raise SystemExit('Set a verified HTTPS PRODUCT_API_BASE_URL for Production')
+              api = api or ('https://staging-unipath.duckdns.org' if channel == 'develop' else 'https://unipath.duckdns.org')
+              for target, runner in [('web', 'ubuntu-latest'), ('windows', 'windows-2022')]:
+                  matrix.append(dict(channel=channel, target=target, runner=runner, api=api, preview=preview))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('matrix=' + json.dumps({'include': matrix}) + '\n')
+              output.write('channels=' + json.dumps(channels) + '\n')
+          PY
+
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Cache pinned Flutter SDK
+        uses: actions/cache@v4
+        id: flutter-cache
+        with:
+          path: ${{ runner.temp }}/unipath-flutter
+          key: flutter-3.47.6-${{ runner.os }}-${{ runner.arch }}
+      - name: Install pinned Flutter from official Git tag
+        shell: bash
+        run: |
+          if [ ! -d "$RUNNER_TEMP/unipath-flutter/.git" ]; then
+            git clone --depth 1 --branch 3.47.6 https://github.com/flutter/flutter.git "$RUNNER_TEMP/unipath-flutter"
+          fi
+          echo "$RUNNER_TEMP/unipath-flutter/bin" >> "$GITHUB_PATH"
+      - name: Initialize Flutter
+        shell: bash
+        run: |
+          flutter config --no-analytics
+          flutter --version
+      - name: Verify Flutter
+        working-directory: frontend
+        run: |
+          flutter pub get --enforce-lockfile
+          flutter analyze
+          flutter test
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.12.21'
+          python-version: '3.12'
+          enable-cache: true
+      - name: Verify backend, RAG and release scripts
+        working-directory: backend
+        env:
+          POSTGRES_PASSWORD: synthetic-ci-password
+        run: |
+          uv lock --check
+          uv sync --frozen
+          uv run --frozen ruff check . ../scripts
+          uv run --frozen ruff format --check . ../scripts
+          uv run --frozen pytest -q -m 'not integration'
+          uv run --frozen python -m app.rag.ingestion
+          uv run --frozen python -m app.rag.evals
+          python -m unittest discover -s ../scripts/tests -v
+      - name: Verify shared Docker environment
+        run: |
+          cp .env.example .env
+          docker compose -f compose.yaml -f compose.rag.yaml up --build --wait --wait-timeout 180
+          docker compose -f compose.yaml -f compose.rag.yaml --profile test run --build --rm test
+          python backend/scripts/smoke_api.py
+      - name: Clean up synthetic CI data
+        if: always()
+        run: docker compose -f compose.yaml -f compose.rag.yaml down --volumes
+
+  build:
+    needs: [plan, verify]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Cache pinned Flutter SDK
+        uses: actions/cache@v4
+        id: flutter-cache
+        with:
+          path: ${{ runner.temp }}/unipath-flutter
+          key: flutter-3.47.6-${{ runner.os }}-${{ runner.arch }}
+      - name: Install pinned Flutter from official Git tag
+        shell: bash
+        run: |
+          if [ ! -d "$RUNNER_TEMP/unipath-flutter/.git" ]; then
+            git clone --depth 1 --branch 3.47.6 https://github.com/flutter/flutter.git "$RUNNER_TEMP/unipath-flutter"
+          fi
+          echo "$RUNNER_TEMP/unipath-flutter/bin" >> "$GITHUB_PATH"
+      - name: Initialize Flutter
+        shell: bash
+        run: |
+          flutter config --no-analytics
+          flutter --version
+      - name: Build and package complete app
+        shell: bash
+        env:
+          CHANNEL: ${{ matrix.channel }}
+          TARGET: ${{ matrix.target }}
+          API_BASE_URL: ${{ matrix.api }}
+          PREVIEW: ${{ matrix.preview }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          preview=()
+          if [ "$PREVIEW" = true ] && [ "$CHANNEL" = product ]; then preview=(--preview); fi
+          python scripts/build_app.py --channel "$CHANNEL" --target "$TARGET" --api-base-url "$API_BASE_URL" --build-number "$BUILD_NUMBER" "${preview[@]}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ matrix.channel }}-${{ matrix.target }}
+          path: |
+            dist/${{ matrix.channel }}/*.zip
+            dist/${{ matrix.channel }}/*.sha256
+            dist/${{ matrix.channel }}/*.json
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    needs: [plan, verify, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        channel: ${{ fromJSON(needs.plan.outputs.channels) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: app-${{ matrix.channel }}-*
+          path: dist/${{ matrix.channel }}
+          merge-multiple: true
+      - name: Publish downloads after both platforms pass
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHANNEL: ${{ matrix.channel }}
+          CUSTOM_TAG: ${{ inputs.release_tag }}
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, subprocess
+          directory = pathlib.Path('dist') / os.environ['CHANNEL']
+          manifest = json.loads(next(directory.glob('*.json')).read_text())
+          short = manifest['commit'][:8]
+          if manifest['channel'] == 'develop':
+              automatic_tag = 'dev-' + short
+          elif manifest['preview']:
+              automatic_tag = 'v' + manifest['version'] + '-preview.' + short
+          else:
+              automatic_tag = 'v' + manifest['version']
+          tag = os.environ['CUSTOM_TAG'] or automatic_tag
+          subprocess.run(['python', 'scripts/publish_app.py', '--assets-dir', str(directory), '--tag', tag], check=True)
+          PY
