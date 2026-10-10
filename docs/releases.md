@@ -74,31 +74,29 @@ python scripts/publish_app.py --assets-dir dist/product --tag v0.1.0-preview.소
 일치를 검증한다. Windows 대기 중 웹만 제공할 때는 `--allow-web-only`를 명시하며
 릴리스에 Windows 파일이 없다고 표시한다. 서로 다른 커밋의 파일은 합치지 않는다.
 
-## GitHub Actions 활성화
+## GitHub Actions 실행
 
-워크플로는 [app-release.yaml](../.github/workflow-templates/app-release.yaml)에 있다.
-현재 연결 토큰에는 `workflow` 권한이 없어 템플릿으로 보관한다. 워크플로 등록 권한이
-있는 계정으로 다음 파일을 **기본 브랜치 `main`**의 `.github/workflows/`에 추가한다.
+워크플로는 [app-release.yaml](../.github/workflows/app-release.yaml)로 활성화했다.
+기본 브랜치 `main`의 **Actions → App downloads → Run workflow**에서 채널을 선택한다.
+`develop` 푸시는 개발용, `main` 푸시는 배포용 프리뷰를 검증·빌드·릴리스한다. 수동 실행은
+두 채널을 함께 선택할 수도 있고 API URL을 지정할 수도 있다. 앱 다운로드 워크플로가
+서버 컨테이너를 자동 배포하지는 않는다.
 
-```powershell
-New-Item -ItemType Directory -Force .github/workflows
-Copy-Item .github/workflow-templates/app-release.yaml .github/workflows/app-release.yaml
-Copy-Item .github/workflow-templates/backend-ci.yaml .github/workflows/backend-ci.yaml
-git add .github/workflows
-git commit -m "ci: enable backend checks and app downloads"
-git push origin main
+```bash
+# 동일한 소스 커밋에서 두 채널의 Web·Windows를 검증·빌드·릴리스
+# 셸에서 사용하는 공개 설정이며 비밀값이 아니다.
+gh workflow run app-release.yaml --ref main -f channel=both -f product_preview=true
 ```
 
-필요하면 `gh auth refresh --hostname github.com --scopes workflow`로 연결 권한을 갱신한다.
-사용자가 GitHub 인증 화면에서 승인해야 하며 토큰을 채팅이나 저장소에 붙여넣지 않는다.
-활성화 후 **Actions → App downloads → Run workflow**에서 채널을 선택한다. `develop`
-푸시는 개발용, `main` 푸시는 배포용 프리뷰를 검증·빌드·릴리스한다. 수동 실행은 두 채널을
-함께 선택할 수도 있고 API URL을 지정할 수도 있다. 앱 자체가 서버를 자동 배포하지는 않는다.
+repository variables `DEVELOP_API_BASE_URL`, `PRODUCT_API_BASE_URL`은 각각 위 두
+HTTPS 도메인으로 설정했다. 워크플로 기본값도 동일하다. 실제 운영 전환은
+`product_preview=false`를 명시한 수동 실행에서만 가능하다. 검증 실패나 한 플랫폼
+빌드 실패 시 릴리스를 발행하지 않는다. 출력은 Actions Artifacts와 GitHub Releases에
+저장하며 ZIP에는 SDK나 소스 코드·`.env`를 넣지 않는다.
 
-선택적 repository variables는 `DEVELOP_API_BASE_URL`, `PRODUCT_API_BASE_URL`이다.
-미설정 시 위 두 HTTPS 도메인을 사용한다. 실제 운영 전환은 `product_preview=false`를
-명시한 수동 실행에서만 가능하다. 검증 실패나 한 플랫폼 빌드 실패 시 릴리스를 발행하지 않는다.
-출력은 Actions Artifacts와 GitHub Releases에 저장하며 ZIP에는 SDK나 소스 코드를 넣지 않는다.
+[backend-ci.yaml](../.github/workflows/backend-ci.yaml)은 백엔드 변경 PR 및
+`main`/`develop` 푸시에 공통 환경을 검증한다. 워크플로 파일 수정·푸시에는 GitHub
+연결의 `workflow` 권한이 필요하다. 개인 에이전트 설정은 계속 Git에서 제외한다.
 
 ## 이 서버의 도메인 배포
 

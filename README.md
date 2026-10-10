@@ -33,12 +33,12 @@ git switch -c feature/your-task
 각 담당자는 자신의 변경과 관련된 테스트를 실행하고, API·DB 계약을 바꾸면 영향받는
 팀원과 문서·모델을 함께 확인합니다. `.env`와 실제 학생 데이터는 커밋하지 않습니다.
 
-백엔드 CI 설정은 [`.github/workflow-templates/backend-ci.yaml`](.github/workflow-templates/backend-ci.yaml)에
-보관합니다. 저장소 생성에 사용한 GitHub OAuth 토큰에 `workflow` 권한이 없어
-활성 워크플로 파일의 푸시가 거부되었으므로 자동 CI는 아직 활성화하지 않았습니다.
-권한을 갖춘 팀원이 파일을 `.github/workflows/backend-ci.yaml`로 옮겨 푸시하면
-PR 및 `main`/`develop` 푸시에 자동 검증이 실행됩니다. 그 전에는 아래 Docker
-테스트 명령으로 공통 환경을 검증합니다.
+백엔드 CI는 [`.github/workflows/backend-ci.yaml`](.github/workflows/backend-ci.yaml)에서
+PR과 `main`/`develop`의 백엔드 변경을 검증합니다. 앱 다운로드 워크플로는
+[`.github/workflows/app-release.yaml`](.github/workflows/app-release.yaml)이며 프론트·백엔드·RAG
+검증 후 Web과 Windows x64를 빌드해 GitHub Releases에 게시합니다.
+팀 통합·빌드·릴리스 담당은 이어진입니다. 수동 빌드와 실행 절차는 아래 공통 환경과
+[`docs/releases.md`](docs/releases.md)를 참고합니다.
 
 ## 앱 다운로드와 서버 주소
 
