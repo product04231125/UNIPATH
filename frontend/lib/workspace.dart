@@ -9,6 +9,8 @@ import 'features/settings/chat_preferences.dart';
 import 'features/assistant/assistant_conversation.dart';
 import 'features/assistant/assistant_api.dart';
 import 'features/assistant/assistant_panel.dart';
+import 'features/assistant/shared_school_context.dart';
+import 'chat_window.dart' as native;
 import 'features/graduation/graduation_page.dart';
 import 'features/home/home_page.dart';
 import 'features/planning/planning_repository.dart';
@@ -83,6 +85,7 @@ class _WorkspaceState extends State<Workspace> {
     api: widget.assistantFactory?.call(),
   );
   final _planningRepository = PlanningRepository();
+  late final SharedSchoolContext _sharedSchoolContext;
   DateTime? _scheduleInitialDay;
   PendingUiAction? _scheduleAddRequest;
   StreamSubscription<bool>? _detachedChatSubscription;
@@ -92,6 +95,27 @@ class _WorkspaceState extends State<Workspace> {
   void initState() {
     super.initState();
     _page = widget.selectedPage ?? 0;
+    _sharedSchoolContext = SharedSchoolContext(
+      _planningRepository,
+      _assistantConversation,
+    );
+    if (widget.windowHost.supportsDetached) {
+      native.bindSchoolProfile(
+        () {
+          if (_planningRepository.isLoading || _planningRepository.loadFailed) {
+            throw StateError('Profile unavailable');
+          }
+          return _planningRepository.profile.toJson();
+        },
+        (value) => _planningRepository.saveSchoolContext(
+          school: value['school'] as String?,
+          department: value['department'] as String?,
+          admissionYear: value['admissionYear'] as int?,
+          track: value['track'] as String?,
+        ),
+      );
+      _planningRepository.addListener(_publishSchoolProfile);
+    }
     _planningRepository.load();
     _chatPreferences = widget.chatPreferences ?? ChatPreferences();
     _chatPreferences.load();
@@ -128,6 +152,16 @@ class _WorkspaceState extends State<Workspace> {
     });
   }
 
+  void _publishSchoolProfile() {
+    if (!_planningRepository.isLoading && !_planningRepository.loadFailed) {
+      unawaited(
+        native
+            .publishSchoolProfile(_planningRepository.profile.toJson())
+            .catchError((Object _) {}),
+      );
+    }
+  }
+
   @override
   void didUpdateWidget(covariant Workspace oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -142,6 +176,10 @@ class _WorkspaceState extends State<Workspace> {
   void dispose() {
     _detachedChatSubscription?.cancel();
     _mainWindowMaximizeSubscription?.cancel();
+    if (widget.windowHost.supportsDetached) {
+      native.bindSchoolProfile(null, null);
+    }
+    _sharedSchoolContext.dispose();
     _assistantConversation.dispose();
     _planningRepository.dispose();
     if (widget.chatPreferences == null) _chatPreferences.dispose();
@@ -182,6 +220,7 @@ class _WorkspaceState extends State<Workspace> {
           _buildPage(navigationItems.length, layout),
       assistantBuilder: (context, width) => AssistantPanel(
         conversation: _assistantConversation,
+        saveContext: _sharedSchoolContext.save,
         suggestContext: () {
           final profile = _planningRepository.profile;
           return SchoolQueryContext(
@@ -192,6 +231,7 @@ class _WorkspaceState extends State<Workspace> {
                 ? null
                 : profile.department.trim(),
             admissionYear: profile.admissionYear,
+            track: profile.track,
           );
         },
         onClose: _closeChat,

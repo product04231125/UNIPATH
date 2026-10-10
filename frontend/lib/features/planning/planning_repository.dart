@@ -74,6 +74,22 @@ class PlanningRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> saveSchoolContext({
+    String? school,
+    String? department,
+    int? admissionYear,
+    String? track,
+  }) => saveProfile(
+    PlanningProfile(
+      school: school ?? '',
+      department: department ?? '',
+      admissionYear: admissionYear,
+      track: track,
+      academicYearOverride: _profile.academicYearOverride,
+      weekStartsOn: _profile.weekStartsOn,
+    ),
+  );
+
   Future<void> saveEvent(PlanningEvent event) async {
     final index = _events.indexWhere((item) => item.id == event.id);
     final updated = [..._events];
@@ -117,6 +133,7 @@ class PlanningProfile {
     this.school = '',
     this.department = '',
     this.admissionYear,
+    this.track,
     this.academicYearOverride,
     this.weekStartsOn = WeekStartDay.sunday,
   });
@@ -124,6 +141,7 @@ class PlanningProfile {
   final String school;
   final String department;
   final int? admissionYear;
+  final String? track;
   final int? academicYearOverride;
   final WeekStartDay weekStartsOn;
 
@@ -143,6 +161,7 @@ class PlanningProfile {
     'school': school,
     'department': department,
     'admissionYear': admissionYear,
+    'track': track,
     'academicYearOverride': academicYearOverride,
     'weekStartsOn': weekStartsOn.storageValue,
   };
@@ -152,6 +171,7 @@ class PlanningProfile {
         school: json['school'] as String? ?? '',
         department: json['department'] as String? ?? '',
         admissionYear: json['admissionYear'] as int?,
+        track: json['track'] as String?,
         academicYearOverride: json['academicYearOverride'] as int?,
         weekStartsOn: weekStartDayFromStorage(json['weekStartsOn']),
       );
