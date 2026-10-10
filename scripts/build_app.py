@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import zipfile
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -90,6 +91,24 @@ def package_bundle(bundle: Path, archive: Path) -> None:
                 output.write(file, file.relative_to(bundle).as_posix())
 
 
+def archive_previous_builds(output: Path, signature: dict) -> None:
+    """Keep prior downloads, while ensuring the current release contains one source/config."""
+    manifests = list(output.glob("unipath-*.json"))
+    for manifest in manifests:
+        try:
+            previous = json.loads(manifest.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            previous = {}
+        if any(previous.get(key) != value for key, value in signature.items()):
+            history = output / "previous" / datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+            history.mkdir(parents=True)
+            for file in output.glob("unipath-*"):
+                if file.is_file() and file.name.endswith((".zip", ".zip.sha256", ".json")):
+                    shutil.move(file, history / file.name)
+            print(f"Preserved previous release files in {history}", flush=True)
+            return
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--channel", choices=["develop", "product"], required=True)
@@ -126,6 +145,17 @@ def main() -> None:
     run([flutter, "pub", "get", "--enforce-lockfile"])
     output = ROOT / "dist" / args.channel
     output.mkdir(parents=True, exist_ok=True)
+    signature = {
+        "channel": args.channel,
+        "preview": args.preview or args.channel == "develop",
+        "version": args.version,
+        "build_number": args.build_number,
+        "commit": commit,
+        "flutter_version": expected_sdk,
+        "api_base_url": api_url,
+        "build_mode": "release",
+    }
+    archive_previous_builds(output, signature)
     for target in targets:
         command = [flutter, "build", target, "--release", "--no-pub"]
         if target == "web":
@@ -149,17 +179,7 @@ def main() -> None:
         shutil.copytree(built, bundle)
         if target == "windows":
             copy_windows_runtime(bundle)
-        manifest = {
-            "channel": args.channel,
-            "preview": args.preview or args.channel == "develop",
-            "target": target,
-            "version": args.version,
-            "build_number": args.build_number,
-            "commit": commit,
-            "flutter_version": expected_sdk,
-            "api_base_url": api_url,
-            "build_mode": "release",
-        }
+        manifest = {**signature, "target": target}
         (bundle / "build-info.json").write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )

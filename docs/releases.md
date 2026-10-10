@@ -63,6 +63,8 @@ python scripts/build_app.py --channel product --target all --api-base-url https:
 배포용은 통합 검증한 `main` 커밋에서 빌드한다. `--target web` 또는 `--target windows`로
 한 플랫폼만 빌드할 수도 있다. API URL은 `/api/v1`이 없는 HTTP(S) 원점이어야 하며
 토큰·비밀값을 넣지 않는다. 실제 운영 빌드는 `--preview` 없이 빌드하며 HTTPS를 요구한다.
+소스·버전·API 설정이 바뀌면 이전 ZIP은 `dist/채널/previous/`에 보존하고 현재 릴리스
+파일과 분리한다. 같은 소스·설정의 Windows와 Web은 함께 묶어 게시한다.
 
 ```powershell
 # GitHub CLI 로그인에는 repo 권한이 필요하다. 태그는 각 빌드 소스 커밋을 가리킨다.

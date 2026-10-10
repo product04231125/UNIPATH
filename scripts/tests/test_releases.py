@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from build_app import package_bundle, validate_api_url  # noqa: E402
+from build_app import archive_previous_builds, package_bundle, validate_api_url  # noqa: E402
 from publish_app import main as publish  # noqa: E402
 
 
@@ -59,7 +59,7 @@ class ReleaseTests(unittest.TestCase):
         }
         encoded = json.dumps(manifest)
         (bundle / "build-info.json").write_text(encoded)
-        archive = directory / f"test-{target}.zip"
+        archive = directory / f"unipath-test-{target}.zip"
         package_bundle(bundle, archive)
         archive.with_suffix(".json").write_text(encoded)
         digest = hashlib.sha256(archive.read_bytes()).hexdigest()
@@ -97,6 +97,25 @@ class ReleaseTests(unittest.TestCase):
             self.create_asset(directory, "web", "a" * 40)
             self.create_asset(directory, "windows", "b" * 40)
             self.assert_publish_rejected(directory)
+
+    def test_rebuilding_new_source_preserves_previous_downloads_outside_current_release(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            archive = self.create_asset(directory, "windows", "a" * 40)
+            previous_bytes = archive.read_bytes()
+            archive_previous_builds(directory, {"commit": "b" * 40})
+            self.assertFalse(list(directory.glob("*.zip")))
+            preserved = list((directory / "previous").rglob("*.zip"))
+            self.assertEqual(len(preserved), 1)
+            self.assertEqual(preserved[0].read_bytes(), previous_bytes)
+
+    def test_building_second_platform_retains_matching_first_platform(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            archive = self.create_asset(directory, "web", "a" * 40)
+            archive_previous_builds(directory, {"commit": "a" * 40})
+            self.assertTrue(archive.exists())
+            self.assertFalse((directory / "previous").exists())
 
     def test_archive_and_external_manifest_must_agree(self):
         with tempfile.TemporaryDirectory() as temporary:
