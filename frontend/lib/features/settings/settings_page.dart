@@ -120,6 +120,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         children: [
                           TextFormField(
                             controller: _school,
+                            maxLength: 128,
                             onChanged: (_) => setState(() {
                               _saved = false;
                               _dirty = true;
@@ -133,6 +134,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           const SizedBox(height: 14),
                           TextFormField(
                             controller: _department,
+                            maxLength: 128,
                             onChanged: (_) => setState(() {
                               _saved = false;
                               _dirty = true;

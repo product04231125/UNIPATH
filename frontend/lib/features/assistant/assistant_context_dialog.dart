@@ -44,95 +44,101 @@ class _ContextFormState extends State<SchoolQueryContextForm> {
   String? _value(TextEditingController controller) =>
       controller.text.trim().isEmpty ? null : controller.text.trim();
   @override
-  Widget build(BuildContext context) => IgnorePointer(
-    ignoring: _saving || !widget.enabled,
-    child: Form(
-      key: _form,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text('테스트용 설정창', style: TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 12),
-          const Text(
-            '설정과 같은 학교 정보를 사용합니다. 저장 후 질문을 보낼 때 질문과 아래 정보만 전송합니다. 개인 기록과 예시 졸업 기준은 전송하지 않습니다.',
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            onChanged: (_) => _dirty = true,
-            controller: _school,
-            maxLength: 128,
-            decoration: const InputDecoration(
-              labelText: '학교 (선택)',
-              hintText: '예: 경동대학교',
+  Widget build(BuildContext context) => ExcludeFocus(
+    excluding: _saving || !widget.enabled,
+    child: IgnorePointer(
+      ignoring: _saving || !widget.enabled,
+      child: Form(
+        key: _form,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              '테스트용 설정창',
+              style: TextStyle(fontWeight: FontWeight.w700),
             ),
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            onChanged: (_) => _dirty = true,
-            controller: _department,
-            maxLength: 128,
-            decoration: const InputDecoration(
-              labelText: '학과 (선택)',
-              hintText: '예: 컴퓨터공학과',
+            const SizedBox(height: 12),
+            const Text(
+              '설정과 같은 학교 정보를 사용합니다. 저장 후 질문을 보낼 때 질문과 아래 정보만 전송합니다. 개인 기록과 예시 졸업 기준은 전송하지 않습니다.',
             ),
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            onChanged: (_) => _dirty = true,
-            controller: _year,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: '입학연도 (선택)',
-              hintText: '예: 2026',
+            const SizedBox(height: 16),
+            TextFormField(
+              onChanged: (_) => _dirty = true,
+              controller: _school,
+              maxLength: 128,
+              decoration: const InputDecoration(
+                labelText: '학교 (선택)',
+                hintText: '예: 경동대학교',
+              ),
             ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) return null;
-              final year = int.tryParse(value.trim());
-              return year == null || year < 1000 || year > 9999
-                  ? '네 자리 입학연도를 입력해 주세요.'
-                  : null;
-            },
-          ),
-          const SizedBox(height: 16),
-          AnchoredSelectField<String?>(
-            value: _track,
-            label: '이수경로 (선택)',
-            options: [
-              const SelectOption(null, '미입력'),
-              const SelectOption('single_major', '단일전공'),
-              const SelectOption('double_major', '복수전공'),
-              if (_track != null &&
-                  !['single_major', 'double_major'].contains(_track))
-                SelectOption(_track, _track!),
-            ],
-            onChanged: (value) {
-              setState(() => _track = value);
-              _dirty = true;
-            },
-          ),
+            const SizedBox(height: 12),
+            TextFormField(
+              onChanged: (_) => _dirty = true,
+              controller: _department,
+              maxLength: 128,
+              decoration: const InputDecoration(
+                labelText: '학과 (선택)',
+                hintText: '예: 컴퓨터공학과',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              onChanged: (_) => _dirty = true,
+              controller: _year,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: '입학연도 (선택)',
+                hintText: '예: 2026',
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) return null;
+                final year = int.tryParse(value.trim());
+                return year == null || year < 1000 || year > 9999
+                    ? '네 자리 입학연도를 입력해 주세요.'
+                    : null;
+              },
+            ),
+            const SizedBox(height: 16),
+            AnchoredSelectField<String?>(
+              value: _track,
+              label: '이수경로 (선택)',
+              options: [
+                const SelectOption(null, '미입력'),
+                const SelectOption('single_major', '단일전공'),
+                const SelectOption('double_major', '복수전공'),
+                if (_track != null &&
+                    !['single_major', 'double_major'].contains(_track))
+                  SelectOption(_track, _track!),
+              ],
+              onChanged: (value) {
+                setState(() => _track = value);
+                _dirty = true;
+              },
+            ),
 
-          if (_error != null)
-            Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            if (_error != null)
+              Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            const SizedBox(height: 12),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              children: [
+                TextButton(
+                  onPressed: _saving ? null : widget.onCancel,
+                  child: const Text('취소'),
+                ),
+                FilledButton(
+                  onPressed: _saving ? null : _save,
+                  child: Text(_saving ? '저장 중…' : '질의에 사용'),
+                ),
+              ],
             ),
-          const SizedBox(height: 12),
-          Wrap(
-            alignment: WrapAlignment.end,
-            spacing: 8,
-            children: [
-              TextButton(
-                onPressed: _saving ? null : widget.onCancel,
-                child: const Text('취소'),
-              ),
-              FilledButton(
-                onPressed: _saving ? null : _save,
-                child: Text(_saving ? '저장 중…' : '질의에 사용'),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );

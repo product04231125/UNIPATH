@@ -19,13 +19,25 @@ class PlanningRepository extends ChangeNotifier {
   bool _loaded = false;
   PlanningProfile _profile = const PlanningProfile();
   List<PlanningEvent> _events = const [];
+  Future<void> _pendingOperation = Future.value();
+
+  // All windows share this owner. Build each write from the last committed
+  // state so a school-context update cannot overwrite an in-flight event save.
+  Future<void> _enqueue(Future<void> Function() operation) {
+    final result = _pendingOperation.then((_) => operation());
+    _pendingOperation = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return result;
+  }
 
   bool get isLoading => _isLoading;
   bool get loadFailed => _loadFailed;
   PlanningProfile get profile => _profile;
   List<PlanningEvent> get events => List.unmodifiable(_events);
 
-  Future<void> load() async {
+  Future<void> load() => _enqueue(() async {
     _isLoading = true;
     _loadFailed = false;
     _loaded = false;
@@ -66,9 +78,12 @@ class PlanningRepository extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-  }
+  });
 
-  Future<void> saveProfile(PlanningProfile profile) async {
+  Future<void> saveProfile(PlanningProfile profile) =>
+      _enqueue(() => _commitProfile(profile));
+
+  Future<void> _commitProfile(PlanningProfile profile) async {
     await _save(profile, _events);
     _profile = profile;
     notifyListeners();
@@ -79,18 +94,20 @@ class PlanningRepository extends ChangeNotifier {
     String? department,
     int? admissionYear,
     String? track,
-  }) => saveProfile(
-    PlanningProfile(
-      school: school ?? '',
-      department: department ?? '',
-      admissionYear: admissionYear,
-      track: track,
-      academicYearOverride: _profile.academicYearOverride,
-      weekStartsOn: _profile.weekStartsOn,
+  }) => _enqueue(
+    () => _commitProfile(
+      PlanningProfile(
+        school: school ?? '',
+        department: department ?? '',
+        admissionYear: admissionYear,
+        track: track,
+        academicYearOverride: _profile.academicYearOverride,
+        weekStartsOn: _profile.weekStartsOn,
+      ),
     ),
   );
 
-  Future<void> saveEvent(PlanningEvent event) async {
+  Future<void> saveEvent(PlanningEvent event) => _enqueue(() async {
     final index = _events.indexWhere((item) => item.id == event.id);
     final updated = [..._events];
     if (index == -1) {
@@ -102,14 +119,14 @@ class PlanningRepository extends ChangeNotifier {
     await _save(_profile, updated);
     _events = updated;
     notifyListeners();
-  }
+  });
 
-  Future<void> deleteEvent(String id) async {
+  Future<void> deleteEvent(String id) => _enqueue(() async {
     final updated = _events.where((item) => item.id != id).toList();
     await _save(_profile, updated);
     _events = updated;
     notifyListeners();
-  }
+  });
 
   Future<void> _save(
     PlanningProfile profile,

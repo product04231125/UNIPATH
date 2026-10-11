@@ -9,6 +9,7 @@ import 'package:university_path_frontend/features/assistant/assistant_api.dart';
 import 'package:university_path_frontend/features/assistant/assistant_conversation.dart';
 import 'package:university_path_frontend/features/assistant/assistant_panel.dart';
 import 'package:university_path_frontend/features/assistant/detached_chat_page.dart';
+import 'package:university_path_frontend/features/assistant/remote_school_profile.dart';
 
 Map<String, Object?> result({
   String status = 'insufficient_evidence',
@@ -366,6 +367,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: DetachedChatWindow(
+          schoolProfileFactory: () =>
+              RemoteSchoolProfile(request: (_) async => const {}),
           assistantFactory: () =>
               AssistantApi(client: MockClient((_) async => response(result()))),
         ),

@@ -5,9 +5,14 @@ import '../planning/planning_repository.dart';
 
 /// Child windows never write the combined profile/event storage themselves.
 class RemoteSchoolProfile extends PlanningRepository {
-  RemoteSchoolProfile() {
-    _subscription = native.schoolProfileChanges().listen(_receive);
+  RemoteSchoolProfile({
+    Future<Map<String, dynamic>> Function(Map<String, dynamic>? update)?
+    request,
+    Stream<Map<String, dynamic>>? changes,
+  }) : _request = request ?? native.requestSchoolProfile {
+    _subscription = (changes ?? native.schoolProfileChanges()).listen(_receive);
   }
+  final Future<Map<String, dynamic>> Function(Map<String, dynamic>?) _request;
   late final StreamSubscription<Map<String, dynamic>> _subscription;
   PlanningProfile _remoteProfile = const PlanningProfile();
   bool _loading = true;
@@ -29,8 +34,12 @@ class RemoteSchoolProfile extends PlanningRepository {
 
   @override
   Future<void> load() async {
+    if (_disposed) return;
+    _loading = true;
+    _failed = false;
+    notifyListeners();
     try {
-      _receive(await native.requestSchoolProfile());
+      _receive(await _request(null));
     } catch (_) {
       if (_disposed) return;
       _loading = false;
@@ -47,7 +56,7 @@ class RemoteSchoolProfile extends PlanningRepository {
     String? track,
   }) async {
     _receive(
-      await native.requestSchoolProfile({
+      await _request({
         'school': school,
         'department': department,
         'admissionYear': admissionYear,

@@ -37,6 +37,7 @@ class _AssistantPanelState extends State<AssistantPanel> {
   int _turnCount = 0;
   bool _editingContext = false;
   bool _savingContext = false;
+  bool get _canSend => !conversation.sending && !_savingContext;
   @override
   void initState() {
     super.initState();
@@ -127,9 +128,7 @@ class _AssistantPanelState extends State<AssistantPanel> {
                   ),
                 ),
                 TextButton.icon(
-                  onPressed: conversation.sending
-                      ? null
-                      : () => _editContext(context),
+                  onPressed: !_canSend ? null : () => _editContext(context),
                   icon: const Icon(Icons.tune, size: 18),
                   label: Text(
                     conversation.context.institution == null
@@ -158,7 +157,11 @@ class _AssistantPanelState extends State<AssistantPanel> {
                       try {
                         await widget.saveContext?.call(value);
                         if (mounted) {
-                          conversation.setContext(value);
+                          // A shared repository publishes the committed profile;
+                          // do not replace it with an older form snapshot.
+                          if (widget.saveContext == null) {
+                            conversation.setContext(value);
+                          }
                           setState(() => _editingContext = false);
                         }
                       } finally {
@@ -201,7 +204,9 @@ class _AssistantPanelState extends State<AssistantPanel> {
                   child: TextField(
                     controller: conversation.input,
                     maxLength: 4000,
-                    onSubmitted: (_) => conversation.send(),
+                    onSubmitted: (_) {
+                      if (_canSend) conversation.send();
+                    },
                     decoration: const InputDecoration(
                       labelText: '학교 규정 질문',
                       hintText: '예: 사회봉사 조건은?',
@@ -215,12 +220,12 @@ class _AssistantPanelState extends State<AssistantPanel> {
                 if (width < 300)
                   IconButton.filled(
                     tooltip: '보내기',
-                    onPressed: conversation.sending ? null : conversation.send,
+                    onPressed: _canSend ? conversation.send : null,
                     icon: const Icon(Icons.send),
                   )
                 else
                   FilledButton(
-                    onPressed: conversation.sending ? null : conversation.send,
+                    onPressed: _canSend ? conversation.send : null,
                     child: const Text('보내기'),
                   ),
               ],
@@ -283,16 +288,12 @@ class _AssistantPanelState extends State<AssistantPanel> {
         if (result?.status == AssistantStatus.needsUserInput &&
             result?.reason != 'rule_engine_required')
           TextButton(
-            onPressed: conversation.sending
-                ? null
-                : () => _editContext(context),
+            onPressed: !_canSend ? null : () => _editContext(context),
             child: const Text('질의 정보 보완'),
           ),
         if (canRetry)
           TextButton(
-            onPressed: conversation.sending
-                ? null
-                : () => conversation.retry(turn),
+            onPressed: !_canSend ? null : () => conversation.retry(turn),
             child: const Text('다시 질문'),
           ),
         for (final citation in result?.citations ?? <AssistantCitation>[]) ...[
