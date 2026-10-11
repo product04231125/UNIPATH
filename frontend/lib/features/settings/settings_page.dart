@@ -34,6 +34,9 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _saving = false;
   String? _error;
   bool _profileInitialized = false;
+  PlanningProfile? _displayedProfile;
+  String? _track;
+  bool _dirty = false;
 
   @override
   void initState() {
@@ -46,6 +49,8 @@ class _SettingsPageState extends State<SettingsPage> {
     );
     _academicYearOverride = profile.academicYearOverride;
     _weekStartsOn = profile.weekStartsOn;
+    _track = profile.track;
+    _displayedProfile = profile;
     _profileInitialized =
         !widget.repository.isLoading && !widget.repository.loadFailed;
   }
@@ -75,13 +80,17 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         );
       }
-      if (!_profileInitialized) {
+      if (!_profileInitialized ||
+          (!_dirty &&
+              !identical(_displayedProfile, widget.repository.profile))) {
         final profile = widget.repository.profile;
         _school.text = profile.school;
         _department.text = profile.department;
         _admissionYear.text = profile.admissionYear?.toString() ?? '';
         _academicYearOverride = profile.academicYearOverride;
         _weekStartsOn = profile.weekStartsOn;
+        _track = profile.track;
+        _displayedProfile = profile;
         _profileInitialized = true;
       }
       final suggestedYear = _suggestedYear();
@@ -111,7 +120,11 @@ class _SettingsPageState extends State<SettingsPage> {
                         children: [
                           TextFormField(
                             controller: _school,
-                            onChanged: (_) => setState(() => _saved = false),
+                            maxLength: 128,
+                            onChanged: (_) => setState(() {
+                              _saved = false;
+                              _dirty = true;
+                            }),
                             decoration: const InputDecoration(
                               labelText: '학교',
                               hintText: '예: 경동대학교',
@@ -121,7 +134,11 @@ class _SettingsPageState extends State<SettingsPage> {
                           const SizedBox(height: 14),
                           TextFormField(
                             controller: _department,
-                            onChanged: (_) => setState(() => _saved = false),
+                            maxLength: 128,
+                            onChanged: (_) => setState(() {
+                              _saved = false;
+                              _dirty = true;
+                            }),
                             decoration: const InputDecoration(
                               labelText: '학과',
                               hintText: '예: 컴퓨터공학과',
@@ -131,7 +148,10 @@ class _SettingsPageState extends State<SettingsPage> {
                           const SizedBox(height: 14),
                           TextFormField(
                             controller: _admissionYear,
-                            onChanged: (_) => setState(() => _saved = false),
+                            onChanged: (_) => setState(() {
+                              _saved = false;
+                              _dirty = true;
+                            }),
                             decoration: const InputDecoration(
                               labelText: '입학연도',
                               hintText: '예: 2024',
@@ -152,6 +172,25 @@ class _SettingsPageState extends State<SettingsPage> {
                             },
                           ),
                           const SizedBox(height: 18),
+                          AnchoredSelectField<String?>(
+                            value: _track,
+                            label: '이수경로',
+                            options: [
+                              const SelectOption(null, '미입력'),
+                              const SelectOption('single_major', '단일전공'),
+                              const SelectOption('double_major', '복수전공'),
+                              if (_track != null &&
+                                  _track != 'single_major' &&
+                                  _track != 'double_major')
+                                SelectOption(_track, _track!),
+                            ],
+                            onChanged: (value) => setState(() {
+                              _track = value;
+                              _saved = false;
+                              _dirty = true;
+                            }),
+                          ),
+                          const SizedBox(height: 18),
                           AnchoredSelectField<int?>(
                             value: _academicYearOverride,
                             label: '개인 계획 학년',
@@ -168,6 +207,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             onChanged: (value) => setState(() {
                               _academicYearOverride = value;
                               _saved = false;
+                              _dirty = true;
                             }),
                           ),
                           const SizedBox(height: 8),
@@ -194,6 +234,7 @@ class _SettingsPageState extends State<SettingsPage> {
                               setState(() {
                                 _weekStartsOn = value;
                                 _saved = false;
+                                _dirty = true;
                               });
                             },
                           ),
@@ -272,11 +313,18 @@ class _SettingsPageState extends State<SettingsPage> {
           school: _school.text.trim(),
           department: _department.text.trim(),
           admissionYear: int.tryParse(_admissionYear.text.trim()),
+          track: _track,
           academicYearOverride: _academicYearOverride,
           weekStartsOn: _weekStartsOn,
         ),
       );
-      if (mounted) setState(() => _saved = true);
+      if (mounted) {
+        setState(() {
+          _saved = true;
+          _dirty = false;
+          _displayedProfile = widget.repository.profile;
+        });
+      }
     } catch (_) {
       if (mounted) {
         setState(() => _error = '기기에 저장하지 못했습니다. 입력을 유지했으니 다시 시도하세요.');

@@ -9,6 +9,7 @@ import 'package:university_path_frontend/features/assistant/assistant_api.dart';
 import 'package:university_path_frontend/features/assistant/assistant_conversation.dart';
 import 'package:university_path_frontend/features/assistant/assistant_panel.dart';
 import 'package:university_path_frontend/features/assistant/detached_chat_page.dart';
+import 'package:university_path_frontend/features/assistant/remote_school_profile.dart';
 
 Map<String, Object?> result({
   String status = 'insufficient_evidence',
@@ -252,8 +253,9 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.text('학교 질의 정보 입력'));
+    await tester.tap(find.text('테스트용 설정창'));
     await tester.pumpAndSettle();
+    expect(find.byType(Dialog), findsNothing);
     await tester.enterText(
       find.widgetWithText(TextFormField, '학교 (선택)'),
       '합성대학교',
@@ -266,6 +268,8 @@ void main() {
       find.widgetWithText(TextFormField, '입학연도 (선택)'),
       'true',
     );
+    await tester.ensureVisible(find.text('질의에 사용'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('질의에 사용'));
     await tester.pump();
     expect(find.text('네 자리 입학연도를 입력해 주세요.'), findsOneWidget);
@@ -273,6 +277,8 @@ void main() {
       find.widgetWithText(TextFormField, '입학연도 (선택)'),
       '2026',
     );
+    await tester.ensureVisible(find.text('질의에 사용'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('질의에 사용'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '총 학점은?');
@@ -361,6 +367,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: DetachedChatWindow(
+          schoolProfileFactory: () =>
+              RemoteSchoolProfile(request: (_) async => const {}),
           assistantFactory: () =>
               AssistantApi(client: MockClient((_) async => response(result()))),
         ),

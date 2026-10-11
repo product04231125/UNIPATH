@@ -9,6 +9,48 @@ import 'package:window_manager/window_manager.dart';
 
 const _detachedChatPrefix = 'university_path_ai_detached_chat:';
 final _mainWindowMaximizeController = StreamController<bool>.broadcast();
+final _schoolProfileChanges =
+    StreamController<Map<String, dynamic>>.broadcast();
+Map<String, dynamic> Function()? _readSchoolProfile;
+Future<void> Function(Map<String, dynamic>)? _saveSchoolProfile;
+
+void bindSchoolProfile(
+  Map<String, dynamic> Function()? read,
+  Future<void> Function(Map<String, dynamic>)? save,
+) {
+  _readSchoolProfile = read;
+  _saveSchoolProfile = save;
+}
+
+Stream<Map<String, dynamic>> schoolProfileChanges() =>
+    _schoolProfileChanges.stream;
+
+Future<Map<String, dynamic>> requestSchoolProfile([
+  Map<String, dynamic>? update,
+]) async {
+  final windows = await WindowController.getAll();
+  final main = windows.firstWhere(
+    (window) => !_DetachedChatWindowConfig.matches(window.arguments),
+  );
+  final result = await main.invokeMethod<Object?>(
+    update == null ? 'read_school_profile' : 'save_school_profile',
+    update,
+  );
+  return Map<String, dynamic>.from(result as Map);
+}
+
+Future<void> publishSchoolProfile(Map<String, dynamic> profile) async {
+  final windows = await WindowController.getAll();
+  for (final window in windows.where(
+    (w) => _DetachedChatWindowConfig.matches(w.arguments),
+  )) {
+    try {
+      await window.invokeMethod<void>('school_profile_changed', profile);
+    } catch (_) {
+      /* A closing child does not invalidate a successful profile save. */
+    }
+  }
+}
 
 Future<void> _shutdownTrace(String event) async {
   final file = File(
@@ -50,9 +92,9 @@ class _DetachedChatWindowConfig {
     );
     if (!arguments.startsWith(_detachedChatPrefix)) return fallback;
     try {
-      final values = jsonDecode(
-        arguments.substring(_detachedChatPrefix.length),
-      ) as Map<String, dynamic>;
+      final values =
+          jsonDecode(arguments.substring(_detachedChatPrefix.length))
+              as Map<String, dynamic>;
       double value(String key, double defaultValue) =>
           (values[key] as num?)?.toDouble() ?? defaultValue;
       return _DetachedChatWindowConfig(
@@ -95,6 +137,12 @@ Future<void> initializeDetachedChatWindow() async {
   unawaited(_shutdownTrace('detached window initialized'));
   final config = _DetachedChatWindowConfig.fromArguments(controller.arguments);
   await controller.setWindowMethodHandler((call) async {
+    if (call.method == 'school_profile_changed') {
+      _schoolProfileChanges.add(
+        Map<String, dynamic>.from(call.arguments as Map),
+      );
+      return null;
+    }
     if (call.method == 'focus_detached_chat') {
       await windowManager.show();
       await windowManager.restore();
@@ -247,6 +295,18 @@ Future<void> initializeMainWindowCloseBehavior() async {
   await _applyMainWindowDefaultSize();
   final controller = await WindowController.fromCurrentEngine();
   await controller.setWindowMethodHandler((call) async {
+    if (call.method == 'read_school_profile' ||
+        call.method == 'save_school_profile') {
+      if (_readSchoolProfile == null || _saveSchoolProfile == null) {
+        throw StateError('School profile is not ready');
+      }
+      if (call.method == 'save_school_profile') {
+        await _saveSchoolProfile!(
+          Map<String, dynamic>.from(call.arguments as Map),
+        );
+      }
+      return _readSchoolProfile!();
+    }
     if (call.method == 'detached_chat_closed') {
       _mainDetachedChatOpen = false;
       await _shutdownTrace('main received detached close notification');

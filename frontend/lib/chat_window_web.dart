@@ -1,4 +1,13 @@
 Future<bool> isDetachedChatWindow() async => false;
+void bindSchoolProfile(
+  Map<String, dynamic> Function()? read,
+  Future<void> Function(Map<String, dynamic>)? save,
+) {}
+Stream<Map<String, dynamic>> schoolProfileChanges() => const Stream.empty();
+Future<Map<String, dynamic>> requestSchoolProfile([
+  Map<String, dynamic>? update,
+]) async => throw UnsupportedError('No native school profile bridge');
+Future<void> publishSchoolProfile(Map<String, dynamic> profile) async {}
 Future<void> closeDetachedChatWindow() async {}
 
 Future<void> initializeDetachedChatWindow() async {}
