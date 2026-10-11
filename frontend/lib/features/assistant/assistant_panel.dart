@@ -14,12 +14,14 @@ class AssistantPanel extends StatefulWidget {
     required this.width,
     this.onDetach,
     this.suggestContext,
+    this.saveContext,
   });
   final AssistantConversation conversation;
   final VoidCallback onClose;
   final VoidCallback? onDetach;
   final double width;
   final SchoolQueryContext Function()? suggestContext;
+  final Future<void> Function(SchoolQueryContext)? saveContext;
 
   @override
   State<AssistantPanel> createState() => _AssistantPanelState();
@@ -33,6 +35,8 @@ class _AssistantPanelState extends State<AssistantPanel> {
   SchoolQueryContext Function()? get suggestContext => widget.suggestContext;
   final _scroll = ScrollController();
   int _turnCount = 0;
+  bool _editingContext = false;
+  bool _savingContext = false;
   @override
   void initState() {
     super.initState();
@@ -68,17 +72,11 @@ class _AssistantPanelState extends State<AssistantPanel> {
     super.dispose();
   }
 
-  Future<void> _editContext(BuildContext context) async {
-    final current = conversation.context;
-    final initial =
-        current.institution == null &&
-            current.department == null &&
-            current.admissionYear == null &&
-            current.track == null
-        ? suggestContext?.call() ?? current
-        : current;
-    final value = await showAssistantContextDialog(context, initial);
-    if (value != null && context.mounted) conversation.setContext(value);
+  void _editContext(BuildContext context) {
+    setState(() => _editingContext = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _scroll.hasClients) _scroll.jumpTo(0);
+    });
   }
 
   @override
@@ -105,12 +103,12 @@ class _AssistantPanelState extends State<AssistantPanel> {
                 if (onDetach != null)
                   IconButton(
                     tooltip: '새 창으로 분리',
-                    onPressed: onDetach,
+                    onPressed: _savingContext ? null : onDetach,
                     icon: const Icon(Icons.open_in_new),
                   ),
                 IconButton(
                   tooltip: 'AI 도우미 닫기',
-                  onPressed: onClose,
+                  onPressed: _savingContext ? null : onClose,
                   icon: const Icon(Icons.close),
                 ),
               ],
@@ -135,8 +133,8 @@ class _AssistantPanelState extends State<AssistantPanel> {
                   icon: const Icon(Icons.tune, size: 18),
                   label: Text(
                     conversation.context.institution == null
-                        ? '학교 질의 정보 입력'
-                        : '질의 정보: ${conversation.context.institution} · ${conversation.context.department ?? "학과 미입력"}',
+                        ? '테스트용 설정창'
+                        : '테스트용 설정창: ${conversation.context.institution} · ${conversation.context.department ?? "학과 미입력"}',
                   ),
                 ),
               ],
@@ -148,6 +146,28 @@ class _AssistantPanelState extends State<AssistantPanel> {
               controller: _scroll,
               padding: const EdgeInsets.all(14),
               children: [
+                if (_editingContext) ...[
+                  SchoolQueryContextForm(
+                    initial: conversation.context.institution == null
+                        ? suggestContext?.call() ?? conversation.context
+                        : conversation.context,
+                    enabled: !conversation.sending,
+                    onCancel: () => setState(() => _editingContext = false),
+                    onSave: (value) async {
+                      setState(() => _savingContext = true);
+                      try {
+                        await widget.saveContext?.call(value);
+                        if (mounted) {
+                          conversation.setContext(value);
+                          setState(() => _editingContext = false);
+                        }
+                      } finally {
+                        if (mounted) setState(() => _savingContext = false);
+                      }
+                    },
+                  ),
+                  const Divider(),
+                ],
                 if (conversation.turns.isEmpty)
                   const Text('학교 규정에 관해 질문해 보세요. 승인된 근거가 없으면 근거 부족을 안내합니다.'),
                 for (final turn in conversation.turns) ...[
