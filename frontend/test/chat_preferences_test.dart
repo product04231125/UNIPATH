@@ -45,11 +45,40 @@ class FakeWindowHost extends AssistantWindowHost {
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  test(
+    'old detached preference migrates once then preserves later choice',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        ChatPreferences.storageKey: 'detached',
+        'unrelated': 'preserve',
+      });
+      final first = ChatPreferences();
+      await first.load();
+      expect(first.mode, ChatOpeningMode.docked);
+      expect(
+        (await SharedPreferences.getInstance()).getBool(
+          ChatPreferences.migrationKey,
+        ),
+        isTrue,
+      );
+      await first.setMode(ChatOpeningMode.detached);
+      final restarted = ChatPreferences();
+      await restarted.load();
+      expect(restarted.mode, ChatOpeningMode.detached);
+      expect(
+        (await SharedPreferences.getInstance()).getString('unrelated'),
+        'preserve',
+      );
+      first.dispose();
+      restarted.dispose();
+    },
+  );
+
   test('default, restart and reset affect only chat opening mode', () async {
     SharedPreferences.setMockInitialValues({'unrelated': 'preserve'});
     final preferences = ChatPreferences();
     await preferences.load();
-    expect(preferences.mode, ChatOpeningMode.detached);
+    expect(preferences.mode, ChatOpeningMode.docked);
     await preferences.setMode(ChatOpeningMode.docked);
     final restarted = ChatPreferences();
     await restarted.load();
@@ -95,8 +124,8 @@ void main() {
       bool fail = true;
       final preferences = ChatPreferences(writer: (key, value) async => !fail);
       await preferences.load();
-      await preferences.setMode(ChatOpeningMode.docked);
-      expect(preferences.mode, ChatOpeningMode.detached);
+      await preferences.setMode(ChatOpeningMode.detached);
+      expect(preferences.mode, ChatOpeningMode.docked);
       expect(preferences.error, isNotNull);
       fail = false;
       await preferences.setMode(ChatOpeningMode.docked);
@@ -160,10 +189,17 @@ void main() {
   testWidgets('open failure falls back and closed window can reopen', (
     tester,
   ) async {
+    final preferences = ChatPreferences();
+    await preferences.load();
+    await preferences.setMode(ChatOpeningMode.detached);
     final host = FakeWindowHost()..fail = true;
     await tester.pumpWidget(
       MaterialApp(
-        home: Workspace(onSignedOut: () {}, windowHost: host),
+        home: Workspace(
+          onSignedOut: () {},
+          windowHost: host,
+          chatPreferences: preferences,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -215,7 +251,7 @@ void main() {
       await tester.ensureVisible(find.text('채팅 열기 방식만 기본값으로 복원'));
       await tester.tap(find.text('채팅 열기 방식만 기본값으로 복원'));
       await tester.pumpAndSettle();
-      expect(preferences.mode, ChatOpeningMode.detached);
+      expect(preferences.mode, ChatOpeningMode.docked);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       preferences.dispose();
@@ -255,10 +291,17 @@ void main() {
   );
 
   testWidgets('rapid open clicks create one detached window', (tester) async {
+    final preferences = ChatPreferences();
+    await preferences.load();
+    await preferences.setMode(ChatOpeningMode.detached);
     final host = FakeWindowHost()..opening = Completer<void>();
     await tester.pumpWidget(
       MaterialApp(
-        home: Workspace(onSignedOut: () {}, windowHost: host),
+        home: Workspace(
+          onSignedOut: () {},
+          windowHost: host,
+          chatPreferences: preferences,
+        ),
       ),
     );
     await tester.pumpAndSettle();
