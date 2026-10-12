@@ -2,11 +2,15 @@
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
 from .contracts import SchoolContext
-from .retriever import SchoolRetriever, load_chunks
+from .embeddings import EmbeddingRanker
+from .hybrid import HybridRanker
+from .providers import HttpAnswerGenerator, HttpEmbeddingProvider, HttpJsonTransport
+from .retriever import BM25Ranker, SchoolRetriever, load_chunks
 from .service import SchoolRagService
 
 DEFAULT_CHUNKS = Path(__file__).resolve().parents[1] / "output/chunks.jsonl"
@@ -23,21 +27,63 @@ def main() -> int:
     parser.add_argument("--track")
     parser.add_argument("--top-k", type=int, default=3)
     parser.add_argument("--preview", action="store_true", help="Include unapproved draft sources")
+    parser.add_argument("--provider", choices=["ollama", "openai-compatible"])
+    parser.add_argument("--base-url", help="Explicit server URL; include /v1 for compatible APIs")
+    parser.add_argument("--chat-model")
+    parser.add_argument("--embedding-model")
+    parser.add_argument(
+        "--api-key-env", default="RAG_API_KEY", help="Environment variable name only"
+    )
+    parser.add_argument("--allow-network", action="store_true")
+    parser.add_argument("--embedding-cache", type=Path)
     args = parser.parse_args()
     try:
-        retriever = SchoolRetriever(load_chunks(args.chunks))
+        chunks = load_chunks(args.chunks)
+        generator = None
+        ranker = None
+        if args.provider:
+            if not args.base_url or not (args.chat_model or args.embedding_model):
+                raise ValueError("Provider requires --base-url and an explicit model")
+            transport = HttpJsonTransport(
+                args.base_url,
+                api_key=os.environ.get(args.api_key_env),
+                allow_network=args.allow_network,
+            )
+            if args.chat_model:
+                generator = HttpAnswerGenerator(
+                    transport, dialect=args.provider, model=args.chat_model
+                )
+            if args.embedding_model and chunks:
+                provider = HttpEmbeddingProvider(
+                    transport, dialect=args.provider, model=args.embedding_model
+                )
+                ranker = HybridRanker(
+                    BM25Ranker(chunks),
+                    EmbeddingRanker(chunks, provider, cache_path=args.embedding_cache),
+                )
+        elif any(
+            (
+                args.base_url,
+                args.chat_model,
+                args.embedding_model,
+                args.allow_network,
+                args.embedding_cache,
+            )
+        ):
+            raise ValueError("Model/network options require --provider")
+        retriever = SchoolRetriever(chunks, ranker=ranker)
         context = SchoolContext(args.institution, args.department, args.admission_year, args.track)
         if args.operation == "search":
             hits = retriever.search(args.question, context, top_k=args.top_k, preview=args.preview)
             result = {
                 "mode": "preview" if args.preview else "approved_only",
-                "ranking": "bm25_korean_ngrams",
+                "ranking": "hybrid_rrf" if ranker else "bm25_korean_ngrams",
                 "warning": "검색 후보이며 답변의 충분성이나 공식 판정을 뜻하지 않습니다.",
                 "hits": [hit.as_dict() for hit in hits],
             }
         else:
             result = (
-                SchoolRagService(retriever)
+                SchoolRagService(retriever, generator)
                 .query(args.question, context, preview=args.preview)
                 .as_dict()
             )
