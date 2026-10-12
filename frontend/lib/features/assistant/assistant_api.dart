@@ -81,6 +81,30 @@ class AssistantResult {
   final List<AssistantCitation> citations;
   final List<String> missingFields;
 
+  Map<String, dynamic> toJson() => {
+    'query_id': queryId,
+    'status': switch (status) {
+      AssistantStatus.grounded => 'grounded',
+      AssistantStatus.insufficientEvidence => 'insufficient_evidence',
+      AssistantStatus.needsUserInput => 'needs_user_input',
+      AssistantStatus.failed => 'failed',
+    },
+    'reason': reason,
+    'answer': answer,
+    'missing_fields': missingFields,
+    'citations': [
+      for (final c in citations)
+        {
+          'chunk_id': c.chunkId,
+          'document_id': c.documentId,
+          'title': c.title,
+          'source_url': c.source.toString(),
+          'page': c.page,
+          'excerpt': c.excerpt,
+        },
+    ],
+  };
+
   String get label => switch (status) {
     AssistantStatus.grounded => '공식 문서 근거',
     AssistantStatus.insufficientEvidence => '공식 근거 부족',

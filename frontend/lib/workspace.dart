@@ -10,6 +10,7 @@ import 'features/assistant/assistant_conversation.dart';
 import 'features/assistant/assistant_api.dart';
 import 'features/assistant/assistant_panel.dart';
 import 'features/assistant/shared_school_context.dart';
+import 'features/assistant/conversation_bridge.dart';
 import 'chat_window.dart' as native;
 import 'features/graduation/graduation_page.dart';
 import 'features/home/home_page.dart';
@@ -86,6 +87,7 @@ class _WorkspaceState extends State<Workspace> {
   );
   final _planningRepository = PlanningRepository();
   late final SharedSchoolContext _sharedSchoolContext;
+  ConversationBridge? _conversationBridge;
   DateTime? _scheduleInitialDay;
   PendingUiAction? _scheduleAddRequest;
   StreamSubscription<bool>? _detachedChatSubscription;
@@ -100,6 +102,14 @@ class _WorkspaceState extends State<Workspace> {
       _assistantConversation,
     );
     if (widget.windowHost.supportsDetached) {
+      _conversationBridge = ConversationBridge(
+        _assistantConversation,
+        native.publishConversation,
+      );
+      native.bindConversation(
+        _conversationBridge!.read,
+        _conversationBridge!.command,
+      );
       native.bindSchoolProfile(
         () {
           if (_planningRepository.isLoading || _planningRepository.loadFailed) {
@@ -134,8 +144,8 @@ class _WorkspaceState extends State<Workspace> {
         // Closing a detached Windows window returns to the same closed state as
         // closing the dock: the user can reopen the assistant from its button.
         if (wasDetached && !isOpen) {
-          _chatOpen = _mainWindowMaximized;
-          _chatManuallyOpened = _mainWindowMaximized;
+          _chatOpen = true;
+          _chatManuallyOpened = true;
         }
       });
     }, onError: (Object _) {});
@@ -178,7 +188,9 @@ class _WorkspaceState extends State<Workspace> {
     _mainWindowMaximizeSubscription?.cancel();
     if (widget.windowHost.supportsDetached) {
       native.bindSchoolProfile(null, null);
+      native.bindConversation(null, null);
     }
+    _conversationBridge?.dispose();
     _sharedSchoolContext.dispose();
     _assistantConversation.dispose();
     _planningRepository.dispose();

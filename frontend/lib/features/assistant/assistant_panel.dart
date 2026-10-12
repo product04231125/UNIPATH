@@ -37,7 +37,11 @@ class _AssistantPanelState extends State<AssistantPanel> {
   int _turnCount = 0;
   bool _editingContext = false;
   bool _savingContext = false;
-  bool get _canSend => !conversation.sending && !_savingContext;
+  bool get _canSend =>
+      conversation.ready &&
+      conversation.connectionError == null &&
+      !conversation.sending &&
+      !_savingContext;
   @override
   void initState() {
     super.initState();
@@ -121,7 +125,7 @@ class _AssistantPanelState extends State<AssistantPanel> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  '학교 규정 질의 · 대화는 현재 창에서만 유지됩니다.',
+                  '학교 규정 질의 · 대화는 앱 실행 중 유지됩니다.',
                   style: TextStyle(
                     fontSize: AppTypography.caption,
                     color: Color(0xff607386),
@@ -202,6 +206,7 @@ class _AssistantPanelState extends State<AssistantPanel> {
               children: [
                 Expanded(
                   child: TextField(
+                    enabled: conversation.ready,
                     controller: conversation.input,
                     maxLength: 4000,
                     onSubmitted: (_) {

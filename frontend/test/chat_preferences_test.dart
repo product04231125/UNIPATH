@@ -214,8 +214,8 @@ void main() {
     host.open = false;
     host.detached.add(false);
     await tester.pumpAndSettle();
-    expect(find.byType(AssistantPanel), findsNothing);
-    await tester.tap(find.byTooltip('AI 도우미 열기'));
+    expect(find.byType(AssistantPanel), findsOneWidget);
+    await tester.tap(find.byTooltip('새 창으로 분리'));
     await tester.pumpAndSettle();
     expect(host.creates, 2);
     await tester.pumpWidget(const SizedBox());

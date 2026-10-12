@@ -13,6 +13,53 @@ final _schoolProfileChanges =
     StreamController<Map<String, dynamic>>.broadcast();
 Map<String, dynamic> Function()? _readSchoolProfile;
 Future<void> Function(Map<String, dynamic>)? _saveSchoolProfile;
+Map<String, dynamic> Function()? _readConversation;
+Map<String, dynamic> Function(Map<String, dynamic>)? _conversationCommand;
+final _conversationChanges = StreamController<Map<String, dynamic>>.broadcast();
+Future<bool> Function()? _prepareConversationClose;
+final _conversationReady = StreamController<void>.broadcast();
+
+void bindConversation(
+  Map<String, dynamic> Function()? read,
+  Map<String, dynamic> Function(Map<String, dynamic>)? command,
+) {
+  _readConversation = read;
+  _conversationCommand = command;
+}
+
+void bindConversationClose(Future<bool> Function()? prepare) =>
+    _prepareConversationClose = prepare;
+Stream<Map<String, dynamic>> conversationChanges() =>
+    _conversationChanges.stream;
+Future<Map<String, dynamic>> requestConversation([
+  Map<String, dynamic>? command,
+]) async {
+  final main = (await WindowController.getAll()).firstWhere(
+    (w) => !_DetachedChatWindowConfig.matches(w.arguments),
+  );
+  final result = await main
+      .invokeMethod<Object?>(
+        command == null ? 'read_conversation' : 'conversation_command',
+        command,
+      )
+      .timeout(const Duration(seconds: 3));
+  if (command == null) await main.invokeMethod<void>('conversation_ready');
+  return Map<String, dynamic>.from(result as Map);
+}
+
+Future<void> publishConversation(Map<String, dynamic> snapshot) async {
+  for (final window in (await WindowController.getAll()).where(
+    (w) => _DetachedChatWindowConfig.matches(w.arguments),
+  )) {
+    try {
+      await window
+          .invokeMethod<void>('conversation_changed', snapshot)
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {
+      /* Main retains authoritative state. */
+    }
+  }
+}
 
 void bindSchoolProfile(
   Map<String, dynamic> Function()? read,
@@ -92,9 +139,9 @@ class _DetachedChatWindowConfig {
     );
     if (!arguments.startsWith(_detachedChatPrefix)) return fallback;
     try {
-      final values =
-          jsonDecode(arguments.substring(_detachedChatPrefix.length))
-              as Map<String, dynamic>;
+      final values = jsonDecode(
+        arguments.substring(_detachedChatPrefix.length),
+      ) as Map<String, dynamic>;
       double value(String key, double defaultValue) =>
           (values[key] as num?)?.toDouble() ?? defaultValue;
       return _DetachedChatWindowConfig(
@@ -114,7 +161,12 @@ Future<bool> isDetachedChatWindow() async {
   return _DetachedChatWindowConfig.matches(controller.arguments);
 }
 
-Future<void> closeDetachedChatWindow() => windowManager.close();
+Future<void> closeDetachedChatWindow() async {
+  if (await _prepareConversationClose?.call() == false) return;
+  await _notifyMainDetachedWindowClosed();
+  await windowManager.setPreventClose(false);
+  await windowManager.close();
+}
 
 Future<bool> hasDetachedChatWindow() async {
   final windows = await WindowController.getAll();
@@ -137,6 +189,12 @@ Future<void> initializeDetachedChatWindow() async {
   unawaited(_shutdownTrace('detached window initialized'));
   final config = _DetachedChatWindowConfig.fromArguments(controller.arguments);
   await controller.setWindowMethodHandler((call) async {
+    if (call.method == 'conversation_changed') {
+      _conversationChanges.add(
+        Map<String, dynamic>.from(call.arguments as Map),
+      );
+      return null;
+    }
     if (call.method == 'school_profile_changed') {
       _schoolProfileChanges.add(
         Map<String, dynamic>.from(call.arguments as Map),
@@ -153,7 +211,7 @@ Future<void> initializeDetachedChatWindow() async {
     }
     if (call.method == 'close_detached_chat') {
       await _shutdownTrace('detached close requested by main');
-      await windowManager.close();
+      await closeDetachedChatWindow();
       return null;
     }
     throw MissingPluginException(
@@ -178,13 +236,28 @@ Future<void> initializeDetachedChatWindow() async {
     },
   );
   windowManager.addListener(_detachedWindowCloseListener);
+  await windowManager.setPreventClose(true);
 }
 
 class _DetachedWindowCloseListener with WindowListener {
   @override
   void onWindowClose() {
     unawaited(_shutdownTrace('detached native close event received'));
-    unawaited(_notifyMainDetachedWindowClosed());
+    unawaited(_close());
+  }
+
+  bool _closing = false;
+  Future<void> _close() async {
+    if (_closing) return;
+    _closing = true;
+    try {
+      if (await _prepareConversationClose?.call() == false) return;
+      await _notifyMainDetachedWindowClosed();
+      await windowManager.setPreventClose(false);
+      await windowManager.close();
+    } finally {
+      _closing = false;
+    }
   }
 }
 
@@ -295,6 +368,24 @@ Future<void> initializeMainWindowCloseBehavior() async {
   await _applyMainWindowDefaultSize();
   final controller = await WindowController.fromCurrentEngine();
   await controller.setWindowMethodHandler((call) async {
+    if (call.method == 'read_conversation') {
+      if (_readConversation == null) {
+        throw StateError('Conversation unavailable');
+      }
+      return _readConversation!();
+    }
+    if (call.method == 'conversation_command') {
+      if (_conversationCommand == null) {
+        throw StateError('Conversation unavailable');
+      }
+      return _conversationCommand!(
+        Map<String, dynamic>.from(call.arguments as Map),
+      );
+    }
+    if (call.method == 'conversation_ready') {
+      _conversationReady.add(null);
+      return null;
+    }
     if (call.method == 'read_school_profile' ||
         call.method == 'save_school_profile') {
       if (_readSchoolProfile == null || _saveSchoolProfile == null) {
@@ -398,9 +489,13 @@ Future<void> openDetachedChatWindow({double width = 360}) async {
         : mainPosition.dx - chatWidth + visualFrameOverlap,
     top: chatTop,
   );
+  final ready = _conversationReady.stream.first.timeout(
+    const Duration(seconds: 8),
+  );
   await WindowController.create(
     WindowConfiguration(arguments: config.toArguments(), hiddenAtLaunch: true),
   );
+  await ready;
   _mainDetachedChatOpen = true;
   // The child makes itself visible only after its Dart side has set the final
   // size and position. Showing it here causes a distracting default-position

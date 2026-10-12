@@ -359,6 +359,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: DetachedChatWindow(
+          conversationFactory: () => AssistantConversation(
+            api: AssistantApi(
+              client: MockClient((_) async => http.Response('{}', 500)),
+            ),
+          ),
           schoolProfileFactory: () => RemoteSchoolProfile(
             request: (_) async {
               if (fails) throw StateError('synthetic bridge failure');
