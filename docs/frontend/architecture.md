@@ -55,7 +55,7 @@
 | `features/records/experience` | 경험 입력 상태 |
 | `features/records/credential` | 자격 입력 상태 |
 | `features/records/portfolio` | 성과 원본, 포트폴리오 구성·지원 문서의 독립 로컬 초안 |
-| `features/assistant` | 학교 질의 HTTP 어댑터·응답 DTO, 창별 대화 상태, 도킹/분리 창의 공통 응답 UI |
+| `features/assistant` | 학교 질의 HTTP 어댑터·응답 DTO, 메인 소유 대화 상태와 IPC 원격 상태, 공통 응답 UI |
 | `features/settings` | 설정 진입 화면 |
 
 ## 임시 데이터와 API 전환
@@ -64,9 +64,10 @@
   `API_BASE_URL`은 빌드 환경에서 주입한다. `AssistantGateway`는 테스트 주입 경계다.
 - `AssistantConversation`은 요청 중복 차단, 늦은 응답 폐기, 입력 보존과 같은 항목의 재시도를
   담당한다. 서버에는 질문과 사용자가 확인한 학교 문맥만 보내며 로컬 예시·개인 기록·로그인
-  입력을 보내지 않는다. 도킹과 분리 창은 같은 API를 사용하지만 대화 이력은 공유하지 않는다.
-- 질의 문맥은 창별 메모리 값이다. 메인 창의 질의 정보 폼은 저장된 학업 프로필을 초깃값으로
-  제안할 수 있으나 사용자가 `질의에 사용`을 눌러야 전송 문맥에 반영한다.
+  입력을 보내지 않는다. 메인 창이 요청·대화를 계속 소유하고 분리 창은 `RemoteConversation`으로
+  상태를 표시하며 입력·보내기·재시도를 IPC로 전달한다. 창 전환은 HTTP 클라이언트를 재생성하지 않는다.
+- `ConversationBridge`는 상태 revision과 명령 ID를 사용해 오래된 상태·중복 명령을 구분한다.
+  학교 문맥은 저장에 성공한 기기 프로필에서 공유하며 미저장 폼 값을 요청에 적용하지 않는다.
 
 - 기록 예시 행은 `features/records/fixtures/`, 졸업요건 표 행은
   `features/graduation/graduation_mock_fixture.dart`에 둔다.
