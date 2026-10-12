@@ -124,7 +124,11 @@ jobs:
           docker compose -f compose.yaml -f compose.rag.yaml up --build --wait --wait-timeout 180
           docker compose -f compose.yaml -f compose.rag.yaml --profile test run --build --rm test
           python backend/scripts/smoke_api.py
+      - name: Verify backup restoration with synthetic data
+        working-directory: backend
+        run: uv run --frozen python -m scripts.smoke_db_backup
       - name: Clean up synthetic CI data
+        # Restore checks use their own disposable containers and clean them up.
         if: always()
         run: docker compose -f compose.yaml -f compose.rag.yaml down --volumes
 

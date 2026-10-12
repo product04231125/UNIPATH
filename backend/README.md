@@ -151,12 +151,28 @@ docker compose --profile test run --build --rm test
 PowerShell에서는 `$env:RUN_DB_TESTS='1'`을 설정한 뒤 테스트 명령을 실행한다.
 통합 테스트는 합성 벡터를 임시 테이블에 넣어 최근접 검색을 확인하고 종료 시 제거한다.
 현재 도메인 테이블이 없으므로 학생 시드 데이터는 넣지 않는다. 실제 학생 데이터는
-테스트에 사용하지 않는다. GitHub Actions 템플릿은 린트, 단위 테스트, Docker 빌드,
-마이그레이션, 실제 DB 통합 테스트와 API Smoke Test를 실행하도록 구성했다.
-현재 자동 CI는 활성화되지 않았다. 저장소 생성용 OAuth 토큰의 `workflow` 권한이
-없어 활성 워크플로 파일을 푸시할 수 없으므로
-`../.github/workflow-templates/backend-ci.yaml`에 보관한다. 권한을 가진 팀원이
-`.github/workflows/backend-ci.yaml`로 옮겨 푸시해 활성화한다.
+테스트에 사용하지 않는다. 활성화된 `.github/workflows/backend-ci.yaml`은 린트·단위 테스트,
+Docker 빌드·마이그레이션·실제 DB 통합 테스트·API Smoke 및 합성 DB 복구 검증을 실행한다.
+앱 다운로드 워크플로도 같은 백엔드·복구 검증을 거쳐 Web·Windows를 빌드한다.
+
+## 혼자 진행할 수 있는 판정·운영 도구
+
+```bash
+# backend/에서 실행: DB·LLM 없이 개인 기준 코어 계산과 테스트
+uv run --frozen python -m app.rules --demo
+uv run --frozen pytest tests/test_rules.py -q
+# 실제 학교 자료 없이 임시 DB의 백업·복구·동시 변경·손상 검사
+uv run --frozen python -m scripts.smoke_db_backup
+# 기존 Local DB 읽기 전용 백업 (Docker DB 실행 필요)
+uv run --frozen python -m app.operations.db_backups backup --environment local
+# 위 명령이 출력한 백업 디렉터리만 새 임시 DB에서 검증
+uv run --frozen python -m app.operations.db_backups verify ../backups/시각-식별자
+```
+
+코어는 공식 규칙 계산과 개인 기준 계산을 구분하지만 공개 졸업감사 API·DB는 연결하지
+않았다. 실제 학교 기준을 내장하거나 RAG/LLM이 판정을 대신하지 않는다.
+[판정 코어 계약](../docs/rule-engine.md)과 [DB 백업·복구 검증](../docs/database-backups.md)을
+따른다. 백업 파일은 비공개 `backups/`에 보관하며 Git·Docker 컨텍스트에서 제외한다.
 
 ## 코드 구조와 설정
 
@@ -165,12 +181,13 @@ PowerShell에서는 `$env:RUN_DB_TESTS='1'`을 설정한 뒤 테스트 명령을
 - `app/models/`: SQLAlchemy 모델과 공통 metadata
 - `app/services/`: 서비스, Personalization 및 Job Analysis 경계
 - `app/rules/`: 결정론적인 Academic Rule Engine 구현 위치
+- `app/operations/`: 호스트용 DB 백업·격리 복구 검증 도구
 - `app/rag/school/`, `app/rag/career_certificate/`: 공식 근거 검색 구현 위치
 - `app/core/`: 환경변수, DB 연결, request_id와 오류 처리
 - `migrations/`: Alembic 마이그레이션
 - `tests/`: API·설정·PostgreSQL/pgvector 검증
 
-졸업 판정, 인증과 CRUD 패키지는 아직 모듈 경계만 마련했다. 학교 RAG는 팀의
+졸업 판정의 계산 코어는 구현했으며 인증·CRUD·공식 졸업감사 API/DB는 후속 범위다. 학교 RAG는 팀의
 오프라인 모듈과 HTTP 어댑터를 연결했으며 공식 문서 승인·운영 DB·실제 생성기는
 후속 구현 대상이다. 신규 패키지는 용도에 맞춰 최소한으로 추가한다.
 

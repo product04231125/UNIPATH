@@ -19,7 +19,11 @@ DB 준비 → 마이그레이션 성공 → API 시작 순서이며 도메인을
 기본 실행은 빈 인덱스이며 선택적 `compose.rag.yaml`은 PDF 추출 후 API에 읽기 전용
 JSONL을 연결한다. 파일 코퍼스는 로컬 환경에서만 사용한다.
 현재 PDF는 미승인이고 실제 생성기는 없으므로 공식 답변은 생성하지 않는다.
-졸업 판정 요청은 `rule_engine_required`로 안내하며 Rule Engine 실행은 후속 구현이다.
+졸업 판정 요청은 `rule_engine_required`로 안내하며 HTTP 졸업감사 호출은 후속 구현이다.
+`app/rules/`의 결정론적인 계산 코어는 DB·HTTP·LLM과 분리해 구현했다. 내부의 공식 규칙
+계산과 개인 기준 계산을 구분하고, 공개 API는 아직 이 코어를 호출하지 않는다.
+`app/operations/db_backups.py`는 호스트에서 실행하는 읽기 전용 DB 백업·임시 DB 복구 검증
+도구이며 애플리케이션 요청 경로에 포함하지 않는다.
 현재 구현 흐름은 아래와 같다. 상세 API 계약은
 [`api/assistant.md`](api/assistant.md), 실행 방법은
 [`../backend/README.md`](../backend/README.md)를 따른다.
@@ -36,6 +40,8 @@ flowchart LR
     Index --> Approval[공식 승인 · 적용 범위 필터]
     Approval -->|승인 근거 없음| Missing[insufficient_evidence]
     Approval -->|승인 근거 있음 · 생성기 없음| Failed[failed]
+    PrivateJson[비공개 개인 기준 JSON] --> RuleCore[독립적인 Rule Engine 코어]
+    RuleCore --> PersonalResult[개인 기준 계산 · 공식 판정 아님]
 ```
 
 ### 학교 질의와 독립 AI 대화창
@@ -44,8 +50,9 @@ flowchart LR
   좁은 폭 오버레이를 사용한다.
 - 도킹·분리 창은 같은 학교 질의 HTTP 어댑터와 응답 위젯을 사용한다. 질문과 사용자가 확인한
   학교 문맥만 전송한다. 학교 질의 API와 Flutter 연동 코드가 이 브랜치에 함께 포함된다.
-- 대화 이력과 질의 문맥은 창별 메모리이며 서로 동기화하지 않는다. 서버 대화 저장·동기화는
-  conversation_id 등의 별도 계약이 필요한 후속 구현이다.
+- 대화 이력은 창별 메모리이며 서로 동기화하지 않는다. 학교 질의 문맥은 기기 로컬의 저장된
+  프로필을 공유하고 Windows 분리 창은 메인 창에 IPC로 조회·저장을 요청한다. 서버 대화
+  저장·동기화는 conversation_id 등의 별도 계약이 필요한 후속 구현이다.
 - 메인 창의 채팅 아이콘은 기존 독립 창이 있으면 새 창을 만들지 않고 해당 창을
   전면화한다. Windows 목업에서 메인 창을 닫으면 분리 AI 창을 먼저 명시적으로
   종료한 뒤 전체 앱을 종료한다.
