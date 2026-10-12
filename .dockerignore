@@ -1,4 +1,6 @@
 .git
+backups
+**/*.dump
 .env
 .env.*
 **/.venv
