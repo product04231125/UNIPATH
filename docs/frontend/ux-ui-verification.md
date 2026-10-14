@@ -20,7 +20,7 @@
 | 홈 추가 한 번에 열기와 일회성 소비 | PendingUiAction; input_dialog_test 일반 메뉴 구분·읽기 복구 후 단회 소비 | 자동 검증 및 Web 홈 버튼→/schedule+팝업→취소 확인 |
 | 미래 재사용과 예외 설명 | product-ux.md, architecture.md 공통 위젯 계약; 스택·비교 축·단일 선택/날짜/삭제 확인 예외 | 문서화 완료 |
 | Web 하단 채팅 검토 | assistant.md 가용 높이 계산·조절/접기·입력/스크롤/포커스 비교와 후속 후보 | 검토 완료, 미채택·미구현 |
-| Windows 기본 분리·도킹 선호·복원 | ChatPreferences와 AssistantWindowHost; chat_preferences_test 9개(재사용·최대화·실패 포함); Windows 빌드 성공 | 자동 검증 및 사용자 최종 확인 완료 |
+| Windows 기본 내부 패널·분리 선호·복원 | ChatPreferences와 AssistantWindowHost; 기존 설정도 내부 패널로 한 번 이전하고 이후 사용자 선택 유지. 최신 검증은 assistant.md와 settings.md 참조 | 자동 검증 및 사용자 최종 확인 완료 |
 | 설정 소유권·플랫폼·초기화 | settings.md 적용 범위 표, 실제 Windows 채팅 제어와 그 항목만 복원 | 문서·자동 검증 완료 |
 | URL·뒤로/앞으로·직접 진입·새로고침 | app_navigation_test 9개 주요 메뉴 포함 12개; 실제 IAB의 /schedule→/activities→뒤로→앞으로→새로고침→목업 진입에서 주소/제목 확인 | Web 실행 확인 완료 |
 | 기존 헤더와 하위 탭 | page_header_test 3개 크기×1/2배 전체 메뉴·포트폴리오/개인 졸업 탭 시작선; 재작업 없음 | 자동 검증 및 사용자 최종 확인 완료 |
