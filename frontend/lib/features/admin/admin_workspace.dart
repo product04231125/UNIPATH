@@ -359,7 +359,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     runSpacing: 8,
     children: [
       if (!detail)
-        TextButton(
+        FilledButton.tonal(
           onPressed: () => widget.onNavigate('$_section/${r.id}'),
           child: const Text('상세'),
         ),
@@ -367,7 +367,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           r.status != 'applied' &&
           r.status != 'revoked' &&
           r.id != _actor)
-        FilledButton(
+        FilledButton.tonal(
           onPressed: _busy ? null : () => _edit(r.kind, r),
           child: const Text('수정'),
         ),
@@ -375,7 +375,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           r.kind.versioned &&
           r.value('ruleSetId').isEmpty &&
           r.status == 'draft')
-        TextButton(
+        FilledButton.tonal(
           onPressed: _busy
               ? null
               : () =>
@@ -386,7 +386,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           r.kind.versioned &&
           r.value('ruleSetId').isEmpty &&
           r.status == 'applied')
-        TextButton(
+        FilledButton.tonal(
           onPressed: _busy
               ? null
               : () => _confirmAction(r, '새 버전 초안', () async {
@@ -397,21 +397,29 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       if (_repo.canWrite(_actor, r) &&
           r.kind == AdminKind.scope &&
           r.status == 'active')
-        TextButton(
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+          ),
+          icon: const Icon(Icons.remove_circle_outline, size: 18),
           onPressed: _busy ? null : () => _edit(r.kind, r, true),
-          child: const Text('범위 회수'),
+          label: const Text('범위 회수'),
         ),
       if (_repo.canWrite(_actor, r) &&
           ![AdminKind.scope, AdminKind.account].contains(r.kind) &&
           r.status != 'applied')
-        TextButton(
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+          ),
+          icon: const Icon(Icons.delete_outline, size: 18),
           onPressed: _busy
               ? null
               : () => _confirmAction(r, '삭제', () async {
                   await _repo.remove(_actor, r.id);
                   if (mounted && detail) widget.onNavigate(_section);
                 }),
-          child: const Text('삭제'),
+          label: const Text('삭제'),
         ),
     ],
   );

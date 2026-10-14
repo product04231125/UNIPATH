@@ -115,7 +115,12 @@ void main() {
     expect(find.text('버전 1 · 목업 적용'), findsOneWidget);
     await tester.tap(find.text('새 버전 초안'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, '새 버전 초안'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(FilledButton, '새 버전 초안'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(repo.find('detail-doc')!.status, 'applied');
     expect(repo.records.where((r) => r.kind == AdminKind.document).length, 2);
@@ -426,7 +431,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('새 버전 초안'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, '새 버전 초안'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(FilledButton, '새 버전 초안'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(repo.records.where((r) => r.kind == AdminKind.rule).length, 2);
     expect(repo.find('r')!.status, 'applied');
