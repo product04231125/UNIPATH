@@ -14,11 +14,15 @@ class AnchoredSelectField<T> extends StatefulWidget {
     required this.label,
     required this.options,
     required this.onChanged,
+    this.searchable = false,
+    this.searchLabel = '검색',
   });
   final T value;
   final String label;
   final List<SelectOption<T>> options;
   final ValueChanged<T> onChanged;
+  final bool searchable;
+  final String searchLabel;
 
   @override
   State<AnchoredSelectField<T>> createState() => _AnchoredSelectFieldState<T>();
@@ -26,6 +30,7 @@ class AnchoredSelectField<T> extends StatefulWidget {
 
 class _AnchoredSelectFieldState<T> extends State<AnchoredSelectField<T>> {
   final _focus = FocusNode();
+  String _query = '';
 
   @override
   void dispose() {
@@ -39,6 +44,9 @@ class _AnchoredSelectFieldState<T> extends State<AnchoredSelectField<T>> {
       childFocusNode: _focus,
       crossAxisUnconstrained: false,
       alignmentOffset: const Offset(0, 4),
+      onOpen: () {
+        if (widget.searchable) setState(() => _query = '');
+      },
       style: MenuStyle(
         backgroundColor: WidgetStatePropertyAll(
           Theme.of(context).colorScheme.surface,
@@ -57,7 +65,32 @@ class _AnchoredSelectFieldState<T> extends State<AnchoredSelectField<T>> {
         maximumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 320)),
       ),
       menuChildren: [
-        for (final option in widget.options)
+        if (widget.searchable)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: TextField(
+              key: const ValueKey('select-search-input'),
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: widget.searchLabel,
+                prefixIcon: const Icon(Icons.search),
+              ),
+              onChanged: (value) =>
+                  setState(() => _query = value.trim().toLowerCase()),
+            ),
+          ),
+        if (widget.searchable &&
+            !widget.options.any(
+              (option) => option.label.toLowerCase().contains(_query),
+            ))
+          const Padding(
+            padding: EdgeInsets.all(12),
+            child: Text('검색에 맞는 항목이 없습니다.'),
+          ),
+        for (final option in widget.options.where(
+          (option) =>
+              !widget.searchable || option.label.toLowerCase().contains(_query),
+        ))
           MenuItemButton(
             style: ButtonStyle(
               minimumSize: const WidgetStatePropertyAll(Size(0, 44)),

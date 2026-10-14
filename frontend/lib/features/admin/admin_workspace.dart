@@ -262,6 +262,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       },
   ].where((s) => s.isNotEmpty).toSet().join(' · ');
   Iterable<AdminRecord> _filteredRows(AdminKind kind) => _rows(kind).where((r) {
+    if (kind == AdminKind.institution) return true;
     final query = (_queries[kind] ?? '').trim().toLowerCase();
     return '${r.name} ${_recordContext(r)}'.toLowerCase().contains(query) &&
         ((_statuses[kind] ?? '').isEmpty || _status(r) == _statuses[kind]);
@@ -287,7 +288,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             ),
         ],
       ),
-      if (_rows(kind).isNotEmpty) ...[
+      if (kind != AdminKind.institution && _rows(kind).isNotEmpty) ...[
         const SizedBox(height: 12),
         TextFormField(
           key: ValueKey('admin-search-$_schoolId-${kind.name}'),
@@ -802,6 +803,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     constraints: const BoxConstraints(maxWidth: 440),
                     child: AnchoredSelectField<String>(
                       key: const ValueKey('admin-school-selector'),
+                      searchable: true,
+                      searchLabel: '학교 이름 검색',
                       value: _schoolId,
                       label: '현재 학교',
                       options: [

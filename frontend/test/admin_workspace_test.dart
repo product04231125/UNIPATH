@@ -62,6 +62,60 @@ Future<void> openEditor(
 }
 
 void main() {
+  testWidgets(
+    'school search selects one allowed school and cancellation preserves target',
+    (tester) async {
+      final repo = FakeAdminRepository();
+      addTearDown(repo.dispose);
+      await tester.pumpWidget(
+        host(
+          AdminWorkspace(
+            repository: repo,
+            role: AppRole.superAdmin,
+            path: '/admin/schools',
+            onNavigate: (_) {},
+            onSignedOut: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final selector = find.byKey(const ValueKey('admin-school-selector'));
+      expect(
+        find.byKey(const ValueKey('admin-search-school-a-institution')),
+        findsNothing,
+      );
+      await tester.tap(selector);
+      await tester.pumpAndSettle();
+      final search = find.byKey(const ValueKey('select-search-input'));
+      await tester.enterText(search, '대학 B');
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(MenuItemButton, '합성 대학 A'), findsNothing);
+      await tester.tap(find.widgetWithText(MenuItemButton, '합성 대학 B'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<AnchoredSelectField<String>>(selector).value,
+        'school-b',
+      );
+      expect(search, findsNothing);
+      await tester.tap(selector);
+      await tester.pumpAndSettle();
+      await tester.enterText(search, '없는 학교');
+      await tester.pumpAndSettle();
+      expect(find.text('검색에 맞는 항목이 없습니다.'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<AnchoredSelectField<String>>(selector).value,
+        'school-b',
+      );
+      expect(search, findsNothing);
+      final trigger = tester.widget<InkWell>(
+        find.descendant(of: selector, matching: find.byType(InkWell)).first,
+      );
+      expect(trigger.focusNode!.hasFocus, isTrue);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('detail actions retain apply failures and immutable versions', (
     tester,
   ) async {
