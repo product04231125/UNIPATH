@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/widgets/input_dialog.dart';
+import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../records/personal_record_repository.dart';
 import 'admin_models.dart';
@@ -177,19 +178,24 @@ class _AdminEditorState extends State<AdminEditor> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 14),
                 child: field.relation == null && field.options.isEmpty
-                    ? TextFormField(
-                        key: ValueKey('admin-field-${field.key}'),
-                        controller: _controllers[field.key],
-                        enabled: !_saving,
-                        maxLines: field.multiline ? 3 : 1,
-                        decoration: InputDecoration(
-                          labelText:
-                              '${field.label}${field.required ? ' *' : ' (선택)'}',
+                    ? FieldLabel(
+                        label:
+                            '${field.label}${field.required ? ' *' : ' (선택)'}',
+                        child: Semantics(
+                          label: field.label,
+                          child: TextFormField(
+                            key: ValueKey('admin-field-${field.key}'),
+                            controller: _controllers[field.key],
+                            enabled: !_saving,
+                            maxLines: field.multiline ? 3 : 1,
+                            decoration: const InputDecoration(),
+                            validator: (v) =>
+                                field.required &&
+                                    (v == null || v.trim().isEmpty)
+                                ? '${field.label}을 입력하세요.'
+                                : null,
+                          ),
                         ),
-                        validator: (v) =>
-                            field.required && (v == null || v.trim().isEmpty)
-                            ? '${field.label}을 입력하세요.'
-                            : null,
                       )
                     : FormField<String>(
                         initialValue: _value(field.key),
@@ -203,6 +209,7 @@ class _AdminEditorState extends State<AdminEditor> {
                             IgnorePointer(
                               ignoring: _saving,
                               child: AnchoredSelectField<String>(
+                                externalLabel: true,
                                 key: ValueKey('admin-field-${field.key}'),
                                 value: _value(field.key),
                                 label:

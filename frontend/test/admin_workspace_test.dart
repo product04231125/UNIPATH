@@ -62,6 +62,29 @@ Future<void> openEditor(
 }
 
 void main() {
+  testWidgets('admin labels stay above their controls', (tester) async {
+    final repo = FakeAdminRepository();
+    await openEditor(tester, repo, AdminKind.department);
+    final input = find.byKey(const ValueKey('admin-field-name'));
+    final label = find.text('이름 *');
+    expect(
+      tester.getBottomLeft(label).dy,
+      lessThan(tester.getTopLeft(input).dy),
+    );
+    final editable = find.descendant(
+      of: input,
+      matching: find.byType(TextField),
+    );
+    expect(tester.widget<TextField>(editable).decoration?.labelText, isNull);
+    final school = tester.widget<AnchoredSelectField<String>>(
+      find.byKey(const ValueKey('admin-field-institutionId')),
+    );
+    expect(school.externalLabel, isTrue);
+    await tester.enterText(input, '작성 중 학과');
+    await tester.tap(find.text('취소'));
+    await tester.pumpAndSettle();
+    expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
+  });
   testWidgets(
     'school search selects one allowed school and cancellation preserves target',
     (tester) async {

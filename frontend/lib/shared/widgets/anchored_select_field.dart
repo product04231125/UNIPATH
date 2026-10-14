@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'field_label.dart';
+
 class SelectOption<T> {
   const SelectOption(this.value, this.label);
   final T value;
@@ -16,6 +18,7 @@ class AnchoredSelectField<T> extends StatefulWidget {
     required this.onChanged,
     this.searchable = false,
     this.searchLabel = '검색',
+    this.externalLabel = false,
   });
   final T value;
   final String label;
@@ -23,6 +26,7 @@ class AnchoredSelectField<T> extends StatefulWidget {
   final ValueChanged<T> onChanged;
   final bool searchable;
   final String searchLabel;
+  final bool externalLabel;
 
   @override
   State<AnchoredSelectField<T>> createState() => _AnchoredSelectFieldState<T>();
@@ -39,7 +43,11 @@ class _AnchoredSelectFieldState<T> extends State<AnchoredSelectField<T>> {
   }
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
+  Widget build(BuildContext context) => widget.externalLabel
+      ? FieldLabel(label: widget.label, child: _menu(context))
+      : _menu(context);
+
+  Widget _menu(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) => MenuAnchor(
       childFocusNode: _focus,
       crossAxisUnconstrained: false,
@@ -130,7 +138,9 @@ class _AnchoredSelectFieldState<T> extends State<AnchoredSelectField<T>> {
           onTap: () =>
               controller.isOpen ? controller.close() : controller.open(),
           child: InputDecorator(
-            decoration: InputDecoration(labelText: widget.label),
+            decoration: InputDecoration(
+              labelText: widget.externalLabel ? null : widget.label,
+            ),
             child: Row(
               children: [
                 Expanded(

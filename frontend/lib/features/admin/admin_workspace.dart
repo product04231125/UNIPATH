@@ -616,18 +616,20 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             ),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton(
+            child: OutlinedButton.icon(
               onPressed: _busy ? null : () => widget.onNavigate('/admin/rules'),
-              child: const Text('졸업요건 확인'),
+              icon: const Icon(Icons.arrow_forward, size: 18),
+              label: const Text('졸업요건 확인'),
             ),
           ),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton(
+            child: OutlinedButton.icon(
               onPressed: _busy
                   ? null
                   : () => widget.onNavigate('/admin/documents'),
-              child: const Text('공식 문서 확인'),
+              icon: const Icon(Icons.arrow_forward, size: 18),
+              label: const Text('공식 문서 확인'),
             ),
           ),
           const Divider(height: 32),
@@ -644,16 +646,18 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 AdminKind.document,
               ])
                 if (_canCreate(kind))
-                  OutlinedButton(
+                  FilledButton.tonalIcon(
                     onPressed: _busy ? null : () => _edit(kind),
-                    child: Text('${kind.label} 등록'),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text('${kind.label} 등록'),
                   ),
               if (_role == AppRole.superAdmin)
-                TextButton(
+                OutlinedButton.icon(
                   onPressed: _busy
                       ? null
                       : () => widget.onNavigate('/admin/accounts'),
-                  child: const Text('관리자 범위 관리'),
+                  icon: const Icon(Icons.arrow_forward, size: 18),
+                  label: const Text('관리자 범위 관리'),
                 ),
             ],
           ),
@@ -677,11 +681,12 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             ),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton(
+            child: OutlinedButton.icon(
               onPressed: _busy
                   ? null
                   : () => widget.onNavigate('/admin/history'),
-              child: const Text('관리 이력 보기'),
+              icon: const Icon(Icons.arrow_forward, size: 18),
+              label: const Text('관리 이력 보기'),
             ),
           ),
         ],
