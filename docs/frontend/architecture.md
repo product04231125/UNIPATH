@@ -70,6 +70,9 @@
 - AppNavigation은 개발 역할과 관리자 repository를 소유한다. AdminRepository는 교체 경계,
   FakeAdminRepository는 학생 저장소와 분리된 메모리 구현이다. 위젯은 입력·표시를 담당하고
   fake는 최신 계정·범위·관계·버전을 검사한다. 실제 관리자 API는 서버 권한 검증이 필수다.
+- `features/admin/admin_shell.dart`는 역할별로 전달받은 메뉴의 반응형 탐색과 선택 상태만 담당한다.
+  학교 문맥·목록 검색/필터·현황·권한별 상세 작업은 AdminWorkspace, 필드 그룹과 작성 보호는
+  AdminEditor가 소유한다. 표시용 필드 그룹은 repository 모델·검증/전송 계약을 바꾸지 않는다.
 
 - `assistant_api.dart`는 Web/Windows 공통 `http.Client`와 명시적 요청·응답 모델을 사용한다.
   `API_BASE_URL`은 빌드 환경에서 주입한다. `AssistantGateway`는 테스트 주입 경계다.

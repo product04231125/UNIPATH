@@ -228,6 +228,15 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     return r != null && _repo.canRead(_actor, r) ? r.name : '';
   }
 
+  String _scopeSummary(AdminRecord scope) => switch (scope.value('scopeType')) {
+    'institution' => '학교 전체',
+    'department' =>
+      '${_relationName(scope.value('departmentId')).isEmpty ? '학과' : _relationName(scope.value('departmentId'))} 범위',
+    'curriculum' =>
+      '${_relationName(scope.value('curriculumId')).isEmpty ? '교육과정' : _relationName(scope.value('curriculumId'))} 범위',
+    _ => '범위 유형 확인 필요',
+  };
+
   String _recordContext(AdminRecord r) => [
     _relationName(_repo.school(r)),
     for (final key in [
@@ -264,7 +273,10 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         spacing: 12,
         runSpacing: 8,
         children: [
-          Text(kind.label, style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            AdminWorkspace.menus[_section] == kind.label ? '목록' : kind.label,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           if (_canCreate(kind))
             FilledButton(
               onPressed: _busy ? null : () => _edit(kind),
@@ -750,7 +762,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 Text(
                   _role == AppRole.superAdmin
                       ? '관리 범위: 전체 학교'
-                      : '관리 범위: ${_repo.records.where((r) => r.kind == AdminKind.scope && r.status == 'active' && r.value('userId') == _actor && r.value('institutionId') == _schoolId).map((r) => '${r.name} · ${_recordContext(r)}').join(', ')}',
+                      : '관리 범위: ${_repo.records.where((r) => r.kind == AdminKind.scope && r.status == 'active' && r.value('userId') == _actor && r.value('institutionId') == _schoolId).map(_scopeSummary).toSet().join(', ')}',
                 ),
               const SizedBox(height: 12),
               PageHeader(

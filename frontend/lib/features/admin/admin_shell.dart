@@ -49,8 +49,9 @@ class AdminShell extends StatelessWidget {
               onTap: busy
                   ? null
                   : () {
-                      if (Scaffold.of(context).isDrawerOpen)
+                      if (Scaffold.of(context).isDrawerOpen) {
                         Navigator.of(context).pop();
+                      }
                       onNavigate(entry.key);
                     },
             ),
