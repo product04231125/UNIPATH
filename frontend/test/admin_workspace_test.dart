@@ -63,6 +63,40 @@ Future<void> openEditor(
 
 void main() {
   testWidgets(
+    'school context follows direct details and switching leaves detail',
+    (tester) async {
+      final repo = FakeAdminRepository();
+      addTearDown(repo.dispose);
+      var path = '/admin/schools/school-b';
+      await tester.pumpWidget(
+        host(
+          StatefulBuilder(
+            builder: (context, update) => AdminWorkspace(
+              repository: repo,
+              role: AppRole.superAdmin,
+              path: path,
+              onNavigate: (next) => update(() => path = next),
+              onSignedOut: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      AnchoredSelectField<String> selector() =>
+          tester.widget<AnchoredSelectField<String>>(
+            find.byType(AnchoredSelectField<String>),
+          );
+      expect(selector().value, 'school-b');
+      selector().onChanged('school-a');
+      await tester.pumpAndSettle();
+      expect(path, '/admin/schools');
+      expect(selector().value, 'school-a');
+      expect(find.text('목록으로'), findsNothing);
+      expect(find.text('합성 대학 B'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
     'school selector restricts choices and document opens external confirmation',
     (tester) async {
       final repo = FakeAdminRepository();

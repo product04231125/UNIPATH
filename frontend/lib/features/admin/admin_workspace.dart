@@ -384,6 +384,12 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         AdminWorkspace.menus.containsKey(_section) &&
         widget.path.split('/').length <= 4;
     final detail = _detailId == null ? null : _find(_detailId!);
+    // A directly opened detail owns the school context. Never label a record
+    // with the first accessible school merely because the route was restored.
+    if (detail != null && _repo.canRead(_actor, detail)) {
+      final school = _repo.school(detail);
+      if (_schools.any((r) => r.id == school)) _schoolId = school;
+    }
     final sectionKinds = <String, List<AdminKind>>{
       '/admin/schools': [AdminKind.institution, AdminKind.department],
       '/admin/curricula': [
@@ -424,7 +430,15 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                       for (final school in _schools)
                         SelectOption(school.id, school.name),
                     ],
-                    onChanged: (v) => setState(() => _schoolId = v),
+                    onChanged: (v) {
+                      if (v == _schoolId) return;
+                      setState(() {
+                        _schoolId = v;
+                        _error = null;
+                      });
+                      // The old detail cannot remain under the new school.
+                      if (_detailId != null) widget.onNavigate(_section);
+                    },
                   ),
                 if (widget.role != AppRole.user)
                   Text(
