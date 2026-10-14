@@ -238,7 +238,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   };
 
   String _recordContext(AdminRecord r) => [
-    _relationName(_repo.school(r)),
+    if (_repo.school(r) != r.id) _relationName(_repo.school(r)),
     for (final key in [
       'departmentId',
       'curriculumId',
@@ -329,6 +329,13 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         ),
       for (final r in _filteredRows(kind))
         Card(
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -336,9 +343,12 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
               children: [
                 Text(r.name, style: Theme.of(context).textTheme.titleMedium),
                 if (_recordContext(r).isNotEmpty)
-                  Text(
-                    _recordContext(r),
-                    style: Theme.of(context).textTheme.bodySmall,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      _recordContext(r),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ),
                 if (kind.versioned)
                   Text('v${r.version} · ${_statusLabel(r.status)}'),
@@ -347,6 +357,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                   Text(
                     '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}',
                   ),
+                const SizedBox(height: 16),
                 _recordActions(r),
               ],
             ),
