@@ -119,6 +119,13 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           changes: Listenable.merge(controllers.values.toList()),
           editing: record != null,
           saving: saving,
+          hasUnsavedChanges: () => fields.any(
+            (field) =>
+                controllers[field.key]!.text !=
+                    (record?.value(field.key) ?? '') &&
+                (record != null ||
+                    controllers[field.key]!.text.trim().isNotEmpty),
+          ),
           hasContent: () =>
               controllers.values.any((c) => c.text.trim().isNotEmpty),
           title: Text(record == null ? widget.addLabel : '개인 기록 수정'),
@@ -215,7 +222,9 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           ),
           actions: [
             TextButton(
-              onPressed: saving ? null : () => Navigator.pop(dialogContext),
+              onPressed: saving
+                  ? null
+                  : () => InputDialog.cancel<void>(dialogContext),
               child: const Text('취소'),
             ),
             FilledButton(

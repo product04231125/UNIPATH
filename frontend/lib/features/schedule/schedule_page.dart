@@ -362,6 +362,17 @@ class _EventEditorState extends State<_EventEditor> {
     changes: Listenable.merge([_title, _memo]),
     editing: widget.event != null,
     saving: _saving,
+    hasUnsavedChanges: () => widget.event == null
+        ? _title.text.trim().isNotEmpty ||
+              _memo.text.trim().isNotEmpty ||
+              _category != PlanningEventCategory.academic ||
+              _start != _defaultStart ||
+              _end != _defaultEnd
+        : _title.text != widget.event!.title ||
+              _memo.text != widget.event!.memo ||
+              _category != widget.event!.category ||
+              _start != _defaultStart ||
+              _end != _defaultEnd,
     hasContent: () =>
         _title.text.trim().isNotEmpty ||
         _memo.text.trim().isNotEmpty ||
@@ -436,7 +447,7 @@ class _EventEditorState extends State<_EventEditor> {
           label: const Text('삭제'),
         ),
       TextButton(
-        onPressed: _saving ? null : () => Navigator.pop(context),
+        onPressed: _saving ? null : () => InputDialog.cancel<void>(context),
         child: const Text('취소'),
       ),
       FilledButton(

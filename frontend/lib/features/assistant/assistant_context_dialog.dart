@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/input_dialog.dart';
 import 'assistant_api.dart';
 
 class SchoolQueryContextForm extends StatefulWidget {
@@ -32,6 +33,24 @@ class _ContextFormState extends State<SchoolQueryContextForm> {
   bool _saving = false;
   bool _dirty = false;
   String? _error;
+  bool _confirming = false;
+
+  Future<void> _cancel() async {
+    if (_saving || _confirming || !widget.enabled) return;
+    final changed =
+        _school.text != (widget.initial.institution ?? '') ||
+        _department.text != (widget.initial.department ?? '') ||
+        _year.text != (widget.initial.admissionYear?.toString() ?? '') ||
+        _track != widget.initial.track;
+    if (changed) {
+      _confirming = true;
+      final discard = await confirmInputDiscard(context);
+      _confirming = false;
+      if (!discard) return;
+    }
+    if (mounted && !_saving && widget.enabled) widget.onCancel();
+  }
+
   @override
   void dispose() {
     _school.dispose();
@@ -128,7 +147,7 @@ class _ContextFormState extends State<SchoolQueryContextForm> {
               spacing: 8,
               children: [
                 TextButton(
-                  onPressed: _saving ? null : widget.onCancel,
+                  onPressed: _saving ? null : _cancel,
                   child: const Text('취소'),
                 ),
                 FilledButton(

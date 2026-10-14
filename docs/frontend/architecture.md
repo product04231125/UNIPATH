@@ -22,6 +22,9 @@
 - `shared/widgets/input_dialog.dart`: 다중 입력 모달·최신 작성 내용의 바깥 클릭 보호·수정/저장 중
   암묵적 닫기 차단을 공유한다. 기능은 `hasContent`, 변경 신호와 저장 상태를 제공한다.
   `showInputDialog`는 종료 애니메이션 완료 뒤 반환해 입력 controller의 조기 폐기를 방지한다.
+  명시적 취소는 `InputDialog.cancel`을 사용하고 기능별 `hasUnsavedChanges`로 원본 대비 변경을
+  판단한다. 신규 폼은 기본값을 제외한다. `confirmInputDiscard`는 채팅 내부 폼도 공유하며
+  계속 작성 기본 포커스와 이전 포커스 복귀를 제공한다. 저장 성공은 직접 pop한다.
 - `shared/widgets/content_scroll_view.dart`: 자체 controller와 16px 스크롤바 여백을 소유한다.
   모든 메뉴의 세로 본문·입력 폼·초안 미리보기에서 내용과 스크롤바를 분리한다.
   작업 공간의 화면 최소 폭에는 여백을 포함하며, 기록 카드 안의 중첩 세로 스크롤은 제거했다.
