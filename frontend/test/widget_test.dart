@@ -267,7 +267,7 @@ void main() {
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
 
     for (final menu in [
-      ('수강 관리', '이번 학기 수강 과목'),
+      ('수강 관리', '내 수강 과목'),
       ('일정', '개인 계획을 이 기기에 저장합니다.'),
       ('졸업 요건', '기준 선택'),
       ('활동', '등록한 활동'),

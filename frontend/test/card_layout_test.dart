@@ -107,6 +107,16 @@ void main() {
           );
           await tester.pumpAndSettle();
           final cards = find.byType(SurfaceCard);
+          if (kind == PersonalRecordKind.course) {
+            expect(cards, findsOneWidget);
+            expect(find.byType(ExpansionTile), findsOneWidget);
+            expect(
+              tester.getTopLeft(find.byType(ExpansionTile)).dy,
+              greaterThan(tester.getBottomLeft(cards).dy),
+            );
+            expect(tester.takeException(), isNull, reason: kind.name);
+            continue;
+          }
           expect(cards, findsNWidgets(2));
           expect(
             tester.getTopLeft(cards.first).dy,

@@ -371,28 +371,30 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         .where((r) => _term.isEmpty || r.value('term') == _term)
         .toList();
     final entries = [if (widget.showMockData) ...widget.fixture];
+    final isCourse = widget.kind == PersonalRecordKind.course;
     return ContentScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _header(),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            decoration: BoxDecoration(
-              color: const Color(0xfffff7e5),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xffefdba7)),
-            ),
-            child: Text(
-              widget.notice,
-              style: const TextStyle(
-                fontSize: AppTypography.caption,
-                color: Color(0xff795a22),
+          if (!isCourse)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color: const Color(0xfffff7e5),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xffefdba7)),
+              ),
+              child: Text(
+                widget.notice,
+                style: const TextStyle(
+                  fontSize: AppTypography.caption,
+                  color: Color(0xff795a22),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 14),
+          if (!isCourse) const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
               final records = SurfaceCard(
@@ -406,14 +408,15 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      '학교에서 확인한 정보가 없으면 내 기록을 직접 추가할 수 있습니다.',
-                      style: TextStyle(
-                        fontSize: AppTypography.caption,
-                        color: Color(0xff607386),
+                    if (!isCourse) const SizedBox(height: 4),
+                    if (!isCourse)
+                      const Text(
+                        '학교에서 확인한 정보가 없으면 내 기록을 직접 추가할 수 있습니다.',
+                        style: TextStyle(
+                          fontSize: AppTypography.caption,
+                          color: Color(0xff607386),
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 12),
                     FilledButton.icon(
                       onPressed: _showForm,
@@ -438,15 +441,28 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                       Text(
                         '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점 · 공식 이수학점 아님',
                       ),
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.notice,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 12),
                     ],
                     if (widget.kind == PersonalRecordKind.activity)
                       Text(
                         '사용자가 승인됨으로 기록한 봉사 시간 합계 ${personal.where((r) => r.value('approval') == 'approved').fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('approvedHours')) ?? 0))}시간 · 학교 검증 아님',
                       ),
-                    if (entries.isEmpty && personal.isEmpty)
+                    if ((isCourse || entries.isEmpty) && personal.isEmpty)
                       const Text('개인 기록이 없습니다. 직접 입력해 주세요.'),
-                    for (final entry in entries) _entry(entry),
+                    if (!isCourse)
+                      for (final entry in entries) _entry(entry),
                     for (final record in personal) _personalEntry(record),
+                    if (isCourse && entries.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const Text('목업용 예시 과목 · 개인 입력 합계에서 제외'),
+                      for (final entry in entries) _entry(entry),
+                    ],
                   ],
                 ),
               );
@@ -477,6 +493,30 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                   ],
                 ),
               );
+              if (isCourse) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    records,
+                    const SizedBox(height: 12),
+                    ExpansionTile(
+                      title: Text(widget.guideTitle),
+                      childrenPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
+                      expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final line in widget.guides)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text('• $line'),
+                          ),
+                        ...widget.guideActions,
+                      ],
+                    ),
+                  ],
+                );
+              }
               return constraints.maxWidth >= 760
                   ? EqualHeightRow(
                       children: [

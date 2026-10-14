@@ -4,9 +4,58 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_record_fields.dart';
+import 'package:university_path_frontend/features/records/course/course_page.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  for (final scale in [1.0, 2.0]) {
+    testWidgets(
+      'course prioritizes personal records and labels examples scale=$scale',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(480, 520));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final repo = PersonalRecordRepository(PersonalRecordKind.course);
+        await repo.load();
+        await repo.save(
+          PersonalRecord(
+            id: 'layout',
+            values: {'title': '내 과목', 'term': '2026-2', 'credits': '2'},
+          ),
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: universityPathTheme(),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(scale)),
+              child: child!,
+            ),
+            home: const Scaffold(body: CoursePage(showMockData: true)),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final own = find.text('내 과목');
+        final example = find.text('목업용 예시 과목 · 개인 입력 합계에서 제외');
+        expect(
+          tester.getTopLeft(own).dy,
+          lessThan(tester.getTopLeft(example).dy),
+        );
+        expect(find.textContaining('개인 입력 합계 2.0학점'), findsOneWidget);
+        expect(find.textContaining('졸업 반영은 학교의 확정 기록'), findsOneWidget);
+        expect(find.textContaining('학교에서 확인한 정보가 없으면'), findsNothing);
+        await tester.ensureVisible(example);
+        await tester.pumpAndSettle();
+        expect(example.hitTestable(), findsOneWidget);
+        await tester.ensureVisible(find.text('교육과정 확인'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('교육과정 확인'));
+        await tester.pumpAndSettle();
+        expect(find.text('• 인정 영역과 학점 분류 확인'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   test('personal repositories persist CRUD and isolate domains', () async {
     for (final kind in PersonalRecordKind.values) {
