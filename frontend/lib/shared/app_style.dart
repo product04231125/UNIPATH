@@ -55,9 +55,39 @@ enum AppPalette {
   final int background, foreground, muted, accent, secondary;
 }
 
+enum DeletePreview { outline, tint, solid }
+
+class UiPreview extends ThemeExtension<UiPreview> {
+  const UiPreview({
+    this.delete = DeletePreview.tint,
+    this.adminColumns = true,
+    this.settingsColumns = true,
+  });
+  final DeletePreview delete;
+  final bool adminColumns, settingsColumns;
+  static UiPreview of(BuildContext context) =>
+      Theme.of(context).extension<UiPreview>() ?? const UiPreview();
+  @override
+  UiPreview copyWith({
+    DeletePreview? delete,
+    bool? adminColumns,
+    bool? settingsColumns,
+  }) => UiPreview(
+    delete: delete ?? this.delete,
+    adminColumns: adminColumns ?? this.adminColumns,
+    settingsColumns: settingsColumns ?? this.settingsColumns,
+  );
+  @override
+  UiPreview lerp(covariant UiPreview? other, double t) =>
+      t < .5 ? this : other ?? this;
+}
+
 const appCornerRadius = 20.0;
 
-ThemeData buildAppTheme(AppPalette palette) {
+ThemeData buildAppTheme(
+  AppPalette palette, {
+  UiPreview preview = const UiPreview(),
+}) {
   final bg = Color(palette.background);
   final fg = Color(palette.foreground);
   final accent = Color(palette.accent);
@@ -121,10 +151,41 @@ ThemeData buildAppTheme(AppPalette palette) {
     shape: WidgetStatePropertyAll(shape),
     minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
     textStyle: WidgetStatePropertyAll(text.labelLarge),
+    elevation: const WidgetStatePropertyAll(0),
+    side: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.focused)
+          ? BorderSide(color: fg, width: 2)
+          : null,
+    ),
+    overlayColor: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.disabled)
+          ? Colors.transparent
+          : states.contains(WidgetState.pressed)
+          ? fg.withValues(alpha: .22)
+          : states.contains(WidgetState.hovered) ||
+                states.contains(WidgetState.focused)
+          ? fg.withValues(alpha: .14)
+          : Colors.transparent,
+    ),
   );
   return base.copyWith(
+    extensions: [preview],
     textTheme: text,
-    filledButtonTheme: FilledButtonThemeData(style: button),
+    filledButtonTheme: FilledButtonThemeData(
+      style: button.copyWith(
+        overlayColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.disabled)
+              ? Colors.transparent
+              : states.contains(WidgetState.pressed)
+              ? (primaryText == Colors.black ? Colors.white : Colors.black).withValues(alpha: .30)
+              : states.contains(WidgetState.hovered) ||
+                    states.contains(WidgetState.focused)
+              ? (primaryText == Colors.black ? Colors.white : Colors.black)
+                    .withValues(alpha: .22)
+              : Colors.transparent,
+        ),
+      ),
+    ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: button.copyWith(
         foregroundColor: WidgetStateProperty.resolveWith(
@@ -134,9 +195,19 @@ ThemeData buildAppTheme(AppPalette palette) {
     ),
     textButtonTheme: TextButtonThemeData(
       style: button.copyWith(
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.disabled)
+              ? null
+              : scheme.surfaceContainerHighest,
+        ),
         foregroundColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.disabled) ? null : fg,
         ),
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: button.copyWith(
+        minimumSize: const WidgetStatePropertyAll(Size(44, 44)),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(style: button),
@@ -185,9 +256,10 @@ class AppPaletteHost extends StatefulWidget {
 class _AppPaletteHostState extends State<AppPaletteHost> {
   AppPalette _palette = AppPalette.cream;
   bool _expanded = false;
+  UiPreview _preview = const UiPreview();
   @override
   Widget build(BuildContext context) => widget.builder(
-    buildAppTheme(_palette),
+    buildAppTheme(_palette, preview: _preview),
     (context, child) => Stack(
       fit: StackFit.expand,
       children: [
@@ -204,20 +276,85 @@ class _AppPaletteHostState extends State<AppPaletteHost> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (_expanded)
-                      for (final value in AppPalette.values)
-                        TextButton.icon(
-                          onPressed: () => setState(() {
-                            _palette = value;
-                            _expanded = false;
-                          }),
-                          icon: Icon(
-                            value == _palette
-                                ? Icons.check
-                                : Icons.circle_outlined,
-                            size: 16,
-                          ),
-                          label: Text(value.label),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minWidth: (MediaQuery.sizeOf(context).width - 32)
+                              .clamp(0, 320),
+                          maxWidth: (MediaQuery.sizeOf(context).width - 32)
+                              .clamp(0, 320),
+                          maxHeight: (MediaQuery.sizeOf(context).height - 160)
+                              .clamp(140, 520),
                         ),
+                        child: SingleChildScrollView(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Text('개발용 시안 비교'),
+                                for (final value in AppPalette.values)
+                                  TextButton.icon(
+                                    onPressed: () => setState(() {
+                                      _palette = value;
+                                      _expanded = false;
+                                    }),
+                                    icon: Icon(
+                                      value == _palette
+                                          ? Icons.check
+                                          : Icons.circle_outlined,
+                                      size: 16,
+                                    ),
+                                    label: Text(value.label),
+                                  ),
+                                const Divider(),
+                                const Text('삭제 스타일'),
+                                for (final value in DeletePreview.values)
+                                  TextButton(
+                                    onPressed: () => setState(() {
+                                      _preview = _preview.copyWith(
+                                        delete: value,
+                                      );
+                                      _expanded = false;
+                                    }),
+                                    child: Text(switch (value) {
+                                      DeletePreview.outline => '삭제 · 붉은 테두리',
+                                      DeletePreview.tint => '삭제 · 옅은 붉은 배경',
+                                      DeletePreview.solid => '삭제 · 채워진 붉은 배경',
+                                    }),
+                                  ),
+                                const Divider(),
+                                const Text('학교·학과 배치'),
+                                for (final columns in [false, true])
+                                  TextButton(
+                                    onPressed: () => setState(() {
+                                      _preview = _preview.copyWith(
+                                        adminColumns: columns,
+                                      );
+                                      _expanded = false;
+                                    }),
+                                    child: Text(
+                                      columns ? '관리자 · 반응형 2열' : '관리자 · 기존 1열',
+                                    ),
+                                  ),
+                                const Divider(),
+                                const Text('설정 배치'),
+                                for (final columns in [false, true])
+                                  TextButton(
+                                    onPressed: () => setState(() {
+                                      _preview = _preview.copyWith(
+                                        settingsColumns: columns,
+                                      );
+                                      _expanded = false;
+                                    }),
+                                    child: Text(
+                                      columns ? '설정 · 반응형 2열' : '설정 · 좁은 1열',
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     IconButton(
                       key: const Key('palette-preview'),
                       icon: Icon(

@@ -53,6 +53,61 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+  testWidgets('delete previews retain confirmation and readable dark colors', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const UniversityPathApp());
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('sample-super-admin-entry')),
+    );
+    await tester.tap(find.byKey(const Key('sample-super-admin-entry')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('학교·학과'));
+    await tester.pumpAndSettle();
+    Future<void> choose(String label) async {
+      await tester.tap(find.byKey(const Key('palette-preview')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(label));
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+    }
+
+    await choose('다크 퍼플');
+    for (final label in ['삭제 · 붉은 테두리', '삭제 · 옅은 붉은 배경', '삭제 · 채워진 붉은 배경']) {
+      await choose(label);
+      final finder = find
+          .ancestor(
+            of: find.text('삭제').first,
+            matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+          )
+          .first;
+      final button = tester.widget<ButtonStyleButton>(finder);
+      final fg = button.style!.foregroundColor!.resolve({})!;
+      final bg = button.style!.backgroundColor!.resolve({})!;
+      expect(contrast(fg, bg), greaterThanOrEqualTo(4.5));
+      final hover = button.style!.overlayColor!.resolve({WidgetState.hovered})!;
+      expect(
+        contrast(fg, Color.alphaBlend(hover, bg)),
+        greaterThanOrEqualTo(4.5),
+      );
+      await tester.ensureVisible(finder);
+      await tester.tap(finder);
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('취소'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('합성 대학 A'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    }
+  });
   for (final palette in AppPalette.values) {
     testWidgets('${palette.name} login errors fit compact enlarged text', (
       tester,

@@ -1,3 +1,5 @@
+import '../../shared/app_style.dart';
+
 import 'package:flutter/material.dart';
 
 import '../auth/app_role.dart';
@@ -370,17 +372,23 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     runSpacing: 8,
     children: [
       if (!detail)
-        FilledButton.tonal(
+        OutlinedButton.icon(
           onPressed: () => widget.onNavigate('$_section/${r.id}'),
-          child: const Text('상세'),
+          icon: const Icon(Icons.arrow_forward, size: 18),
+          label: const Text('상세'),
         ),
       if (_repo.canWrite(_actor, r) &&
           r.status != 'applied' &&
           r.status != 'revoked' &&
           r.id != _actor)
-        FilledButton.tonal(
+        FilledButton.tonalIcon(
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+          ),
           onPressed: _busy ? null : () => _edit(r.kind, r),
-          child: const Text('수정'),
+          icon: const Icon(Icons.edit_outlined, size: 18),
+          label: const Text('수정'),
         ),
       if (_repo.canWrite(_actor, r) &&
           r.kind.versioned &&
@@ -409,9 +417,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           r.kind == AdminKind.scope &&
           r.status == 'active')
         OutlinedButton.icon(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Theme.of(context).colorScheme.error,
-          ),
+          style: _dangerStyle(),
           icon: const Icon(Icons.remove_circle_outline, size: 18),
           onPressed: _busy ? null : () => _edit(r.kind, r, true),
           label: const Text('범위 회수'),
@@ -420,9 +426,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           ![AdminKind.scope, AdminKind.account].contains(r.kind) &&
           r.status != 'applied')
         OutlinedButton.icon(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Theme.of(context).colorScheme.error,
-          ),
+          style: _dangerStyle(),
           icon: const Icon(Icons.delete_outline, size: 18),
           onPressed: _busy
               ? null
@@ -434,6 +438,40 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         ),
     ],
   );
+
+  ButtonStyle _dangerStyle() {
+    final colors = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final red = dark ? const Color(0xffff6b6b) : const Color(0xffb42318);
+    final variant = UiPreview.of(context).delete;
+    final fill = switch (variant) {
+      DeletePreview.outline => colors.surface,
+      DeletePreview.tint => Color.alphaBlend(
+        red.withValues(alpha: .12),
+        colors.surface,
+      ),
+      DeletePreview.solid => const Color(0xffb91c1c),
+    };
+    return OutlinedButton.styleFrom(
+      backgroundColor: fill,
+      foregroundColor: variant == DeletePreview.solid ? Colors.white : red,
+      side: BorderSide(color: variant == DeletePreview.solid ? fill : red),
+    ).copyWith(
+      overlayColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.disabled)
+            ? Colors.transparent
+            : states.contains(WidgetState.pressed) ||
+                  states.contains(WidgetState.hovered)
+            ? Colors.black.withValues(alpha: .12)
+            : Colors.transparent,
+      ),
+      side: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.focused)
+            ? BorderSide(color: colors.onSurface, width: 2)
+            : BorderSide(color: variant == DeletePreview.solid ? fill : red),
+      ),
+    );
+  }
 
   Widget _detail(AdminRecord r) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
