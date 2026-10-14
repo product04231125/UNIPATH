@@ -154,12 +154,7 @@ void main() {
           if (width >= 820) {
             expect(upcoming.top, closeTo(prepare.top, 0.01));
             expect(upcoming.bottom, closeTo(prepare.bottom, 0.01));
-            if (width >= 1000 && scale == 1) {
-              expect(upcoming.top, closeTo(next.top, 0.01));
-              expect(upcoming.bottom, closeTo(next.bottom, 0.01));
-            } else {
-              expect(next.top, greaterThan(prepare.bottom));
-            }
+            expect(next.top, greaterThan(prepare.bottom));
           } else {
             expect(prepare.top, greaterThan(upcoming.bottom));
             expect(next.top, greaterThan(prepare.bottom));
