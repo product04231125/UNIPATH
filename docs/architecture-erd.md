@@ -58,7 +58,8 @@ flowchart LR
 ```mermaid
 flowchart LR
     Student[일반 사용자] --> StudentUi[학생용 Flutter Web]
-    SchoolAdmin[학교 관리자] --> AdminUi[학교 관리자용 Flutter Web]
+    SchoolAdmin[학교 관리자] --> AdminUi[공통 관리자 Flutter Web]
+    SuperAdmin[슈퍼관리자] --> AdminUi
     StudentUi --> Flutter[Flutter Web: 1차 MVP<br/>Windows 애플리케이션: 3차 MVP]
     AdminUi --> Flutter
     Flutter -->|REST /api/v1| API
@@ -128,9 +129,11 @@ flowchart TB
     end
 
     subgraph Administration[학교 데이터 관리]
-        AccessControl[역할·학교 범위 권한 확인]
+        AccessControl[역할·계정 상태·활성 학교 범위 권한 확인]
         OfficialDataManagement[학교·학과·교육과정·공식 규정 관리]
         AccessControl --> OfficialDataManagement
+        AccessControl --> PlatformAdministration[슈퍼관리자: 학교 등록·관리자 범위 부여/회수]
+        OfficialDataManagement --> AdminHistory[관리자 변경·적용 이력]
     end
 
     subgraph Knowledge[지식·RAG 도메인]

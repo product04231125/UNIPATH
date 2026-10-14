@@ -33,6 +33,7 @@ erDiagram
     USER ||--o{ VOLUNTEER_RECORD : records
     USER ||--o{ PII_PROCESSING_AUDIT : audit_subject
     USER ||--o{ SCHOOL_ADMIN_SCOPE : administers
+    USER ||--o{ ADMIN_AUDIT_LOG : performs
     INSTITUTION ||--o{ SCHOOL_ADMIN_SCOPE : grants_scope
     COURSE ||--o{ ACADEMIC_RECORD : completed_as
     INSTITUTION ||--o{ GRADUATION_RULE_SET : defines
@@ -74,6 +75,7 @@ erDiagram
         uuid department_id FK
         uuid curriculum_id FK
         string role
+        string account_status
         int admission_year
         datetime created_at
         datetime updated_at
@@ -84,9 +86,24 @@ erDiagram
         uuid institution_id FK
         uuid department_id FK
         uuid curriculum_id FK
+        string scope_type
         string status
+        uuid granted_by FK
+        uuid revoked_by FK
+        string change_reason
         datetime granted_at
         datetime revoked_at
+    }
+    ADMIN_AUDIT_LOG {
+        uuid id PK
+        uuid actor_id FK
+        string action
+        string target_type
+        uuid target_id
+        uuid institution_id FK
+        string result
+        string request_id
+        datetime occurred_at
     }
     PII_PROCESSING_AUDIT {
         uuid id PK
@@ -147,6 +164,12 @@ erDiagram
         date effective_from
         date effective_to
         boolean is_active
+        string publication_status
+        uuid created_by FK
+        uuid updated_by FK
+        uuid applied_by FK
+        datetime updated_at
+        datetime applied_at
     }
     GRADUATION_RULE {
         uuid id PK
@@ -206,12 +229,42 @@ erDiagram
     }
 ```
 
-`User.role`은 최소 `user`, `school_admin` enum으로 관리한다. `school_admin`은
+`User.role`은 `user`, `school_admin`, `super_admin` enum으로 설계한다. `school_admin`은
 `SchoolAdminScope`에서 부여된 학교·학과·교육과정 범위의 공식 데이터만 관리할 수
 있다. 사용자의 학교·학과·교육과정 FK는 데이터 미등록 또는 미지원 학교 사용자를
 지원하기 위해 nullable로 설계할 수 있으며, 직접 입력한 학사·활동 데이터의 소유권은
 학교 데이터와 독립적으로 항상 사용자에게 남는다. 실제 학교 관리자 신원 검증 및
 권한 부여 절차는 구현 전에 별도로 확정한다.
+
+### 관리자 역할·범위 보완안
+
+아래 항목과 ERD 추가 필드는 논리 설계 제안이다. 확정된 OpenAPI 계약이나 실제 DB 구현이 아니다.
+한 계정은 역할 하나를 갖고 별도 Role/Permission 테이블은 이번 단계에서 추가하지 않는다.
+`account_status`는 `active`, `suspended`이며 정지 계정은 관리자 작업을 수행하지 못한다.
+
+| 역할 | 관리 권한 |
+|---|---|
+| user | 본인 개인 기록 |
+| school_admin | 활성 SchoolAdminScope 범위의 학과·교육과정·과목·규칙·문서 |
+| super_admin | 학교 등록·수정, 기존 사용자 관리자 범위 부여·회수, 전체 학교 공식 데이터 |
+
+두 관리자 역할에는 학생 개인 기록 조회·수정 권한을 자동 부여하지 않는다.
+학교 관리자는 자신의 범위에서 규칙·문서를 직접 검토·확인 후 적용하며 슈퍼관리자 승인을 요구하지 않는다.
+
+SchoolAdminScope는 학교 관리자에게만 부여한다. `scope_type`은 `institution`, `department`,
+`curriculum`이다. 학교는 필수이며 학교 전체 범위는 하위 FK가 null, 학과 범위는 학과만 필수,
+교육과정 범위는 학과·교육과정 모두 필수다. 학과의 학교 및 교육과정의 학과 일치를 검증한다.
+`status`는 `active`, `revoked`이며 동일 사용자·동일 범위의 활성 중복을 막는다.
+부여·회수 주체와 시각 및 변경 사유를 기록한다. 회수된 범위는 이력으로 보존한다.
+
+AdminAuditLog는 관리자 변경의 수행자·행동·대상·학교·결과·시각·요청 식별자를 기록한다.
+개인정보 비식별화 메타데이터용 PiiProcessingAudit와 별개이며, 비밀번호·토큰·학생 기록 원문은 저장하지 않는다.
+규칙 묶음·공식 문서는 `draft`, `applied`로 구분하고 생성·수정·적용 주체와 시각을 기록한다.
+적용 버전은 수정하지 않고 새 버전 초안을 만들어 기존 적용 이력을 보존한다.
+규칙 묶음과 연결된 규칙은 버전 단위로 함께 보존해야 한다.
+
+관리자 신원 검증·최초 슈퍼관리자 생성·계정 발급·인증/세션·회수 후 세션 권한 갱신,
+물리 DB 타입·인덱스·FK·중복/소속 제약·이력 보유기간은 백엔드 계약 확정 항목이다.
 
 `GraduationRuleSet`은 규칙의 적용 계층을 표현한다. 한 사용자의 졸업감사에는
 해당 학교의 `institution` 규칙 묶음, 소속 학과의 `department` 규칙 묶음, 적용
@@ -412,6 +465,12 @@ erDiagram
         int version
         datetime source_checked_at
         datetime ingested_at
+        string publication_status
+        uuid created_by FK
+        uuid updated_by FK
+        uuid applied_by FK
+        datetime updated_at
+        datetime applied_at
     }
     DOCUMENT_CHUNK {
         uuid id PK
