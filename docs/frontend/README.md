@@ -6,6 +6,7 @@ OpenAPI(`/api/v1/docs`)가 기준이다.
 
 ## 문서 구분
 
+- [백엔드 API 요구 명세](../api/frontend-backend-requirements.md): 현재 프런트의 서버 연결 요구, 기존 API와 신규 제안·후속 계약 구분
 - [architecture.md](architecture.md): 모듈 경계, 상태 소유권, fixture와 API 전환 방식
 - [platform-differences.md](platform-differences.md): 현재 구현된 Web·Windows 동작 차이
 - [ux-ui-verification.md](ux-ui-verification.md): 공통 카드·입력/탐색의 검증 근거와 Windows 최종 확인
