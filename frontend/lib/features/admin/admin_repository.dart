@@ -4,6 +4,7 @@ import '../../shared/external_links.dart';
 import '../auth/app_role.dart';
 import 'admin_fixture.dart';
 import 'admin_models.dart';
+import 'admin_fields.dart';
 
 abstract class AdminRepository extends ChangeNotifier {
   List<AdminRecord> get records;
@@ -11,6 +12,7 @@ abstract class AdminRepository extends ChangeNotifier {
   Future<void> load();
   AppRole role(String actorId);
   bool active(String actorId);
+  String school(AdminRecord record);
   bool canRead(String actorId, AdminRecord record);
   bool canWrite(String actorId, AdminRecord record);
   Future<void> save(String actorId, AdminRecord record);
@@ -92,13 +94,7 @@ class FakeAdminRepository extends AdminRepository {
           _within(s, r) ||
           r.kind == AdminKind.institution && r.id == s.value('institutionId') ||
           r.kind == AdminKind.department && r.id == s.value('departmentId') ||
-          r.kind == AdminKind.course &&
-              _records.any(
-                (link) =>
-                    link.kind == AdminKind.curriculumCourse &&
-                    link.value('courseId') == r.id &&
-                    _within(s, link),
-              ),
+          r.kind == AdminKind.course && s.value('institutionId') == school(r),
     );
   }
 
@@ -120,6 +116,61 @@ class FakeAdminRepository extends AdminRepository {
   }
 
   void _validate(AdminRecord r) {
+    for (final f in adminFields(r.kind)) {
+      _require(
+        !f.required || r.value(f.key).trim().isNotEmpty,
+        '${f.label}을 입력하세요.',
+      );
+      _require(
+        f.options.isEmpty ||
+            r.value(f.key).isEmpty ||
+            f.options.containsKey(r.value(f.key)),
+        '${f.label}의 값을 확인하세요.',
+      );
+    }
+    for (final key in ['sourceUrl', 'officialUrl']) {
+      _require(
+        r.value(key).isEmpty || browserLink(r.value(key)) != null,
+        'HTTP(S) 주소를 입력하세요.',
+      );
+    }
+    for (final key in ['effectiveFrom', 'effectiveTo']) {
+      final value = r.value(key);
+      final date = DateTime.tryParse(value);
+      _require(
+        value.isEmpty ||
+            RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value) &&
+                date != null &&
+                date.toIso8601String().startsWith(value),
+        '실제 날짜를 YYYY-MM-DD로 입력하세요.',
+      );
+    }
+    _require(
+      r.value('effectiveFrom').isEmpty ||
+          r.value('effectiveTo').isEmpty ||
+          r.value('effectiveFrom').compareTo(r.value('effectiveTo')) <= 0,
+      '적용 종료일은 시작일 이후여야 합니다.',
+    );
+    _require(
+      !_records.any(
+        (other) =>
+            other.id != r.id &&
+            other.kind == r.kind &&
+            !r.kind.versioned &&
+            r.kind != AdminKind.scope &&
+            r.kind != AdminKind.account &&
+            (r.kind == AdminKind.institution || school(other) == school(r)) &&
+            (r.value('code').isNotEmpty
+                ? other.value('code') == r.value('code')
+                : r.kind == AdminKind.curriculumCourse
+                ? other.value('curriculumId') == r.value('curriculumId') &&
+                      other.value('courseId') == r.value('courseId')
+                : other.name == r.name &&
+                      other.value('departmentId') == r.value('departmentId') &&
+                      other.value('year') == r.value('year')),
+      ),
+      '동일 범위에 중복 이름·코드·관계가 있습니다.',
+    );
     _require(r.name.trim().isNotEmpty, '이름을 입력하세요.');
     for (final (key, kind) in [
       ('institutionId', AdminKind.institution),
@@ -207,6 +258,10 @@ class FakeAdminRepository extends AdminRepository {
       _require(
         find(r.value('userId'))?.value('role') != 'super_admin',
         '슈퍼관리자에게 학교 범위를 부여하지 않습니다.',
+      );
+      _require(
+        find(r.value('userId'))?.value('accountStatus') == 'active',
+        '정지 계정에는 범위를 부여하지 않습니다.',
       );
       _require(
         type != 'institution' ||
@@ -308,6 +363,14 @@ class FakeAdminRepository extends AdminRepository {
           '본인·역할 변경 또는 계정 생성은 지원하지 않습니다.',
         );
         _validate(r);
+        for (final f in adminFields(
+          r.kind,
+        ).where((f) => f.relation != null && r.value(f.key).isNotEmpty)) {
+          _require(
+            canRead(actorId, find(r.value(f.key))!),
+            '연결 대상이 현재 관리 범위 밖입니다.',
+          );
+        }
         final now = DateTime.now().toUtc();
         final values = {...r.values};
         if (r.kind == AdminKind.scope) {

@@ -43,6 +43,108 @@ AdminRecord rule(
 
 void main() {
   test(
+    'admin flows domain validates course relations dates and duplication',
+    () async {
+      final repo = FakeAdminRepository();
+      final course = AdminRecord(
+        id: 'c',
+        kind: AdminKind.course,
+        values: {
+          'name': '합성 과목',
+          'code': 'C1',
+          'credits': '3',
+          'institutionId': 'school-a',
+        },
+      );
+      await repo.save('super-admin', course);
+      final link = AdminRecord(
+        id: 'link',
+        kind: AdminKind.curriculumCourse,
+        values: {
+          'name': '합성 관계',
+          'curriculumId': 'school-a-curr',
+          'courseId': 'c',
+          'category': 'major',
+          'required': 'true',
+        },
+      );
+      await repo.save('super-admin', link);
+      await expectLater(repo.remove('super-admin', 'c'), throwsStateError);
+      await expectLater(
+        repo.save(
+          'super-admin',
+          link.copy(values: {...link.values, 'curriculumId': 'school-b-curr'}),
+        ),
+        throwsStateError,
+      );
+      await repo.remove('super-admin', 'link');
+      await repo.remove('super-admin', 'c');
+      expect(repo.find('c'), isNull);
+      await expectLater(
+        repo.save(
+          'super-admin',
+          rule('bad-date').copy(
+            values: {...rule('bad-date').values, 'effectiveFrom': '2026-02-30'},
+          ),
+        ),
+        throwsStateError,
+      );
+      await expectLater(
+        repo.save(
+          'super-admin',
+          AdminRecord(
+            id: 'dup',
+            kind: AdminKind.institution,
+            values: {'name': repo.find('school-a')!.name},
+          ),
+        ),
+        throwsStateError,
+      );
+    },
+  );
+  test('admin flows domain curriculum scope browses school catalogue but modifies only own links', () async {
+    final repo = FakeAdminRepository();
+    await repo.save(
+      'super-admin',
+      scope(
+        'narrow',
+        type: 'curriculum',
+        department: 'school-a-dept',
+        curriculum: 'school-a-curr',
+      ),
+    );
+    final c = AdminRecord(
+      id: 'c',
+      kind: AdminKind.course,
+      values: {
+        'name': '학교 과목',
+        'code': 'C1',
+        'credits': '3',
+        'institutionId': 'school-a',
+      },
+    );
+    await repo.save('super-admin', c);
+    expect(repo.canRead('sample-user', repo.find('c')!), isTrue);
+    await expectLater(
+      repo.save('sample-user', c.copy(values: {...c.values, 'name': '변경'})),
+      throwsStateError,
+    );
+    await repo.save(
+      'sample-user',
+      AdminRecord(
+        id: 'link',
+        kind: AdminKind.curriculumCourse,
+        values: {
+          'name': '소속 연결',
+          'curriculumId': 'school-a-curr',
+          'courseId': 'c',
+          'category': 'major',
+          'required': 'true',
+        },
+      ),
+    );
+  });
+  test(
     'school scope blocks cross-school writes and super manages all',
     () async {
       final repo = FakeAdminRepository();
@@ -185,6 +287,7 @@ void main() {
           'name': '합成 문서',
           'institutionId': 'school-a',
           'sourceUrl': 'javascript:bad',
+          'documentType': 'graduation',
         },
       );
       await expectLater(repo.save('super-admin', doc), throwsStateError);

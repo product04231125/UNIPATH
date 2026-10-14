@@ -5,6 +5,7 @@ import 'features/assistant/assistant_api.dart';
 import 'workspace.dart';
 import 'features/auth/app_role.dart';
 import 'features/admin/admin_workspace.dart';
+import 'features/admin/admin_repository.dart';
 
 class AppLocation {
   const AppLocation(this.path);
@@ -50,6 +51,13 @@ class AppNavigation extends RouterDelegate<AppLocation>
 
   bool authenticated;
   AppRole _role = AppRole.user;
+  AdminRepository? _adminRepository;
+  @override
+  void dispose() {
+    _adminRepository?.dispose();
+    super.dispose();
+  }
+
   AppLocation _location = const AppLocation('/');
   @override
   final navigatorKey = GlobalKey<NavigatorState>();
@@ -92,6 +100,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
     if (_location.path.startsWith('/admin') && authenticated) {
       key = 'admin';
       page = AdminWorkspace(
+        repository: _adminRepository ??= FakeAdminRepository(),
         role: _role,
         path: _location.path,
         onNavigate: (path) => Router.navigate(context, () {
@@ -127,6 +136,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
     } else if (_role != AppRole.user) {
       key = 'admin';
       page = AdminWorkspace(
+        repository: _adminRepository ??= FakeAdminRepository(),
         role: _role,
         path: '/admin/overview',
         onNavigate: (path) => Router.navigate(context, () {

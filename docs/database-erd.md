@@ -35,6 +35,8 @@ erDiagram
     USER ||--o{ SCHOOL_ADMIN_SCOPE : administers
     USER ||--o{ ADMIN_AUDIT_LOG : performs
     INSTITUTION ||--o{ SCHOOL_ADMIN_SCOPE : grants_scope
+    DEPARTMENT ||--o{ SCHOOL_ADMIN_SCOPE : limits_scope
+    CURRICULUM ||--o{ SCHOOL_ADMIN_SCOPE : limits_scope
     COURSE ||--o{ ACADEMIC_RECORD : completed_as
     INSTITUTION ||--o{ GRADUATION_RULE_SET : defines
     DEPARTMENT ||--o{ GRADUATION_RULE_SET : defines

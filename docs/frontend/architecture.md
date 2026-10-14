@@ -49,6 +49,7 @@
 | 모듈 | 소유 화면·로컬 상태 |
 | --- | --- |
 | `features/auth` | 로그인·회원가입 목업 |
+| `features/admin` | 공통 관리자 셸·입력 스키마·역할/범위·메모리 fake·변경 이력 |
 | `features/home` | 개인 계획 기반 이번 주 일정·준비 목록·우선 링크 |
 | `features/planning` | 기기 로컬 개인 계획 프로필·일정 repository |
 | `features/schedule` | 월간 개인 일정과 선택 날짜 목록, 일정 CRUD |
@@ -62,6 +63,10 @@
 | `features/settings` | 설정 진입 화면 |
 
 ## 임시 데이터와 API 전환
+
+- AppNavigation은 개발 역할과 관리자 repository를 소유한다. AdminRepository는 교체 경계,
+  FakeAdminRepository는 학생 저장소와 분리된 메모리 구현이다. 위젯은 입력·표시를 담당하고
+  fake는 최신 계정·범위·관계·버전을 검사한다. 실제 관리자 API는 서버 권한 검증이 필수다.
 
 - `assistant_api.dart`는 Web/Windows 공통 `http.Client`와 명시적 요청·응답 모델을 사용한다.
   `API_BASE_URL`은 빌드 환경에서 주입한다. `AssistantGateway`는 테스트 주입 경계다.
