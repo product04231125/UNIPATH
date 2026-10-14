@@ -143,6 +143,45 @@ class _GraduationPageState extends State<GraduationPage> {
           const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
+              if (!compact &&
+                  (constraints.maxWidth < 600 ||
+                      MediaQuery.textScalerOf(context).scale(14) > 18)) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final row in rows)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              row.first,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            for (var i = 1; i < row.length; i++)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  children: [
+                                    Text('${headers[i]}:'),
+                                    if (headers[i] == '판정' ||
+                                        headers[i] == '상태')
+                                      StatusBadge(status: row[i])
+                                    else
+                                      Text(row[i]),
+                                  ],
+                                ),
+                              ),
+                            const Divider(),
+                          ],
+                        ),
+                      ),
+                  ],
+                );
+              }
               final cellWidth = math.max(
                 58.0,
                 (constraints.maxWidth - 92) / (headers.length - 1),

@@ -48,6 +48,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
             : PortfolioDraftsPage(
                 key: ValueKey(_stage),
                 isDocument: _stage == 2,
+                onOpenAchievements: () => setState(() => _stage = 0),
               ),
       ),
     ],

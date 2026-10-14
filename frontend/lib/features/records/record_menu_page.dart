@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:university_path_frontend/shared/app_typography.dart';
 
-import '../../shared/widgets/equal_height_row.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/status_badge.dart';
@@ -451,48 +450,22 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                       Text(
                         '사용자가 승인됨으로 기록한 봉사 시간 합계 ${personal.where((r) => r.value('approval') == 'approved').fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('approvedHours')) ?? 0))}시간 · 학교 검증 아님',
                       ),
-                    if ((isCourse || entries.isEmpty) && personal.isEmpty)
-                      Text('개인 기록이 없습니다. 직접 입력해 주세요.'),
-                    if (!isCourse)
-                      for (final entry in entries) _entry(entry),
+                    if (personal.isEmpty) Text('개인 기록이 없습니다. 직접 입력해 주세요.'),
                     for (final record in personal) _personalEntry(record),
-                    if (isCourse && entries.isNotEmpty) ...[
+                    if (entries.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       const Divider(),
-                      Text('목업용 예시 과목 · 개인 입력 합계에서 제외'),
+                      Text(
+                        isCourse
+                            ? '목업용 예시 과목 · 개인 입력 합계에서 제외'
+                            : '목업용 예시 기록 · 개인 기록 및 합계에서 제외',
+                      ),
                       for (final entry in entries) _entry(entry),
                     ],
                   ],
                 ),
               );
-              final guide = SurfaceCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.guideTitle,
-                      style: TextStyle(
-                        fontSize: AppTypography.section,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    for (final guide in widget.guides)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 11),
-                        child: Text(
-                          '• $guide',
-                          style: TextStyle(
-                            fontSize: AppTypography.body,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ...widget.guideActions,
-                  ],
-                ),
-              );
-              if (isCourse) {
+              {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -516,17 +489,6 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                   ],
                 );
               }
-              return constraints.maxWidth >= 760
-                  ? EqualHeightRow(
-                      children: [
-                        Expanded(flex: 6, child: records),
-                        const SizedBox(width: 14),
-                        Expanded(flex: 4, child: guide),
-                      ],
-                    )
-                  : Column(
-                      children: [records, const SizedBox(height: 14), guide],
-                    );
             },
           ),
         ],

@@ -16,9 +16,11 @@ class PortfolioDraftsPage extends StatefulWidget {
     super.key,
     required this.isDocument,
     this.repository,
+    this.onOpenAchievements,
   });
   final bool isDocument;
   final PortfolioWorkspaceRepository? repository;
+  final VoidCallback? onOpenAchievements;
   @override
   State<PortfolioDraftsPage> createState() => _PortfolioDraftsPageState();
 }
@@ -212,6 +214,18 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
               padding: EdgeInsets.only(top: 14),
               child: Text('아직 만든 구성이 없습니다. 성과 기록을 먼저 추가하거나 빈 구성을 저장하세요.'),
             ),
+          if (!document &&
+              _repository.compositions.isEmpty &&
+              widget.onOpenAchievements != null) ...[
+            const SizedBox(height: 8),
+            const Text('목업 예시는 구성에 사용할 수 없습니다. 개인 성과를 추가하세요.'),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: widget.onOpenAchievements,
+              icon: const Icon(Icons.arrow_forward, size: 18),
+              label: const Text('개인 성과 기록으로 이동'),
+            ),
+          ],
           if (document)
             for (final d in _repository.documents)
               _card(

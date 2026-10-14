@@ -5,9 +5,23 @@ import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_record_fields.dart';
 import 'package:university_path_frontend/features/records/course/course_page.dart';
+import 'package:university_path_frontend/features/records/activity/activity_page.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('activity separates examples and collapses guidance', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(home: const Scaffold(body: ActivityPage(showMockData: true))),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('개인 기록이 없습니다. 직접 입력해 주세요.'), findsOneWidget);
+    expect(find.text('목업용 예시 기록 · 개인 기록 및 합계에서 제외'), findsOneWidget);
+    expect(find.byType(ExpansionTile), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   for (final scale in [1.0, 2.0]) {
     testWidgets(
