@@ -62,6 +62,77 @@ Future<void> openEditor(
 }
 
 void main() {
+  testWidgets('list filters preserve scope and reset when school changes', (
+    tester,
+  ) async {
+    final repo = FakeAdminRepository();
+    addTearDown(repo.dispose);
+    for (final (id, school) in [
+      ('alpha', 'a'),
+      ('beta', 'a'),
+      ('gamma', 'b'),
+    ]) {
+      await repo.save(
+        'super-admin',
+        AdminRecord(
+          id: id,
+          kind: AdminKind.document,
+          values: {
+            'name': id,
+            'institutionId': 'school-$school',
+            'documentType': 'graduation',
+            'sourceUrl': 'https://example.org/$id',
+          },
+        ),
+      );
+    }
+    await repo.apply('super-admin', 'beta');
+    await tester.pumpWidget(
+      host(
+        AdminWorkspace(
+          repository: repo,
+          role: AppRole.superAdmin,
+          path: '/admin/documents',
+          onNavigate: (_) {},
+          onSignedOut: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('alpha'), findsOneWidget);
+    expect(find.text('beta'), findsOneWidget);
+    expect(find.text('gamma'), findsNothing);
+    tester
+        .widget<AnchoredSelectField<String>>(
+          find.byKey(const ValueKey('admin-status-document')),
+        )
+        .onChanged('draft');
+    await tester.pumpAndSettle();
+    expect(find.text('beta'), findsNothing);
+    await tester.enterText(
+      find.byKey(const ValueKey('admin-search-school-a-document')),
+      '없는 항목',
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('alpha'), findsNothing);
+    expect(find.textContaining('검색·필터에 맞는 항목'), findsOneWidget);
+    tester
+        .widget<AnchoredSelectField<String>>(
+          find.byKey(const ValueKey('admin-school-selector')),
+        )
+        .onChanged('school-b');
+    await tester.pumpAndSettle();
+    expect(find.text('gamma'), findsOneWidget);
+    expect(
+      tester
+          .widget<AnchoredSelectField<String>>(
+            find.byKey(const ValueKey('admin-status-document')),
+          )
+          .value,
+      '',
+    );
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('overview scopes drafts and recent changes and opens next task', (
     tester,
   ) async {
@@ -285,17 +356,23 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('검토·적용'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('검토·적용'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('초안 적용'));
     await tester.pumpAndSettle();
     expect(repo.find('r')!.status, 'applied');
+    await tester.ensureVisible(find.text('새 버전 초안'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('새 버전 초안'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, '새 버전 초안'));
     await tester.pumpAndSettle();
     expect(repo.records.where((r) => r.kind == AdminKind.rule).length, 2);
     expect(repo.find('r')!.status, 'applied');
+    await tester.ensureVisible(find.text('상세').first);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('상세').first);
     await tester.pumpAndSettle();
     expect(find.textContaining('규칙 종류: 학점'), findsOneWidget);

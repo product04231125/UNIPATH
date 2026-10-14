@@ -45,6 +45,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   String? _loadError, _error;
   String _schoolId = '';
   bool _busy = false;
+  final _queries = <AdminKind, String>{};
+  final _statuses = <AdminKind, String>{};
   String get _actor =>
       widget.role == AppRole.superAdmin ? 'super-admin' : 'school-admin';
   AppRole get _role =>
@@ -211,6 +213,48 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     );
   }
 
+  String _status(AdminRecord r) =>
+      r.kind == AdminKind.account ? r.value('accountStatus') : r.status;
+  String _statusLabel(String status) => switch (status) {
+    'draft' => '초안',
+    'applied' => '목업 적용',
+    'active' => '활성',
+    'revoked' => '회수됨',
+    'suspended' => '정지',
+    _ => '알 수 없는 상태',
+  };
+  String _relationName(String id) {
+    final r = _find(id);
+    return r != null && _repo.canRead(_actor, r) ? r.name : '';
+  }
+
+  String _recordContext(AdminRecord r) => [
+    _relationName(_repo.school(r)),
+    for (final key in [
+      'departmentId',
+      'curriculumId',
+      'courseId',
+      'ruleSetId',
+      'userId',
+    ])
+      _relationName(r.value(key)),
+    if (r.value('year').isNotEmpty) '${r.value('year')}년 적용',
+    if (r.value('code').isNotEmpty) '코드 ${r.value('code')}',
+    if (r.value('credits').isNotEmpty) '${r.value('credits')}학점',
+    if (r.kind == AdminKind.scope)
+      switch (r.value('scopeType')) {
+        'institution' => '학교 전체',
+        'department' => '학과 범위',
+        'curriculum' => '교육과정 범위',
+        _ => '범위 유형 확인 필요',
+      },
+  ].where((s) => s.isNotEmpty).toSet().join(' · ');
+  Iterable<AdminRecord> _filteredRows(AdminKind kind) => _rows(kind).where((r) {
+    final query = (_queries[kind] ?? '').trim().toLowerCase();
+    return '${r.name} ${_recordContext(r)}'.toLowerCase().contains(query) &&
+        ((_statuses[kind] ?? '').isEmpty || _status(r) == _statuses[kind]);
+  });
+
   Widget _records(AdminKind kind) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
@@ -228,6 +272,42 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             ),
         ],
       ),
+      if (_rows(kind).isNotEmpty) ...[
+        const SizedBox(height: 12),
+        TextFormField(
+          key: ValueKey('admin-search-$_schoolId-${kind.name}'),
+          initialValue: _queries[kind] ?? '',
+          decoration: InputDecoration(
+            labelText: '${kind.label} 이름·소속·코드 검색',
+            prefixIcon: const Icon(Icons.search),
+          ),
+          onChanged: (value) => setState(() => _queries[kind] = value),
+        ),
+        if (kind.versioned ||
+            kind == AdminKind.scope ||
+            kind == AdminKind.account) ...[
+          const SizedBox(height: 8),
+          AnchoredSelectField<String>(
+            key: ValueKey('admin-status-${kind.name}'),
+            value: _statuses[kind] ?? '',
+            label: '${kind.label} 상태',
+            options: [
+              const SelectOption('', '전체 상태'),
+              for (final status in _rows(kind).map(_status).toSet())
+                SelectOption(status, _statusLabel(status)),
+            ],
+            onChanged: (value) => setState(() => _statuses[kind] = value),
+          ),
+        ],
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Text(
+            '${_filteredRows(kind).length}개 표시 / ${_rows(kind).length}개',
+          ),
+        ),
+        if (_filteredRows(kind).isEmpty)
+          const Text('검색·필터에 맞는 항목이 없습니다. 검색어와 상태를 바꿔보세요.'),
+      ],
       if (_rows(kind).isEmpty)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -235,7 +315,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             '${kind.label} 데이터가 없습니다.${_canCreate(kind) ? ' 등록 버튼으로 시작하세요.' : '권한과 관리 범위를 확인하세요.'}',
           ),
         ),
-      for (final r in _rows(kind))
+      for (final r in _filteredRows(kind))
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -243,17 +323,19 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(r.name, style: Theme.of(context).textTheme.titleMedium),
+                if (_recordContext(r).isNotEmpty)
+                  Text(
+                    _recordContext(r),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 if (kind.versioned)
                   Text(
-                    'v${r.version} · ${r.status == 'applied' ? '목업 적용' : '초안'}',
+                    'v${r.version} · ${_statusLabel(r.status)}',
                   ),
-                if (kind == AdminKind.scope)
-                  Text(
-                    '${r.value('scopeType')} · ${r.status == 'active' ? '활성' : '회수됨'}',
-                  ),
+                if (kind == AdminKind.scope) Text(_statusLabel(r.status)),
                 if (kind == AdminKind.account)
                   Text(
-                    '${roleFromRecord(r).label} · ${r.value('accountStatus') == 'active' ? '활성' : '정지'}',
+                    '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}',
                   ),
                 Wrap(
                   spacing: 8,
@@ -583,6 +665,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
               const SizedBox(height: 12),
               if (_schools.isNotEmpty && allowed)
                 AnchoredSelectField<String>(
+                  key: const ValueKey('admin-school-selector'),
                   value: _schoolId,
                   label: '현재 학교',
                   options: [
@@ -594,6 +677,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     setState(() {
                       _schoolId = v;
                       _error = null;
+                      _queries.clear();
+                      _statuses.clear();
                     });
                     // The old detail cannot remain under the new school.
                     if (_detailId != null) widget.onNavigate(_section);
