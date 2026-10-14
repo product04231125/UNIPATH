@@ -356,10 +356,13 @@ class HomePage extends StatelessWidget {
             runSpacing: 4,
             children: [
               for (final step in steps)
-                TextButton.icon(
-                  onPressed: () => onOpenPage(step.page),
-                  icon: Icon(step.icon, size: 18),
-                  label: Text(step.label),
+                Tooltip(
+                  message: step.description,
+                  child: TextButton.icon(
+                    onPressed: () => onOpenPage(step.page),
+                    icon: Icon(step.icon, size: 18),
+                    label: Text(step.label),
+                  ),
                 ),
             ],
           ),
