@@ -329,84 +329,81 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 if (kind.versioned)
-                  Text(
-                    'v${r.version} · ${_statusLabel(r.status)}',
-                  ),
+                  Text('v${r.version} · ${_statusLabel(r.status)}'),
                 if (kind == AdminKind.scope) Text(_statusLabel(r.status)),
                 if (kind == AdminKind.account)
                   Text(
                     '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}',
                   ),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    TextButton(
-                      onPressed: () => widget.onNavigate('$_section/${r.id}'),
-                      child: const Text('상세'),
-                    ),
-                    if (_repo.canWrite(_actor, r) &&
-                        r.status != 'applied' &&
-                        r.status != 'revoked' &&
-                        r.id != _actor)
-                      TextButton(
-                        onPressed: _busy ? null : () => _edit(kind, r),
-                        child: const Text('수정'),
-                      ),
-                    if (_repo.canWrite(_actor, r) &&
-                        kind.versioned &&
-                        r.value('ruleSetId').isEmpty &&
-                        r.status == 'draft')
-                      TextButton(
-                        onPressed: _busy
-                            ? null
-                            : () => _confirmAction(
-                                r,
-                                '초안 적용',
-                                () => _repo.apply(_actor, r.id),
-                              ),
-                        child: const Text('검토·적용'),
-                      ),
-                    if (_repo.canWrite(_actor, r) &&
-                        kind.versioned &&
-                        r.value('ruleSetId').isEmpty &&
-                        r.status == 'applied')
-                      TextButton(
-                        onPressed: _busy
-                            ? null
-                            : () => _confirmAction(r, '새 버전 초안', () async {
-                                await _repo.newVersion(_actor, r.id);
-                              }),
-                        child: const Text('새 버전 초안'),
-                      ),
-                    if (_repo.canWrite(_actor, r) &&
-                        kind == AdminKind.scope &&
-                        r.status == 'active')
-                      TextButton(
-                        onPressed: _busy ? null : () => _edit(kind, r, true),
-                        child: const Text('범위 회수'),
-                      ),
-                    if (_repo.canWrite(_actor, r) &&
-                        ![AdminKind.scope, AdminKind.account].contains(kind) &&
-                        r.status != 'applied')
-                      TextButton(
-                        onPressed: _busy
-                            ? null
-                            : () => _confirmAction(
-                                r,
-                                '삭제',
-                                () => _repo.remove(_actor, r.id),
-                              ),
-                        child: const Text('삭제'),
-                      ),
-                  ],
-                ),
+                _recordActions(r),
               ],
             ),
           ),
         ),
     ],
   );
+  Widget _recordActions(AdminRecord r, {bool detail = false}) => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      if (!detail)
+        TextButton(
+          onPressed: () => widget.onNavigate('$_section/${r.id}'),
+          child: const Text('상세'),
+        ),
+      if (_repo.canWrite(_actor, r) &&
+          r.status != 'applied' &&
+          r.status != 'revoked' &&
+          r.id != _actor)
+        FilledButton(
+          onPressed: _busy ? null : () => _edit(r.kind, r),
+          child: const Text('수정'),
+        ),
+      if (_repo.canWrite(_actor, r) &&
+          r.kind.versioned &&
+          r.value('ruleSetId').isEmpty &&
+          r.status == 'draft')
+        TextButton(
+          onPressed: _busy
+              ? null
+              : () =>
+                    _confirmAction(r, '초안 적용', () => _repo.apply(_actor, r.id)),
+          child: const Text('검토·적용'),
+        ),
+      if (_repo.canWrite(_actor, r) &&
+          r.kind.versioned &&
+          r.value('ruleSetId').isEmpty &&
+          r.status == 'applied')
+        TextButton(
+          onPressed: _busy
+              ? null
+              : () => _confirmAction(r, '새 버전 초안', () async {
+                  await _repo.newVersion(_actor, r.id);
+                }),
+          child: const Text('새 버전 초안'),
+        ),
+      if (_repo.canWrite(_actor, r) &&
+          r.kind == AdminKind.scope &&
+          r.status == 'active')
+        TextButton(
+          onPressed: _busy ? null : () => _edit(r.kind, r, true),
+          child: const Text('범위 회수'),
+        ),
+      if (_repo.canWrite(_actor, r) &&
+          ![AdminKind.scope, AdminKind.account].contains(r.kind) &&
+          r.status != 'applied')
+        TextButton(
+          onPressed: _busy
+              ? null
+              : () => _confirmAction(r, '삭제', () async {
+                  await _repo.remove(_actor, r.id);
+                  if (mounted && detail) widget.onNavigate(_section);
+                }),
+          child: const Text('삭제'),
+        ),
+    ],
+  );
+
   Widget _detail(AdminRecord r) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
@@ -415,28 +412,62 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         child: const Text('목록으로'),
       ),
       Text(r.name, style: Theme.of(context).textTheme.titleLarge),
+      Text(_recordContext(r), style: Theme.of(context).textTheme.bodySmall),
+      const SizedBox(height: 12),
+      _recordActions(r, detail: true),
+      if (_error != null)
+        Text(
+          _error!,
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
+      const Divider(height: 24),
       for (final f in adminFields(r.kind))
         Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Text(
-            '${f.label}: ${f.relation != null ? _find(r.value(f.key))?.name ?? '미연결' : f.options[r.value(f.key)] ?? r.value(f.key)}',
+            '${f.label}: ${f.relation != null ? (_relationName(r.value(f.key)).isEmpty ? '미연결 또는 접근 불가' : _relationName(r.value(f.key))) : f.options[r.value(f.key)] ?? (r.value(f.key).isEmpty ? '미입력' : r.value(f.key))}',
           ),
         ),
-      Text(
-        '생성: ${r.createdBy} · 수정: ${r.updatedBy} · ${r.updatedAt?.toIso8601String() ?? '초기 합성 자료'}',
+      const Divider(height: 24),
+      Text('변경 정보', style: Theme.of(context).textTheme.titleMedium),
+      Text('생성: ${_actorName(r.createdBy)} · 수정: ${_actorName(r.updatedBy)}'),
+      Text('마지막 변경: ${_timeLabel(r.updatedAt)}'),
+      if (r.kind.versioned) ...[
+        Text('버전 ${r.version} · ${_statusLabel(r.status)}'),
+        Text(
+          '적용: ${_actorName(r.appliedBy)} · ${_timeLabel(r.appliedAt, empty: '미적용')}',
+        ),
+      ],
+      if (r.kind == AdminKind.scope) ...[
+        Text(
+          '부여: ${_actorName(r.value('grantedBy'))} · ${_timeLabel(DateTime.tryParse(r.value('grantedAt')))}',
+        ),
+        Text(
+          '회수: ${_actorName(r.value('revokedBy'))} · ${_timeLabel(DateTime.tryParse(r.value('revokedAt')), empty: '회수되지 않음')}',
+        ),
+      ],
+      ExpansionTile(
+        title: const Text('기술 식별자'),
+        children: [SelectableText('대상 ID: ${r.id}\n버전 묶음 ID: ${r.lineage}')],
       ),
-      if (r.kind.versioned)
-        Text(
-          '버전 ${r.version} · ${r.status} · 적용: ${r.appliedBy} · ${r.appliedAt?.toIso8601String() ?? '미적용'}',
-        ),
-      if (r.kind == AdminKind.scope)
-        Text(
-          '부여: ${r.value('grantedBy')} ${r.value('grantedAt')}\n회수: ${r.value('revokedBy')} ${r.value('revokedAt')}',
-        ),
       if (r.value('sourceUrl').isNotEmpty)
         ExternalLinkButton(url: r.value('sourceUrl'), label: '원문 열기'),
     ],
   );
+  String _actorName(String id) {
+    if (id.isEmpty) return '초기 합성 자료';
+    if (id == _actor) return '나';
+    final name = _relationName(id);
+    return name.isEmpty ? '관리자' : name;
+  }
+
+  String _timeLabel(DateTime? value, {String empty = '초기 합성 자료'}) {
+    if (value == null) return empty;
+    final local = value.toLocal();
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${local.year}.${two(local.month)}.${two(local.day)} ${two(local.hour)}:${two(local.minute)}';
+  }
+
   String _routeFor(AdminKind kind) => switch (kind) {
     AdminKind.institution || AdminKind.department => '/admin/schools',
     AdminKind.curriculum ||
@@ -587,27 +618,58 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     );
   }
 
-  Widget _history() => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      const Text('관리자 변경 메타데이터 · 학생 개인 기록 원문 없음'),
-      if (_repo.history.isEmpty) const Text('관리 이력이 없습니다. 등록·수정 후 확인하세요.'),
-      for (final entry in _repo.history.reversed)
-        if (_role == AppRole.superAdmin ||
-            entry.institutionId == _schoolId &&
-                (entry.actorId == _actor ||
-                    _find(entry.targetId) != null &&
-                        _repo.canRead(_actor, _find(entry.targetId)!)))
+  Widget _history() {
+    final entries = _repo.history.reversed
+        .where(
+          (entry) =>
+              _role == AppRole.superAdmin ||
+              entry.institutionId == _schoolId &&
+                  (entry.actorId == _actor ||
+                      _find(entry.targetId) != null &&
+                          _repo.canRead(_actor, _find(entry.targetId)!)),
+        )
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text('관리자 변경 메타데이터 · 학생 개인 기록 원문 없음'),
+        if (entries.isEmpty) const Text('관리 이력이 없습니다. 등록·수정 후 확인하세요.'),
+        for (final entry in entries)
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                '${entry.at.toIso8601String()}\n${entry.actorId} · ${entry.kind.label} · ${entry.action} · ${entry.result}\n${entry.requestId} · 대상 ${entry.targetId}',
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  Text(
+                    '${_timeLabel(entry.at)} · ${_actorName(entry.actorId)}',
+                  ),
+                  Text(
+                    '학교: ${_relationName(entry.institutionId).isEmpty ? '학교 공통 또는 접근 불가' : _relationName(entry.institutionId)}',
+                  ),
+                  Text(
+                    '대상: ${_relationName(entry.targetId).isEmpty ? '삭제되었거나 볼 수 없는 항목' : _relationName(entry.targetId)}',
+                  ),
+                  ExpansionTile(
+                    title: const Text('기술 식별자'),
+                    children: [
+                      SelectableText(
+                        '요청 ID: ${entry.requestId}\n대상 ID: ${entry.targetId}',
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
-    ],
-  );
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_schools.any((r) => r.id == _schoolId)) {
@@ -688,7 +750,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 Text(
                   _role == AppRole.superAdmin
                       ? '관리 범위: 전체 학교'
-                      : '관리 범위: ${_repo.records.where((r) => r.kind == AdminKind.scope && r.status == 'active' && r.value('userId') == _actor && r.value('institutionId') == _schoolId).map((r) => '${r.name} (${r.value('scopeType')})').join(', ')}',
+                      : '관리 범위: ${_repo.records.where((r) => r.kind == AdminKind.scope && r.status == 'active' && r.value('userId') == _actor && r.value('institutionId') == _schoolId).map((r) => '${r.name} · ${_recordContext(r)}').join(', ')}',
                 ),
               const SizedBox(height: 12),
               PageHeader(

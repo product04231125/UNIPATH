@@ -62,6 +62,65 @@ Future<void> openEditor(
 }
 
 void main() {
+  testWidgets('detail actions retain apply failures and immutable versions', (
+    tester,
+  ) async {
+    var failApply = true;
+    final repo = FakeAdminRepository(
+      beforeOperation: (op) async {
+        if (op == 'apply' && failApply) throw StateError('합성 적용 실패');
+      },
+    );
+    addTearDown(repo.dispose);
+    await repo.save(
+      'super-admin',
+      AdminRecord(
+        id: 'detail-doc',
+        kind: AdminKind.document,
+        values: {
+          'name': '상세 검토 문서',
+          'institutionId': 'school-a',
+          'documentType': 'graduation',
+          'sourceUrl': 'https://example.org/detail',
+        },
+      ),
+    );
+    await tester.pumpWidget(
+      host(
+        AdminWorkspace(
+          repository: repo,
+          role: AppRole.superAdmin,
+          path: '/admin/documents/detail-doc',
+          onNavigate: (_) {},
+          onSignedOut: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('상세'), findsNothing);
+    expect(find.text('수정'), findsOneWidget);
+    await tester.tap(find.text('검토·적용'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('초안 적용'));
+    await tester.pumpAndSettle();
+    expect(find.text('합성 적용 실패'), findsOneWidget);
+    expect(repo.find('detail-doc')!.status, 'draft');
+    failApply = false;
+    await tester.tap(find.text('검토·적용'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('초안 적용'));
+    await tester.pumpAndSettle();
+    expect(find.text('수정'), findsNothing);
+    expect(find.text('합성 적용 실패'), findsNothing);
+    expect(find.text('버전 1 · 목업 적용'), findsOneWidget);
+    await tester.tap(find.text('새 버전 초안'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '새 버전 초안'));
+    await tester.pumpAndSettle();
+    expect(repo.find('detail-doc')!.status, 'applied');
+    expect(repo.records.where((r) => r.kind == AdminKind.document).length, 2);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('list filters preserve scope and reset when school changes', (
     tester,
   ) async {
