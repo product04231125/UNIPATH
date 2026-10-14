@@ -62,6 +62,59 @@ Future<void> openEditor(
 }
 
 void main() {
+  for (final compact in [false, true]) {
+    testWidgets('shared shell retains selected navigation compact=$compact', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(
+        compact ? const Size(480, 520) : const Size(1440, 900),
+      );
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repo = FakeAdminRepository();
+      addTearDown(repo.dispose);
+      var path = '/admin/overview';
+      await tester.pumpWidget(
+        host(
+          StatefulBuilder(
+            builder: (context, update) => AdminWorkspace(
+              repository: repo,
+              role: AppRole.schoolAdmin,
+              path: path,
+              onNavigate: (next) => update(() => path = next),
+              onSignedOut: () {},
+            ),
+          ),
+          scale: compact ? 2 : 1,
+        ),
+      );
+      await tester.pumpAndSettle();
+      if (compact) {
+        await tester.tap(find.byTooltip('관리자 메뉴 열기'));
+        await tester.pumpAndSettle();
+      }
+      final overview = find.byKey(const ValueKey('admin-menu-/admin/overview'));
+      expect(tester.widget<ListTile>(overview).selected, isTrue);
+      expect(
+        find.byKey(const ValueKey('admin-menu-/admin/accounts')),
+        findsNothing,
+      );
+      final documents = find.byKey(
+        const ValueKey('admin-menu-/admin/documents'),
+      );
+      await tester.ensureVisible(documents);
+      await tester.pumpAndSettle();
+      await tester.tap(documents);
+      await tester.pumpAndSettle();
+      expect(path, '/admin/documents');
+      if (compact) {
+        expect(documents, findsNothing);
+        await tester.tap(find.byTooltip('관리자 메뉴 열기'));
+        await tester.pumpAndSettle();
+      }
+      expect(tester.widget<ListTile>(documents).selected, isTrue);
+      expect(tester.takeException(), isNull);
+    });
+  }
   testWidgets(
     'school context follows direct details and switching leaves detail',
     (tester) async {

@@ -10,6 +10,7 @@ import 'admin_models.dart';
 import 'admin_repository.dart';
 import 'admin_editor.dart';
 import 'admin_fields.dart';
+import 'admin_shell.dart';
 
 class AdminWorkspace extends StatefulWidget {
   const AdminWorkspace({
@@ -411,122 +412,109 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             detail != null &&
                 sectionKinds[_section]?.contains(detail.kind) == true &&
                 _repo.canRead(_actor, detail));
-    return Scaffold(
-      body: SafeArea(
-        child: ContentScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('${_role.label} · 관리자 작업 공간'),
-                const Text('개발용 목업 · 실제 권한 및 서버 저장 없음'),
-                const SizedBox(height: 12),
-                if (_schools.isNotEmpty && allowed)
-                  AnchoredSelectField<String>(
-                    value: _schoolId,
-                    label: '현재 학교',
-                    options: [
-                      for (final school in _schools)
-                        SelectOption(school.id, school.name),
-                    ],
-                    onChanged: (v) {
-                      if (v == _schoolId) return;
-                      setState(() {
-                        _schoolId = v;
-                        _error = null;
-                      });
-                      // The old detail cannot remain under the new school.
-                      if (_detailId != null) widget.onNavigate(_section);
-                    },
-                  ),
-                if (widget.role != AppRole.user)
+    return AdminShell(
+      menus: {
+        for (final entry in AdminWorkspace.menus.entries)
+          if (entry.key != '/admin/accounts' || _role == AppRole.superAdmin)
+            entry.key: entry.value,
+      },
+      section: _section,
+      busy: _busy,
+      onNavigate: widget.onNavigate,
+      onSignedOut: widget.onSignedOut,
+      child: ContentScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('${_role.label} · 관리자 작업 공간'),
+              const Text('개발용 목업 · 실제 권한 및 서버 저장 없음'),
+              const SizedBox(height: 12),
+              if (_schools.isNotEmpty && allowed)
+                AnchoredSelectField<String>(
+                  value: _schoolId,
+                  label: '현재 학교',
+                  options: [
+                    for (final school in _schools)
+                      SelectOption(school.id, school.name),
+                  ],
+                  onChanged: (v) {
+                    if (v == _schoolId) return;
+                    setState(() {
+                      _schoolId = v;
+                      _error = null;
+                    });
+                    // The old detail cannot remain under the new school.
+                    if (_detailId != null) widget.onNavigate(_section);
+                  },
+                ),
+              if (widget.role != AppRole.user)
+                Text(
+                  _role == AppRole.superAdmin
+                      ? '관리 범위: 전체 학교'
+                      : '관리 범위: ${_repo.records.where((r) => r.kind == AdminKind.scope && r.status == 'active' && r.value('userId') == _actor && r.value('institutionId') == _schoolId).map((r) => '${r.name} (${r.value('scopeType')})').join(', ')}',
+                ),
+              const SizedBox(height: 12),
+              PageHeader(
+                title: allowed
+                    ? AdminWorkspace.menus[_section]!
+                    : '접근할 수 없습니다.',
+              ),
+              if (_loading)
+                const LinearProgressIndicator()
+              else if (_loadError != null) ...[
+                Text(_loadError!),
+                TextButton(onPressed: _load, child: const Text('다시 읽기')),
+              ] else if (!allowed) ...[
+                const Text('현재 계정 상태·역할·관리 범위로 이 화면에 접근할 수 없습니다.'),
+                TextButton(
+                  onPressed: () => widget.onNavigate('/admin/overview'),
+                  child: const Text('관리 현황으로'),
+                ),
+              ] else if (_detailId != null)
+                _detail(detail!)
+              else ...[
+                if (_error != null)
                   Text(
-                    _role == AppRole.superAdmin
-                        ? '관리 범위: 전체 학교'
-                        : '관리 범위: ${_repo.records.where((r) => r.kind == AdminKind.scope && r.status == 'active' && r.value('userId') == _actor && r.value('institutionId') == _schoolId).map((r) => '${r.name} (${r.value('scopeType')})').join(', ')}',
-                  ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final entry in AdminWorkspace.menus.entries)
-                      if (entry.key != '/admin/accounts' ||
-                          _role == AppRole.superAdmin)
-                        TextButton(
-                          onPressed: _busy
-                              ? null
-                              : () => widget.onNavigate(entry.key),
-                          child: Text(entry.value),
-                        ),
-                    TextButton(
-                      onPressed: _busy ? null : widget.onSignedOut,
-                      child: const Text('로그아웃'),
+                    _error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                PageHeader(
-                  title: allowed
-                      ? AdminWorkspace.menus[_section]!
-                      : '접근할 수 없습니다.',
-                ),
-                if (_loading)
-                  const LinearProgressIndicator()
-                else if (_loadError != null) ...[
-                  Text(_loadError!),
-                  TextButton(onPressed: _load, child: const Text('다시 읽기')),
-                ] else if (!allowed) ...[
-                  const Text('현재 계정 상태·역할·관리 범위로 이 화면에 접근할 수 없습니다.'),
-                  TextButton(
-                    onPressed: () => widget.onNavigate('/admin/overview'),
-                    child: const Text('관리 현황으로'),
                   ),
-                ] else if (_detailId != null)
-                  _detail(detail!)
-                else ...[
-                  if (_error != null)
-                    Text(
-                      _error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  if (_section == '/admin/overview') ...[
-                    Text('관리 가능한 학교 ${_schools.length}개'),
-                    if (_schoolId.isEmpty)
-                      const Text('관리 가능한 학교가 없습니다. 슈퍼관리자의 범위 부여가 필요합니다.'),
-                    for (final r in _repo.records.where(
-                      (r) =>
-                          r.kind == AdminKind.scope &&
-                          r.value('userId') == _actor,
-                    ))
-                      Text('${r.name} · ${r.status}'),
-                  ],
-                  if (_section == '/admin/schools') ...[
-                    _records(AdminKind.institution),
-                    _records(AdminKind.department),
-                  ],
-                  if (_section == '/admin/curricula') ...[
-                    _records(AdminKind.curriculum),
-                    _records(AdminKind.course),
-                    _records(AdminKind.curriculumCourse),
-                  ],
-                  if (_section == '/admin/rules') ...[
-                    _records(AdminKind.ruleSet),
-                    _records(AdminKind.rule),
-                  ],
-                  if (_section == '/admin/documents')
-                    _records(AdminKind.document),
-                  if (_section == '/admin/accounts') ...[
-                    _records(AdminKind.account),
-                    _records(AdminKind.scope),
-                  ],
-                  if (_section == '/admin/history') _history(),
+                if (_section == '/admin/overview') ...[
+                  Text('관리 가능한 학교 ${_schools.length}개'),
+                  if (_schoolId.isEmpty)
+                    const Text('관리 가능한 학교가 없습니다. 슈퍼관리자의 범위 부여가 필요합니다.'),
+                  for (final r in _repo.records.where(
+                    (r) =>
+                        r.kind == AdminKind.scope &&
+                        r.value('userId') == _actor,
+                  ))
+                    Text('${r.name} · ${r.status}'),
                 ],
+                if (_section == '/admin/schools') ...[
+                  _records(AdminKind.institution),
+                  _records(AdminKind.department),
+                ],
+                if (_section == '/admin/curricula') ...[
+                  _records(AdminKind.curriculum),
+                  _records(AdminKind.course),
+                  _records(AdminKind.curriculumCourse),
+                ],
+                if (_section == '/admin/rules') ...[
+                  _records(AdminKind.ruleSet),
+                  _records(AdminKind.rule),
+                ],
+                if (_section == '/admin/documents')
+                  _records(AdminKind.document),
+                if (_section == '/admin/accounts') ...[
+                  _records(AdminKind.account),
+                  _records(AdminKind.scope),
+                ],
+                if (_section == '/admin/history') _history(),
               ],
-            ),
+            ],
           ),
         ),
       ),
