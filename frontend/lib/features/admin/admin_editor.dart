@@ -162,93 +162,106 @@ class _AdminEditorState extends State<AdminEditor> {
         children: [
           const Text('개발용 합성 데이터 · 실제 권한·학교 승인·서버 저장이 아닙니다.'),
           const SizedBox(height: 16),
-          for (final field in _fields)
+          for (final group in adminFieldGroups(_fields).entries) ...[
             Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: field.relation == null && field.options.isEmpty
-                  ? TextFormField(
-                      key: ValueKey('admin-field-${field.key}'),
-                      controller: _controllers[field.key],
-                      enabled: !_saving,
-                      maxLines: field.multiline ? 3 : 1,
-                      decoration: InputDecoration(
-                        labelText:
-                            '${field.label}${field.required ? ' *' : ' (선택)'}',
-                      ),
-                      validator: (v) =>
-                          field.required && (v == null || v.trim().isEmpty)
-                          ? '${field.label}을 입력하세요.'
-                          : null,
-                    )
-                  : FormField<String>(
-                      initialValue: _value(field.key),
-                      validator: (v) =>
-                          field.required && _value(field.key).isEmpty
-                          ? '${field.label}을 선택하세요.'
-                          : null,
-                      builder: (state) => Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          IgnorePointer(
-                            ignoring: _saving,
-                            child: AnchoredSelectField<String>(
-                              key: ValueKey('admin-field-${field.key}'),
-                              value: _value(field.key),
-                              label:
-                                  '${field.label}${field.required ? ' *' : ' (선택)'}',
-                              options: [
-                                const SelectOption('', '미선택'),
-                                for (final entry in field.options.entries)
-                                  SelectOption(entry.key, entry.value),
-                                for (final r in _choices(field))
-                                  SelectOption(
-                                    r.id,
-                                    '${r.name}${r.kind.versioned ? ' · v${r.version}' : ''}',
-                                  ),
-                                if (_value(field.key).isNotEmpty &&
-                                    !field.options.containsKey(
+              padding: const EdgeInsets.only(bottom: 12, top: 4),
+              child: Semantics(
+                header: true,
+                child: Text(
+                  group.key,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+            ),
+            for (final field in group.value)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: field.relation == null && field.options.isEmpty
+                    ? TextFormField(
+                        key: ValueKey('admin-field-${field.key}'),
+                        controller: _controllers[field.key],
+                        enabled: !_saving,
+                        maxLines: field.multiline ? 3 : 1,
+                        decoration: InputDecoration(
+                          labelText:
+                              '${field.label}${field.required ? ' *' : ' (선택)'}',
+                        ),
+                        validator: (v) =>
+                            field.required && (v == null || v.trim().isEmpty)
+                            ? '${field.label}을 입력하세요.'
+                            : null,
+                      )
+                    : FormField<String>(
+                        initialValue: _value(field.key),
+                        validator: (v) =>
+                            field.required && _value(field.key).isEmpty
+                            ? '${field.label}을 선택하세요.'
+                            : null,
+                        builder: (state) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            IgnorePointer(
+                              ignoring: _saving,
+                              child: AnchoredSelectField<String>(
+                                key: ValueKey('admin-field-${field.key}'),
+                                value: _value(field.key),
+                                label:
+                                    '${field.label}${field.required ? ' *' : ' (선택)'}',
+                                options: [
+                                  const SelectOption('', '미선택'),
+                                  for (final entry in field.options.entries)
+                                    SelectOption(entry.key, entry.value),
+                                  for (final r in _choices(field))
+                                    SelectOption(
+                                      r.id,
+                                      '${r.name}${r.kind.versioned ? ' · v${r.version}' : ''}',
+                                    ),
+                                  if (_value(field.key).isNotEmpty &&
+                                      !field.options.containsKey(
+                                        _value(field.key),
+                                      ) &&
+                                      !_choices(
+                                        field,
+                                      ).any((r) => r.id == _value(field.key)))
+                                    SelectOption(
                                       _value(field.key),
-                                    ) &&
-                                    !_choices(field)
-                                        .any((r) => r.id == _value(field.key)))
-                                  SelectOption(
-                                    _value(field.key),
-                                    '연결 대상 없음 · 다시 선택하세요',
-                                  ),
-                              ],
-                              onChanged: (v) {
-                                setState(() {
-                                  _controllers[field.key]!.text = v;
-                                  if (field.key == 'ruleSetId' &&
-                                      v.isNotEmpty) {
-                                    final group = widget.repository.records
-                                        .firstWhere((r) => r.id == v);
-                                    for (final key in [
-                                      'institutionId',
-                                      'departmentId',
-                                      'curriculumId',
-                                    ]) {
-                                      _controllers[key]!.text = group.value(
-                                        key,
-                                      );
+                                      '연결 대상 없음 · 다시 선택하세요',
+                                    ),
+                                ],
+                                onChanged: (v) {
+                                  setState(() {
+                                    _controllers[field.key]!.text = v;
+                                    if (field.key == 'ruleSetId' &&
+                                        v.isNotEmpty) {
+                                      final group = widget.repository.records
+                                          .firstWhere((r) => r.id == v);
+                                      for (final key in [
+                                        'institutionId',
+                                        'departmentId',
+                                        'curriculumId',
+                                      ]) {
+                                        _controllers[key]!.text = group.value(
+                                          key,
+                                        );
+                                      }
                                     }
-                                  }
-                                });
-                                state.didChange(v);
-                              },
-                            ),
-                          ),
-                          if (state.hasError)
-                            Text(
-                              state.errorText!,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
+                                  });
+                                  state.didChange(v);
+                                },
                               ),
                             ),
-                        ],
+                            if (state.hasError)
+                              Text(
+                                state.errorText!,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-            ),
+              ),
+          ],
           if (_error != null)
             Text(
               _error!,

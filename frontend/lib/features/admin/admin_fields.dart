@@ -15,6 +15,36 @@ class AdminField {
   final Map<String, String> options;
 }
 
+/// Presentation groups only. Field keys, validators and repository contracts
+/// remain unchanged, and every field is rendered once.
+Map<String, List<AdminField>> adminFieldGroups(List<AdminField> fields) {
+  final groups = <String, List<AdminField>>{};
+  for (final field in fields) {
+    final group = switch (field.key) {
+      'institutionId' ||
+      'departmentId' ||
+      'curriculumId' ||
+      'userId' ||
+      'scopeType' => '적용 대상과 범위',
+      'sourceUrl' ||
+      'officialUrl' ||
+      'documentType' ||
+      'ruleId' ||
+      'ruleSetId' => '출처와 연결',
+      'effectiveFrom' || 'effectiveTo' => '적용 기간',
+      'ruleType' ||
+      'definition' ||
+      'category' ||
+      'required' ||
+      'courseId' => '규칙과 이수 기준',
+      'reason' || 'accountStatus' => '관리 설정',
+      _ => '기본 정보',
+    };
+    (groups[group] ??= []).add(field);
+  }
+  return groups;
+}
+
 /// Isolated client mock schema; candidate fields, not OpenAPI types/enums.
 List<AdminField> adminFields(AdminKind kind) => [
   const AdminField('name', '이름'),
