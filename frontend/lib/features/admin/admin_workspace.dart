@@ -1,3 +1,4 @@
+import '../../shared/widgets/responsive_columns.dart';
 import '../../shared/app_style.dart';
 
 import 'package:flutter/material.dart';
@@ -795,25 +796,31 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
               const Text('개발용 목업 · 실제 권한 및 서버 저장 없음'),
               const SizedBox(height: 12),
               if (_schools.isNotEmpty && allowed)
-                AnchoredSelectField<String>(
-                  key: const ValueKey('admin-school-selector'),
-                  value: _schoolId,
-                  label: '현재 학교',
-                  options: [
-                    for (final school in _schools)
-                      SelectOption(school.id, school.name),
-                  ],
-                  onChanged: (v) {
-                    if (v == _schoolId) return;
-                    setState(() {
-                      _schoolId = v;
-                      _error = null;
-                      _queries.clear();
-                      _statuses.clear();
-                    });
-                    // The old detail cannot remain under the new school.
-                    if (_detailId != null) widget.onNavigate(_section);
-                  },
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    child: AnchoredSelectField<String>(
+                      key: const ValueKey('admin-school-selector'),
+                      value: _schoolId,
+                      label: '현재 학교',
+                      options: [
+                        for (final school in _schools)
+                          SelectOption(school.id, school.name),
+                      ],
+                      onChanged: (v) {
+                        if (v == _schoolId) return;
+                        setState(() {
+                          _schoolId = v;
+                          _error = null;
+                          _queries.clear();
+                          _statuses.clear();
+                        });
+                        // The old detail cannot remain under the new school.
+                        if (_detailId != null) widget.onNavigate(_section);
+                      },
+                    ),
+                  ),
                 ),
               if (widget.role != AppRole.user)
                 Text(
@@ -849,10 +856,12 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     ),
                   ),
                 if (_section == '/admin/overview') _overview(),
-                if (_section == '/admin/schools') ...[
-                  _records(AdminKind.institution),
-                  _records(AdminKind.department),
-                ],
+                if (_section == '/admin/schools')
+                  ResponsiveColumns(
+                    enabled: UiPreview.of(context).adminColumns,
+                    first: _records(AdminKind.institution),
+                    second: _records(AdminKind.department),
+                  ),
                 if (_section == '/admin/curricula') ...[
                   _records(AdminKind.curriculum),
                   _records(AdminKind.course),
