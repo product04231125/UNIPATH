@@ -43,6 +43,7 @@ class ChatSettingsSection extends StatelessWidget {
                 onChanged: preferences.setMode,
               ),
             ),
+            const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: preferences.saving
                   ? null
@@ -50,6 +51,7 @@ class ChatSettingsSection extends StatelessWidget {
               icon: const Icon(Icons.restore, size: 18),
               label: const Text('채팅 열기 방식만 기본값으로 복원'),
             ),
+            const SizedBox(height: 8),
             const Text('현재 기기에만 저장합니다. 학업·일정·개인 기록·대화는 삭제하지 않습니다.'),
           ],
           if (preferences.saving) const Text('저장 중…'),
