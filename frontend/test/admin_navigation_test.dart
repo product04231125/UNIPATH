@@ -8,6 +8,32 @@ import 'package:university_path_frontend/features/auth/app_role.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 
 void main() {
+  testWidgets('title navigation and sidebar toggle preserve settings edits', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('설정').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, '작성 중 프로필');
+    await tester.tap(find.byTooltip('사이드바 숨기기'));
+    await tester.pumpAndSettle();
+    expect(find.text('작성 중 프로필'), findsOneWidget);
+    await tester.tap(find.byTooltip('사이드바 다시 열기'));
+    await tester.pumpAndSettle();
+    expect(find.text('작성 중 프로필'), findsOneWidget);
+    await tester.tap(find.byTooltip('뒤로 가기'));
+    await tester.pumpAndSettle();
+    expect(find.text('학업 프로필'), findsNothing);
+    await tester.tap(find.byTooltip('앞으로 가기'));
+    await tester.pumpAndSettle();
+    expect(find.text('학업 프로필'), findsOneWidget);
+    expect(find.text('작성 중 프로필'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'administrator navigation and relogin preserve mock changes and student records',
     (tester) async {

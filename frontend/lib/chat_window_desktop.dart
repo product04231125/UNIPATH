@@ -6,6 +6,9 @@ import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/services.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'app_shell/window_placement.dart';
 
 const _detachedChatPrefix = 'university_path_ai_detached_chat:';
 final _mainWindowMaximizeController = StreamController<bool>.broadcast();
@@ -275,6 +278,36 @@ Future<void> _notifyMainDetachedWindowClosed() async {
 
 class _MainWindowCloseListener with WindowListener {
   bool _closing = false;
+  Timer? _saveTimer;
+  void _scheduleBoundsSave() {
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(milliseconds: 400), () async {
+      try {
+        if (await windowManager.isMaximized() ||
+            await windowManager.isMinimized()) {
+          return;
+        }
+        final bounds = await windowManager.getBounds();
+        final preferences = await SharedPreferences.getInstance();
+        await preferences.setString(
+          'university_path.window_bounds.v1',
+          jsonEncode({
+            'left': bounds.left,
+            'top': bounds.top,
+            'width': bounds.width,
+            'height': bounds.height,
+          }),
+        );
+      } catch (_) {
+        /* Window preference failure never changes academic data. */
+      }
+    });
+  }
+
+  @override
+  void onWindowMoved() => _scheduleBoundsSave();
+  @override
+  void onWindowResized() => _scheduleBoundsSave();
 
   @override
   void onWindowClose() {
@@ -331,6 +364,50 @@ class _MainWindowCloseListener with WindowListener {
 }
 
 final _mainWindowCloseListener = _MainWindowCloseListener();
+
+class _DisplayListener with ScreenListener {
+  bool _adjusting = false;
+  @override
+  void onScreenEvent(String eventName) {
+    unawaited(_recover());
+  }
+
+  Future<void> _recover() async {
+    if (_adjusting) return;
+    _adjusting = true;
+    try {
+      final displays = await screenRetriever.getAllDisplays();
+      if (displays.isEmpty) return;
+      final areas = [
+        for (final display in displays)
+          Rect.fromLTWH(
+            (display.visiblePosition ?? Offset.zero).dx,
+            (display.visiblePosition ?? Offset.zero).dy,
+            (display.visibleSize ?? display.size).width,
+            (display.visibleSize ?? display.size).height,
+          ),
+      ];
+      final bounds = await windowManager.getBounds();
+      if (!await windowManager.isMaximized() &&
+          !areas.any(
+            (area) =>
+                area.contains(bounds.topLeft) &&
+                area.contains(bounds.bottomRight - const Offset(1, 1)),
+          )) {
+        await windowManager.setBounds(restoreMainBounds(bounds, areas));
+      }
+      // A child may remain on a removed display. Return to the retained session
+      // instead of guessing new peer-window coordinates during topology changes.
+      await _dockDetachedChatInMainWindow();
+    } catch (_) {
+      /* OS events can arrive while engines are shutting down. */
+    } finally {
+      _adjusting = false;
+    }
+  }
+}
+
+final _displayListener = _DisplayListener();
 bool _mainDetachedChatOpen = false;
 StreamSubscription<bool>? _mainDetachedChatSubscription;
 
@@ -362,6 +439,10 @@ Future<void> _dockDetachedChatInMainWindow() async {
 
 Future<void> initializeMainWindowCloseBehavior() async {
   await windowManager.ensureInitialized();
+  await windowManager.setTitleBarStyle(
+    TitleBarStyle.hidden,
+    windowButtonVisibility: false,
+  );
   // The shell switches to compact navigation and then to a scroll fallback
   // below its reflow threshold, so a desktop-only 1365px minimum is not used.
   await windowManager.setMinimumSize(const Size(480, 520));
@@ -414,6 +495,7 @@ Future<void> initializeMainWindowCloseBehavior() async {
   });
   await windowManager.setPreventClose(true);
   windowManager.addListener(_mainWindowCloseListener);
+  screenRetriever.addListener(_displayListener);
   unawaited(_shutdownTrace('main close listener initialized'));
 }
 
@@ -421,19 +503,36 @@ Future<void> _applyMainWindowDefaultSize() async {
   if (await windowManager.isMaximized()) return;
   final displays = await screenRetriever.getAllDisplays();
   if (displays.isEmpty) return;
-  final display = displays.first;
-  final workPosition = display.visiblePosition ?? Offset.zero;
-  final workSize = display.visibleSize ?? display.size;
-  const margin = 32.0;
-  final width = (workSize.width - margin).clamp(480.0, 1440.0).toDouble();
-  final height = (workSize.height - margin).clamp(520.0, 900.0).toDouble();
-  await windowManager.setSize(Size(width, height));
-  await windowManager.setPosition(
-    Offset(
-      workPosition.dx + (workSize.width - width) / 2,
-      workPosition.dy + (workSize.height - height) / 2,
-    ),
-  );
+  Rect? saved;
+  try {
+    final raw = (await SharedPreferences.getInstance()).getString(
+      'university_path.window_bounds.v1',
+    );
+    if (raw != null) {
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      final values = [
+        for (final key in ['left', 'top', 'width', 'height'])
+          (data[key] as num).toDouble(),
+      ];
+      if (values.every((value) => value.isFinite) &&
+          values[2] >= 480 &&
+          values[3] >= 520) {
+        saved = Rect.fromLTWH(values[0], values[1], values[2], values[3]);
+      }
+    }
+  } catch (_) {
+    /* Invalid placement does not affect personal records. */
+  }
+  final areas = [
+    for (final display in displays)
+      Rect.fromLTWH(
+        (display.visiblePosition ?? Offset.zero).dx,
+        (display.visiblePosition ?? Offset.zero).dy,
+        (display.visibleSize ?? display.size).width,
+        (display.visibleSize ?? display.size).height,
+      ),
+  ];
+  await windowManager.setBounds(restoreMainBounds(saved, areas));
 }
 
 Future<void> openDetachedChatWindow({double width = 360}) async {
@@ -451,43 +550,37 @@ Future<void> openDetachedChatWindow({double width = 360}) async {
   final mainPosition = await windowManager.getPosition();
   final mainSize = await windowManager.getSize();
   final chatWidth = width.clamp(300.0, 480.0);
-  final mainCenter = Offset(
-    mainPosition.dx + mainSize.width / 2,
-    mainPosition.dy + mainSize.height / 2,
-  );
+  if (await windowManager.isMaximized()) {
+    throw StateError('Use the internal panel while maximized');
+  }
   final displays = await screenRetriever.getAllDisplays();
-  final display = displays.firstWhere((item) {
-    final position = item.visiblePosition ?? Offset.zero;
-    final size = item.visibleSize ?? item.size;
-    return Rect.fromLTWH(
-      position.dx,
-      position.dy,
-      size.width,
-      size.height,
-    ).contains(mainCenter);
-  }, orElse: () => displays.first);
-  final workPosition = display.visiblePosition ?? Offset.zero;
-  final workSize = display.visibleSize ?? display.size;
-  final rightEdge = workPosition.dx + workSize.width;
-  final canOpenOnRight =
-      mainPosition.dx + mainSize.width + chatWidth <= rightEdge;
-  // getBounds() already returns logical pixels. Leave one physical pixel
-  // between visible edges rather than fully overlapping the shadow frame.
-  final visualFrameOverlap = 15 / windowManager.getDevicePixelRatio();
-  final chatHeight = mainSize.height.clamp(420.0, workSize.height);
-  final chatTop = (mainPosition.dy).clamp(
-    workPosition.dy,
-    workPosition.dy + workSize.height - chatHeight,
+  final areas = [
+    for (final display in displays)
+      Rect.fromLTWH(
+        (display.visiblePosition ?? Offset.zero).dx,
+        (display.visiblePosition ?? Offset.zero).dy,
+        (display.visibleSize ?? display.size).width,
+        (display.visibleSize ?? display.size).height,
+      ),
+  ];
+  final bounds = detachedChatBounds(
+    Rect.fromLTWH(
+      mainPosition.dx,
+      mainPosition.dy,
+      mainSize.width,
+      mainSize.height,
+    ),
+    areas,
+    chatWidth,
   );
+  if (bounds == null) {
+    throw StateError('Not enough space to the right; use the internal panel');
+  }
   final config = _DetachedChatWindowConfig(
-    width: chatWidth,
-    height: chatHeight,
-    // It is a peer window, not an overlay. Prefer the right edge and use the
-    // left edge when the current display does not have enough room there.
-    left: canOpenOnRight
-        ? mainPosition.dx + mainSize.width - visualFrameOverlap
-        : mainPosition.dx - chatWidth + visualFrameOverlap,
-    top: chatTop,
+    width: bounds.width,
+    height: bounds.height,
+    left: bounds.left,
+    top: bounds.top,
   );
   final ready = _conversationReady.stream.first.timeout(
     const Duration(seconds: 8),

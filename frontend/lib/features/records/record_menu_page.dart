@@ -483,9 +483,9 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                             padding: const EdgeInsets.only(bottom: 8),
                             child: Text('• $line'),
                           ),
-                        ...widget.guideActions,
                       ],
                     ),
+                    ...widget.guideActions,
                   ],
                 );
               }

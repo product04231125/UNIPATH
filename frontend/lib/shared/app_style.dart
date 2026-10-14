@@ -349,26 +349,6 @@ class _AppPaletteHostState extends State<AppPaletteHost> {
                                       columns ? '관리자 · 반응형 2열' : '관리자 · 기존 1열',
                                     ),
                                   ),
-                                const Divider(),
-                                const Text('설정 배치'),
-                                for (final columns in [false, true])
-                                  TextButton.icon(
-                                    icon: Icon(
-                                      columns == _preview.settingsColumns
-                                          ? Icons.check
-                                          : Icons.circle_outlined,
-                                      size: 16,
-                                    ),
-                                    onPressed: () => setState(() {
-                                      _preview = _preview.copyWith(
-                                        settingsColumns: columns,
-                                      );
-                                      _expanded = false;
-                                    }),
-                                    label: Text(
-                                      columns ? '설정 · 반응형 2열' : '설정 · 좁은 1열',
-                                    ),
-                                  ),
                               ],
                             ),
                           ),

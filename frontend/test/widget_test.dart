@@ -83,7 +83,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     await tester.pumpAndSettle();
-    expect(find.text('UniversityPath'), findsOneWidget);
+    expect(find.text('UniversityPath'), findsWidgets);
     expect(find.text('나의 대학생활 경로'), findsOneWidget);
     await tester.binding.setSurfaceSize(null);
   });

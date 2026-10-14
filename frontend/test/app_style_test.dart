@@ -74,15 +74,15 @@ void main() {
         await tester.pumpAndSettle();
       }
 
-      await choose('설정 · 좁은 1열');
+      await choose('밝은 파랑');
       expect(
         tester.getTopLeft(find.text('개인 계획')).dy,
         greaterThan(tester.getTopLeft(find.text('학업 프로필')).dy),
       );
-      await choose('설정 · 반응형 2열');
+      await choose('다크 퍼플');
       expect(
         tester.getTopLeft(find.text('개인 계획')).dy,
-        tester.getTopLeft(find.text('학업 프로필')).dy,
+        greaterThan(tester.getTopLeft(find.text('학업 프로필')).dy),
       );
       await tester.binding.setSurfaceSize(const Size(480, 520));
       await tester.pumpAndSettle();

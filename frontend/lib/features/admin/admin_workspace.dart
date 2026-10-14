@@ -23,12 +23,14 @@ class AdminWorkspace extends StatefulWidget {
     required this.onNavigate,
     required this.onSignedOut,
     this.repository,
+    this.sidebarVisible = true,
   });
   final AppRole role;
   final String path;
   final ValueChanged<String> onNavigate;
   final VoidCallback onSignedOut;
   final AdminRepository? repository;
+  final bool sidebarVisible;
   static const menus = <String, String>{
     '/admin/overview': '관리 현황',
     '/admin/schools': '학교·학과',
@@ -304,6 +306,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             kind == AdminKind.account) ...[
           const SizedBox(height: 8),
           AnchoredSelectField<String>(
+            externalLabel: true,
             key: ValueKey('admin-status-${kind.name}'),
             value: _statuses[kind] ?? '',
             label: '${kind.label} 상태',
@@ -622,6 +625,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
               label: const Text('졸업요건 확인'),
             ),
           ),
+          const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
             child: OutlinedButton.icon(
@@ -783,6 +787,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 sectionKinds[_section]?.contains(detail.kind) == true &&
                 _repo.canRead(_actor, detail));
     return AdminShell(
+      sidebarVisible: widget.sidebarVisible,
       menus: {
         for (final entry in AdminWorkspace.menus.entries)
           if (entry.key != '/admin/accounts' || _role == AppRole.superAdmin)
@@ -807,6 +812,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 440),
                     child: AnchoredSelectField<String>(
+                      externalLabel: true,
                       key: const ValueKey('admin-school-selector'),
                       searchable: true,
                       searchLabel: '학교 이름 검색',

@@ -89,7 +89,7 @@ class _AssistantPanelState extends State<AssistantPanel> {
     animation: conversation,
     builder: (context, _) => Container(
       width: width,
-      color: Theme.of(context).colorScheme.surface,
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
       child: Column(
         children: [
           Padding(
@@ -119,36 +119,39 @@ class _AssistantPanelState extends State<AssistantPanel> {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  '학교 규정 질의 · 대화는 앱 실행 중 유지됩니다.',
-                  style: TextStyle(
-                    fontSize: AppTypography.caption,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: !_canSend ? null : () => _editContext(context),
-                  icon: Icon(Icons.tune, size: 18),
-                  label: Text(
-                    conversation.context.institution == null
-                        ? '테스트용 설정창'
-                        : '테스트용 설정창: ${conversation.context.institution} · ${conversation.context.department ?? "학과 미입력"}',
-                  ),
-                ),
-              ],
-            ),
-          ),
           const Divider(height: 1),
           Expanded(
             child: ListView(
               controller: _scroll,
               padding: const EdgeInsets.all(14),
               children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        '학교 규정 질의 · 대화는 앱 실행 중 유지됩니다.',
+                        style: TextStyle(
+                          fontSize: AppTypography.caption,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: !_canSend
+                            ? null
+                            : () => _editContext(context),
+                        icon: Icon(Icons.tune, size: 18),
+                        label: Text(
+                          conversation.context.institution == null
+                              ? '학교 정보 설정'
+                              : '${conversation.context.institution} · ${conversation.context.department ?? "학과 미입력"}',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 if (_editingContext) ...[
                   SchoolQueryContextForm(
                     initial: conversation.context.institution == null

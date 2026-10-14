@@ -13,6 +13,7 @@ class AdminShell extends StatelessWidget {
     required this.onNavigate,
     required this.onSignedOut,
     required this.child,
+    this.sidebarVisible = true,
   });
   final Map<String, String> menus;
   final String section;
@@ -20,6 +21,7 @@ class AdminShell extends StatelessWidget {
   final ValueChanged<String> onNavigate;
   final VoidCallback onSignedOut;
   final Widget child;
+  final bool sidebarVisible;
 
   Widget _navigation(BuildContext context) => ContentScrollView(
     padding: const EdgeInsets.all(12),
@@ -70,6 +72,7 @@ class AdminShell extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final expanded =
+          sidebarVisible &&
           constraints.maxWidth >= 760 &&
           MediaQuery.textScalerOf(context).scale(14) < 21;
       return Scaffold(

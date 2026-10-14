@@ -14,6 +14,38 @@ import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  testWidgets(
+    'returning to retained curriculum preserves its width requirement',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        const UniversityPathApp(startAuthenticated: true),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('졸업 요건').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('내 교육과정'));
+      await tester.pumpAndSettle();
+      final requiredWidth = tester
+          .widget<WorkspaceShell>(find.byType(WorkspaceShell))
+          .minimumContentWidth;
+      expect(requiredWidth, greaterThan(0));
+      await tester.tap(find.text('홈').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('뒤로 가기'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<WorkspaceShell>(find.byType(WorkspaceShell))
+            .minimumContentWidth,
+        requiredWidth,
+      );
+      expect(find.text('내 교육과정 학점 현황 · 예시'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final size in [const Size(480, 520), const Size(1440, 900)]) {
     for (final scale in [1.0, 2.0]) {
       testWidgets(
@@ -431,7 +463,7 @@ void main() {
         '포트폴리오·성과',
         '설정',
       ]) {
-        final navigation = size.width < 900
+        final navigation = find.byTooltip(name).evaluate().isNotEmpty
             ? find.byTooltip(name)
             : find.text(name).first;
         await tester.ensureVisible(navigation);

@@ -42,6 +42,8 @@ class WorkspaceShell extends StatelessWidget {
     required this.pageBuilder,
     required this.assistantBuilder,
     this.minimumContentWidth = 0,
+    this.sidebarVisible = true,
+    this.integratedTitleBar = false,
   });
 
   final int selectedPage;
@@ -60,6 +62,7 @@ class WorkspaceShell extends StatelessWidget {
   pageBuilder;
   final Widget Function(BuildContext context, double width) assistantBuilder;
   final double minimumContentWidth;
+  final bool sidebarVisible, integratedTitleBar;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -88,7 +91,14 @@ class WorkspaceShell extends StatelessWidget {
     final overlayWidth = ((maxWidth - 72) / 2).clamp(200.0, 360.0);
     final dockWidth = showDockedAssistant ? assistantWidth + 6 : 0.0;
     final compactNavigation =
-        maxWidth < 900 || maxWidth - 220 - 56 - dockWidth < minimumContentWidth;
+        maxWidth < 900 ||
+        MediaQuery.textScalerOf(context).scale(14) > 18 ||
+        maxWidth -
+                220 -
+                56 -
+                dockWidth -
+                (showAssistantOverlay ? overlayWidth : 0) <
+            minimumContentWidth;
     final layout = WorkspaceShellLayout(
       maxWidth: maxWidth,
       showDockedAssistant: showDockedAssistant,
@@ -99,35 +109,37 @@ class WorkspaceShell extends StatelessWidget {
       children: [
         Row(
           children: [
-            _Sidebar(
-              compact: compactNavigation,
-              selectedPage: selectedPage,
-              navigationItems: navigationItems,
-              onPageSelected: onPageSelected,
-              showMockData: showMockData,
-              onMockDataChanged: onMockDataChanged,
-              onSignedOut: onSignedOut,
-            ),
+            if (sidebarVisible)
+              _Sidebar(
+                compact: compactNavigation,
+                selectedPage: selectedPage,
+                navigationItems: navigationItems,
+                onPageSelected: onPageSelected,
+                showMockData: showMockData,
+                onMockDataChanged: onMockDataChanged,
+                onSignedOut: onSignedOut,
+              ),
             Expanded(
               child: ClipRect(
                 child: Column(
                   children: [
-                    SizedBox(
-                      height: 52,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'UniversityPath  화면 목업',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: Theme.of(context).colorScheme.onSurface,
+                    if (!integratedTitleBar)
+                      SizedBox(
+                        height: 52,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'UniversityPath  화면 목업',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
                     Expanded(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(
@@ -150,9 +162,15 @@ class WorkspaceShell extends StatelessWidget {
                   behavior: HitTestBehavior.translucent,
                   onHorizontalDragUpdate: (details) =>
                       onAssistantWidthChanged(details.delta.dx),
-                  child: Container(
-                    width: 6,
-                    color: Theme.of(context).colorScheme.outlineVariant,
+                  child: SizedBox(
+                    width: 8,
+                    child: Center(
+                      child: Container(
+                        width: 1,
+                        height: double.infinity,
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -255,34 +273,57 @@ class _Sidebar extends StatelessWidget {
             constraints.maxHeight < 660 ||
             MediaQuery.textScalerOf(context).scale(AppTypography.body) >
                 AppTypography.body * 1.2;
-        final content = _buildContent(context, scrollable: shouldScroll);
-        return shouldScroll ? SingleChildScrollView(child: content) : content;
+        return _buildContent(context, scrollable: shouldScroll);
       },
     ),
   );
 
   Widget _buildContent(BuildContext context, {required bool scrollable}) =>
       Column(
-        mainAxisSize: scrollable ? MainAxisSize.min : MainAxisSize.max,
+        mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              compact ? 6 : 8,
-              10,
-              compact ? 6 : 8,
-              18,
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      compact ? 6 : 8,
+                      10,
+                      compact ? 6 : 8,
+                      18,
+                    ),
+                    child: _Brand(compact: compact),
+                  ),
+                  for (
+                    var index = 0;
+                    index < navigationItems.length - 1;
+                    index++
+                  )
+                    _NavigationTile(
+                      item: navigationItems[index],
+                      selected: selectedPage == index,
+                      compact: compact,
+                      onPressed: () => onPageSelected(index),
+                    ),
+                ],
+              ),
             ),
-            child: _Brand(compact: compact),
           ),
-          for (var index = 0; index < navigationItems.length - 1; index++)
-            _NavigationTile(
-              item: navigationItems[index],
-              selected: selectedPage == index,
-              compact: compact,
-              onPressed: () => onPageSelected(index),
+          const SizedBox(height: 8),
+          if (compact)
+            IconButton(
+              key: const Key('mock-data-toggle'),
+              tooltip: showMockData ? '예시 데이터 숨기기' : '예시 데이터 표시',
+              onPressed: () => onMockDataChanged(!showMockData),
+              icon: Icon(
+                showMockData
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+              ),
             ),
-          if (scrollable) const SizedBox(height: 24) else const Spacer(),
           if (!compact)
             Material(
               color: Colors.transparent,

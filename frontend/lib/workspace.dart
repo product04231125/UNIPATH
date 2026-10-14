@@ -35,6 +35,8 @@ class Workspace extends StatefulWidget {
     this.selectedPage,
     this.onPageChanged,
     this.assistantFactory,
+    this.sidebarVisible = true,
+    this.integratedTitleBar = false,
   });
 
   final VoidCallback onSignedOut;
@@ -43,6 +45,7 @@ class Workspace extends StatefulWidget {
   final int? selectedPage;
   final ValueChanged<int>? onPageChanged;
   final AssistantGateway Function()? assistantFactory;
+  final bool sidebarVisible, integratedTitleBar;
 
   @override
   State<Workspace> createState() => _WorkspaceState();
@@ -71,6 +74,7 @@ class _WorkspaceState extends State<Workspace> {
   ];
 
   var _page = 0;
+  final _visitedPages = <int>{};
   var _showMockData = true;
   var _chatOpen = false;
   var _chatManuallyOpened = false;
@@ -177,7 +181,6 @@ class _WorkspaceState extends State<Workspace> {
     super.didUpdateWidget(oldWidget);
     if (widget.selectedPage != null && widget.selectedPage != _page) {
       _scheduleAddRequest = null;
-      _graduationMinimumWidth = 0;
       _page = widget.selectedPage!;
     }
   }
@@ -206,6 +209,8 @@ class _WorkspaceState extends State<Workspace> {
       const WorkspaceNavigationItem(label: '설정', icon: Icons.settings_outlined),
     ];
     return WorkspaceShell(
+      sidebarVisible: widget.sidebarVisible,
+      integratedTitleBar: widget.integratedTitleBar,
       selectedPage: _page,
       navigationItems: navigationItems,
       onPageSelected: _selectPage,
@@ -255,8 +260,30 @@ class _WorkspaceState extends State<Workspace> {
     );
   }
 
-  Widget _buildPage(int settingsPage, WorkspaceShellLayout layout) =>
-      switch (_page) {
+  Widget _buildPage(int settingsPage, WorkspaceShellLayout layout) {
+    _visitedPages.add(_page);
+    return Stack(
+      children: [
+        for (final index in _visitedPages)
+          Positioned.fill(
+            child: Offstage(
+              key: ValueKey('retained-page-$index'),
+              offstage: index != _page,
+              child: ExcludeFocus(
+                excluding: index != _page,
+                child: TickerMode(
+                  enabled: index == _page,
+                  child: _pageFor(index, settingsPage, layout),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _pageFor(int index, int settingsPage, WorkspaceShellLayout layout) =>
+      switch (index) {
         0 => HomePage(
           repository: _planningRepository,
           coveredRightWidth: layout.showAssistantOverlay
@@ -291,7 +318,7 @@ class _WorkspaceState extends State<Workspace> {
         5 => ExperiencePage(showMockData: _showMockData),
         6 => CredentialPage(showMockData: _showMockData),
         7 => PortfolioPage(showMockData: _showMockData),
-        _ when _page == settingsPage - 1 => SettingsPage(
+        _ when index == settingsPage - 1 => SettingsPage(
           repository: _planningRepository,
           chatPreferences: widget.windowHost.supportsDetached
               ? _chatPreferences
@@ -303,7 +330,6 @@ class _WorkspaceState extends State<Workspace> {
   void _selectPage(int value, {PendingUiAction? addRequest}) {
     setState(() {
       _scheduleAddRequest = addRequest;
-      if (_page != value) _graduationMinimumWidth = 0;
       _page = value;
     });
     widget.onPageChanged?.call(value);
