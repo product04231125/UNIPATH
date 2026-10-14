@@ -111,7 +111,7 @@ class HomePage extends StatelessWidget {
                     ),
                   ),
                 ),
-                SizedBox(height: compact ? 10 : 16),
+                SizedBox(height: compact ? 8 : 16),
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final upcomingCard = _upcoming(
@@ -139,7 +139,7 @@ class HomePage extends StatelessWidget {
                     );
                   },
                 ),
-                SizedBox(height: compact ? 10 : 16),
+                SizedBox(height: compact ? 8 : 16),
                 _nextSteps(context, year, compact: true),
               ],
             ),

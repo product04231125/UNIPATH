@@ -310,14 +310,20 @@ class _AppPaletteHostState extends State<AppPaletteHost> {
                                 const Divider(),
                                 const Text('삭제 스타일'),
                                 for (final value in DeletePreview.values)
-                                  TextButton(
+                                  TextButton.icon(
+                                    icon: Icon(
+                                      value == _preview.delete
+                                          ? Icons.check
+                                          : Icons.circle_outlined,
+                                      size: 16,
+                                    ),
                                     onPressed: () => setState(() {
                                       _preview = _preview.copyWith(
                                         delete: value,
                                       );
                                       _expanded = false;
                                     }),
-                                    child: Text(switch (value) {
+                                    label: Text(switch (value) {
                                       DeletePreview.outline => '삭제 · 붉은 테두리',
                                       DeletePreview.tint => '삭제 · 옅은 붉은 배경',
                                       DeletePreview.solid => '삭제 · 채워진 붉은 배경',
@@ -326,28 +332,40 @@ class _AppPaletteHostState extends State<AppPaletteHost> {
                                 const Divider(),
                                 const Text('학교·학과 배치'),
                                 for (final columns in [false, true])
-                                  TextButton(
+                                  TextButton.icon(
+                                    icon: Icon(
+                                      columns == _preview.adminColumns
+                                          ? Icons.check
+                                          : Icons.circle_outlined,
+                                      size: 16,
+                                    ),
                                     onPressed: () => setState(() {
                                       _preview = _preview.copyWith(
                                         adminColumns: columns,
                                       );
                                       _expanded = false;
                                     }),
-                                    child: Text(
+                                    label: Text(
                                       columns ? '관리자 · 반응형 2열' : '관리자 · 기존 1열',
                                     ),
                                   ),
                                 const Divider(),
                                 const Text('설정 배치'),
                                 for (final columns in [false, true])
-                                  TextButton(
+                                  TextButton.icon(
+                                    icon: Icon(
+                                      columns == _preview.settingsColumns
+                                          ? Icons.check
+                                          : Icons.circle_outlined,
+                                      size: 16,
+                                    ),
                                     onPressed: () => setState(() {
                                       _preview = _preview.copyWith(
                                         settingsColumns: columns,
                                       );
                                       _expanded = false;
                                     }),
-                                    child: Text(
+                                    label: Text(
                                       columns ? '설정 · 반응형 2열' : '설정 · 좁은 1열',
                                     ),
                                   ),
@@ -360,7 +378,7 @@ class _AppPaletteHostState extends State<AppPaletteHost> {
                       key: const Key('palette-preview'),
                       icon: Icon(
                         _expanded ? Icons.close : Icons.palette_outlined,
-                        semanticLabel: '팔레트 비교',
+                        semanticLabel: '색상·배치 시안 비교',
                       ),
                       onPressed: () => setState(() => _expanded = !_expanded),
                     ),
