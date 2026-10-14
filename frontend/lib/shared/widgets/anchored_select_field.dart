@@ -61,7 +61,7 @@ class _AnchoredSelectFieldState<T> extends State<AnchoredSelectField<T>> {
         label: widget.label,
         child: InkWell(
           focusNode: _focus,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(20),
           onTap: () =>
               controller.isOpen ? controller.close() : controller.open(),
           child: InputDecorator(

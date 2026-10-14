@@ -43,7 +43,7 @@ class AdminShell extends StatelessWidget {
                   .colorScheme
                   .secondaryContainer,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
               ),
               title: Text(entry.value),
               onTap: busy

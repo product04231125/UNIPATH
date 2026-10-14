@@ -94,7 +94,9 @@ ThemeData buildAppTheme(AppPalette palette) {
           bg,
         ),
         surfaceContainerHighest: Color.alphaBlend(
-          fg.withValues(alpha: .06),
+          (palette.dark ? fg : Color(palette.secondary)).withValues(
+            alpha: palette.dark ? .06 : .16,
+          ),
           surface,
         ),
         outline: Color.alphaBlend(fg.withValues(alpha: .45), surface),
@@ -123,22 +125,41 @@ ThemeData buildAppTheme(AppPalette palette) {
   return base.copyWith(
     textTheme: text,
     filledButtonTheme: FilledButtonThemeData(style: button),
-    outlinedButtonTheme: OutlinedButtonThemeData(style: button),
-    textButtonTheme: TextButtonThemeData(style: button),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: button.copyWith(
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.disabled) ? null : fg,
+        ),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: button.copyWith(
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.disabled) ? null : fg,
+        ),
+      ),
+    ),
     elevatedButtonTheme: ElevatedButtonThemeData(style: button),
     cardTheme: CardThemeData(shape: shape, color: surface, elevation: 0),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: scheme.surfaceContainerHighest,
       floatingLabelBehavior: FloatingLabelBehavior.always,
+      floatingLabelStyle: WidgetStateTextStyle.resolveWith(
+        (states) => TextStyle(
+          color: states.contains(WidgetState.error) ? scheme.error : fg,
+        ),
+      ),
       border: border(scheme.outline),
       enabledBorder: border(scheme.outline),
+      disabledBorder: border(scheme.outlineVariant),
       focusedBorder: border(accent, 2),
       errorBorder: border(scheme.error),
       focusedErrorBorder: border(scheme.error, 2),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),
     dialogTheme: DialogThemeData(
+      backgroundColor: surface,
       shape: shape,
       alignment: Alignment.center,
       constraints: const BoxConstraints(maxWidth: 640),
@@ -197,16 +218,13 @@ class _AppPaletteHostState extends State<AppPaletteHost> {
                           ),
                           label: Text(value.label),
                         ),
-                    Semantics(
-                      label: '팔레트 비교',
-                      button: true,
-                      child: IconButton(
-                        key: const Key('palette-preview'),
-                        icon: Icon(
-                          _expanded ? Icons.close : Icons.palette_outlined,
-                        ),
-                        onPressed: () => setState(() => _expanded = !_expanded),
+                    IconButton(
+                      key: const Key('palette-preview'),
+                      icon: Icon(
+                        _expanded ? Icons.close : Icons.palette_outlined,
+                        semanticLabel: '팔레트 비교',
                       ),
+                      onPressed: () => setState(() => _expanded = !_expanded),
                     ),
                   ],
                 ),

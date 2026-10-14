@@ -89,7 +89,7 @@ class _AssistantPanelState extends State<AssistantPanel> {
     animation: conversation,
     builder: (context, _) => Container(
       width: width,
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       child: Column(
         children: [
           Padding(
@@ -109,12 +109,12 @@ class _AssistantPanelState extends State<AssistantPanel> {
                   IconButton(
                     tooltip: '새 창으로 분리',
                     onPressed: _savingContext ? null : onDetach,
-                    icon: const Icon(Icons.open_in_new),
+                    icon: Icon(Icons.open_in_new),
                   ),
                 IconButton(
                   tooltip: 'AI 도우미 닫기',
                   onPressed: _savingContext ? null : onClose,
-                  icon: const Icon(Icons.close),
+                  icon: Icon(Icons.close),
                 ),
               ],
             ),
@@ -124,16 +124,16 @@ class _AssistantPanelState extends State<AssistantPanel> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
+                Text(
                   '학교 규정 질의 · 대화는 앱 실행 중 유지됩니다.',
                   style: TextStyle(
                     fontSize: AppTypography.caption,
-                    color: Color(0xff607386),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 TextButton.icon(
                   onPressed: !_canSend ? null : () => _editContext(context),
-                  icon: const Icon(Icons.tune, size: 18),
+                  icon: Icon(Icons.tune, size: 18),
                   label: Text(
                     conversation.context.institution == null
                         ? '테스트용 설정창'
@@ -176,12 +176,15 @@ class _AssistantPanelState extends State<AssistantPanel> {
                   const Divider(),
                 ],
                 if (conversation.turns.isEmpty)
-                  const Text('학교 규정에 관해 질문해 보세요. 승인된 근거가 없으면 근거 부족을 안내합니다.'),
+                  Text('학교 규정에 관해 질문해 보세요. 승인된 근거가 없으면 근거 부족을 안내합니다.'),
                 for (final turn in conversation.turns) ...[
                   _bubble(
                     Text(
                       '나: ${turn.question}',
-                      style: const TextStyle(color: Colors.white, height: 1.5),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        height: 1.5,
+                      ),
                     ),
                     user: true,
                   ),
@@ -226,12 +229,12 @@ class _AssistantPanelState extends State<AssistantPanel> {
                   IconButton.filled(
                     tooltip: '보내기',
                     onPressed: _canSend ? conversation.send : null,
-                    icon: const Icon(Icons.send),
+                    icon: Icon(Icons.send),
                   )
                 else
                   FilledButton(
                     onPressed: _canSend ? conversation.send : null,
-                    child: const Text('보내기'),
+                    child: Text('보내기'),
                   ),
               ],
             ),
@@ -247,8 +250,10 @@ class _AssistantPanelState extends State<AssistantPanel> {
       constraints: const BoxConstraints(maxWidth: 440),
       padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
-        color: user ? const Color(0xff1c425e) : const Color(0xffeef4f6),
-        borderRadius: BorderRadius.circular(12),
+        color: user
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(20),
       ),
       child: child,
     ),
@@ -256,7 +261,7 @@ class _AssistantPanelState extends State<AssistantPanel> {
 
   Widget _response(BuildContext context, AssistantTurn turn) {
     if (turn.loading) {
-      return Semantics(liveRegion: true, child: const Text('답변 기다리는 중…'));
+      return Semantics(liveRegion: true, child: Text('답변 기다리는 중…'));
     }
     final result = turn.result;
     final error = turn.error;
@@ -272,7 +277,7 @@ class _AssistantPanelState extends State<AssistantPanel> {
           liveRegion: true,
           child: Text(
             result?.label ?? '연결 또는 요청 실패',
-            style: const TextStyle(fontWeight: FontWeight.w700),
+            style: TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
         const SizedBox(height: 6),
@@ -288,24 +293,24 @@ class _AssistantPanelState extends State<AssistantPanel> {
         if (error?.requestId != null)
           SelectableText(
             '문의 식별자: ${error!.requestId}',
-            style: const TextStyle(fontSize: AppTypography.caption),
+            style: TextStyle(fontSize: AppTypography.caption),
           ),
         if (result?.status == AssistantStatus.needsUserInput &&
             result?.reason != 'rule_engine_required')
           TextButton(
             onPressed: !_canSend ? null : () => _editContext(context),
-            child: const Text('질의 정보 보완'),
+            child: Text('질의 정보 보완'),
           ),
         if (canRetry)
           TextButton(
             onPressed: !_canSend ? null : () => conversation.retry(turn),
-            child: const Text('다시 질문'),
+            child: Text('다시 질문'),
           ),
         for (final citation in result?.citations ?? <AssistantCitation>[]) ...[
           const Divider(),
           Text(
             '${citation.title} · ${citation.page}페이지',
-            style: const TextStyle(fontWeight: FontWeight.w700),
+            style: TextStyle(fontWeight: FontWeight.w700),
           ),
           SelectableText(citation.excerpt),
           TextButton.icon(
@@ -328,8 +333,8 @@ class _AssistantPanelState extends State<AssistantPanel> {
                 );
               }
             },
-            icon: const Icon(Icons.open_in_new, size: 18),
-            label: const Text('공식 문서 열기 · 새 창'),
+            icon: Icon(Icons.open_in_new, size: 18),
+            label: Text('공식 문서 열기 · 새 창'),
           ),
         ],
       ],

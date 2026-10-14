@@ -84,8 +84,8 @@ class _SchedulePageState extends State<SchedulePage> {
                     actions: [
                       FilledButton.icon(
                         onPressed: () => _editEvent(),
-                        icon: const Icon(Icons.add),
-                        label: const Text('일정 추가'),
+                        icon: Icon(Icons.add),
+                        label: Text('일정 추가'),
                       ),
                     ],
                   ),
@@ -130,7 +130,7 @@ class _SchedulePageState extends State<SchedulePage> {
                 onPressed: () => setState(
                   () => _month = DateTime(_month.year, _month.month - 1),
                 ),
-                icon: const Icon(Icons.chevron_left),
+                icon: Icon(Icons.chevron_left),
               ),
               Expanded(
                 child: Text(
@@ -144,7 +144,7 @@ class _SchedulePageState extends State<SchedulePage> {
                 onPressed: () => setState(
                   () => _month = DateTime(_month.year, _month.month + 1),
                 ),
-                icon: const Icon(Icons.chevron_right),
+                icon: Icon(Icons.chevron_right),
               ),
             ],
           ),
@@ -159,7 +159,9 @@ class _SchedulePageState extends State<SchedulePage> {
                   child: Center(
                     child: Text(
                       weekdayLabel(day.weekday),
-                      style: TextStyle(color: Color(0xff607386)),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ),
@@ -205,14 +207,18 @@ class _SchedulePageState extends State<SchedulePage> {
       label: '${day.month}월 ${day.day}일, 일정 ${events.length}개',
       child: InkWell(
         onTap: () => setState(() => _selectedDay = _dateOnly(day)),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
           margin: const EdgeInsets.all(2),
           padding: const EdgeInsets.symmetric(vertical: 4),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xffdcecf2) : null,
-            border: today ? Border.all(color: const Color(0xff315a77)) : null,
-            borderRadius: BorderRadius.circular(10),
+            color: selected
+                ? Theme.of(context).colorScheme.primaryContainer
+                : null,
+            border: today
+                ? Border.all(color: Theme.of(context).colorScheme.outline)
+                : null,
+            borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
             children: [
@@ -222,7 +228,9 @@ class _SchedulePageState extends State<SchedulePage> {
                   fontWeight: selected || today
                       ? FontWeight.w800
                       : FontWeight.w500,
-                  color: inMonth ? null : const Color(0xff9aaab6),
+                  color: inMonth
+                      ? null
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 2),
@@ -258,9 +266,11 @@ class _SchedulePageState extends State<SchedulePage> {
           ),
           const SizedBox(height: 10),
           if (events.isEmpty)
-            const Text(
+            Text(
               '등록된 개인 일정이 없습니다.',
-              style: TextStyle(color: Color(0xff607386)),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             )
           else
             for (final event in events) _eventTile(event),
@@ -285,7 +295,7 @@ class _SchedulePageState extends State<SchedulePage> {
     ),
     trailing: IconButton(
       tooltip: '${event.title} 수정',
-      icon: const Icon(Icons.edit_outlined),
+      icon: Icon(Icons.edit_outlined),
       onPressed: () => _editEvent(event),
     ),
   );
@@ -443,12 +453,12 @@ class _EventEditorState extends State<_EventEditor> {
       if (widget.event != null)
         TextButton.icon(
           onPressed: _saving ? null : _delete,
-          icon: const Icon(Icons.delete_outline),
-          label: const Text('삭제'),
+          icon: Icon(Icons.delete_outline),
+          label: Text('삭제'),
         ),
       TextButton(
         onPressed: _saving ? null : () => InputDialog.cancel<void>(context),
-        child: const Text('취소'),
+        child: Text('취소'),
       ),
       FilledButton(
         onPressed: _saving ? null : _save,
@@ -493,16 +503,16 @@ class _EventEditorState extends State<_EventEditor> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('개인 일정 삭제'),
+        title: Text('개인 일정 삭제'),
         content: Text('${widget.event!.title} 일정을 이 기기에서 삭제할까요?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
+            child: Text('취소'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('삭제'),
+            child: Text('삭제'),
           ),
         ],
       ),

@@ -198,17 +198,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   List<Widget> _loginFields() => [
-    Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
-      ),
-      child: Column(
-        children: [_emailField(), const Divider(height: 20), _passwordField()],
-      ),
-    ),
+    _emailField(),
+    const SizedBox(height: 16),
+    _passwordField(),
   ];
 
   List<Widget> _signupFields() => [
@@ -284,22 +276,8 @@ class _LoginPageState extends State<LoginPage> {
     onFieldSubmitted: (_) => newPassword ? null : _submit(),
   );
 
-  InputDecoration _decoration(String label, [String? hint]) => InputDecoration(
-    labelText: label,
-    hintText: hint,
-    filled: !_isLogin,
-    border: _isLogin ? InputBorder.none : null,
-    enabledBorder: _isLogin ? InputBorder.none : null,
-    focusedBorder: _isLogin
-        ? UnderlineInputBorder(
-            borderSide: BorderSide(
-              color: Theme.of(context).colorScheme.primary,
-              width: 2,
-            ),
-          )
-        : null,
-    contentPadding: _isLogin ? const EdgeInsets.symmetric(vertical: 8) : null,
-  );
+  InputDecoration _decoration(String label, [String? hint]) =>
+      InputDecoration(labelText: label, hintText: hint);
 }
 
 class _BrandHeader extends StatelessWidget {
@@ -325,7 +303,7 @@ class _BrandHeader extends StatelessWidget {
             Text(
               'UniversityPath',
               style: TextStyle(
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: AppTypography.section,
                 fontWeight: FontWeight.w800,
               ),

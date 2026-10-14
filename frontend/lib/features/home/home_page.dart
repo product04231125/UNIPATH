@@ -111,7 +111,7 @@ class HomePage extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: compact ? 10 : 16),
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final upcomingCard = _upcoming(
@@ -139,7 +139,7 @@ class HomePage extends StatelessWidget {
                     );
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: compact ? 10 : 16),
                 _nextSteps(context, year, compact: true),
               ],
             ),
@@ -156,7 +156,7 @@ class HomePage extends StatelessWidget {
         ? Theme.of(context).colorScheme.surface
         : Theme.of(context).scaffoldBackgroundColor,
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(20),
       side: title == '다가오는 일정'
           ? BorderSide(color: Theme.of(context).colorScheme.outlineVariant)
           : BorderSide.none,

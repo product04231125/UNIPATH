@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/shared/app_style.dart';
 
 double contrast(Color a, Color b) {
@@ -8,6 +10,7 @@ double contrast(Color a, Color b) {
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   for (final palette in AppPalette.values) {
     test('${palette.name} preserves readable text and round controls', () {
       final theme = buildAppTheme(palette), c = theme.colorScheme;
@@ -49,5 +52,57 @@ void main() {
       Brightness.dark,
     );
     expect(tester.takeException(), isNull);
+  });
+  for (final palette in AppPalette.values) {
+    testWidgets('${palette.name} login errors fit compact enlarged text', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(480, 520));
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(() {
+        tester.platformDispatcher.clearTextScaleFactorTestValue();
+        return tester.binding.setSurfaceSize(null);
+      });
+      await tester.pumpWidget(const UniversityPathApp());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('palette-preview')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(palette.label));
+      await tester.pumpAndSettle();
+      final submit = find.byKey(const Key('login-submit'));
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
+      expect(find.text('이메일 주소를 입력해 주세요.'), findsOneWidget);
+      expect(find.text('비밀번호를 입력해 주세요.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+  testWidgets('admin draft and workspace survive palette switching', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const UniversityPathApp());
+    await tester.pumpAndSettle();
+    final entry = find.byKey(const Key('sample-super-admin-entry'));
+    await tester.ensureVisible(entry);
+    await tester.tap(entry);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('학교·학과'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('학교 등록'));
+    await tester.pumpAndSettle();
+    final field = find.byKey(const ValueKey('admin-field-name'));
+    await tester.enterText(field, '팔레트 비교 중인 합성 학교');
+    for (final palette in AppPalette.values) {
+      await tester.tap(find.byKey(const Key('palette-preview')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(palette.label));
+      await tester.pumpAndSettle();
+      expect(find.text('팔레트 비교 중인 합성 학교'), findsOneWidget);
+      expect(find.text('목업에 저장'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
   });
 }

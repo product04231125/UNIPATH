@@ -112,7 +112,7 @@ class WorkspaceShell extends StatelessWidget {
               child: ClipRect(
                 child: Column(
                   children: [
-                    const SizedBox(
+                    SizedBox(
                       height: 52,
                       child: Padding(
                         padding: EdgeInsets.symmetric(horizontal: 20),
@@ -122,7 +122,7 @@ class WorkspaceShell extends StatelessWidget {
                             'UniversityPath  화면 목업',
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
-                              color: Color(0xff27445d),
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                         ),
@@ -150,7 +150,10 @@ class WorkspaceShell extends StatelessWidget {
                   behavior: HitTestBehavior.translucent,
                   onHorizontalDragUpdate: (details) =>
                       onAssistantWidthChanged(details.delta.dx),
-                  child: Container(width: 6, color: const Color(0xffd8e1e7)),
+                  child: Container(
+                    width: 6,
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                 ),
               ),
             if (showDockedAssistant) assistantBuilder(context, assistantWidth),
@@ -174,8 +177,8 @@ class WorkspaceShell extends StatelessWidget {
             child: FloatingActionButton(
               tooltip: assistantTooltip,
               onPressed: onOpenAssistant,
-              backgroundColor: const Color(0xff193f59),
-              foregroundColor: Colors.white,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               child: Icon(
                 Icons.chat_bubble_outline,
                 semanticLabel: assistantTooltip,
@@ -243,7 +246,7 @@ class _Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: compact ? 72 : 220,
-    color: const Color(0xfff2f5f6),
+    color: Theme.of(context).colorScheme.surfaceContainerLow,
     padding: const EdgeInsets.all(12),
     child: LayoutBuilder(
       builder: (context, constraints) {
@@ -252,106 +255,112 @@ class _Sidebar extends StatelessWidget {
             constraints.maxHeight < 660 ||
             MediaQuery.textScalerOf(context).scale(AppTypography.body) >
                 AppTypography.body * 1.2;
-        final content = _buildContent(scrollable: shouldScroll);
+        final content = _buildContent(context, scrollable: shouldScroll);
         return shouldScroll ? SingleChildScrollView(child: content) : content;
       },
     ),
   );
 
-  Widget _buildContent({required bool scrollable}) => Column(
-    mainAxisSize: scrollable ? MainAxisSize.min : MainAxisSize.max,
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Padding(
-        padding: EdgeInsets.fromLTRB(compact ? 6 : 8, 10, compact ? 6 : 8, 18),
-        child: _Brand(compact: compact),
-      ),
-      for (var index = 0; index < navigationItems.length - 1; index++)
-        _NavigationTile(
-          item: navigationItems[index],
-          selected: selectedPage == index,
-          compact: compact,
-          onPressed: () => onPageSelected(index),
-        ),
-      if (scrollable) const SizedBox(height: 24) else const Spacer(),
-      if (!compact)
-        Material(
-          color: Colors.transparent,
-          child: SwitchListTile.adaptive(
-            key: const Key('mock-data-toggle'),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-            dense: true,
-            title: const Text(
-              '목업용',
-              style: TextStyle(
-                fontSize: AppTypography.body,
-                fontWeight: FontWeight.w700,
+  Widget _buildContent(BuildContext context, {required bool scrollable}) =>
+      Column(
+        mainAxisSize: scrollable ? MainAxisSize.min : MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              compact ? 6 : 8,
+              10,
+              compact ? 6 : 8,
+              18,
+            ),
+            child: _Brand(compact: compact),
+          ),
+          for (var index = 0; index < navigationItems.length - 1; index++)
+            _NavigationTile(
+              item: navigationItems[index],
+              selected: selectedPage == index,
+              compact: compact,
+              onPressed: () => onPageSelected(index),
+            ),
+          if (scrollable) const SizedBox(height: 24) else const Spacer(),
+          if (!compact)
+            Material(
+              color: Colors.transparent,
+              child: SwitchListTile.adaptive(
+                key: const Key('mock-data-toggle'),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                dense: true,
+                title: Text(
+                  '목업용',
+                  style: TextStyle(
+                    fontSize: AppTypography.body,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                subtitle: Text(
+                  '예시 데이터 표시',
+                  style: TextStyle(fontSize: AppTypography.caption),
+                ),
+                value: showMockData,
+                onChanged: onMockDataChanged,
               ),
             ),
-            subtitle: const Text(
-              '예시 데이터 표시',
-              style: TextStyle(fontSize: AppTypography.caption),
-            ),
-            value: showMockData,
-            onChanged: onMockDataChanged,
+          if (!compact) const SizedBox(height: 4),
+          _NavigationTile(
+            item: navigationItems.last,
+            selected: selectedPage == navigationItems.length - 1,
+            compact: compact,
+            onPressed: () => onPageSelected(navigationItems.length - 1),
           ),
-        ),
-      if (!compact) const SizedBox(height: 4),
-      _NavigationTile(
-        item: navigationItems.last,
-        selected: selectedPage == navigationItems.length - 1,
-        compact: compact,
-        onPressed: () => onPageSelected(navigationItems.length - 1),
-      ),
-      const Divider(),
-      ListTile(
-        contentPadding: EdgeInsets.symmetric(horizontal: compact ? 4 : 8),
-        dense: true,
-        leading: const CircleAvatar(
-          radius: 15,
-          backgroundColor: Color(0xff19344d),
-          child: Text(
-            '정',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: AppTypography.caption,
-            ),
-          ),
-        ),
-        title: compact
-            ? null
-            : const Text(
-                '정민서',
+          const Divider(),
+          ListTile(
+            contentPadding: EdgeInsets.symmetric(horizontal: compact ? 4 : 8),
+            dense: true,
+            leading: CircleAvatar(
+              radius: 15,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: Text(
+                '정',
                 style: TextStyle(
-                  fontSize: AppTypography.body,
-                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                  fontSize: AppTypography.caption,
                 ),
               ),
-        subtitle: compact
-            ? null
-            : const Text(
-                '2024학번 · 컴퓨터공학과',
-                style: TextStyle(fontSize: AppTypography.caption),
-              ),
-      ),
-      if (!compact)
-        TextButton.icon(
-          key: const Key('logout-button'),
-          onPressed: onSignedOut,
-          icon: const Icon(Icons.logout, size: 18),
-          label: const Text('로그아웃'),
-        )
-      else
-        Tooltip(
-          message: '로그아웃',
-          child: IconButton(
-            key: const Key('logout-button'),
-            onPressed: onSignedOut,
-            icon: const Icon(Icons.logout),
+            ),
+            title: compact
+                ? null
+                : Text(
+                    '정민서',
+                    style: TextStyle(
+                      fontSize: AppTypography.body,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+            subtitle: compact
+                ? null
+                : Text(
+                    '2024학번 · 컴퓨터공학과',
+                    style: TextStyle(fontSize: AppTypography.caption),
+                  ),
           ),
-        ),
-    ],
-  );
+          if (!compact)
+            TextButton.icon(
+              key: const Key('logout-button'),
+              onPressed: onSignedOut,
+              icon: Icon(Icons.logout, size: 18),
+              label: Text('로그아웃'),
+            )
+          else
+            Tooltip(
+              message: '로그아웃',
+              child: IconButton(
+                key: const Key('logout-button'),
+                onPressed: onSignedOut,
+                icon: Icon(Icons.logout),
+              ),
+            ),
+        ],
+      );
 }
 
 class _Brand extends StatelessWidget {
@@ -362,22 +371,25 @@ class _Brand extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      const CircleAvatar(
+      CircleAvatar(
         radius: 18,
-        backgroundColor: Color(0xff19344d),
-        child: Icon(Icons.route_outlined, color: Colors.white, size: 18),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        child: Icon(
+          Icons.route_outlined,
+          color: Theme.of(context).colorScheme.onPrimary,
+          size: 18,
+        ),
       ),
       if (!compact) const SizedBox(width: 9),
       if (!compact)
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
+            children: [
               Text(
                 'UniversityPath',
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontFamily: 'serif',
                   fontSize: AppTypography.section,
                   fontWeight: FontWeight.w700,
                 ),
@@ -386,7 +398,7 @@ class _Brand extends StatelessWidget {
                 '화면 목업',
                 style: TextStyle(
                   fontSize: AppTypography.caption,
-                  color: Color(0xff708192),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -413,10 +425,12 @@ class _NavigationTile extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 4),
     child: Material(
-      color: selected ? const Color(0xffdcebf1) : Colors.transparent,
-      borderRadius: BorderRadius.circular(10),
+      color: selected
+          ? Theme.of(context).colorScheme.primaryContainer
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(20),
         onTap: onPressed,
         child: Tooltip(
           message: compact ? item.label : '',
@@ -427,7 +441,11 @@ class _NavigationTile extends StatelessWidget {
                   ? MainAxisAlignment.center
                   : MainAxisAlignment.start,
               children: [
-                Icon(item.icon, size: 18, color: const Color(0xff25465f)),
+                Icon(
+                  item.icon,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
                 if (!compact) const SizedBox(width: 10),
                 if (!compact)
                   Expanded(

@@ -108,9 +108,12 @@ class _SettingsPageState extends State<SettingsPage> {
                   const PageHeader(title: '설정', contextLabel: '일반'),
                   Text('학업과 계획', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     '이 정보와 개인 일정은 현재 기기에만 저장됩니다. 학교 공식 학적이나 졸업 판정을 변경하지 않습니다.',
-                    style: TextStyle(color: Color(0xff607386), height: 1.45),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      height: 1.45,
+                    ),
                   ),
                   const SizedBox(height: 18),
                   IgnorePointer(
@@ -211,12 +214,14 @@ class _SettingsPageState extends State<SettingsPage> {
                             }),
                           ),
                           const SizedBox(height: 8),
-                          const Align(
+                          Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
                               '개인 계획을 위한 안내값입니다. 공식 학적 상태나 서버 추천이 아닙니다.',
                               style: TextStyle(
-                                color: Color(0xff607386),
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                                 fontSize: AppTypography.caption,
                               ),
                             ),
@@ -239,12 +244,14 @@ class _SettingsPageState extends State<SettingsPage> {
                             },
                           ),
                           const SizedBox(height: 8),
-                          const Align(
+                          Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
                               '홈과 일정의 7일 표는 일요일부터 시작하며, 원하는 요일로 바꿀 수 있습니다.',
                               style: TextStyle(
-                                color: Color(0xff607386),
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                                 fontSize: AppTypography.caption,
                               ),
                             ),
@@ -263,12 +270,12 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                       if (_saved) ...[
                         const SizedBox(width: 12),
-                        const Icon(
+                        Icon(
                           Icons.check_circle_outline,
-                          color: Color(0xff356842),
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                         const SizedBox(width: 4),
-                        const Text('저장되었습니다.'),
+                        Text('저장되었습니다.'),
                       ],
                     ],
                   ),
