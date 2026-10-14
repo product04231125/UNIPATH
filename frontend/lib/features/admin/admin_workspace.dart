@@ -355,6 +355,156 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         ExternalLinkButton(url: r.value('sourceUrl'), label: '원문 열기'),
     ],
   );
+  String _routeFor(AdminKind kind) => switch (kind) {
+    AdminKind.institution || AdminKind.department => '/admin/schools',
+    AdminKind.curriculum ||
+    AdminKind.course ||
+    AdminKind.curriculumCourse => '/admin/curricula',
+    AdminKind.ruleSet || AdminKind.rule => '/admin/rules',
+    AdminKind.document => '/admin/documents',
+    AdminKind.account || AdminKind.scope => '/admin/accounts',
+  };
+
+  String _actionLabel(String action) => switch (action) {
+    'create' => '등록',
+    'update' => '수정',
+    'save' => '저장',
+    'delete' => '삭제',
+    'apply' => '초안 적용',
+    'new_version' => '새 버전 작성',
+    'revoke' => '범위 회수',
+    _ => '관리 작업',
+  };
+
+  Iterable<AdminAuditEntry> get _schoolHistory => _repo.history.reversed.where(
+    (entry) =>
+        entry.institutionId == _schoolId &&
+        (_role == AppRole.superAdmin ||
+            entry.actorId == _actor ||
+            _find(entry.targetId) != null &&
+                _repo.canRead(_actor, _find(entry.targetId)!)),
+  );
+
+  Widget _overview() {
+    final drafts = _repo.records
+        .where(
+          (r) =>
+              r.kind.versioned &&
+              r.status == 'draft' &&
+              r.value('ruleSetId').isEmpty &&
+              _repo.school(r) == _schoolId &&
+              _repo.canRead(_actor, r),
+        )
+        .toList();
+    final recent = _schoolHistory.take(5).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('관리 가능한 학교 ${_schools.length}개'),
+        if (_schoolId.isEmpty) ...[
+          const SizedBox(height: 12),
+          const Text('관리 가능한 학교가 없습니다. 학교 등록 또는 범위 부여가 필요합니다.'),
+          if (_role == AppRole.superAdmin)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton(
+                onPressed: _busy ? null : () => _edit(AdminKind.institution),
+                child: const Text('학교 등록'),
+              ),
+            ),
+        ] else ...[
+          const SizedBox(height: 24),
+          Text(
+            '확인할 초안 ${drafts.length}개',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          if (drafts.isEmpty) const Text('확인할 초안이 없습니다. 필요한 자료부터 등록하세요.'),
+          for (final r in drafts.take(5))
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(r.name),
+              subtitle: Text('${r.kind.label} · v${r.version} · 초안'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _busy
+                  ? null
+                  : () => widget.onNavigate('${_routeFor(r.kind)}/${r.id}'),
+            ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: _busy ? null : () => widget.onNavigate('/admin/rules'),
+              child: const Text('졸업요건 확인'),
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: _busy
+                  ? null
+                  : () => widget.onNavigate('/admin/documents'),
+              child: const Text('공식 문서 확인'),
+            ),
+          ),
+          const Divider(height: 32),
+          Text('자료 등록', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              for (final kind in [
+                AdminKind.department,
+                AdminKind.curriculum,
+                AdminKind.course,
+                AdminKind.document,
+              ])
+                if (_canCreate(kind))
+                  OutlinedButton(
+                    onPressed: _busy ? null : () => _edit(kind),
+                    child: Text('${kind.label} 등록'),
+                  ),
+              if (_role == AppRole.superAdmin)
+                TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => widget.onNavigate('/admin/accounts'),
+                  child: const Text('관리자 범위 관리'),
+                ),
+            ],
+          ),
+          const Divider(height: 32),
+          Text('최근 변경', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          if (recent.isEmpty) const Text('현재 학교의 변경 이력이 없습니다.'),
+          for (final entry in recent)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
+              ),
+              subtitle: Text(
+                _find(entry.targetId) != null &&
+                        _repo.canRead(_actor, _find(entry.targetId)!)
+                    ? _find(entry.targetId)!.name
+                    : '삭제되었거나 볼 수 없는 항목',
+              ),
+              onTap: () => widget.onNavigate('/admin/history'),
+            ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: _busy
+                  ? null
+                  : () => widget.onNavigate('/admin/history'),
+              child: const Text('관리 이력 보기'),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _history() => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
@@ -482,17 +632,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                       color: Theme.of(context).colorScheme.error,
                     ),
                   ),
-                if (_section == '/admin/overview') ...[
-                  Text('관리 가능한 학교 ${_schools.length}개'),
-                  if (_schoolId.isEmpty)
-                    const Text('관리 가능한 학교가 없습니다. 슈퍼관리자의 범위 부여가 필요합니다.'),
-                  for (final r in _repo.records.where(
-                    (r) =>
-                        r.kind == AdminKind.scope &&
-                        r.value('userId') == _actor,
-                  ))
-                    Text('${r.name} · ${r.status}'),
-                ],
+                if (_section == '/admin/overview') _overview(),
                 if (_section == '/admin/schools') ...[
                   _records(AdminKind.institution),
                   _records(AdminKind.department),

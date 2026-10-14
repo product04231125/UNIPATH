@@ -62,6 +62,70 @@ Future<void> openEditor(
 }
 
 void main() {
+  testWidgets('overview scopes drafts and recent changes and opens next task', (
+    tester,
+  ) async {
+    final repo = FakeAdminRepository();
+    addTearDown(repo.dispose);
+    for (final school in ['a', 'b']) {
+      await repo.save(
+        'super-admin',
+        AdminRecord(
+          id: 'doc-$school',
+          kind: AdminKind.document,
+          values: {
+            'name': '검토 문서 $school',
+            'institutionId': 'school-$school',
+            'documentType': 'graduation',
+            'sourceUrl': 'https://example.org/$school',
+          },
+        ),
+      );
+    }
+    String? target;
+    await tester.pumpWidget(
+      host(
+        AdminWorkspace(
+          repository: repo,
+          role: AppRole.superAdmin,
+          path: '/admin/overview',
+          onNavigate: (path) => target = path,
+          onSignedOut: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('확인할 초안 1개'), findsOneWidget);
+    expect(find.text('검토 문서 a'), findsNWidgets(2));
+    expect(find.text('검토 문서 b'), findsNothing);
+    tester
+        .widget<AnchoredSelectField<String>>(
+          find.byType(AnchoredSelectField<String>),
+        )
+        .onChanged('school-b');
+    await tester.pumpAndSettle();
+    expect(find.text('검토 문서 a'), findsNothing);
+    expect(find.text('검토 문서 b'), findsNWidgets(2));
+    await tester.tap(find.text('검토 문서 b').first);
+    expect(target, '/admin/documents/doc-b');
+    final register = find.text('공식 문서 등록');
+    await tester.ensureVisible(register);
+    await tester.pumpAndSettle();
+    await tester.tap(register);
+    await tester.pumpAndSettle();
+    expect(find.byType(AdminEditor), findsOneWidget);
+    expect(
+      tester
+          .widget<AnchoredSelectField<String>>(
+            find.byKey(const ValueKey('admin-field-institutionId')),
+          )
+          .value,
+      'school-b',
+    );
+    await tester.tap(find.text('취소'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
   for (final compact in [false, true]) {
     testWidgets('shared shell retains selected navigation compact=$compact', (
       tester,
