@@ -33,7 +33,10 @@
   주간표를 배치하며 채팅 상태를 주간표 도메인에 넣지 않는다.
 - `shared/widgets/page_header.dart`: 한글 제목·선택 문맥/설명·헤더 버튼의 정렬과 재배치,
   접근성 heading 표현. 문구·상태·데이터 소유권은 각 기능에 유지한다.
-- `shared/app_typography.dart`: 역할별 공통 글자 크기·줄높이, 앱 테마 적용
+- `shared/app_typography.dart`: 역할별 공통 글자 크기·줄높이, 학생·관리자 공통 테마 적용.
+  Pretendard Regular/Medium/SemiBold/Bold를 앱에 포함해 Web·Windows에서 사용한다.
+  글자 단계는 페이지 26, 섹션 18, 본문 14, 보조문 13이며 시스템 확대를 유지한다.
+  원본 글꼴과 SIL OFL 라이선스는 `frontend/assets/fonts/pretendard/`에 보관한다.
 - `shared/widgets/anchored_select_field.dart`: 트리거 기준 배치·키보드 포커스를 공유하는 선택 제어
 - `shared/external_links.dart`, `widgets/external_link_button.dart`: 브라우저 URL 검증·플랫폼 열기와
   이동 확인·실패·복사 UI. 저장 입력도 같은 URL 검증을 사용한다.

@@ -20,7 +20,7 @@ Future<void> runUniversityPathApp() async {
 ThemeData universityPathTheme() {
   final base = ThemeData(
     useMaterial3: true,
-    fontFamily: 'Malgun Gothic',
+    fontFamily: 'Pretendard',
     scaffoldBackgroundColor: const Color(0xfff7f8f8),
     colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff193f59)),
   );
