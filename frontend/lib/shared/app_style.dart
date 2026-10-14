@@ -177,7 +177,8 @@ ThemeData buildAppTheme(
           (states) => states.contains(WidgetState.disabled)
               ? Colors.transparent
               : states.contains(WidgetState.pressed)
-              ? (primaryText == Colors.black ? Colors.white : Colors.black).withValues(alpha: .30)
+              ? (primaryText == Colors.black ? Colors.white : Colors.black)
+                    .withValues(alpha: .30)
               : states.contains(WidgetState.hovered) ||
                     states.contains(WidgetState.focused)
               ? (primaryText == Colors.black ? Colors.white : Colors.black)

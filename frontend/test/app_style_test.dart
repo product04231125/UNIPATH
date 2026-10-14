@@ -53,6 +53,50 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+  testWidgets(
+    'settings layout previews keep unsaved profile and adapt at narrow width',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        const UniversityPathApp(startAuthenticated: true),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('설정'));
+      await tester.pumpAndSettle();
+      final school = find.byType(TextFormField).first;
+      await tester.enterText(school, '아직 저장하지 않은 학교');
+      Future<void> choose(String label) async {
+        await tester.tap(find.byKey(const Key('palette-preview')));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text(label));
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+      }
+
+      await choose('설정 · 좁은 1열');
+      expect(
+        tester.getTopLeft(find.text('개인 계획')).dy,
+        greaterThan(tester.getTopLeft(find.text('학업 프로필')).dy),
+      );
+      await choose('설정 · 반응형 2열');
+      expect(
+        tester.getTopLeft(find.text('개인 계획')).dy,
+        tester.getTopLeft(find.text('학업 프로필')).dy,
+      );
+      await tester.binding.setSurfaceSize(const Size(480, 520));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(find.text('개인 계획')).dy,
+        greaterThan(tester.getTopLeft(find.text('학업 프로필')).dy),
+      );
+      expect(
+        tester.widget<TextFormField>(school).controller!.text,
+        '아직 저장하지 않은 학교',
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('delete previews retain confirmation and readable dark colors', (
     tester,
   ) async {

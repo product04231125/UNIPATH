@@ -109,6 +109,7 @@ void main() {
         '새 합성 학교',
       );
       fail = false;
+      await tester.ensureVisible(find.text('기기에 저장'));
       await tester.tap(find.text('기기에 저장'));
       await tester.pumpAndSettle();
       expect(find.text('저장되었습니다.'), findsOneWidget);
