@@ -173,7 +173,7 @@ class _AppPaletteHostState extends State<AppPaletteHost> {
         child!,
         if (!kReleaseMode)
           Positioned(
-            bottom: 8,
+            bottom: 80,
             right: 8,
             child: SafeArea(
               child: Material(
