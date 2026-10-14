@@ -139,6 +139,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             'curriculumId',
             'courseId',
             'ruleId',
+            'ruleSetId',
           ].any((key) => other.value(key) == r.id),
     );
     final confirmed = await showDialog<bool>(
@@ -170,12 +171,11 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     try {
       await operation();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(
-          () => _error = e is StateError
-              ? '${e.message}'
-              : '처리하지 못했습니다. 다시 시도하세요.',
+          () => _error = e is StateError ? e.message : '처리하지 못했습니다. 다시 시도하세요.',
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -187,8 +187,9 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       AdminKind.institution,
       AdminKind.account,
       AdminKind.scope,
-    ].contains(kind))
+    ].contains(kind)) {
       return false;
+    }
     return _repo.records.any(
       (r) =>
           r.kind == AdminKind.scope &&
@@ -201,6 +202,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                   kind != AdminKind.department ||
               r.value('scopeType') == 'curriculum' &&
                   [
+                    AdminKind.ruleSet,
                     AdminKind.rule,
                     AdminKind.document,
                     AdminKind.curriculumCourse,
@@ -270,6 +272,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                       ),
                     if (_repo.canWrite(_actor, r) &&
                         kind.versioned &&
+                        r.value('ruleSetId').isEmpty &&
                         r.status == 'draft')
                       TextButton(
                         onPressed: _busy
@@ -283,6 +286,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                       ),
                     if (_repo.canWrite(_actor, r) &&
                         kind.versioned &&
+                        r.value('ruleSetId').isEmpty &&
                         r.status == 'applied')
                       TextButton(
                         onPressed: _busy
@@ -373,8 +377,9 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   );
   @override
   Widget build(BuildContext context) {
-    if (!_schools.any((r) => r.id == _schoolId))
+    if (!_schools.any((r) => r.id == _schoolId)) {
       _schoolId = _schools.firstOrNull?.id ?? '';
+    }
     final known =
         AdminWorkspace.menus.containsKey(_section) &&
         widget.path.split('/').length <= 4;
@@ -386,7 +391,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         AdminKind.course,
         AdminKind.curriculumCourse,
       ],
-      '/admin/rules': [AdminKind.rule],
+      '/admin/rules': [AdminKind.ruleSet, AdminKind.rule],
       '/admin/documents': [AdminKind.document],
       '/admin/accounts': [AdminKind.account, AdminKind.scope],
     };
@@ -494,7 +499,10 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     _records(AdminKind.course),
                     _records(AdminKind.curriculumCourse),
                   ],
-                  if (_section == '/admin/rules') _records(AdminKind.rule),
+                  if (_section == '/admin/rules') ...[
+                    _records(AdminKind.ruleSet),
+                    _records(AdminKind.rule),
+                  ],
                   if (_section == '/admin/documents')
                     _records(AdminKind.document),
                   if (_section == '/admin/accounts') ...[

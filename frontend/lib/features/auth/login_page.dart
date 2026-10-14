@@ -298,25 +298,27 @@ class _BrandHeader extends StatelessWidget {
         child: Icon(Icons.route_outlined, color: Colors.white),
       ),
       SizedBox(width: 10),
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'UniversityPath',
-            style: TextStyle(
-              color: Color(0xff193f59),
-              fontSize: AppTypography.section,
-              fontWeight: FontWeight.w800,
+      Flexible(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'UniversityPath',
+              style: TextStyle(
+                color: Color(0xff193f59),
+                fontSize: AppTypography.section,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-          Text(
-            '화면 목업',
-            style: TextStyle(
-              color: Color(0xff607386),
-              fontSize: AppTypography.caption,
+            Text(
+              '화면 목업',
+              style: TextStyle(
+                color: Color(0xff607386),
+                fontSize: AppTypography.caption,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ],
   );

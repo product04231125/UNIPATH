@@ -1,5 +1,9 @@
 # 메뉴 URL 탐색
 
+관리자 개발 세션은 `/admin/overview`, `/admin/schools`, `/admin/curricula`, `/admin/rules`,
+`/admin/documents`, `/admin/history`, `/admin/accounts` hash 경로를 사용한다. 메뉴 아래 목업 ID를
+붙인 상세 경로는 종류·현재 역할·활성 범위를 확인한다. 로그아웃은 기존 `/login`으로 복귀한다.
+
 ## 현재 구현
 
 - Flutter SDK Router로 주요 메뉴 선택과 URL을 연결한다. Web은 기본 hash 전략을 사용해

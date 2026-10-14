@@ -62,6 +62,46 @@ Future<void> openEditor(
 }
 
 void main() {
+  testWidgets(
+    'school selector restricts choices and document opens external confirmation',
+    (tester) async {
+      final repo = FakeAdminRepository();
+      await repo.save(
+        'super-admin',
+        AdminRecord(
+          id: 'd',
+          kind: AdminKind.document,
+          values: {
+            'name': '합성 원문',
+            'institutionId': 'school-a',
+            'documentType': 'graduation',
+            'sourceUrl': 'https://example.org/document',
+          },
+        ),
+      );
+      await tester.pumpWidget(
+        host(
+          AdminWorkspace(
+            repository: repo,
+            role: AppRole.schoolAdmin,
+            path: '/admin/documents/d',
+            onNavigate: (_) {},
+            onSignedOut: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final school = tester.widget<AnchoredSelectField<String>>(
+        find.byType(AnchoredSelectField<String>),
+      );
+      expect(school.options.map((o) => o.value).toList(), ['school-a']);
+      await tester.ensureVisible(find.text('원문 열기 · 외부 열기'));
+      await tester.tap(find.text('원문 열기 · 외부 열기'));
+      await tester.pumpAndSettle();
+      expect(find.text('https://example.org/document'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('admin flows apply draft, preserve version and show details', (
     tester,
   ) async {
@@ -219,6 +259,7 @@ void main() {
     expect(repo.find('scope-a')!.value('reason'), '합성 회수');
   });
   final inputs = <AdminKind, Map<String, String>>{
+    AdminKind.ruleSet: {'name': '합성 규칙 묶음'},
     AdminKind.institution: {'name': '합성 신규 대학'},
     AdminKind.department: {'name': '합성 신규 학과', 'code': 'NEW'},
     AdminKind.curriculum: {

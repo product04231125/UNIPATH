@@ -21,6 +21,7 @@ List<AdminField> adminFields(AdminKind kind) => [
   if ([
     AdminKind.department,
     AdminKind.course,
+    AdminKind.ruleSet,
     AdminKind.rule,
     AdminKind.document,
     AdminKind.scope,
@@ -51,7 +52,8 @@ List<AdminField> adminFields(AdminKind kind) => [
       options: {'true': '필수', 'false': '선택'},
     ),
   ],
-  if (kind == AdminKind.rule ||
+  if (kind == AdminKind.ruleSet ||
+      kind == AdminKind.rule ||
       kind == AdminKind.document ||
       kind == AdminKind.scope) ...[
     const AdminField(
@@ -68,6 +70,12 @@ List<AdminField> adminFields(AdminKind kind) => [
     ),
   ],
   if (kind == AdminKind.rule) ...[
+    const AdminField(
+      'ruleSetId',
+      '규칙 묶음 초안',
+      relation: AdminKind.ruleSet,
+      required: false,
+    ),
     const AdminField(
       'ruleType',
       '규칙 종류',
@@ -97,7 +105,9 @@ List<AdminField> adminFields(AdminKind kind) => [
       required: false,
     ),
   ],
-  if (kind == AdminKind.rule || kind == AdminKind.document) ...[
+  if (kind == AdminKind.ruleSet ||
+      kind == AdminKind.rule ||
+      kind == AdminKind.document) ...[
     const AdminField('effectiveFrom', '적용 시작일 YYYY-MM-DD', required: false),
     const AdminField('effectiveTo', '적용 종료일 YYYY-MM-DD', required: false),
   ],

@@ -6,6 +6,7 @@ enum AdminKind {
   curriculum,
   course,
   curriculumCourse,
+  ruleSet,
   rule,
   document,
   account,
@@ -19,12 +20,16 @@ extension AdminKindLabel on AdminKind {
     AdminKind.curriculum => '교육과정',
     AdminKind.course => '과목',
     AdminKind.curriculumCourse => '교육과정 과목 연결',
+    AdminKind.ruleSet => '규칙 묶음',
     AdminKind.rule => '졸업요건',
     AdminKind.document => '공식 문서',
     AdminKind.account => '사용자',
     AdminKind.scope => '관리 범위',
   };
-  bool get versioned => this == AdminKind.rule || this == AdminKind.document;
+  bool get versioned =>
+      this == AdminKind.ruleSet ||
+      this == AdminKind.rule ||
+      this == AdminKind.document;
 }
 
 /// Temporary mock input model, never a server DTO or official approval.

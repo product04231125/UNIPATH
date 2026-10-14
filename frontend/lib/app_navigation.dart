@@ -79,8 +79,9 @@ class AppNavigation extends RouterDelegate<AppLocation>
       Router.neglect(context, () {
         authenticated = true;
         _role = role;
-        if (role != AppRole.user)
+        if (role != AppRole.user) {
           _location = const AppLocation('/admin/overview');
+        }
         if (_location.path == '/login') _location = const AppLocation('/home');
         notifyListeners();
       });

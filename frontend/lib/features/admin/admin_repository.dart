@@ -54,11 +54,13 @@ class FakeAdminRepository extends AdminRepository {
             r.status == 'active',
       )
       .toList();
+  @override
   String school(AdminRecord r) {
     if (r.kind == AdminKind.institution) return r.id;
     if (r.value('institutionId').isNotEmpty) return r.value('institutionId');
-    if (r.value('departmentId').isNotEmpty)
+    if (r.value('departmentId').isNotEmpty) {
       return find(r.value('departmentId'))?.value('institutionId') ?? '';
+    }
     if (r.value('curriculumId').isNotEmpty) {
       final c = find(r.value('curriculumId'));
       return c == null ? '' : school(c);
@@ -106,8 +108,9 @@ class FakeAdminRepository extends AdminRepository {
       AdminKind.account,
       AdminKind.scope,
       AdminKind.institution,
-    ].contains(r.kind))
+    ].contains(r.kind)) {
       return false;
+    }
     return scopes(actorId).any((s) => _within(s, r));
   }
 
@@ -178,10 +181,12 @@ class FakeAdminRepository extends AdminRepository {
       ('curriculumId', AdminKind.curriculum),
       ('courseId', AdminKind.course),
       ('ruleId', AdminKind.rule),
+      ('ruleSetId', AdminKind.ruleSet),
       ('userId', AdminKind.account),
     ]) {
-      if (r.value(key).isNotEmpty)
+      if (r.value(key).isNotEmpty) {
         _require(find(r.value(key))?.kind == kind, '연결 대상이 없거나 종류가 다릅니다.');
+      }
     }
     if (r.value('institutionId').isNotEmpty &&
         r.value('departmentId').isNotEmpty) {
@@ -209,28 +214,48 @@ class FakeAdminRepository extends AdminRepository {
         '교육과정과 과목의 학교가 다릅니다.',
       );
     }
-    if (r.kind == AdminKind.department || r.kind == AdminKind.course)
+    if (r.kind == AdminKind.department || r.kind == AdminKind.course) {
       _require(r.value('institutionId').isNotEmpty, '학교를 선택하세요.');
-    if (r.kind == AdminKind.curriculum)
+    }
+    if (r.kind == AdminKind.curriculum) {
       _require(r.value('departmentId').isNotEmpty, '학과를 선택하세요.');
+    }
     if (r.kind.versioned) {
+      if (r.value('ruleSetId').isNotEmpty) {
+        final group = find(r.value('ruleSetId'))!;
+        _require(
+          group.status == 'draft' || r.status == 'applied',
+          '적용된 규칙 묶음에 요건을 추가·수정할 수 없습니다.',
+        );
+        _require(
+          [
+            'institutionId',
+            'departmentId',
+            'curriculumId',
+          ].every((key) => group.value(key) == r.value(key)),
+          '요건과 규칙 묶음의 적용 범위가 다릅니다.',
+        );
+      }
       _require(r.value('institutionId').isNotEmpty, '학교를 선택하세요.');
-      if (r.value('curriculumId').isNotEmpty)
+      if (r.value('curriculumId').isNotEmpty) {
         _require(
           school(find(r.value('curriculumId'))!) == school(r),
           '교육과정의 학교가 다릅니다.',
         );
-      if (r.value('ruleId').isNotEmpty)
+      }
+      if (r.value('ruleId').isNotEmpty) {
         _require(
           school(find(r.value('ruleId'))!) == school(r),
           '근거 규칙의 학교가 다릅니다.',
         );
+      }
     }
-    if (r.kind == AdminKind.curriculum)
+    if (r.kind == AdminKind.curriculum) {
       _require(
         RegExp(r'^\d{4}$').hasMatch(r.value('year')),
         '적용 연도는 네 자리로 입력하세요.',
       );
+    }
     if (r.kind == AdminKind.course) {
       final credits = double.tryParse(r.value('credits'));
       _require(
@@ -381,7 +406,9 @@ class FakeAdminRepository extends AdminRepository {
           id: r.id,
           kind: r.kind,
           values: values,
-          version: old?.version ?? r.version,
+          version: r.value('ruleSetId').isNotEmpty
+              ? find(r.value('ruleSetId'))!.version
+              : old?.version ?? r.version,
           lineage: old?.lineage ?? r.lineage,
           status: r.kind == AdminKind.scope ? 'active' : old?.status ?? 'draft',
           createdBy: old?.createdBy ?? actorId,
@@ -419,6 +446,7 @@ class FakeAdminRepository extends AdminRepository {
                 'curriculumId',
                 'courseId',
                 'ruleId',
+                'ruleSetId',
               ].any((key) => other.value(key) == id),
         ),
         '연결된 데이터가 있습니다. 참조를 먼저 정리하세요.',
@@ -433,7 +461,18 @@ class FakeAdminRepository extends AdminRepository {
     _require(r != null, '대상이 없습니다.');
     return _operation(actorId, 'apply', r!, () {
       _require(r.kind.versioned && r.status == 'draft', '초안만 적용할 수 있습니다.');
+      _require(r.value('ruleSetId').isEmpty, '묶음에 속한 요건은 규칙 묶음에서 함께 적용하세요.');
       _validate(r);
+      final children = _records
+          .where((child) => child.value('ruleSetId') == r.id)
+          .toList();
+      if (r.kind == AdminKind.ruleSet) {
+        _require(children.isNotEmpty, '규칙 묶음에 요건을 추가하세요.');
+        for (final child in children) {
+          _require(canWrite(actorId, child), '하위 요건의 관리 범위를 확인하세요.');
+          _validate(child);
+        }
+      }
       _require(
         r.kind != AdminKind.rule ||
             r.value('ruleType').isNotEmpty &&
@@ -446,6 +485,13 @@ class FakeAdminRepository extends AdminRepository {
         appliedBy: actorId,
         appliedAt: now,
       );
+      for (final child in children) {
+        _records[_records.indexOf(child)] = child.copy(
+          status: 'applied',
+          appliedBy: actorId,
+          appliedAt: now,
+        );
+      }
     });
   }
 
@@ -459,6 +505,7 @@ class FakeAdminRepository extends AdminRepository {
         r.kind.versioned && r.status == 'applied',
         '적용 버전에서 새 초안을 만드세요.',
       );
+      _require(r.value('ruleSetId').isEmpty, '하위 요건의 새 버전은 규칙 묶음에서 만드세요.');
       _require(
         !_records.any(
           (other) => other.lineage == r.lineage && other.status == 'draft',
@@ -480,6 +527,25 @@ class FakeAdminRepository extends AdminRepository {
         updatedAt: DateTime.now().toUtc(),
       );
       _records.add(draft);
+      if (r.kind == AdminKind.ruleSet) {
+        final children = _records
+            .where((child) => child.value('ruleSetId') == r.id)
+            .toList();
+        for (final child in children) {
+          _records.add(
+            AdminRecord(
+              id: 'mock-rule-${++_sequence}',
+              kind: AdminKind.rule,
+              values: {...child.values, 'ruleSetId': draft.id},
+              version: draft.version,
+              lineage: child.lineage,
+              createdBy: actorId,
+              updatedBy: actorId,
+              updatedAt: DateTime.now().toUtc(),
+            ),
+          );
+        }
+      }
     });
     return draft;
   }

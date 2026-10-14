@@ -43,6 +43,48 @@ AdminRecord rule(
 
 void main() {
   test(
+    'rule bundle applies children together and clones immutable version',
+    () async {
+      final repo = FakeAdminRepository();
+      final group = AdminRecord(
+        id: 'bundle',
+        kind: AdminKind.ruleSet,
+        values: {'name': '합성 묶음', 'institutionId': 'school-a'},
+      );
+      await repo.save('school-admin', group);
+      await expectLater(repo.apply('school-admin', 'bundle'), throwsStateError);
+      await repo.save(
+        'school-admin',
+        rule('child')
+            .copy(values: {...rule('child').values, 'ruleSetId': 'bundle'}),
+      );
+      await expectLater(repo.apply('school-admin', 'child'), throwsStateError);
+      await repo.apply('school-admin', 'bundle');
+      expect(repo.find('child')!.status, 'applied');
+      await expectLater(
+        repo.save(
+          'school-admin',
+          rule('new')
+              .copy(values: {...rule('new').values, 'ruleSetId': 'bundle'}),
+        ),
+        throwsStateError,
+      );
+      final draft = await repo.newVersion('school-admin', 'bundle');
+      final child = repo.records.singleWhere(
+        (r) => r.value('ruleSetId') == draft.id,
+      );
+      expect(child.version, 2);
+      expect(child.status, 'draft');
+      await repo.save(
+        'school-admin',
+        child.copy(values: {...child.values, 'definition': '새 조건'}),
+      );
+      await repo.apply('school-admin', draft.id);
+      expect(repo.find('child')!.value('definition'), '직접 검토할 합성 조건');
+      expect(repo.find(child.id)!.value('definition'), '새 조건');
+    },
+  );
+  test(
     'admin flows domain validates course relations dates and duplication',
     () async {
       final repo = FakeAdminRepository();

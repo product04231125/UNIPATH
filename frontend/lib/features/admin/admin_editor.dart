@@ -68,20 +68,30 @@ class _AdminEditorState extends State<AdminEditor> {
   Iterable<AdminRecord> _choices(AdminField field) =>
       widget.repository.records.where((r) {
         if (r.kind != field.relation ||
-            !widget.repository.canRead(widget.actorId, r))
+            !widget.repository.canRead(widget.actorId, r)) {
           return false;
-        if (r.kind == AdminKind.account)
+        }
+        if (r.kind == AdminKind.ruleSet &&
+            r.status != 'draft' &&
+            r.id != _value(field.key)) {
+          return false;
+        }
+        if (r.kind == AdminKind.account) {
           return r.value('role') != 'super_admin' &&
               r.value('accountStatus') == 'active';
+        }
         final school = _value('institutionId').isEmpty
             ? widget.schoolId
             : _value('institutionId');
         if (r.kind != AdminKind.institution &&
             school.isNotEmpty &&
-            widget.repository.school(r) != school)
+            widget.repository.school(r) != school) {
           return false;
-        if (r.kind == AdminKind.curriculum && _value('departmentId').isNotEmpty)
+        }
+        if (r.kind == AdminKind.curriculum &&
+            _value('departmentId').isNotEmpty) {
           return r.value('departmentId') == _value('departmentId');
+        }
         return true;
       });
   Future<void> _save() async {
@@ -114,13 +124,14 @@ class _AdminEditorState extends State<AdminEditor> {
       }
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _saving = false;
           _error = e is StateError
-              ? '${e.message}'
+              ? e.message
               : '목업 저장에 실패했습니다. 입력을 유지했으니 다시 시도하세요.';
         });
+      }
     }
   }
 
@@ -208,6 +219,20 @@ class _AdminEditorState extends State<AdminEditor> {
                               onChanged: (v) {
                                 setState(() {
                                   _controllers[field.key]!.text = v;
+                                  if (field.key == 'ruleSetId' &&
+                                      v.isNotEmpty) {
+                                    final group = widget.repository.records
+                                        .firstWhere((r) => r.id == v);
+                                    for (final key in [
+                                      'institutionId',
+                                      'departmentId',
+                                      'curriculumId',
+                                    ]) {
+                                      _controllers[key]!.text = group.value(
+                                        key,
+                                      );
+                                    }
+                                  }
                                 });
                                 state.didChange(v);
                               },
