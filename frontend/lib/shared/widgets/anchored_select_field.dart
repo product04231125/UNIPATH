@@ -40,12 +40,44 @@ class _AnchoredSelectFieldState<T> extends State<AnchoredSelectField<T>> {
       crossAxisUnconstrained: false,
       alignmentOffset: const Offset(0, 4),
       style: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(
+          Theme.of(context).colorScheme.surface,
+        ),
+        elevation: const WidgetStatePropertyAll(4),
+        padding: const WidgetStatePropertyAll(EdgeInsets.all(8)),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+        ),
         minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 0)),
         maximumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 320)),
       ),
       menuChildren: [
         for (final option in widget.options)
           MenuItemButton(
+            style: ButtonStyle(
+              minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              foregroundColor: WidgetStatePropertyAll(
+                Theme.of(context).colorScheme.onSurface,
+              ),
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                final colors = Theme.of(context).colorScheme;
+                if (states.contains(WidgetState.hovered) ||
+                    states.contains(WidgetState.focused)) {
+                  return colors.onSurface.withValues(alpha: .10);
+                }
+                return option.value == widget.value
+                    ? colors.primaryContainer
+                    : null;
+              }),
+            ),
             onPressed: () {
               widget.onChanged(option.value);
               _focus.requestFocus();
