@@ -20,6 +20,40 @@ PlanningEvent event(String title) => PlanningEvent(
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  testWidgets('settings reserves expansion space and stacks profile fields', (
+    tester,
+  ) async {
+    final repository = PlanningRepository();
+    await repository.load();
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: SettingsPage(repository: repository)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextFormField);
+    expect(
+      tester.getTopLeft(fields.at(1)).dx,
+      tester.getTopLeft(fields.at(0)).dx,
+    );
+    expect(
+      tester.getTopLeft(fields.at(1)).dy,
+      greaterThan(tester.getTopLeft(fields.at(0)).dy),
+    );
+    final expansion = find.byKey(const Key('settings-expansion-space'));
+    expect(
+      tester.getTopLeft(expansion).dx,
+      greaterThan(tester.getTopLeft(fields.first).dx),
+    );
+    await tester.enterText(fields.first, '작성 중 학교');
+    await tester.binding.setSurfaceSize(const Size(480, 520));
+    await tester.pumpAndSettle();
+    expect(find.text('작성 중 학교'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test('planning writes commit state only after successful storage', () async {
     final original = PlanningRepository();
     await original.load();

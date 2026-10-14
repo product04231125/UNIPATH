@@ -1,4 +1,3 @@
-import '../../shared/app_style.dart';
 import '../../shared/widgets/responsive_columns.dart';
 
 import 'package:flutter/material.dart';
@@ -100,218 +99,229 @@ class _SettingsPageState extends State<SettingsPage> {
       return Align(
         alignment: Alignment.topLeft,
         child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: UiPreview.of(context).settingsColumns ? 880 : 680,
-          ),
+          constraints: BoxConstraints(maxWidth: 1120),
           child: ContentScrollView(
             padding: const EdgeInsets.only(bottom: 28),
             child: Form(
               key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const PageHeader(title: '설정', contextLabel: '일반'),
-                  Text('학업과 계획', style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 6),
-                  Text(
-                    '이 정보와 개인 일정은 현재 기기에만 저장됩니다. 학교 공식 학적이나 졸업 판정을 변경하지 않습니다.',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      height: 1.45,
+              child: ResponsiveColumns(
+                enabled: true,
+                first: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const PageHeader(title: '설정', contextLabel: '일반'),
+                    Text(
+                      '학업과 계획',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  IgnorePointer(
-                    ignoring: _saving,
-                    child: _settingsCard(
-                      child: ResponsiveColumns(
-                        enabled: UiPreview.of(context).settingsColumns,
-                        first: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              '학업 프로필',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 18),
-                            TextFormField(
-                              controller: _school,
-                              maxLength: 128,
-                              onChanged: (_) => setState(() {
-                                _saved = false;
-                                _dirty = true;
-                              }),
-                              decoration: const InputDecoration(
-                                labelText: '학교',
-                                hintText: '예: 경동대학교',
+                    const SizedBox(height: 6),
+                    Text(
+                      '이 정보와 개인 일정은 현재 기기에만 저장됩니다. 학교 공식 학적이나 졸업 판정을 변경하지 않습니다.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.45,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    IgnorePointer(
+                      ignoring: _saving,
+                      child: _settingsCard(
+                        child: ResponsiveColumns(
+                          enabled: false,
+                          first: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                '학업 프로필',
+                                style: Theme.of(context).textTheme.titleMedium,
                               ),
-                              textInputAction: TextInputAction.next,
-                            ),
-                            const SizedBox(height: 14),
-                            TextFormField(
-                              controller: _department,
-                              maxLength: 128,
-                              onChanged: (_) => setState(() {
-                                _saved = false;
-                                _dirty = true;
-                              }),
-                              decoration: const InputDecoration(
-                                labelText: '학과',
-                                hintText: '예: 컴퓨터공학과',
-                              ),
-                              textInputAction: TextInputAction.next,
-                            ),
-                            const SizedBox(height: 14),
-                            TextFormField(
-                              controller: _admissionYear,
-                              onChanged: (_) => setState(() {
-                                _saved = false;
-                                _dirty = true;
-                              }),
-                              decoration: const InputDecoration(
-                                labelText: '입학연도',
-                                hintText: '예: 2024',
-                              ),
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return null;
-                                }
-                                final year = int.tryParse(value.trim());
-                                final current = DateTime.now().year + 1;
-                                if (year == null ||
-                                    year < 1900 ||
-                                    year > current) {
-                                  return '1900년부터 $current년 사이의 연도를 입력해 주세요.';
-                                }
-                                return null;
-                              },
-                            ),
-                          ],
-                        ),
-                        second: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              '개인 계획',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 18),
-                            AnchoredSelectField<String?>(
-                              value: _track,
-                              label: '이수경로',
-                              options: [
-                                const SelectOption(null, '미입력'),
-                                const SelectOption('single_major', '단일전공'),
-                                const SelectOption('double_major', '복수전공'),
-                                if (_track != null &&
-                                    _track != 'single_major' &&
-                                    _track != 'double_major')
-                                  SelectOption(_track, _track!),
-                              ],
-                              onChanged: (value) => setState(() {
-                                _track = value;
-                                _saved = false;
-                                _dirty = true;
-                              }),
-                            ),
-                            const SizedBox(height: 18),
-                            AnchoredSelectField<int?>(
-                              value: _academicYearOverride,
-                              label: '개인 계획 학년',
-                              options: [
-                                SelectOption<int?>(
-                                  null,
-                                  suggestedYear == null
-                                      ? '자동 계산 (입학연도 필요)'
-                                      : '자동 계산 ($suggestedYear학년 제안)',
-                                ),
-                                for (var year = 1; year <= 4; year++)
-                                  SelectOption<int?>(year, '$year학년으로 직접 설정'),
-                              ],
-                              onChanged: (value) => setState(() {
-                                _academicYearOverride = value;
-                                _saved = false;
-                                _dirty = true;
-                              }),
-                            ),
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                '개인 계획을 위한 안내값입니다. 공식 학적 상태나 서버 추천이 아닙니다.',
-                                style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                  fontSize: AppTypography.caption,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            AnchoredSelectField<WeekStartDay>(
-                              key: const Key('week-start-select'),
-                              value: _weekStartsOn,
-                              label: '주 시작 요일',
-                              options: [
-                                for (final day in WeekStartDay.values)
-                                  SelectOption(day, day.label),
-                              ],
-                              onChanged: (value) {
-                                setState(() {
-                                  _weekStartsOn = value;
+                              const SizedBox(height: 18),
+                              TextFormField(
+                                controller: _school,
+                                maxLength: 128,
+                                onChanged: (_) => setState(() {
                                   _saved = false;
                                   _dirty = true;
-                                });
-                              },
-                            ),
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                '홈과 일정의 7일 표는 일요일부터 시작하며, 원하는 요일로 바꿀 수 있습니다.',
-                                style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                  fontSize: AppTypography.caption,
+                                }),
+                                decoration: const InputDecoration(
+                                  labelText: '학교',
+                                  hintText: '예: 경동대학교',
+                                ),
+                                textInputAction: TextInputAction.next,
+                              ),
+                              const SizedBox(height: 14),
+                              TextFormField(
+                                controller: _department,
+                                maxLength: 128,
+                                onChanged: (_) => setState(() {
+                                  _saved = false;
+                                  _dirty = true;
+                                }),
+                                decoration: const InputDecoration(
+                                  labelText: '학과',
+                                  hintText: '예: 컴퓨터공학과',
+                                ),
+                                textInputAction: TextInputAction.next,
+                              ),
+                              const SizedBox(height: 14),
+                              TextFormField(
+                                controller: _admissionYear,
+                                onChanged: (_) => setState(() {
+                                  _saved = false;
+                                  _dirty = true;
+                                }),
+                                decoration: const InputDecoration(
+                                  labelText: '입학연도',
+                                  hintText: '예: 2024',
+                                ),
+                                keyboardType: TextInputType.number,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return null;
+                                  }
+                                  final year = int.tryParse(value.trim());
+                                  final current = DateTime.now().year + 1;
+                                  if (year == null ||
+                                      year < 1900 ||
+                                      year > current) {
+                                    return '1900년부터 $current년 사이의 연도를 입력해 주세요.';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ],
+                          ),
+                          second: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                '개인 계획',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 18),
+                              AnchoredSelectField<String?>(
+                                value: _track,
+                                label: '이수경로',
+                                options: [
+                                  const SelectOption(null, '미입력'),
+                                  const SelectOption('single_major', '단일전공'),
+                                  const SelectOption('double_major', '복수전공'),
+                                  if (_track != null &&
+                                      _track != 'single_major' &&
+                                      _track != 'double_major')
+                                    SelectOption(_track, _track!),
+                                ],
+                                onChanged: (value) => setState(() {
+                                  _track = value;
+                                  _saved = false;
+                                  _dirty = true;
+                                }),
+                              ),
+                              const SizedBox(height: 18),
+                              AnchoredSelectField<int?>(
+                                value: _academicYearOverride,
+                                label: '개인 계획 학년',
+                                options: [
+                                  SelectOption<int?>(
+                                    null,
+                                    suggestedYear == null
+                                        ? '자동 계산 (입학연도 필요)'
+                                        : '자동 계산 ($suggestedYear학년 제안)',
+                                  ),
+                                  for (var year = 1; year <= 4; year++)
+                                    SelectOption<int?>(year, '$year학년으로 직접 설정'),
+                                ],
+                                onChanged: (value) => setState(() {
+                                  _academicYearOverride = value;
+                                  _saved = false;
+                                  _dirty = true;
+                                }),
+                              ),
+                              const SizedBox(height: 8),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  '개인 계획을 위한 안내값입니다. 공식 학적 상태나 서버 추천이 아닙니다.',
+                                  style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                    fontSize: AppTypography.caption,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 18),
+                              AnchoredSelectField<WeekStartDay>(
+                                key: const Key('week-start-select'),
+                                value: _weekStartsOn,
+                                label: '주 시작 요일',
+                                options: [
+                                  for (final day in WeekStartDay.values)
+                                    SelectOption(day, day.label),
+                                ],
+                                onChanged: (value) {
+                                  setState(() {
+                                    _weekStartsOn = value;
+                                    _saved = false;
+                                    _dirty = true;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 8),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  '홈과 일정의 7일 표는 일요일부터 시작하며, 원하는 요일로 바꿀 수 있습니다.',
+                                  style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                    fontSize: AppTypography.caption,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      FilledButton(
-                        onPressed: _saving ? null : _save,
-                        child: Text(_saving ? '저장 중…' : '기기에 저장'),
-                      ),
-                      if (_saved) ...[
-                        const SizedBox(width: 12),
-                        Icon(
-                          Icons.check_circle_outline,
-                          color: Theme.of(context).colorScheme.primary,
+                    const SizedBox(height: 16),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        FilledButton(
+                          onPressed: _saving ? null : _save,
+                          child: Text(_saving ? '저장 중…' : '기기에 저장'),
                         ),
-                        const SizedBox(width: 4),
-                        Text('저장되었습니다.'),
+                        if (_saved) ...[
+                          const SizedBox(width: 12),
+                          Icon(
+                            Icons.check_circle_outline,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text('저장되었습니다.'),
+                        ],
                       ],
-                    ],
-                  ),
-                  if (_error != null)
-                    Text(
-                      _error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
                     ),
-                  if (widget.chatPreferences != null)
-                    ChatSettingsSection(preferences: widget.chatPreferences!),
-                ],
+                    if (_error != null)
+                      Text(
+                        _error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                  ],
+                ),
+                second: SizedBox(
+                  key: const Key('settings-expansion-space'),
+                  width: double.infinity,
+                  child: widget.chatPreferences == null
+                      ? const SizedBox.shrink()
+                      : ChatSettingsSection(
+                          preferences: widget.chatPreferences!,
+                        ),
+                ),
               ),
             ),
           ),
