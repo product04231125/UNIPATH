@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'features/auth/login_page.dart';
 import 'features/assistant/assistant_api.dart';
 import 'workspace.dart';
+import 'features/auth/app_role.dart';
+import 'features/admin/admin_workspace.dart';
 
 class AppLocation {
   const AppLocation(this.path);
@@ -47,6 +49,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
   final AssistantGateway Function()? assistantFactory;
 
   bool authenticated;
+  AppRole _role = AppRole.user;
   AppLocation _location = const AppLocation('/');
   @override
   final navigatorKey = GlobalKey<NavigatorState>();
@@ -64,14 +67,19 @@ class AppNavigation extends RouterDelegate<AppLocation>
     notifyListeners();
   });
 
-  void _signedIn(BuildContext context) => Router.neglect(context, () {
-    authenticated = true;
-    if (_location.path == '/login') _location = const AppLocation('/home');
-    notifyListeners();
-  });
+  void _signedIn(BuildContext context, [AppRole role = AppRole.user]) =>
+      Router.neglect(context, () {
+        authenticated = true;
+        _role = role;
+        if (role != AppRole.user)
+          _location = const AppLocation('/admin/overview');
+        if (_location.path == '/login') _location = const AppLocation('/home');
+        notifyListeners();
+      });
 
   void _signedOut(BuildContext context) => Router.neglect(context, () {
     authenticated = false;
+    _role = AppRole.user;
     _location = const AppLocation('/login');
     notifyListeners();
   });
@@ -81,7 +89,20 @@ class AppNavigation extends RouterDelegate<AppLocation>
     final menu = _location.menu;
     final Widget page;
     final String key;
-    if (menu == null && _location.path != '/login') {
+    if (_location.path.startsWith('/admin') && authenticated) {
+      key = 'admin';
+      page = AdminWorkspace(
+        role: _role,
+        path: _location.path,
+        onNavigate: (path) => Router.navigate(context, () {
+          _location = AppLocation(path);
+          notifyListeners();
+        }),
+        onSignedOut: () => _signedOut(context),
+      );
+    } else if (menu == null &&
+        _location.path != '/login' &&
+        !_location.path.startsWith('/admin')) {
       key = 'unknown';
       page = Scaffold(
         body: Center(
@@ -99,7 +120,21 @@ class AppNavigation extends RouterDelegate<AppLocation>
       );
     } else if (!authenticated || _location.path == '/login') {
       key = 'login';
-      page = LoginPage(onSignedIn: () => _signedIn(context));
+      page = LoginPage(
+        onSignedIn: () => _signedIn(context),
+        onSampleSignedIn: (role) => _signedIn(context, role),
+      );
+    } else if (_role != AppRole.user) {
+      key = 'admin';
+      page = AdminWorkspace(
+        role: _role,
+        path: '/admin/overview',
+        onNavigate: (path) => Router.navigate(context, () {
+          _location = AppLocation(path);
+          notifyListeners();
+        }),
+        onSignedOut: () => _signedOut(context),
+      );
     } else {
       key = 'workspace';
       page = Workspace(

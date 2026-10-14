@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+
+import 'app_role.dart';
+
 import 'package:university_path_frontend/shared/app_typography.dart';
 
 /// Temporary entry screen. It has no API, token, or role behavior yet.
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key, required this.onSignedIn});
+  const LoginPage({super.key, required this.onSignedIn, this.onSampleSignedIn});
 
   final VoidCallback onSignedIn;
+  final ValueChanged<AppRole>? onSampleSignedIn;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -122,18 +127,60 @@ class _LoginPageState extends State<LoginPage> {
                         height: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 28),
-                    const Divider(),
-                    const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      key: const Key('sample-student-entry'),
-                      onPressed: widget.onSignedIn,
-                      icon: const Icon(Icons.visibility_outlined),
-                      label: const Text('입력 없이 학생 화면 목업 보기'),
-                    ),
+                    if (!kReleaseMode) ...[
+                      const SizedBox(height: 28),
+                      const Divider(),
+                      const Text('개발용 샘플 진입 · 실제 인증 아님'),
+                      const SizedBox(height: 16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              key: const Key('sample-student-entry'),
+                              onPressed: () {
+                                if (widget.onSampleSignedIn != null) {
+                                  widget.onSampleSignedIn!(AppRole.user);
+                                } else {
+                                  widget.onSignedIn();
+                                }
+                              },
+                              child: const Text('학생'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                OutlinedButton(
+                                  key: const Key('sample-school-admin-entry'),
+                                  onPressed: widget.onSampleSignedIn == null
+                                      ? null
+                                      : () => widget.onSampleSignedIn!(
+                                          AppRole.schoolAdmin,
+                                        ),
+                                  child: const Text('학교관리자'),
+                                ),
+                                const SizedBox(height: 8),
+                                OutlinedButton(
+                                  key: const Key('sample-super-admin-entry'),
+                                  onPressed: widget.onSampleSignedIn == null
+                                      ? null
+                                      : () => widget.onSampleSignedIn!(
+                                          AppRole.superAdmin,
+                                        ),
+                                  child: const Text('슈퍼관리자'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     const Text(
-                      '관리자 역할과 학교 검색은 API·권한 계약 확정 후 연결합니다.',
+                      '학생과 관리자는 같은 로그인으로 인증합니다. 현재 일반 로그인은 학생 목업으로 연결되며 실제 역할은 인증 API 응답으로 연결할 예정입니다.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Color(0xff778894),
