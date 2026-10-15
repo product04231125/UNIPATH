@@ -35,8 +35,9 @@ class PlanningRepository extends ChangeNotifier {
   // All windows share this owner. Build each write from the last committed
   // state so a school-context update cannot overwrite an in-flight event save.
   Future<void> _enqueue(Future<void> Function() operation) {
-    if (_disposed)
+    if (_disposed) {
       return Future.error(StateError('Planning repository is closed'));
+    }
     final result = _pendingOperation.then((_) => operation());
     _pendingOperation = result.then<void>(
       (_) {},

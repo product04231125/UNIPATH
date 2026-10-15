@@ -55,8 +55,9 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
     } catch (_) {
       if (mounted && revision == _loadRevision) setState(() => _failed = true);
     } finally {
-      if (mounted && revision == _loadRevision)
+      if (mounted && revision == _loadRevision) {
         setState(() => _loading = false);
+      }
     }
   }
 

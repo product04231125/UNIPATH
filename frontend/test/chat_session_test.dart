@@ -12,7 +12,7 @@ void main() {
     final calls = <String>[];
     var childExists = true;
     messenger.setMockMethodCallHandler(windows, (call) async {
-      if (call.method == 'getAllWindows')
+      if (call.method == 'getAllWindows') {
         return [
           {'windowId': 'main', 'windowArgument': ''},
           if (childExists)
@@ -21,8 +21,10 @@ void main() {
               'windowArgument': 'university_path_ai_detached_chat',
             },
         ];
-      if (call.method == 'window_hide')
+      }
+      if (call.method == 'window_hide') {
         calls.add('hide:${call.arguments['windowId']}');
+      }
       return null;
     });
     messenger.setMockMethodCallHandler(channels, (call) async {
