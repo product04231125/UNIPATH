@@ -132,3 +132,5 @@ AI 도우미는 기록·탐색·문서 설명을 보조한다. 졸업 충족 판
 - shared_school_context_test의 school draft requires confirmation과 questions wait for saved profile로 확인·취소·폐기·저장 중 차단을 검사한다.
 
 - 작업 공간이 경로 변경 등으로 제거될 때도 같은 세션 종료를 수행한다. 창 생성 중 화면이 제거돼도 생성 완료 뒤 종료하며, 네이티브 다음 열기는 진행 중인 이전 종료를 기다린다. removing workspace while child opens 회귀 검사로 확인한다.
+
+- 닫힌 내부 패널의 재열기와 좁은 전용 보기 전환 시 AI 내부의 이전 제어 또는 첫 제어로 포커스를 복원한다. 재열기 직후 Esc·Tab도 동작한다. 실제 Web에서 재현한 포커스 유실을 수정하고 keyboard_traversal_test에 재열기 회귀를 추가했다.

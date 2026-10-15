@@ -17,6 +17,7 @@ class AssistantPanel extends StatefulWidget {
     this.suggestContext,
     this.saveContext,
     this.fullScreen = false,
+    this.active = true,
   });
   final AssistantConversation conversation;
   final VoidCallback onClose;
@@ -25,6 +26,7 @@ class AssistantPanel extends StatefulWidget {
   final SchoolQueryContext Function()? suggestContext;
   final Future<void> Function(SchoolQueryContext)? saveContext;
   final bool fullScreen;
+  final bool active;
 
   @override
   AssistantPanelState createState() => AssistantPanelState();
@@ -51,6 +53,7 @@ class AssistantPanelState extends State<AssistantPanel> {
   void initState() {
     super.initState();
     _updateTraversal();
+    if (widget.active && widget.fullScreen) _restoreFocus();
     conversation.addListener(_followMessages);
   }
 
@@ -58,6 +61,10 @@ class AssistantPanelState extends State<AssistantPanel> {
   void didUpdateWidget(covariant AssistantPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     _updateTraversal();
+    if (widget.active &&
+        (!oldWidget.active || (!oldWidget.fullScreen && widget.fullScreen))) {
+      _restoreFocus();
+    }
     if (oldWidget.conversation != conversation) {
       oldWidget.conversation.removeListener(_followMessages);
       conversation.addListener(_followMessages);
@@ -83,6 +90,17 @@ class AssistantPanelState extends State<AssistantPanel> {
         : TraversalEdgeBehavior.parentScope;
   }
 
+  void _restoreFocus() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !widget.active) return;
+      final previous = _focusScope.focusedChild;
+      final target = previous != null && previous.canRequestFocus
+          ? previous
+          : _focusScope.traversalDescendants.firstOrNull;
+      target?.requestFocus();
+    });
+  }
+
   @override
   void dispose() {
     conversation.removeListener(_followMessages);
@@ -101,8 +119,9 @@ class AssistantPanelState extends State<AssistantPanel> {
   Future<bool> prepareToLeave() async {
     if (_savingContext) return false;
     if (_editingContext &&
-        await _contextForm.currentState?.confirmLeave() == false)
+        await _contextForm.currentState?.confirmLeave() == false) {
       return false;
+    }
     if (!mounted) return false;
     setState(() => _editingContext = false);
     return true;

@@ -264,6 +264,7 @@ class _WorkspaceState extends State<Workspace> {
           _buildPage(navigationItems.length, layout),
       assistantBuilder: (context, width, fullScreen) => AssistantPanel(
         key: _assistantPanelKey,
+        active: _chatOpen,
         fullScreen: fullScreen,
         conversation: _assistantConversation,
         saveContext: _sharedSchoolContext.save,

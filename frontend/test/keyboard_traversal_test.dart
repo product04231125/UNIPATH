@@ -53,6 +53,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(SettingsPage), findsOneWidget);
     expect(find.byType(AssistantPanel), findsNothing);
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    expect(inWidget(AssistantPanel), isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(AssistantPanel), findsNothing);
     expect(
       Focus.of(tester.element(find.byIcon(Icons.chat_bubble_outline))).hasFocus,
       isTrue,
@@ -220,7 +226,11 @@ void main() {
       }
       expect(sawTitle, isTrue);
       await tab(tester, reverse: true);
-      expect(Focus.of(tester.element(find.byIcon(Icons.chat_bubble_outline))).hasFocus, isTrue);
+      expect(
+        Focus.of(tester.element(find.byIcon(Icons.chat_bubble_outline)))
+            .hasFocus,
+        isTrue,
+      );
       await tab(tester, reverse: true);
       expect(inWidget(SettingsPage), isTrue);
       expect(tester.takeException(), isNull);
