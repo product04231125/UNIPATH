@@ -113,19 +113,7 @@ class _LoginPageState extends State<LoginPage> {
                         textStyle: TextStyle(fontWeight: FontWeight.w800),
                       ),
                       onPressed: _submit,
-                      child: Text(_isLogin ? '로그인' : '가입하고 목업 보기'),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      _isLogin
-                          ? '인증 API 연동 전 화면 목업입니다. 입력값은 서버에 전송하거나 저장하지 않습니다.'
-                          : '회원가입은 화면 흐름만 재현합니다. 계정, 학교 정보, 역할은 생성·저장되지 않습니다.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: AppTypography.caption,
-                        height: 1.5,
-                      ),
+                      child: Text(_isLogin ? '로그인' : '회원가입'),
                     ),
                     if (!kReleaseMode) ...[
                       const SizedBox(height: 28),
@@ -178,15 +166,6 @@ class _LoginPageState extends State<LoginPage> {
                         ],
                       ),
                     ],
-                    const SizedBox(height: 8),
-                    Text(
-                      '학생과 관리자는 같은 로그인으로 인증합니다. 현재 일반 로그인은 학생 목업으로 연결되며 실제 역할은 인증 API 응답으로 연결할 예정입니다.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: AppTypography.caption,
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -306,13 +285,6 @@ class _BrandHeader extends StatelessWidget {
                 color: Theme.of(context).colorScheme.onSurface,
                 fontSize: AppTypography.section,
                 fontWeight: FontWeight.w800,
-              ),
-            ),
-            Text(
-              '화면 목업',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontSize: AppTypography.caption,
               ),
             ),
           ],

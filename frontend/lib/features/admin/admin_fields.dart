@@ -118,7 +118,7 @@ List<AdminField> adminFields(AdminKind kind) => [
         'custom': '기타',
       },
     ),
-    const AdminField('definition', '조건·대체 요건 설명 (목업)', multiline: true),
+    const AdminField('definition', '조건·대체 요건 설명', multiline: true),
     const AdminField('sourceUrl', '근거 HTTP(S) URL', required: false),
   ],
   if (kind == AdminKind.document) ...[
@@ -142,7 +142,7 @@ List<AdminField> adminFields(AdminKind kind) => [
     const AdminField('effectiveTo', '적용 종료일 YYYY-MM-DD', required: false),
   ],
   if (kind == AdminKind.scope) ...[
-    const AdminField('userId', '기존 합성 사용자', relation: AdminKind.account),
+    const AdminField('userId', '사용자', relation: AdminKind.account),
     const AdminField(
       'scopeType',
       '관리 범위',

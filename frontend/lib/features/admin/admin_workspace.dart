@@ -159,7 +159,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         title: Text('${r.name} · $action'),
         content: Text(
           action == '초안 적용'
-              ? 'v${r.version}의 내용·관리 범위·근거를 검토했습니까? 목업 상태만 적용하며 실제 학교 승인이나 졸업 판정은 아닙니다.'
+              ? 'v${r.version}의 내용·관리 범위·근거를 검토했습니까?'
               : '대상과 연결 영향을 확인하세요. 참조가 남은 삭제는 차단하고 적용 이력은 보존합니다.\n연결된 항목 ${references.length}개: ${references.where((other) => _repo.canRead(_actor, other)).map((other) => other.name).join(', ')}',
         ),
         actions: [
@@ -226,7 +226,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       r.kind == AdminKind.account ? r.value('accountStatus') : r.status;
   String _statusLabel(String status) => switch (status) {
     'draft' => '초안',
-    'applied' => '목업 적용',
+    'applied' => '적용됨',
     'active' => '활성',
     'revoked' => '회수됨',
     'suspended' => '정지',
@@ -527,13 +527,13 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     ],
   );
   String _actorName(String id) {
-    if (id.isEmpty) return '초기 합성 자료';
+    if (id.isEmpty) return '기록 없음';
     if (id == _actor) return '나';
     final name = _relationName(id);
     return name.isEmpty ? '관리자' : name;
   }
 
-  String _timeLabel(DateTime? value, {String empty = '초기 합성 자료'}) {
+  String _timeLabel(DateTime? value, {String empty = '기록 없음'}) {
     if (value == null) return empty;
     final local = value.toLocal();
     String two(int v) => v.toString().padLeft(2, '0');
@@ -822,7 +822,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text('${_role.label} · 관리자 작업 공간'),
-              const Text('개발용 목업 · 실제 권한 및 서버 저장 없음'),
+
               const SizedBox(height: 12),
               if (_schools.isNotEmpty && allowed)
                 Align(

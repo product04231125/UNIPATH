@@ -462,11 +462,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                     if (entries.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       const Divider(),
-                      Text(
-                        isCourse
-                            ? '목업용 예시 과목 · 개인 입력 합계에서 제외'
-                            : '목업용 예시 기록 · 개인 기록 및 합계에서 제외',
-                      ),
+
                       for (final entry in entries) _entry(entry),
                     ],
                   ],

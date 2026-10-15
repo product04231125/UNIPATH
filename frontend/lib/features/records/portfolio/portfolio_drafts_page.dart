@@ -222,7 +222,7 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
               _repository.compositions.isEmpty &&
               widget.onOpenAchievements != null) ...[
             const SizedBox(height: 8),
-            const Text('목업 예시는 구성에 사용할 수 없습니다. 개인 성과를 추가하세요.'),
+
             const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: widget.onOpenAchievements,

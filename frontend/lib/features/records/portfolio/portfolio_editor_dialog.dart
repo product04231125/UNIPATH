@@ -346,7 +346,7 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
                   ),
                 ),
               ),
-            const Text('추가할 개인 기록 선택 · 예시 데이터는 제외됩니다.'),
+            const Text('추가할 개인 기록 선택'),
             if (candidates.isEmpty)
               const Text('개인 기록이 없습니다. 성과 기록 또는 경험 메뉴에서 먼저 추가하세요.'),
             for (final source in candidates.where(

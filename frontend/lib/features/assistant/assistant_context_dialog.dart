@@ -73,13 +73,10 @@ class _ContextFormState extends State<SchoolQueryContextForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              '테스트용 설정창',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
+            const Text('학교 정보', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
             const Text(
-              '설정과 같은 학교 정보를 사용합니다. 저장 후 질문을 보낼 때 질문과 아래 정보만 전송합니다. 개인 기록과 예시 졸업 기준은 전송하지 않습니다.',
+              '설정과 같은 학교 정보를 사용합니다. 저장 후 질문을 보낼 때 질문과 아래 정보만 전송합니다. 개인 기록은 전송하지 않습니다.',
             ),
             const SizedBox(height: 16),
             TextFormField(

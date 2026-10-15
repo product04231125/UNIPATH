@@ -133,7 +133,7 @@ class WorkspaceShell extends StatelessWidget {
                           child: Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
-                              'UniversityPath  화면 목업',
+                              'UniversityPath',
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 color: Theme.of(context).colorScheme.onSurface,
@@ -436,13 +436,6 @@ class _Brand extends StatelessWidget {
                 style: TextStyle(
                   fontSize: AppTypography.section,
                   fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text(
-                '화면 목업',
-                style: TextStyle(
-                  fontSize: AppTypography.caption,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],

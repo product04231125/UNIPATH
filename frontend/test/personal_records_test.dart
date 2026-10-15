@@ -18,7 +18,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('개인 기록이 없습니다. 직접 입력해 주세요.'), findsOneWidget);
-    expect(find.text('목업용 예시 기록 · 개인 기록 및 합계에서 제외'), findsOneWidget);
+    expect(find.text('학과 멘토링'), findsOneWidget);
     expect(find.byType(ExpansionTile), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -50,7 +50,7 @@ void main() {
         );
         await tester.pumpAndSettle();
         final own = find.text('내 과목');
-        final example = find.text('목업용 예시 과목 · 개인 입력 합계에서 제외');
+        final example = find.text('자료구조');
         expect(
           tester.getTopLeft(own).dy,
           lessThan(tester.getTopLeft(example).dy),

@@ -41,7 +41,7 @@ void main() {
             .minimumContentWidth,
         requiredWidth,
       );
-      expect(find.text('내 교육과정 학점 현황 · 예시'), findsOneWidget);
+      expect(find.text('내 교육과정 학점 현황'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

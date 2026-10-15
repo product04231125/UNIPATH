@@ -86,7 +86,7 @@ void main() {
         find.byKey(const ValueKey('admin-field-name')),
         '합성 보존 대학',
       );
-      await tester.tap(find.text('목업에 저장'));
+      await tester.tap(find.text('저장'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('관리 현황'));
       await tester.pumpAndSettle();

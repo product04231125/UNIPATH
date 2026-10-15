@@ -49,9 +49,7 @@ class _GraduationPageState extends State<GraduationPage> {
         children: [
           PageHeader(
             title: '졸업 요건',
-            contextLabel: widget.showMockData
-                ? '예시 데이터 · 학교 연동·공식 판정 API 미연결'
-                : '학교 연동·공식 판정 API 미연결',
+            contextLabel: '학교 연동·공식 판정 API 미연결',
             actions: [
               OutlinedButton.icon(
                 onPressed: () {
@@ -74,9 +72,7 @@ class _GraduationPageState extends State<GraduationPage> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const Text(
-                  '아래 표는 화면 설명용 예시입니다. 실제 졸업 결과가 아닙니다. 내 자료는 개인 기준 설정에서 입력하세요.',
-                ),
+                const Text('학교 공식 졸업 판정이 아닙니다. 내 자료는 개인 기준 설정에서 입력하세요.'),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
@@ -124,9 +120,9 @@ class _GraduationPageState extends State<GraduationPage> {
 
   Widget _table() {
     final (title, headers, rows) = switch (_tab) {
-      '대학 공통' => ('대학 공통 기준 · 예시', commonRuleHeaders, commonRuleRows),
-      '내 교육과정' => ('내 교육과정 학점 현황 · 예시', curriculumHeaders, curriculumRows),
-      _ => ('학과 졸업인증 · 예시', departmentHeaders, departmentRows),
+      '대학 공통' => ('대학 공통 기준', commonRuleHeaders, commonRuleRows),
+      '내 교육과정' => ('내 교육과정 학점 현황', curriculumHeaders, curriculumRows),
+      _ => ('학과 졸업인증', departmentHeaders, departmentRows),
     };
     final compact = _tab == '내 교육과정';
     return SurfaceCard(

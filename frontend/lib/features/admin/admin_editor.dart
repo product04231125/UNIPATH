@@ -130,7 +130,7 @@ class _AdminEditorState extends State<AdminEditor> {
           _saving = false;
           _error = e is StateError
               ? e.message
-              : '목업 저장에 실패했습니다. 입력을 유지했으니 다시 시도하세요.';
+              : '저장에 실패했습니다. 입력을 유지했으니 다시 시도하세요.';
         });
       }
     }
@@ -161,7 +161,6 @@ class _AdminEditorState extends State<AdminEditor> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('개발용 합성 데이터 · 실제 권한·학교 승인·서버 저장이 아닙니다.'),
           const SizedBox(height: 16),
           for (final group in adminFieldGroups(_fields).entries) ...[
             Padding(
@@ -289,7 +288,7 @@ class _AdminEditorState extends State<AdminEditor> {
               ? '저장 중…'
               : widget.revoke
               ? '범위 회수'
-              : '목업에 저장',
+              : '저장',
         ),
       ),
     ],

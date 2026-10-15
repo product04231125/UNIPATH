@@ -230,7 +230,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('수정'), findsNothing);
     expect(find.text('합성 적용 실패'), findsNothing);
-    expect(find.text('버전 1 · 목업 적용'), findsOneWidget);
+    expect(find.text('버전 1 · 적용됨'), findsOneWidget);
     await tester.tap(find.text('새 버전 초안'));
     await tester.pumpAndSettle();
     await tester.tap(
@@ -631,7 +631,7 @@ void main() {
       }.entries) {
         await setField(tester, entry.key, entry.value);
       }
-      await tester.tap(find.text('목업에 저장'));
+      await tester.tap(find.text('저장'));
       await tester.pumpAndSettle();
       expect(
         repo.records.any((r) => r.kind == AdminKind.curriculumCourse),
@@ -642,7 +642,7 @@ void main() {
       await setField(tester, 'documentType', 'graduation');
       await setField(tester, 'sourceUrl', 'https://example.org/document');
       expect(find.text('취소').hitTestable(), findsOneWidget);
-      expect(find.text('목업에 저장').hitTestable(), findsOneWidget);
+      expect(find.text('저장').hitTestable(), findsOneWidget);
       await tester.tap(find.text('취소'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('내용 폐기'));
@@ -662,7 +662,7 @@ void main() {
       record: repo.find('sample-user'),
     );
     await setField(tester, 'accountStatus', 'suspended');
-    await tester.tap(find.text('목업에 저장'));
+    await tester.tap(find.text('저장'));
     await tester.pumpAndSettle();
     expect(repo.active('sample-user'), isFalse);
     await tester.pumpWidget(
@@ -735,7 +735,7 @@ void main() {
             .text,
         entry.value['name'],
       );
-      await tester.tap(find.text('목업에 저장'));
+      await tester.tap(find.text('저장'));
       await tester.pumpAndSettle();
       expect(find.byType(InputDialog), findsNothing);
       final created = repo.records.singleWhere(
@@ -747,7 +747,7 @@ void main() {
       expect(find.byType(InputDialog), findsNothing);
       await openEditor(tester, repo, entry.key, record: created);
       await setField(tester, 'name', '수정 ${created.name}');
-      await tester.tap(find.text('목업에 저장'));
+      await tester.tap(find.text('저장'));
       await tester.pumpAndSettle();
       expect(repo.find(created.id)!.name, '수정 ${created.name}');
       expect(tester.takeException(), isNull);
@@ -768,7 +768,7 @@ void main() {
       );
       await openEditor(tester, repo, AdminKind.institution);
       await setField(tester, 'name', '합성 실패 보존');
-      await tester.tap(find.text('목업에 저장'));
+      await tester.tap(find.text('저장'));
       await tester.pump();
       expect(
         tester
@@ -788,7 +788,7 @@ void main() {
             .text,
         '합성 실패 보존',
       );
-      await tester.tap(find.text('목업에 저장'));
+      await tester.tap(find.text('저장'));
       await tester.pumpAndSettle();
       expect(repo.records.any((r) => r.name == '합성 실패 보존'), isTrue);
     },
@@ -811,7 +811,7 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        expect(find.text('개발용 목업 · 실제 권한 및 서버 저장 없음'), findsOneWidget);
+        expect(find.text('개발용 목업 · 실제 권한 및 서버 저장 없음'), findsNothing);
       });
     }
   }

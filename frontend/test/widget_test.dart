@@ -75,7 +75,7 @@ void main() {
 
     expect(find.text('이름'), findsOneWidget);
     expect(find.byKey(const Key('signup-submit')), findsOneWidget);
-    expect(find.textContaining('계정, 학교 정보, 역할은 생성·저장되지 않습니다.'), findsOneWidget);
+    expect(find.textContaining('계정, 학교 정보, 역할은 생성·저장되지 않습니다.'), findsNothing);
     await tester.binding.setSurfaceSize(null);
   });
 
