@@ -31,6 +31,34 @@ Future<void> tab(WidgetTester tester, {bool reverse = false}) async {
 }
 
 void main() {
+  testWidgets('narrow AI occupies workspace and returns with Escape', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 520));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('설정'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byType(AssistantPanel)).width, 480);
+    expect(find.byType(SettingsPage), findsNothing);
+    expect(inWidget(AssistantPanel), isTrue);
+    for (var i = 0; i < 16; i++) {
+      await tab(tester, reverse: i >= 8);
+      expect(inWidget(AssistantPanel), isTrue);
+    }
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsPage), findsOneWidget);
+    expect(find.byType(AssistantPanel), findsNothing);
+    expect(
+      Focus.of(tester.element(find.byIcon(Icons.chat_bubble_outline))).hasFocus,
+      isTrue,
+    );
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('AI is after body and before top bar; close restores opener', (
     tester,
   ) async {
@@ -191,6 +219,8 @@ void main() {
         }
       }
       expect(sawTitle, isTrue);
+      await tab(tester, reverse: true);
+      expect(Focus.of(tester.element(find.byIcon(Icons.chat_bubble_outline))).hasFocus, isTrue);
       await tab(tester, reverse: true);
       expect(inWidget(SettingsPage), isTrue);
       expect(tester.takeException(), isNull);

@@ -239,8 +239,9 @@ class _WorkspaceState extends State<Workspace> {
       }),
       pageBuilder: (context, layout) =>
           _buildPage(navigationItems.length, layout),
-      assistantBuilder: (context, width) => AssistantPanel(
+      assistantBuilder: (context, width, fullScreen) => AssistantPanel(
         key: _assistantPanelKey,
+        fullScreen: fullScreen,
         conversation: _assistantConversation,
         saveContext: _sharedSchoolContext.save,
         suggestContext: () {
@@ -291,9 +292,7 @@ class _WorkspaceState extends State<Workspace> {
       switch (index) {
         0 => HomePage(
           repository: _planningRepository,
-          coveredRightWidth: layout.showAssistantOverlay
-              ? layout.assistantOverlayWidth
-              : 0,
+          coveredRightWidth: 0,
           onOpenPage: _selectPage,
           onOpenSettings: () => _selectPage(settingsPage - 1),
           onOpenSchedule: (day) {

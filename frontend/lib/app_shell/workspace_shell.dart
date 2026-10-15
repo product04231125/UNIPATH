@@ -61,7 +61,8 @@ class WorkspaceShell extends StatelessWidget {
   final ValueChanged<double> onAssistantWidthChanged;
   final Widget Function(BuildContext context, WorkspaceShellLayout layout)
   pageBuilder;
-  final Widget Function(BuildContext context, double width) assistantBuilder;
+  final Widget Function(BuildContext context, double width, bool fullScreen)
+  assistantBuilder;
   final double minimumContentWidth;
   final bool sidebarVisible, integratedTitleBar;
   final FocusNode? assistantButtonFocus;
@@ -89,8 +90,7 @@ class WorkspaceShell extends StatelessWidget {
     final showDockedAssistant = maxWidth >= 1180 && isAssistantOpen;
     final showAssistantOverlay =
         maxWidth < 1180 && isAssistantOpen && isAssistantManuallyOpened;
-    // Leave a usable strip beside the compact overlay even at the 480px fallback.
-    final overlayWidth = ((maxWidth - 72) / 2).clamp(200.0, 360.0);
+    final overlayWidth = maxWidth;
     final dockWidth = showDockedAssistant ? assistantWidth + 6 : 0.0;
     final compactNavigation =
         !sidebarVisible ||
@@ -109,87 +109,109 @@ class WorkspaceShell extends StatelessWidget {
       assistantOverlayWidth: overlayWidth,
     );
     return Stack(
+      fit: StackFit.expand,
       children: [
-        Row(
-          children: [
-            _Sidebar(
-              compact: compactNavigation,
-              selectedPage: selectedPage,
-              navigationItems: navigationItems,
-              onPageSelected: onPageSelected,
-              showMockData: showMockData,
-              onMockDataChanged: onMockDataChanged,
-              onSignedOut: onSignedOut,
-            ),
-            Expanded(
-              child: ClipRect(
-                child: Column(
-                  children: [
-                    if (!integratedTitleBar)
-                      SizedBox(
-                        height: 52,
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'UniversityPath',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: Theme.of(context).colorScheme.onSurface,
+        ExcludeFocus(
+          excluding: showAssistantOverlay,
+          child: ExcludeSemantics(
+            excluding: showAssistantOverlay,
+            child: Offstage(
+              offstage: showAssistantOverlay,
+              child: Row(
+                children: [
+                  _Sidebar(
+                    compact: compactNavigation,
+                    selectedPage: selectedPage,
+                    navigationItems: navigationItems,
+                    onPageSelected: onPageSelected,
+                    showMockData: showMockData,
+                    onMockDataChanged: onMockDataChanged,
+                    onSignedOut: onSignedOut,
+                  ),
+                  Expanded(
+                    child: ClipRect(
+                      child: Column(
+                        children: [
+                          if (!integratedTitleBar)
+                            SizedBox(
+                              height: 52,
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 20),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'UniversityPath',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface,
+                                    ),
+                                  ),
+                                ),
                               ),
+                            ),
+                          Expanded(
+                            child: Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                compactNavigation ? 16 : 28,
+                                26,
+                                compactNavigation ? 16 : 28,
+                                30,
+                              ),
+                              child: pageBuilder(context, layout),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (showDockedAssistant)
+                    MouseRegion(
+                      cursor: SystemMouseCursors.resizeColumn,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onHorizontalDragUpdate: (details) =>
+                            onAssistantWidthChanged(details.delta.dx),
+                        child: SizedBox(
+                          width: 8,
+                          child: Center(
+                            child: Container(
+                              width: 1,
+                              height: double.infinity,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .outlineVariant,
                             ),
                           ),
                         ),
                       ),
-                    Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          compactNavigation ? 16 : 28,
-                          26,
-                          compactNavigation ? 16 : 28,
-                          30,
-                        ),
-                        child: pageBuilder(context, layout),
-                      ),
                     ),
-                  ],
-                ),
+                  if (showDockedAssistant) SizedBox(width: assistantWidth),
+                ],
               ),
-            ),
-            if (showDockedAssistant)
-              MouseRegion(
-                cursor: SystemMouseCursors.resizeColumn,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onHorizontalDragUpdate: (details) =>
-                      onAssistantWidthChanged(details.delta.dx),
-                  child: SizedBox(
-                    width: 8,
-                    child: Center(
-                      child: Container(
-                        width: 1,
-                        height: double.infinity,
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            if (showDockedAssistant) assistantBuilder(context, assistantWidth),
-          ],
-        ),
-        if (showAssistantOverlay)
-          Positioned(
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: overlayWidth,
-            child: Material(
-              elevation: 18,
-              child: assistantBuilder(context, overlayWidth),
             ),
           ),
+        ),
+        Positioned(
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: showAssistantOverlay ? overlayWidth : assistantWidth,
+          child: Offstage(
+            offstage: !showDockedAssistant && !showAssistantOverlay,
+            child: ExcludeFocus(
+              excluding: !showDockedAssistant && !showAssistantOverlay,
+              child: Material(
+                child: assistantBuilder(
+                  context,
+                  showAssistantOverlay ? overlayWidth : assistantWidth,
+                  showAssistantOverlay,
+                ),
+              ),
+            ),
+          ),
+        ),
         if (!showDockedAssistant && !showAssistantOverlay)
           Positioned(
             right: 18,
