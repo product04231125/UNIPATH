@@ -10,6 +10,33 @@ import 'package:university_path_frontend/features/records/activity/activity_page
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  testWidgets(
+    'activity preserves recorded meaning and localizes stored approval',
+    (tester) async {
+      final repo = PersonalRecordRepository(PersonalRecordKind.activity);
+      await repo.load();
+      await repo.save(
+        PersonalRecord(
+          id: 'approval-label',
+          values: {'title': '내 활동', 'approval': 'needs_review'},
+        ),
+      );
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: ActivityPage(showMockData: true)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('기록됨'), findsOneWidget);
+      expect(find.text('충족'), findsNothing);
+      expect(find.textContaining('사용자가 확인한 승인 상태: 검토 필요'), findsOneWidget);
+      expect(find.textContaining('needs_review'), findsNothing);
+      final loaded = PersonalRecordRepository(PersonalRecordKind.activity);
+      await loaded.load();
+      expect(loaded.records.single.value('approval'), 'needs_review');
+    },
+  );
+
   testWidgets('activity separates examples and collapses guidance', (
     tester,
   ) async {

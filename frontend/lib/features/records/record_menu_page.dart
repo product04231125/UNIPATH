@@ -550,7 +550,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           ),
         ),
         const SizedBox(width: 10),
-        StatusBadge(status: entry.status == '기록됨' ? '충족' : entry.status),
+        StatusBadge(status: entry.status),
       ],
     ),
   );

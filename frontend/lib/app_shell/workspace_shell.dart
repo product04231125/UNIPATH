@@ -45,6 +45,7 @@ class WorkspaceShell extends StatelessWidget {
     this.sidebarVisible = true,
     this.integratedTitleBar = false,
     this.assistantButtonFocus,
+    this.profileSummary = '학업 정보 미설정',
   });
 
   final int selectedPage;
@@ -66,6 +67,7 @@ class WorkspaceShell extends StatelessWidget {
   final double minimumContentWidth;
   final bool sidebarVisible, integratedTitleBar;
   final FocusNode? assistantButtonFocus;
+  final String profileSummary;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -120,6 +122,7 @@ class WorkspaceShell extends StatelessWidget {
               child: Row(
                 children: [
                   _Sidebar(
+                    profileSummary: profileSummary,
                     compact: compactNavigation,
                     selectedPage: selectedPage,
                     navigationItems: navigationItems,
@@ -269,6 +272,7 @@ class _WorkspaceScrollFallbackState extends State<_WorkspaceScrollFallback> {
 
 class _Sidebar extends StatelessWidget {
   const _Sidebar({
+    required this.profileSummary,
     required this.compact,
     required this.selectedPage,
     required this.navigationItems,
@@ -279,6 +283,7 @@ class _Sidebar extends StatelessWidget {
   });
 
   final bool compact;
+  final String profileSummary;
   final int selectedPage;
   final List<WorkspaceNavigationItem> navigationItems;
   final ValueChanged<int> onPageSelected;
@@ -385,18 +390,19 @@ class _Sidebar extends StatelessWidget {
             leading: CircleAvatar(
               radius: 15,
               backgroundColor: Theme.of(context).colorScheme.primary,
-              child: Text(
-                '정',
-                style: TextStyle(
+              child: Tooltip(
+                message: '내 학업 정보 · $profileSummary',
+                child: Icon(
+                  Icons.person_outline,
                   color: Theme.of(context).colorScheme.onPrimary,
-                  fontSize: AppTypography.caption,
+                  size: 20,
                 ),
               ),
             ),
             title: compact
                 ? null
                 : Text(
-                    '정민서',
+                    '내 학업 정보',
                     style: TextStyle(
                       fontSize: AppTypography.body,
                       fontWeight: FontWeight.w700,
@@ -405,7 +411,7 @@ class _Sidebar extends StatelessWidget {
             subtitle: compact
                 ? null
                 : Text(
-                    '2024학번 · 컴퓨터공학과',
+                    profileSummary,
                     style: TextStyle(fontSize: AppTypography.caption),
                   ),
           ),

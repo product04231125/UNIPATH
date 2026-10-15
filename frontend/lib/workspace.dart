@@ -132,6 +132,7 @@ class _WorkspaceState extends State<Workspace> {
       );
       _planningRepository.addListener(_publishSchoolProfile);
     }
+    _planningRepository.addListener(_refreshProfile);
     _planningRepository.load();
     _chatPreferences = widget.chatPreferences ?? ChatPreferences();
     _chatPreferences.load();
@@ -178,6 +179,22 @@ class _WorkspaceState extends State<Workspace> {
     }
   }
 
+  void _refreshProfile() {
+    if (mounted) setState(() {});
+  }
+
+  String get _profileSummary {
+    if (_planningRepository.isLoading) return '학업 정보 불러오는 중';
+    if (_planningRepository.loadFailed) return '학업 정보를 읽을 수 없습니다';
+    final profile = _planningRepository.profile;
+    final parts = [
+      if (profile.school.trim().isNotEmpty) profile.school.trim(),
+      if (profile.department.trim().isNotEmpty) profile.department.trim(),
+      if (profile.admissionYear != null) '${profile.admissionYear}년 입학',
+    ];
+    return parts.isEmpty ? '학업 정보 미설정' : parts.join(' · ');
+  }
+
   @override
   void didUpdateWidget(covariant Workspace oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -199,6 +216,7 @@ class _WorkspaceState extends State<Workspace> {
     _conversationBridge?.dispose();
     _sharedSchoolContext.dispose();
     _assistantConversation.dispose();
+    _planningRepository.removeListener(_refreshProfile);
     _planningRepository.dispose();
     if (widget.chatPreferences == null) _chatPreferences.dispose();
     super.dispose();
@@ -212,6 +230,7 @@ class _WorkspaceState extends State<Workspace> {
       const WorkspaceNavigationItem(label: '설정', icon: Icons.settings_outlined),
     ];
     return WorkspaceShell(
+      profileSummary: _profileSummary,
       sidebarVisible: widget.sidebarVisible,
       integratedTitleBar: widget.integratedTitleBar,
       selectedPage: _page,

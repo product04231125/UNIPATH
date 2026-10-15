@@ -15,6 +15,43 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   testWidgets(
+    'sidebar uses available academic profile without invented identity',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        const UniversityPathApp(startAuthenticated: true),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('학업 정보 미설정'), findsOneWidget);
+      expect(find.text('정민서'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      final repository = PlanningRepository();
+      await repository.load();
+      await repository.saveProfile(
+        const PlanningProfile(
+          school: '합성 학교',
+          department: '합성 학과',
+          admissionYear: 2025,
+        ),
+      );
+      await tester.pumpWidget(
+        const UniversityPathApp(startAuthenticated: true),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<WorkspaceShell>(find.byType(WorkspaceShell))
+            .profileSummary,
+        '합성 학교 · 합성 학과 · 2025년 입학',
+      );
+      expect(find.textContaining('학번'), findsNothing);
+      repository.dispose();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'returning to retained curriculum preserves its width requirement',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1440, 900));
