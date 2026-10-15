@@ -21,6 +21,57 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  testWidgets(
+    'school draft requires confirmation before detach or destructive close',
+    (tester) async {
+      final conversation = AssistantConversation();
+      final panel = GlobalKey<AssistantPanelState>();
+      var detached = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AssistantPanel(
+              key: panel,
+              conversation: conversation,
+              onClose: () {},
+              onDetach: () => detached++,
+              width: 480,
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('학교 정보 설정'));
+      await tester.pumpAndSettle();
+      final school = find
+          .descendant(
+            of: find.byType(SchoolQueryContextForm),
+            matching: find.byType(TextFormField),
+          )
+          .first;
+      await tester.enterText(school, '미저장 학교');
+      await tester.tap(find.byTooltip('새 창으로 분리'));
+      await tester.pumpAndSettle();
+      expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
+      await tester.tap(find.text('계속 작성'));
+      await tester.pumpAndSettle();
+      expect(detached, 0);
+      expect(tester.widget<TextFormField>(school).controller!.text, '미저장 학교');
+      final close = panel.currentState!.prepareToLeave();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('계속 작성'));
+      await tester.pumpAndSettle();
+      expect(await close, isFalse);
+      await tester.tap(find.byTooltip('새 창으로 분리'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('내용 폐기'));
+      await tester.pumpAndSettle();
+      expect(detached, 1);
+      expect(find.byType(SchoolQueryContextForm), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      conversation.dispose();
+    },
+  );
+
   testWidgets('school draft and selection survive dock overlay transitions', (
     tester,
   ) async {
@@ -352,6 +403,12 @@ void main() {
     await tester.tap(find.text('질의에 사용'));
     await tester.pump();
     expect(started.isCompleted, isTrue);
+    expect(
+      await tester
+          .state<AssistantPanelState>(find.byType(AssistantPanel))
+          .prepareToLeave(),
+      isFalse,
+    );
     final question = find.widgetWithText(TextField, '학교 규정 질문');
     await tester.enterText(question, '규정 질문');
     await tester.testTextInput.receiveAction(TextInputAction.done);

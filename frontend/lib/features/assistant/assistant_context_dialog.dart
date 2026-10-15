@@ -17,10 +17,10 @@ class SchoolQueryContextForm extends StatefulWidget {
   final VoidCallback onCancel;
   final bool enabled;
   @override
-  State<SchoolQueryContextForm> createState() => _ContextFormState();
+  SchoolQueryContextFormState createState() => SchoolQueryContextFormState();
 }
 
-class _ContextFormState extends State<SchoolQueryContextForm> {
+class SchoolQueryContextFormState extends State<SchoolQueryContextForm> {
   final _form = GlobalKey<FormState>();
   late final _school = TextEditingController(text: widget.initial.institution);
   late final _department = TextEditingController(
@@ -35,8 +35,8 @@ class _ContextFormState extends State<SchoolQueryContextForm> {
   String? _error;
   bool _confirming = false;
 
-  Future<void> _cancel() async {
-    if (_saving || _confirming || !widget.enabled) return;
+  Future<bool> confirmLeave() async {
+    if (_saving || _confirming || !widget.enabled) return false;
     final changed =
         _school.text != (widget.initial.institution ?? '') ||
         _department.text != (widget.initial.department ?? '') ||
@@ -46,9 +46,13 @@ class _ContextFormState extends State<SchoolQueryContextForm> {
       _confirming = true;
       final discard = await confirmInputDiscard(context);
       _confirming = false;
-      if (!discard) return;
+      if (!discard) return false;
     }
-    if (mounted && !_saving && widget.enabled) widget.onCancel();
+    return mounted && !_saving && widget.enabled;
+  }
+
+  Future<void> _cancel() async {
+    if (await confirmLeave()) widget.onCancel();
   }
 
   @override

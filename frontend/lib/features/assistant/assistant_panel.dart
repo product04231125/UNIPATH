@@ -27,16 +27,17 @@ class AssistantPanel extends StatefulWidget {
   final bool fullScreen;
 
   @override
-  State<AssistantPanel> createState() => _AssistantPanelState();
+  AssistantPanelState createState() => AssistantPanelState();
 }
 
-class _AssistantPanelState extends State<AssistantPanel> {
+class AssistantPanelState extends State<AssistantPanel> {
   AssistantConversation get conversation => widget.conversation;
   double get width => widget.width;
   VoidCallback get onClose => widget.onClose;
   VoidCallback? get onDetach => widget.onDetach;
   SchoolQueryContext Function()? get suggestContext => widget.suggestContext;
   final _scroll = ScrollController();
+  final _contextForm = GlobalKey<SchoolQueryContextFormState>();
   final _focusScope = FocusScopeNode();
   int _turnCount = 0;
   bool _editingContext = false;
@@ -97,6 +98,20 @@ class _AssistantPanelState extends State<AssistantPanel> {
     });
   }
 
+  Future<bool> prepareToLeave() async {
+    if (_savingContext) return false;
+    if (_editingContext &&
+        await _contextForm.currentState?.confirmLeave() == false)
+      return false;
+    if (!mounted) return false;
+    setState(() => _editingContext = false);
+    return true;
+  }
+
+  Future<void> _detach() async {
+    if (await prepareToLeave()) onDetach?.call();
+  }
+
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: conversation,
@@ -136,7 +151,7 @@ class _AssistantPanelState extends State<AssistantPanel> {
                     if (onDetach != null)
                       IconButton(
                         tooltip: '새 창으로 분리',
-                        onPressed: _savingContext ? null : onDetach,
+                        onPressed: _savingContext ? null : _detach,
                         icon: Icon(Icons.open_in_new),
                       ),
                     IconButton(
@@ -184,6 +199,7 @@ class _AssistantPanelState extends State<AssistantPanel> {
 
                     if (_editingContext) ...[
                       SchoolQueryContextForm(
+                        key: _contextForm,
                         initial: conversation.context.institution == null
                             ? suggestContext?.call() ?? conversation.context
                             : conversation.context,

@@ -23,6 +23,7 @@ class DetachedChatWindow extends StatefulWidget {
 }
 
 class _DetachedChatWindowState extends State<DetachedChatWindow> {
+  final _panel = GlobalKey<AssistantPanelState>();
   late final AssistantConversation _conversation =
       widget.conversationFactory?.call() ??
       (widget.assistantFactory != null
@@ -41,9 +42,15 @@ class _DetachedChatWindowState extends State<DetachedChatWindow> {
     _profile.load();
     if (_conversation is RemoteConversation) {
       final remote = _conversation;
-      chat_window.bindConversationClose(remote.prepareClose);
       remote.load();
     }
+    chat_window.bindConversationClose(() async {
+      if (await _panel.currentState?.prepareToLeave() == false) return false;
+      final conversation = _conversation;
+      return conversation is RemoteConversation
+          ? conversation.prepareClose()
+          : true;
+    });
   }
 
   @override
@@ -96,6 +103,7 @@ class _DetachedChatWindowState extends State<DetachedChatWindow> {
                 ),
               Expanded(
                 child: AssistantPanel(
+                  key: _panel,
                   conversation: _conversation,
                   saveContext: _shared.save,
                   width: constraints.maxWidth,
