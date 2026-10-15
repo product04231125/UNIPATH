@@ -63,6 +63,9 @@ jobs:
         run: docker compose -f compose.yaml -f compose.rag.yaml --profile test run --build --rm test
       - name: Smoke check
         run: python3 backend/scripts/smoke_api.py
+      - name: Verify backup restoration with synthetic data
+        working-directory: backend
+        run: uv run --frozen python -m scripts.smoke_db_backup
       - name: Container status
         if: always()
         run: docker compose -f compose.yaml -f compose.rag.yaml ps -a

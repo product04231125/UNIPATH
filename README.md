@@ -27,7 +27,8 @@ git switch -c feature/your-task
 - 팀 공통: `compose.yaml`, `.env.example`, `docs/`에서 실행 환경과 API·DB 계약을 관리합니다.
 
 기능 브랜치는 `develop`을 기준으로 만들고 Pull Request의 대상도 `develop`로 설정합니다.
-통합 검증을 마친 변경은 `develop`에서 `main`으로 반영합니다. 개발용과 배포용 다운로드·서버 실행 절차는
+통합 검증을 마친 변경도 `main` 대상 PR은 이어진이 명시적으로 요청할 때만 올립니다.
+일반적인 개발·통합 요청은 `develop` 기준으로 처리합니다. 개발용과 배포용 다운로드·서버 실행 절차는
 [`docs/releases.md`](docs/releases.md)를 따릅니다. 브랜치에 푸시하는 것만으로 서버가
 자동 배포되지는 않습니다. 배포용 채널도 현재 기능 범위에서는 프리뷰입니다.
 각 담당자는 자신의 변경과 관련된 테스트를 실행하고, API·DB 계약을 바꾸면 영향받는
@@ -399,7 +400,10 @@ API 문서는 `http://localhost:8010/api/v1/docs`, DB 준비 상태 확인은
 `http://localhost:8010/api/v1/health/ready`입니다. PostgreSQL 호스트 포트는 5433입니다.
 Docker 내부에서는 API 8000과 DB 5432를 사용합니다. 기존 서비스와 충돌하면
 `.env`에서 호스트 포트를 변경합니다. 실행 시 Alembic으로 pgvector를 활성화하며,
-도메인 테이블·인증·졸업 판정은 후속 구현 범위입니다.
+도메인 테이블·인증·공식 졸업감사 API는 후속 구현 범위입니다. DB·LLM과 독립적인
+학점·필수과목·봉사·자격증·논문 판정 코어와 호스트용 DB 백업·격리 복구 검증 도구는
+구현했습니다. 실행·계약은 [Rule Engine](docs/rule-engine.md)과
+[DB 백업](docs/database-backups.md)을 따릅니다.
 자세한 호스트 개발, 자동 재시작, 테스트 및 마이그레이션 방법은
 [`backend/README.md`](backend/README.md)를 참고합니다.
 
