@@ -20,10 +20,23 @@ class PlanningRepository extends ChangeNotifier {
   PlanningProfile _profile = const PlanningProfile();
   List<PlanningEvent> _events = const [];
   Future<void> _pendingOperation = Future.value();
+  bool _disposed = false;
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 
   // All windows share this owner. Build each write from the last committed
   // state so a school-context update cannot overwrite an in-flight event save.
   Future<void> _enqueue(Future<void> Function() operation) {
+    if (_disposed)
+      return Future.error(StateError('Planning repository is closed'));
     final result = _pendingOperation.then((_) => operation());
     _pendingOperation = result.then<void>(
       (_) {},
@@ -41,7 +54,7 @@ class PlanningRepository extends ChangeNotifier {
     _isLoading = true;
     _loadFailed = false;
     _loaded = false;
-    notifyListeners();
+    _notify();
     try {
       _preferences ??= await SharedPreferences.getInstance();
       final raw = _preferences!.getString(_storageKey);
@@ -76,7 +89,7 @@ class PlanningRepository extends ChangeNotifier {
       _loadFailed = true;
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _notify();
     }
   });
 
@@ -86,7 +99,7 @@ class PlanningRepository extends ChangeNotifier {
   Future<void> _commitProfile(PlanningProfile profile) async {
     await _save(profile, _events);
     _profile = profile;
-    notifyListeners();
+    _notify();
   }
 
   Future<void> saveSchoolContext({
@@ -118,14 +131,14 @@ class PlanningRepository extends ChangeNotifier {
     updated.sort((a, b) => a.start.compareTo(b.start));
     await _save(_profile, updated);
     _events = updated;
-    notifyListeners();
+    _notify();
   });
 
   Future<void> deleteEvent(String id) => _enqueue(() async {
     final updated = _events.where((item) => item.id != id).toList();
     await _save(_profile, updated);
     _events = updated;
-    notifyListeners();
+    _notify();
   });
 
   Future<void> _save(

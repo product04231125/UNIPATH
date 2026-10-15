@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +19,33 @@ PlanningEvent event(String title) => PlanningEvent(
 );
 
 void main() {
+  test('planning write completing after owner disposal persists without notifying dead listeners', () async {
+    SharedPreferences.setMockInitialValues({});
+    final started = Completer<void>(), release = Completer<bool>();
+    final repository = PlanningRepository(
+      writer: (key, value) async {
+        started.complete();
+        await release.future;
+        return (await SharedPreferences.getInstance()).setString(key, value);
+      },
+    );
+    await repository.load();
+    final saving = repository.saveProfile(
+      const PlanningProfile(school: '지연 저장 학교'),
+    );
+    await started.future;
+    repository.dispose();
+    release.complete(true);
+    await saving;
+    expect(
+      (await SharedPreferences.getInstance()).getString(storageKey),
+      contains('지연 저장 학교'),
+    );
+    await expectLater(
+      repository.saveProfile(const PlanningProfile()),
+      throwsStateError,
+    );
+  });
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   testWidgets('settings reserves expansion space and stacks profile fields', (
