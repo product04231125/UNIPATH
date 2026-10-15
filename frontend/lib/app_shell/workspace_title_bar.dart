@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../shared/app_style.dart';
+
 class WorkspaceTitleBar extends StatelessWidget {
   const WorkspaceTitleBar({
     super.key,
@@ -26,7 +28,7 @@ class WorkspaceTitleBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: Theme.of(context).colorScheme.surfaceContainerLow,
+    color: titleBarColor(Theme.of(context).colorScheme),
     child: SafeArea(
       bottom: false,
       child: Row(

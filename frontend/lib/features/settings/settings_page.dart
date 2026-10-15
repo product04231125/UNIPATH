@@ -10,6 +10,7 @@ import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import 'chat_preferences.dart';
 import 'chat_settings_section.dart';
+import 'appearance_settings_section.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({
@@ -76,6 +77,7 @@ class _SettingsPageState extends State<SettingsPage> {
             children: [
               const PageHeader(title: '설정', contextLabel: '일반'),
               PlanningStorageState(repository: widget.repository),
+              const AppearanceSettingsSection(),
               if (widget.chatPreferences != null)
                 ChatSettingsSection(preferences: widget.chatPreferences!),
             ],
@@ -316,11 +318,16 @@ class _SettingsPageState extends State<SettingsPage> {
                 second: SizedBox(
                   key: const Key('settings-expansion-space'),
                   width: double.infinity,
-                  child: widget.chatPreferences == null
-                      ? const SizedBox.shrink()
-                      : ChatSettingsSection(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const AppearanceSettingsSection(),
+                      if (widget.chatPreferences != null)
+                        ChatSettingsSection(
                           preferences: widget.chatPreferences!,
                         ),
+                    ],
+                  ),
                 ),
               ),
             ),

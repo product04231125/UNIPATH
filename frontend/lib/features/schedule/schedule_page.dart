@@ -1,3 +1,5 @@
+import '../../shared/app_style.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../shared/widgets/equal_height_row.dart';
@@ -452,6 +454,7 @@ class _EventEditorState extends State<_EventEditor> {
     actions: [
       if (widget.event != null)
         TextButton.icon(
+          style: destructiveButtonStyle(context),
           onPressed: _saving ? null : _delete,
           icon: Icon(Icons.delete_outline),
           label: Text('삭제'),
@@ -511,6 +514,7 @@ class _EventEditorState extends State<_EventEditor> {
             child: Text('취소'),
           ),
           FilledButton(
+            style: destructiveButtonStyle(context),
             onPressed: () => Navigator.pop(context, true),
             child: Text('삭제'),
           ),

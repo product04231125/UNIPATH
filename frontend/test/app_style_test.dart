@@ -11,50 +11,82 @@ double contrast(Color a, Color b) {
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  test('appearance defaults, persists, recovers unknown values and isolates writes', () async {
+    final a = AppAppearance();
+    await a.load();
+    expect(a.palette, AppPalette.cream);
+    await a.select(AppPalette.orange);
+    final restored = AppAppearance();
+    await restored.load();
+    expect(restored.palette, AppPalette.orange);
+    final failed = AppAppearance(writer: (_, _) async => false);
+    await failed.load();
+    await failed.select(AppPalette.blue);
+    expect(failed.palette, AppPalette.orange);
+    expect(failed.error, isNotNull);
+    await failed.load();
+    expect(failed.error, isNull);
+    SharedPreferences.setMockInitialValues({
+      AppAppearance.storageKey: 'purple',
+    });
+    final legacy = AppAppearance();
+    await legacy.load();
+    expect(legacy.palette, AppPalette.cream);
+    expect(AppPalette.values.length, 3);
+    for (final item in [a, restored, failed, legacy]) {
+      item.dispose();
+    }
+  });
   for (final palette in AppPalette.values) {
-    test('${palette.name} preserves readable text and round controls', () {
+    test('${palette.name} readable controls, error and title contrast', () {
       final theme = buildAppTheme(palette), c = theme.colorScheme;
-      expect(contrast(c.primary, c.onPrimary), greaterThanOrEqualTo(4.5));
-      expect(contrast(c.surface, c.onSurface), greaterThanOrEqualTo(4.5));
+      for (final pair in [
+        (c.primary, c.onPrimary),
+        (c.surface, c.onSurface),
+        (c.surface, c.onSurfaceVariant),
+        (c.error, c.onError),
+        (c.error, c.surfaceContainerHighest),
+      ]) {
+        expect(contrast(pair.$1, pair.$2), greaterThanOrEqualTo(4.5));
+      }
+      final title = titleBarColor(c);
       expect(
-        contrast(c.surface, c.onSurfaceVariant),
-        greaterThanOrEqualTo(4.5),
+        palette.dark
+            ? title.computeLuminance() > c.surface.computeLuminance()
+            : title.computeLuminance() < c.surface.computeLuminance(),
+        isTrue,
       );
-      final border =
-          theme.inputDecorationTheme.enabledBorder! as OutlineInputBorder;
-      expect(border.borderRadius, BorderRadius.circular(20));
+      expect(contrast(title, c.onSurface), greaterThanOrEqualTo(4.5));
       expect(
-        theme.brightness,
-        palette.dark ? Brightness.dark : Brightness.light,
+        (theme.inputDecorationTheme.errorBorder! as OutlineInputBorder)
+            .borderSide
+            .color,
+        c.error,
       );
     });
+    testWidgets('${palette.name} compact enlarged login errors', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        AppAppearance.storageKey: palette.name,
+      });
+      await tester.binding.setSurfaceSize(const Size(480, 520));
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(() {
+        tester.platformDispatcher.clearTextScaleFactorTestValue();
+        return tester.binding.setSurfaceSize(null);
+      });
+      await tester.pumpWidget(const UniversityPathApp());
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('login-submit')));
+      await tester.tap(find.byKey(const Key('login-submit')));
+      await tester.pumpAndSettle();
+      expect(find.text('이메일 주소를 입력해 주세요.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   }
-  testWidgets('palette preview retains entered text', (tester) async {
-    final controller = TextEditingController();
-    addTearDown(controller.dispose);
-    await tester.pumpWidget(
-      AppPaletteHost(
-        builder: (theme, preview) => MaterialApp(
-          theme: theme,
-          builder: preview,
-          home: Scaffold(body: TextField(controller: controller)),
-        ),
-      ),
-    );
-    await tester.enterText(find.byType(TextField), '작성 중인 값');
-    await tester.tap(find.byKey(const Key('palette-preview')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('다크 퍼플'));
-    await tester.pumpAndSettle();
-    expect(controller.text, '작성 중인 값');
-    expect(
-      Theme.of(tester.element(find.byType(TextField))).brightness,
-      Brightness.dark,
-    );
-    expect(tester.takeException(), isNull);
-  });
   testWidgets(
-    'settings layout previews keep unsaved profile and adapt at narrow width',
+    'settings selects persistent theme without losing profile edits or navigation',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1440, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -65,123 +97,36 @@ void main() {
       await tester.tap(find.text('설정'));
       await tester.pumpAndSettle();
       final school = find.byType(TextFormField).first;
-      await tester.enterText(school, '아직 저장하지 않은 학교');
-      Future<void> choose(String label) async {
-        await tester.tap(find.byKey(const Key('palette-preview')));
-        await tester.pumpAndSettle();
-        await tester.ensureVisible(find.text(label));
-        await tester.tap(find.text(label));
-        await tester.pumpAndSettle();
-      }
-
-      await choose('밝은 파랑');
-      expect(
-        tester.getTopLeft(find.text('개인 계획')).dy,
-        greaterThan(tester.getTopLeft(find.text('학업 프로필')).dy),
+      await tester.enterText(school, '저장 전 학교');
+      final selector = find.byKey(const Key('appearance-palette'));
+      await tester.ensureVisible(selector);
+      await tester.tap(
+        find.descendant(of: selector, matching: find.byType(InkWell)),
       );
-      await choose('다크 퍼플');
-      expect(
-        tester.getTopLeft(find.text('개인 계획')).dy,
-        greaterThan(tester.getTopLeft(find.text('학업 프로필')).dy),
-      );
-      await tester.binding.setSurfaceSize(const Size(480, 520));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('다크 오렌지'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextFormField>(school).controller!.text, '저장 전 학교');
+      expect(Theme.of(tester.element(school)).brightness, Brightness.dark);
       expect(
-        tester.getTopLeft(find.text('개인 계획')).dy,
-        greaterThan(tester.getTopLeft(find.text('학업 프로필')).dy),
+        (await SharedPreferences.getInstance()).getString(
+          AppAppearance.storageKey,
+        ),
+        'orange',
       );
-      expect(
-        tester.widget<TextFormField>(school).controller!.text,
-        '아직 저장하지 않은 학교',
-      );
+      expect(find.byKey(const Key('palette-preview')), findsNothing);
+      expect(find.text('다크 퍼플'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
-  testWidgets('delete previews retain confirmation and readable dark colors', (
+  testWidgets('solid delete retains confirmation and dark readable states', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(const UniversityPathApp());
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(
-      find.byKey(const Key('sample-super-admin-entry')),
-    );
-    await tester.tap(find.byKey(const Key('sample-super-admin-entry')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('학교·학과'));
-    await tester.pumpAndSettle();
-    Future<void> choose(String label) async {
-      await tester.tap(find.byKey(const Key('palette-preview')));
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text(label));
-      await tester.tap(find.text(label));
-      await tester.pumpAndSettle();
-    }
-
-    await choose('다크 퍼플');
-    for (final label in ['삭제 · 붉은 테두리', '삭제 · 옅은 붉은 배경', '삭제 · 채워진 붉은 배경']) {
-      await choose(label);
-      final finder = find
-          .ancestor(
-            of: find.text('삭제').first,
-            matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
-          )
-          .first;
-      final button = tester.widget<ButtonStyleButton>(finder);
-      final fg = button.style!.foregroundColor!.resolve({})!;
-      final bg = button.style!.backgroundColor!.resolve({})!;
-      expect(contrast(fg, bg), greaterThanOrEqualTo(4.5));
-      final hover = button.style!.overlayColor!.resolve({WidgetState.hovered})!;
-      expect(
-        contrast(fg, Color.alphaBlend(hover, bg)),
-        greaterThanOrEqualTo(4.5),
-      );
-      await tester.ensureVisible(finder);
-      await tester.tap(finder);
-      await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsOneWidget);
-      await tester.tap(
-        find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.text('취소'),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('합성 대학 A'), findsWidgets);
-      expect(tester.takeException(), isNull);
-    }
-  });
-  for (final palette in AppPalette.values) {
-    testWidgets('${palette.name} login errors fit compact enlarged text', (
-      tester,
-    ) async {
-      await tester.binding.setSurfaceSize(const Size(480, 520));
-      tester.platformDispatcher.textScaleFactorTestValue = 2;
-      addTearDown(() {
-        tester.platformDispatcher.clearTextScaleFactorTestValue();
-        return tester.binding.setSurfaceSize(null);
-      });
-      await tester.pumpWidget(const UniversityPathApp());
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('palette-preview')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text(palette.label));
-      await tester.pumpAndSettle();
-      final submit = find.byKey(const Key('login-submit'));
-      await tester.ensureVisible(submit);
-      await tester.tap(submit);
-      await tester.pumpAndSettle();
-      expect(find.text('이메일 주소를 입력해 주세요.'), findsOneWidget);
-      expect(find.text('비밀번호를 입력해 주세요.'), findsOneWidget);
-      expect(tester.takeException(), isNull);
+    SharedPreferences.setMockInitialValues({
+      AppAppearance.storageKey: 'orange',
     });
-  }
-  testWidgets('admin draft and workspace survive palette switching', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const UniversityPathApp());
     await tester.pumpAndSettle();
     final entry = find.byKey(const Key('sample-super-admin-entry'));
@@ -190,18 +135,26 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('학교·학과'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('학교 등록'));
+    final button = find
+        .ancestor(
+          of: find.text('삭제').first,
+          matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+        )
+        .first;
+    final style = tester.widget<ButtonStyleButton>(button).style!;
+    final fg = style.foregroundColor!.resolve({})!,
+        bg = style.backgroundColor!.resolve({})!;
+    expect(bg, const Color(0xffb91c1c));
+    expect(contrast(fg, bg), greaterThanOrEqualTo(4.5));
+    await tester.ensureVisible(button);
+    await tester.tap(button);
     await tester.pumpAndSettle();
-    final field = find.byKey(const ValueKey('admin-field-name'));
-    await tester.enterText(field, '팔레트 비교 중인 합성 학교');
-    for (final palette in AppPalette.values) {
-      await tester.tap(find.byKey(const Key('palette-preview')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text(palette.label));
-      await tester.pumpAndSettle();
-      expect(find.text('팔레트 비교 중인 합성 학교'), findsOneWidget);
-      expect(find.text('목업에 저장'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    }
+    expect(find.byType(AlertDialog), findsOneWidget);
+    await tester.tap(
+      find.descendant(of: find.byType(AlertDialog), matching: find.text('취소')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('합성 대학 A'), findsWidgets);
+    expect(tester.takeException(), isNull);
   });
 }

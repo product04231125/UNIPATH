@@ -165,6 +165,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             child: const Text('취소'),
           ),
           FilledButton(
+            style: action == '삭제' ? destructiveButtonStyle(context) : null,
             onPressed: () => Navigator.pop(context, true),
             child: Text(action),
           ),
@@ -444,39 +445,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     ],
   );
 
-  ButtonStyle _dangerStyle() {
-    final colors = Theme.of(context).colorScheme;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final red = dark ? const Color(0xffff6b6b) : const Color(0xffb42318);
-    final variant = UiPreview.of(context).delete;
-    final fill = switch (variant) {
-      DeletePreview.outline => colors.surface,
-      DeletePreview.tint => Color.alphaBlend(
-        red.withValues(alpha: .12),
-        colors.surface,
-      ),
-      DeletePreview.solid => const Color(0xffb91c1c),
-    };
-    return OutlinedButton.styleFrom(
-      backgroundColor: fill,
-      foregroundColor: variant == DeletePreview.solid ? Colors.white : red,
-      side: BorderSide(color: variant == DeletePreview.solid ? fill : red),
-    ).copyWith(
-      overlayColor: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.disabled)
-            ? Colors.transparent
-            : states.contains(WidgetState.pressed) ||
-                  states.contains(WidgetState.hovered)
-            ? Colors.black.withValues(alpha: .12)
-            : Colors.transparent,
-      ),
-      side: WidgetStateProperty.resolveWith(
-        (states) => states.contains(WidgetState.focused)
-            ? BorderSide(color: colors.onSurface, width: 2)
-            : BorderSide(color: variant == DeletePreview.solid ? fill : red),
-      ),
-    );
-  }
+  ButtonStyle _dangerStyle() => destructiveButtonStyle(context);
 
   Widget _detail(AdminRecord r) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -872,7 +841,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 if (_section == '/admin/overview') _overview(),
                 if (_section == '/admin/schools')
                   ResponsiveColumns(
-                    enabled: UiPreview.of(context).adminColumns,
+                    enabled: true,
                     first: _records(AdminKind.institution),
                     second: _records(AdminKind.department),
                   ),

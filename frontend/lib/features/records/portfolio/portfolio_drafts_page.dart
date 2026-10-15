@@ -1,3 +1,5 @@
+import '../../../shared/app_style.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../shared/widgets/input_dialog.dart';
@@ -88,6 +90,7 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
             child: const Text('취소'),
           ),
           FilledButton(
+            style: destructiveButtonStyle(context),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('삭제'),
           ),
@@ -163,6 +166,7 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
                 child: const Text('미리보기'),
               ),
               TextButton(
+                style: destructiveButtonStyle(context),
                 onPressed: _busy ? null : delete,
                 child: const Text('삭제'),
               ),

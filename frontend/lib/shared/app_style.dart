@@ -1,7 +1,139 @@
-import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
 import 'app_typography.dart';
+
+/// Local appearance preference, separate from academic and account data.
+class AppAppearance extends ChangeNotifier {
+  AppAppearance({this.writer});
+  static const storageKey = 'university_path.appearance.v1';
+  final Future<bool> Function(String, String)? writer;
+  AppPalette palette = AppPalette.cream;
+  bool loading = true, saving = false;
+  String? error;
+  SharedPreferences? _preferences;
+  bool _disposed = false;
+  void _changed() {
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> load() async {
+    loading = true;
+    error = null;
+    _changed();
+    try {
+      _preferences ??= await SharedPreferences.getInstance();
+      await _preferences!.reload();
+      final raw = _preferences!.getString(storageKey);
+      palette =
+          AppPalette.values.where((p) => p.name == raw).firstOrNull ??
+          AppPalette.cream;
+    } catch (_) {
+      error = '화면 설정을 읽지 못했습니다. 다시 읽어 주세요.';
+    }
+    loading = false;
+    _changed();
+  }
+
+  Future<void> select(AppPalette value) async {
+    if (loading || saving || error != null) return;
+    saving = true;
+    _changed();
+    try {
+      final saved =
+          await (writer?.call(storageKey, value.name) ??
+              _preferences!.setString(storageKey, value.name));
+      if (!saved) throw StateError('Appearance write failed');
+      palette = value;
+    } catch (_) {
+      error = '테마를 저장하지 못했습니다. 기존 테마를 유지합니다.';
+    } finally {
+      saving = false;
+      _changed();
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+}
+
+class AppearanceScope extends InheritedNotifier<AppAppearance> {
+  const AppearanceScope({
+    super.key,
+    required AppAppearance appearance,
+    required super.child,
+  }) : super(notifier: appearance);
+  static AppAppearance? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<AppearanceScope>()?.notifier;
+}
+
+/// Theme updates retain the router, forms and active session.
+class AppPaletteHost extends StatefulWidget {
+  const AppPaletteHost({super.key, required this.builder});
+  final Widget Function(ThemeData theme, TransitionBuilder wrapper) builder;
+  @override
+  State<AppPaletteHost> createState() => _AppPaletteHostState();
+}
+
+class _AppPaletteHostState extends State<AppPaletteHost> {
+  final _appearance = AppAppearance();
+  @override
+  void initState() {
+    super.initState();
+    _appearance.load();
+  }
+
+  @override
+  void dispose() {
+    _appearance.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: _appearance,
+    builder: (context, _) => widget.builder(
+      buildAppTheme(_appearance.palette),
+      (context, child) =>
+          AppearanceScope(appearance: _appearance, child: child!),
+    ),
+  );
+}
+
+Color titleBarColor(ColorScheme colors) => Color.alphaBlend(
+  colors.onSurface.withValues(
+    alpha: colors.brightness == Brightness.dark ? .12 : .09,
+  ),
+  colors.surface,
+);
+
+ButtonStyle destructiveButtonStyle(BuildContext context) {
+  const fill = Color(0xffb91c1c);
+  return FilledButton.styleFrom(
+    backgroundColor: fill,
+    foregroundColor: Colors.white,
+  ).copyWith(
+    overlayColor: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.disabled)
+          ? Colors.transparent
+          : Colors.black.withValues(
+              alpha: states.contains(WidgetState.pressed)
+                  ? .20
+                  : states.contains(WidgetState.hovered)
+                  ? .12
+                  : 0,
+            ),
+    ),
+    side: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.focused)
+          ? BorderSide(color: Theme.of(context).colorScheme.onSurface, width: 2)
+          : const BorderSide(color: fill),
+    ),
+  );
+}
 
 enum AppPalette {
   cream(
@@ -21,15 +153,6 @@ enum AppPalette {
     0xff5f6c7b,
     0xff3da9fc,
     0xff90b4ce,
-  ),
-  purple(
-    '다크 퍼플',
-    true,
-    0xff16161a,
-    0xfffffffe,
-    0xff94a1b2,
-    0xff7f5af0,
-    0xff72757e,
   ),
   orange(
     '다크 오렌지',
@@ -55,39 +178,9 @@ enum AppPalette {
   final int background, foreground, muted, accent, secondary;
 }
 
-enum DeletePreview { outline, tint, solid }
-
-class UiPreview extends ThemeExtension<UiPreview> {
-  const UiPreview({
-    this.delete = DeletePreview.tint,
-    this.adminColumns = true,
-    this.settingsColumns = true,
-  });
-  final DeletePreview delete;
-  final bool adminColumns, settingsColumns;
-  static UiPreview of(BuildContext context) =>
-      Theme.of(context).extension<UiPreview>() ?? const UiPreview();
-  @override
-  UiPreview copyWith({
-    DeletePreview? delete,
-    bool? adminColumns,
-    bool? settingsColumns,
-  }) => UiPreview(
-    delete: delete ?? this.delete,
-    adminColumns: adminColumns ?? this.adminColumns,
-    settingsColumns: settingsColumns ?? this.settingsColumns,
-  );
-  @override
-  UiPreview lerp(covariant UiPreview? other, double t) =>
-      t < .5 ? this : other ?? this;
-}
-
 const appCornerRadius = 20.0;
 
-ThemeData buildAppTheme(
-  AppPalette palette, {
-  UiPreview preview = const UiPreview(),
-}) {
+ThemeData buildAppTheme(AppPalette palette) {
   final bg = Color(palette.background);
   final fg = Color(palette.foreground);
   final accent = Color(palette.accent);
@@ -103,6 +196,8 @@ ThemeData buildAppTheme(
         seedColor: accent,
         brightness: palette.dark ? Brightness.dark : Brightness.light,
       ).copyWith(
+        error: palette.dark ? const Color(0xffff6262) : const Color(0xffb42318),
+        onError: palette.dark ? Colors.black : Colors.white,
         primary: accent,
         onPrimary: primaryText,
         primaryContainer: Color.alphaBlend(
@@ -169,7 +264,6 @@ ThemeData buildAppTheme(
     ),
   );
   return base.copyWith(
-    extensions: [preview],
     textTheme: text,
     filledButtonTheme: FilledButtonThemeData(
       style: button.copyWith(
@@ -226,7 +320,8 @@ ThemeData buildAppTheme(
       enabledBorder: border(scheme.outline),
       disabledBorder: border(scheme.outlineVariant),
       focusedBorder: border(accent, 2),
-      errorBorder: border(scheme.error),
+      errorStyle: TextStyle(color: scheme.error),
+      errorBorder: border(scheme.error, 1.5),
       focusedErrorBorder: border(scheme.error, 2),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),
@@ -241,133 +336,6 @@ ThemeData buildAppTheme(
     listTileTheme: ListTileThemeData(
       titleTextStyle: text.bodyMedium,
       subtitleTextStyle: text.bodySmall,
-    ),
-  );
-}
-
-/// Temporary, session-only style comparison. Selecting a palette does not
-/// remount the Router, clear forms, change roles, or write user data.
-class AppPaletteHost extends StatefulWidget {
-  const AppPaletteHost({super.key, required this.builder});
-  final Widget Function(ThemeData theme, TransitionBuilder preview) builder;
-  @override
-  State<AppPaletteHost> createState() => _AppPaletteHostState();
-}
-
-class _AppPaletteHostState extends State<AppPaletteHost> {
-  AppPalette _palette = AppPalette.cream;
-  bool _expanded = false;
-  UiPreview _preview = const UiPreview();
-  @override
-  Widget build(BuildContext context) => widget.builder(
-    buildAppTheme(_palette, preview: _preview),
-    (context, child) => Stack(
-      fit: StackFit.expand,
-      children: [
-        child!,
-        if (!kReleaseMode)
-          Positioned(
-            bottom: 80,
-            right: 8,
-            child: SafeArea(
-              child: Material(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(appCornerRadius),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_expanded)
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minWidth: (MediaQuery.sizeOf(context).width - 32)
-                              .clamp(0, 320),
-                          maxWidth: (MediaQuery.sizeOf(context).width - 32)
-                              .clamp(0, 320),
-                          maxHeight: (MediaQuery.sizeOf(context).height - 160)
-                              .clamp(140, 520),
-                        ),
-                        child: SingleChildScrollView(
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                const Text('개발용 시안 비교'),
-                                for (final value in AppPalette.values)
-                                  TextButton.icon(
-                                    onPressed: () => setState(() {
-                                      _palette = value;
-                                      _expanded = false;
-                                    }),
-                                    icon: Icon(
-                                      value == _palette
-                                          ? Icons.check
-                                          : Icons.circle_outlined,
-                                      size: 16,
-                                    ),
-                                    label: Text(value.label),
-                                  ),
-                                const Divider(),
-                                const Text('삭제 스타일'),
-                                for (final value in DeletePreview.values)
-                                  TextButton.icon(
-                                    icon: Icon(
-                                      value == _preview.delete
-                                          ? Icons.check
-                                          : Icons.circle_outlined,
-                                      size: 16,
-                                    ),
-                                    onPressed: () => setState(() {
-                                      _preview = _preview.copyWith(
-                                        delete: value,
-                                      );
-                                      _expanded = false;
-                                    }),
-                                    label: Text(switch (value) {
-                                      DeletePreview.outline => '삭제 · 붉은 테두리',
-                                      DeletePreview.tint => '삭제 · 옅은 붉은 배경',
-                                      DeletePreview.solid => '삭제 · 채워진 붉은 배경',
-                                    }),
-                                  ),
-                                const Divider(),
-                                const Text('학교·학과 배치'),
-                                for (final columns in [false, true])
-                                  TextButton.icon(
-                                    icon: Icon(
-                                      columns == _preview.adminColumns
-                                          ? Icons.check
-                                          : Icons.circle_outlined,
-                                      size: 16,
-                                    ),
-                                    onPressed: () => setState(() {
-                                      _preview = _preview.copyWith(
-                                        adminColumns: columns,
-                                      );
-                                      _expanded = false;
-                                    }),
-                                    label: Text(
-                                      columns ? '관리자 · 반응형 2열' : '관리자 · 기존 1열',
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    IconButton(
-                      key: const Key('palette-preview'),
-                      icon: Icon(
-                        _expanded ? Icons.close : Icons.palette_outlined,
-                        semanticLabel: '색상·배치 시안 비교',
-                      ),
-                      onPressed: () => setState(() => _expanded = !_expanded),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
     ),
   );
 }

@@ -1,3 +1,5 @@
+import '../../shared/app_style.dart';
+
 import 'package:flutter/material.dart';
 
 import 'package:university_path_frontend/shared/app_typography.dart';
@@ -296,6 +298,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
             child: Text('취소'),
           ),
           FilledButton(
+            style: destructiveButtonStyle(context),
             onPressed: () => Navigator.pop(context, true),
             child: Text('삭제'),
           ),
@@ -343,7 +346,11 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               label: field.label,
             ),
           TextButton(onPressed: () => _showForm(record), child: Text('수정')),
-          TextButton(onPressed: () => _delete(record), child: Text('삭제')),
+          TextButton(
+            style: destructiveButtonStyle(context),
+            onPressed: () => _delete(record),
+            child: Text('삭제'),
+          ),
         ],
       ),
     ],
