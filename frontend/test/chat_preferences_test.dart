@@ -17,6 +17,8 @@ class FakeWindowHost extends AssistantWindowHost {
   int focuses = 0;
   bool supported = true;
   Completer<void>? opening;
+  bool failClosing = false;
+  int closes = 0;
   final maximize = StreamController<bool>.broadcast();
   final detached = StreamController<bool>.broadcast();
 
@@ -40,10 +42,88 @@ class FakeWindowHost extends AssistantWindowHost {
     }
     detached.add(true);
   }
+
+  @override
+  Future<void> endSession() async {
+    closes++;
+    if (failClosing) throw StateError('Close failed');
+    open = false;
+    detached.add(false);
+  }
 }
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets(
+    'logout waits for pending child open and closes it before leaving',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final preferences = ChatPreferences();
+      await preferences.load();
+      await preferences.setMode(ChatOpeningMode.detached);
+      final host = FakeWindowHost()..opening = Completer<void>();
+      var signedOut = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Workspace(
+            windowHost: host,
+            chatPreferences: preferences,
+            onSignedOut: () {
+              expect(host.open, isFalse);
+              signedOut = true;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('AI 도우미 열기'));
+      await tester.pump();
+      await tester.tap(find.text('로그아웃'));
+      await tester.pump();
+      expect(signedOut, isFalse);
+      host.opening!.complete();
+      await tester.pumpAndSettle();
+      expect(host.closes, 1);
+      expect(signedOut, isTrue);
+      expect(find.byType(AssistantPanel), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      preferences.dispose();
+      await host.maximize.close();
+      await host.detached.close();
+    },
+  );
+
+  testWidgets('logout close failure keeps session and retry closes child', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final host = FakeWindowHost()
+      ..open = true
+      ..failClosing = true;
+    var signedOut = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Workspace(windowHost: host, onSignedOut: () => signedOut = true),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('로그아웃'));
+    await tester.pumpAndSettle();
+    expect(signedOut, isFalse);
+    expect(host.open, isTrue);
+    expect(find.textContaining('로그아웃하지 않았습니다'), findsOneWidget);
+    host.failClosing = false;
+    await tester.tap(find.text('다시 시도'));
+    await tester.pumpAndSettle();
+    expect(signedOut, isTrue);
+    expect(host.open, isFalse);
+    await tester.pumpWidget(const SizedBox());
+    await host.maximize.close();
+    await host.detached.close();
+  });
 
   test(
     'old detached preference migrates once then preserves later choice',

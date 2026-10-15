@@ -194,6 +194,31 @@ Future<bool> hasDetachedChatWindow() async {
   );
 }
 
+/// Logout must finish closing every child before another session can start.
+Future<void> endDetachedChatSession() async {
+  for (final window in (await WindowController.getAll()).where(
+    (w) => _DetachedChatWindowConfig.matches(w.arguments),
+  )) {
+    await window.hide();
+    try {
+      await window
+          .invokeMethod<void>('end_chat_session')
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {
+      // Closing an engine can drop its reply. Verify native absence below.
+    }
+  }
+  for (var attempt = 0; attempt < 20; attempt++) {
+    await WindowController.cleanupClosedWindows();
+    if (!await hasDetachedChatWindow()) {
+      _mainDetachedChatOpen = false;
+      return;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  }
+  throw StateError('Detached chat session did not close');
+}
+
 Stream<bool> detachedChatWindowChanges() async* {
   yield await hasDetachedChatWindow();
   await for (final _ in onWindowsChanged) {
@@ -208,6 +233,12 @@ Future<void> initializeDetachedChatWindow() async {
   unawaited(_shutdownTrace('detached window initialized'));
   final config = _DetachedChatWindowConfig.fromArguments(controller.arguments);
   await controller.setWindowMethodHandler((call) async {
+    if (call.method == 'end_chat_session') {
+      // Explicit logout discards this session, including unacknowledged drafts.
+      await windowManager.setPreventClose(false);
+      unawaited(windowManager.close());
+      return null;
+    }
     if (call.method == 'appearance_changed') {
       _appearanceChanges.add(call.arguments as String);
       return null;

@@ -82,6 +82,8 @@ class _WorkspaceState extends State<Workspace> {
   var _mainWindowMaximized = false;
   bool _openingChat = false;
   bool _detachingChat = false;
+  bool _signingOut = false;
+  Future<void>? _pendingDetachedOpen;
   final _assistantButtonFocus = FocusNode(debugLabel: 'AI 도우미 열기');
   late final ChatPreferences _chatPreferences;
   var _chatWidth = 360.0;
@@ -144,7 +146,7 @@ class _WorkspaceState extends State<Workspace> {
     _detachedChatSubscription = widget.windowHost.detachedChanges.listen((
       isOpen,
     ) {
-      if (!mounted || _detachedChatActive == isOpen) return;
+      if (!mounted || _signingOut || _detachedChatActive == isOpen) return;
       setState(() {
         final wasDetached = _detachedChatActive;
         _detachedChatActive = isOpen;
@@ -246,7 +248,7 @@ class _WorkspaceState extends State<Workspace> {
       },
       showMockData: _showMockData,
       onMockDataChanged: (value) => setState(() => _showMockData = value),
-      onSignedOut: widget.onSignedOut,
+      onSignedOut: _signOut,
       isAssistantOpen: _chatOpen,
       isAssistantManuallyOpened: _chatManuallyOpened,
       assistantWidth: _chatWidth,
@@ -359,11 +361,11 @@ class _WorkspaceState extends State<Workspace> {
   }
 
   Future<void> _openAssistant() async {
-    if (_openingChat) return;
+    if (_openingChat || _signingOut) return;
     _openingChat = true;
     try {
       await _chatPreferences.load();
-      if (!mounted) return;
+      if (!mounted || _signingOut) return;
       if (widget.windowHost.supportsDetached &&
           !_mainWindowMaximized &&
           (_detachedChatActive ||
@@ -396,12 +398,13 @@ class _WorkspaceState extends State<Workspace> {
   }
 
   Future<void> _openDetachedChat() async {
-    if (_detachingChat || _mainWindowMaximized) return;
+    if (_detachingChat || _mainWindowMaximized || _signingOut) return;
     _detachingChat = true;
     try {
-      await widget.windowHost.openDetached(_chatWidth);
+      _pendingDetachedOpen = widget.windowHost.openDetached(_chatWidth);
+      await _pendingDetachedOpen;
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || _signingOut) return;
       setState(() => _detachedChatActive = false);
       _showDock();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -413,12 +416,37 @@ class _WorkspaceState extends State<Workspace> {
     } finally {
       _detachingChat = false;
     }
-    if (!mounted) return;
+    if (!mounted || _signingOut) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     setState(() {
       _detachedChatActive = true;
       _chatOpen = _mainWindowMaximized;
       _chatManuallyOpened = _mainWindowMaximized;
     });
+  }
+
+  Future<void> _signOut() async {
+    if (_signingOut) return;
+    _signingOut = true;
+    try {
+      try {
+        await _pendingDetachedOpen;
+      } catch (_) {
+        /* Still close any child. */
+      }
+      await widget.windowHost.endSession();
+      if (mounted) widget.onSignedOut();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('AI 창을 닫지 못해 로그아웃하지 않았습니다.'),
+            action: SnackBarAction(label: '다시 시도', onPressed: _signOut),
+          ),
+        );
+      }
+    } finally {
+      _signingOut = false;
+    }
   }
 }

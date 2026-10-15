@@ -21,6 +21,7 @@ Future<Map<String, dynamic>> requestSchoolProfile([
 ]) async => throw UnsupportedError('No native school profile bridge');
 Future<void> publishSchoolProfile(Map<String, dynamic> profile) async {}
 Future<void> closeDetachedChatWindow() async {}
+Future<void> endDetachedChatSession() async {}
 
 Future<void> initializeDetachedChatWindow() async {}
 
