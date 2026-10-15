@@ -62,6 +62,47 @@ Future<void> openEditor(
 }
 
 void main() {
+  testWidgets('all paired admin sections use two columns and stack', (
+    tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = FakeAdminRepository();
+    addTearDown(repo.dispose);
+    for (final item in [
+      ('/admin/schools', 'institution', 'department'),
+      ('/admin/curricula', 'curriculum', 'course'),
+      ('/admin/rules', 'ruleSet', 'rule'),
+      ('/admin/accounts', 'account', 'scope'),
+    ]) {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      await tester.pumpWidget(
+        host(
+          AdminWorkspace(
+            repository: repo,
+            role: AppRole.superAdmin,
+            path: item.$1,
+            onNavigate: (_) {},
+            onSignedOut: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final first = find.byKey(ValueKey('admin-section-${item.$2}'));
+      final second = find.byKey(ValueKey('admin-section-${item.$3}'));
+      expect(tester.getTopLeft(first).dy, tester.getTopLeft(second).dy);
+      expect(
+        tester.getTopLeft(first).dx,
+        lessThan(tester.getTopLeft(second).dx),
+      );
+      await tester.binding.setSurfaceSize(const Size(480, 520));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(second).dy,
+        greaterThan(tester.getTopLeft(first).dy),
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
   testWidgets('admin labels stay above their controls', (tester) async {
     final repo = FakeAdminRepository();
     await openEditor(tester, repo, AdminKind.department);

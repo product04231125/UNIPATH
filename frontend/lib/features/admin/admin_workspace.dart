@@ -1,5 +1,7 @@
 import '../../shared/widgets/responsive_columns.dart';
+import '../../shared/widgets/responsive_panels.dart';
 import '../../shared/app_style.dart';
+import '../settings/appearance_settings_section.dart';
 
 import 'package:flutter/material.dart';
 
@@ -39,6 +41,7 @@ class AdminWorkspace extends StatefulWidget {
     '/admin/documents': '공식 문서',
     '/admin/history': '관리 이력',
     '/admin/accounts': '관리자 관리',
+    '/admin/settings': '설정',
   };
   @override
   State<AdminWorkspace> createState() => _AdminWorkspaceState();
@@ -272,6 +275,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   });
 
   Widget _records(AdminKind kind) => Column(
+    key: ValueKey('admin-section-${kind.name}'),
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       const SizedBox(height: 16),
@@ -335,42 +339,50 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             '${kind.label} 데이터가 없습니다.${_canCreate(kind) ? ' 등록 버튼으로 시작하세요.' : '권한과 관리 범위를 확인하세요.'}',
           ),
         ),
-      for (final r in _filteredRows(kind))
-        Card(
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(r.name, style: Theme.of(context).textTheme.titleMedium),
-                if (_recordContext(r).isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      _recordContext(r),
-                      style: Theme.of(context).textTheme.bodySmall,
+      ResponsivePanels(
+        enabled: kind == AdminKind.document,
+        children: [
+          for (final r in _filteredRows(kind))
+            Card(
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      r.name,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                  ),
-                if (kind.versioned)
-                  Text('v${r.version} · ${_statusLabel(r.status)}'),
-                if (kind == AdminKind.scope) Text(_statusLabel(r.status)),
-                if (kind == AdminKind.account)
-                  Text(
-                    '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}',
-                  ),
-                const SizedBox(height: 16),
-                _recordActions(r),
-              ],
+                    if (_recordContext(r).isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          _recordContext(r),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    if (kind.versioned)
+                      Text('v${r.version} · ${_statusLabel(r.status)}'),
+                    if (kind == AdminKind.scope) Text(_statusLabel(r.status)),
+                    if (kind == AdminKind.account)
+                      Text(
+                        '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}',
+                      ),
+                    const SizedBox(height: 16),
+                    _recordActions(r),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
+        ],
+      ),
     ],
   );
   Widget _recordActions(AdminRecord r, {bool detail = false}) => Wrap(
@@ -464,37 +476,54 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           style: TextStyle(color: Theme.of(context).colorScheme.error),
         ),
       const Divider(height: 24),
-      for (final f in adminFields(r.kind))
-        Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Text(
-            '${f.label}: ${f.relation != null ? (_relationName(r.value(f.key)).isEmpty ? '미연결 또는 접근 불가' : _relationName(r.value(f.key))) : f.options[r.value(f.key)] ?? (r.value(f.key).isEmpty ? '미입력' : r.value(f.key))}',
-          ),
+      ResponsiveColumns(
+        enabled: true,
+        first: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final f in adminFields(r.kind))
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  '${f.label}: ${f.relation != null ? (_relationName(r.value(f.key)).isEmpty ? '미연결 또는 접근 불가' : _relationName(r.value(f.key))) : f.options[r.value(f.key)] ?? (r.value(f.key).isEmpty ? '미입력' : r.value(f.key))}',
+                ),
+              ),
+            const Divider(height: 24),
+          ],
         ),
-      const Divider(height: 24),
-      Text('변경 정보', style: Theme.of(context).textTheme.titleMedium),
-      Text('생성: ${_actorName(r.createdBy)} · 수정: ${_actorName(r.updatedBy)}'),
-      Text('마지막 변경: ${_timeLabel(r.updatedAt)}'),
-      if (r.kind.versioned) ...[
-        Text('버전 ${r.version} · ${_statusLabel(r.status)}'),
-        Text(
-          '적용: ${_actorName(r.appliedBy)} · ${_timeLabel(r.appliedAt, empty: '미적용')}',
+        second: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('변경 정보', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              '생성: ${_actorName(r.createdBy)} · 수정: ${_actorName(r.updatedBy)}',
+            ),
+            Text('마지막 변경: ${_timeLabel(r.updatedAt)}'),
+            if (r.kind.versioned) ...[
+              Text('버전 ${r.version} · ${_statusLabel(r.status)}'),
+              Text(
+                '적용: ${_actorName(r.appliedBy)} · ${_timeLabel(r.appliedAt, empty: '미적용')}',
+              ),
+            ],
+            if (r.kind == AdminKind.scope) ...[
+              Text(
+                '부여: ${_actorName(r.value('grantedBy'))} · ${_timeLabel(DateTime.tryParse(r.value('grantedAt')))}',
+              ),
+              Text(
+                '회수: ${_actorName(r.value('revokedBy'))} · ${_timeLabel(DateTime.tryParse(r.value('revokedAt')), empty: '회수되지 않음')}',
+              ),
+            ],
+            ExpansionTile(
+              title: const Text('기술 식별자'),
+              children: [
+                SelectableText('대상 ID: ${r.id}\n버전 묶음 ID: ${r.lineage}'),
+              ],
+            ),
+            if (r.value('sourceUrl').isNotEmpty)
+              ExternalLinkButton(url: r.value('sourceUrl'), label: '원문 열기'),
+          ],
         ),
-      ],
-      if (r.kind == AdminKind.scope) ...[
-        Text(
-          '부여: ${_actorName(r.value('grantedBy'))} · ${_timeLabel(DateTime.tryParse(r.value('grantedAt')))}',
-        ),
-        Text(
-          '회수: ${_actorName(r.value('revokedBy'))} · ${_timeLabel(DateTime.tryParse(r.value('revokedAt')), empty: '회수되지 않음')}',
-        ),
-      ],
-      ExpansionTile(
-        title: const Text('기술 식별자'),
-        children: [SelectableText('대상 ID: ${r.id}\n버전 묶음 ID: ${r.lineage}')],
       ),
-      if (r.value('sourceUrl').isNotEmpty)
-        ExternalLinkButton(url: r.value('sourceUrl'), label: '원문 열기'),
     ],
   );
   String _actorName(String id) {
@@ -570,96 +599,112 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             ),
         ] else ...[
           const SizedBox(height: 24),
-          Text(
-            '확인할 초안 ${drafts.length}개',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          if (drafts.isEmpty) const Text('확인할 초안이 없습니다. 필요한 자료부터 등록하세요.'),
-          for (final r in drafts.take(5))
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(r.name),
-              subtitle: Text('${r.kind.label} · v${r.version} · 초안'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: _busy
-                  ? null
-                  : () => widget.onNavigate('${_routeFor(r.kind)}/${r.id}'),
-            ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: _busy ? null : () => widget.onNavigate('/admin/rules'),
-              icon: const Icon(Icons.arrow_forward, size: 18),
-              label: const Text('졸업요건 확인'),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: _busy
-                  ? null
-                  : () => widget.onNavigate('/admin/documents'),
-              icon: const Icon(Icons.arrow_forward, size: 18),
-              label: const Text('공식 문서 확인'),
-            ),
-          ),
-          const Divider(height: 32),
-          Text('자료 등록', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              for (final kind in [
-                AdminKind.department,
-                AdminKind.curriculum,
-                AdminKind.course,
-                AdminKind.document,
-              ])
-                if (_canCreate(kind))
-                  FilledButton.tonalIcon(
-                    onPressed: _busy ? null : () => _edit(kind),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: Text('${kind.label} 등록'),
-                  ),
-              if (_role == AppRole.superAdmin)
-                OutlinedButton.icon(
-                  onPressed: _busy
-                      ? null
-                      : () => widget.onNavigate('/admin/accounts'),
-                  icon: const Icon(Icons.arrow_forward, size: 18),
-                  label: const Text('관리자 범위 관리'),
+          ResponsiveColumns(
+            enabled: true,
+            first: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '확인할 초안 ${drafts.length}개',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-            ],
-          ),
-          const Divider(height: 32),
-          Text('최근 변경', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          if (recent.isEmpty) const Text('현재 학교의 변경 이력이 없습니다.'),
-          for (final entry in recent)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
-              ),
-              subtitle: Text(
-                _find(entry.targetId) != null &&
-                        _repo.canRead(_actor, _find(entry.targetId)!)
-                    ? _find(entry.targetId)!.name
-                    : '삭제되었거나 볼 수 없는 항목',
-              ),
-              onTap: () => widget.onNavigate('/admin/history'),
+                const SizedBox(height: 8),
+                if (drafts.isEmpty) const Text('확인할 초안이 없습니다. 필요한 자료부터 등록하세요.'),
+                for (final r in drafts.take(5))
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(r.name),
+                    subtitle: Text('${r.kind.label} · v${r.version} · 초안'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _busy
+                        ? null
+                        : () =>
+                              widget.onNavigate('${_routeFor(r.kind)}/${r.id}'),
+                  ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : () => widget.onNavigate('/admin/rules'),
+                    icon: const Icon(Icons.arrow_forward, size: 18),
+                    label: const Text('졸업요건 확인'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : () => widget.onNavigate('/admin/documents'),
+                    icon: const Icon(Icons.arrow_forward, size: 18),
+                    label: const Text('공식 문서 확인'),
+                  ),
+                ),
+                const Divider(height: 32),
+              ],
             ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: _busy
-                  ? null
-                  : () => widget.onNavigate('/admin/history'),
-              icon: const Icon(Icons.arrow_forward, size: 18),
-              label: const Text('관리 이력 보기'),
+            second: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('자료 등록', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    for (final kind in [
+                      AdminKind.department,
+                      AdminKind.curriculum,
+                      AdminKind.course,
+                      AdminKind.document,
+                    ])
+                      if (_canCreate(kind))
+                        FilledButton.tonalIcon(
+                          onPressed: _busy ? null : () => _edit(kind),
+                          icon: const Icon(Icons.add, size: 18),
+                          label: Text('${kind.label} 등록'),
+                        ),
+                    if (_role == AppRole.superAdmin)
+                      OutlinedButton.icon(
+                        onPressed: _busy
+                            ? null
+                            : () => widget.onNavigate('/admin/accounts'),
+                        icon: const Icon(Icons.arrow_forward, size: 18),
+                        label: const Text('관리자 범위 관리'),
+                      ),
+                  ],
+                ),
+                const Divider(height: 32),
+                Text('최근 변경', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 8),
+                if (recent.isEmpty) const Text('현재 학교의 변경 이력이 없습니다.'),
+                for (final entry in recent)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
+                    ),
+                    subtitle: Text(
+                      _find(entry.targetId) != null &&
+                              _repo.canRead(_actor, _find(entry.targetId)!)
+                          ? _find(entry.targetId)!.name
+                          : '삭제되었거나 볼 수 없는 항목',
+                    ),
+                    onTap: () => widget.onNavigate('/admin/history'),
+                  ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : () => widget.onNavigate('/admin/history'),
+                    icon: const Icon(Icons.arrow_forward, size: 18),
+                    label: const Text('관리 이력 보기'),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -683,38 +728,42 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       children: [
         const Text('관리자 변경 메타데이터 · 학생 개인 기록 원문 없음'),
         if (entries.isEmpty) const Text('관리 이력이 없습니다. 등록·수정 후 확인하세요.'),
-        for (final entry in entries)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  Text(
-                    '${_timeLabel(entry.at)} · ${_actorName(entry.actorId)}',
-                  ),
-                  Text(
-                    '학교: ${_relationName(entry.institutionId).isEmpty ? '학교 공통 또는 접근 불가' : _relationName(entry.institutionId)}',
-                  ),
-                  Text(
-                    '대상: ${_relationName(entry.targetId).isEmpty ? '삭제되었거나 볼 수 없는 항목' : _relationName(entry.targetId)}',
-                  ),
-                  ExpansionTile(
-                    title: const Text('기술 식별자'),
+        ResponsivePanels(
+          children: [
+            for (final entry in entries)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      SelectableText(
-                        '요청 ID: ${entry.requestId}\n대상 ID: ${entry.targetId}',
+                      Text(
+                        '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Text(
+                        '${_timeLabel(entry.at)} · ${_actorName(entry.actorId)}',
+                      ),
+                      Text(
+                        '학교: ${_relationName(entry.institutionId).isEmpty ? '학교 공통 또는 접근 불가' : _relationName(entry.institutionId)}',
+                      ),
+                      Text(
+                        '대상: ${_relationName(entry.targetId).isEmpty ? '삭제되었거나 볼 수 없는 항목' : _relationName(entry.targetId)}',
+                      ),
+                      ExpansionTile(
+                        title: const Text('기술 식별자'),
+                        children: [
+                          SelectableText(
+                            '요청 ID: ${entry.requestId}\n대상 ID: ${entry.targetId}',
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+          ],
+        ),
       ],
     );
   }
@@ -845,22 +894,37 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     first: _records(AdminKind.institution),
                     second: _records(AdminKind.department),
                   ),
-                if (_section == '/admin/curricula') ...[
-                  _records(AdminKind.curriculum),
-                  _records(AdminKind.course),
-                  _records(AdminKind.curriculumCourse),
-                ],
-                if (_section == '/admin/rules') ...[
-                  _records(AdminKind.ruleSet),
-                  _records(AdminKind.rule),
-                ],
+                if (_section == '/admin/curricula')
+                  ResponsivePanels(
+                    children: [
+                      _records(AdminKind.curriculum),
+                      _records(AdminKind.course),
+                      _records(AdminKind.curriculumCourse),
+                    ],
+                  ),
+                if (_section == '/admin/rules')
+                  ResponsiveColumns(
+                    enabled: true,
+                    first: _records(AdminKind.ruleSet),
+                    second: _records(AdminKind.rule),
+                  ),
                 if (_section == '/admin/documents')
                   _records(AdminKind.document),
-                if (_section == '/admin/accounts') ...[
-                  _records(AdminKind.account),
-                  _records(AdminKind.scope),
-                ],
+                if (_section == '/admin/accounts')
+                  ResponsiveColumns(
+                    enabled: true,
+                    first: _records(AdminKind.account),
+                    second: _records(AdminKind.scope),
+                  ),
                 if (_section == '/admin/history') _history(),
+                if (_section == '/admin/settings')
+                  const Align(
+                    alignment: Alignment.topLeft,
+                    child: SizedBox(
+                      width: 548,
+                      child: AppearanceSettingsSection(),
+                    ),
+                  ),
               ],
             ],
           ),
