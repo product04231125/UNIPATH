@@ -161,6 +161,12 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
         'approval',
         '사용자가 확인한 승인 상태',
         options: ['pending', 'approved', 'rejected', 'needs_review'],
+        optionLabels: {
+          'pending': '대기',
+          'approved': '승인',
+          'rejected': '반려',
+          'needs_review': '검토 필요',
+        },
       ),
       PersonalRecordField(
         'observedOn',

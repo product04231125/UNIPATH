@@ -6,13 +6,79 @@ import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/services.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'app_shell/window_placement.dart';
 
 const _detachedChatPrefix = 'university_path_ai_detached_chat:';
+final _appearanceChanges = StreamController<String>.broadcast();
+Stream<String> appearanceChanges() => _appearanceChanges.stream;
+Future<void> publishAppearance(String palette) async {
+  for (final window in (await WindowController.getAll()).where(
+    (w) => _DetachedChatWindowConfig.matches(w.arguments),
+  )) {
+    try {
+      await window
+          .invokeMethod<void>('appearance_changed', palette)
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {
+      /* The child restores the saved preference when reopened. */
+    }
+  }
+}
+
 final _mainWindowMaximizeController = StreamController<bool>.broadcast();
 final _schoolProfileChanges =
     StreamController<Map<String, dynamic>>.broadcast();
 Map<String, dynamic> Function()? _readSchoolProfile;
 Future<void> Function(Map<String, dynamic>)? _saveSchoolProfile;
+Map<String, dynamic> Function()? _readConversation;
+Map<String, dynamic> Function(Map<String, dynamic>)? _conversationCommand;
+final _conversationChanges = StreamController<Map<String, dynamic>>.broadcast();
+Future<bool> Function()? _prepareConversationClose;
+final _conversationReady = StreamController<void>.broadcast();
+
+void bindConversation(
+  Map<String, dynamic> Function()? read,
+  Map<String, dynamic> Function(Map<String, dynamic>)? command,
+) {
+  _readConversation = read;
+  _conversationCommand = command;
+}
+
+void bindConversationClose(Future<bool> Function()? prepare) =>
+    _prepareConversationClose = prepare;
+Stream<Map<String, dynamic>> conversationChanges() =>
+    _conversationChanges.stream;
+Future<Map<String, dynamic>> requestConversation([
+  Map<String, dynamic>? command,
+]) async {
+  final main = (await WindowController.getAll()).firstWhere(
+    (w) => !_DetachedChatWindowConfig.matches(w.arguments),
+  );
+  final result = await main
+      .invokeMethod<Object?>(
+        command == null ? 'read_conversation' : 'conversation_command',
+        command,
+      )
+      .timeout(const Duration(seconds: 3));
+  if (command == null) await main.invokeMethod<void>('conversation_ready');
+  return Map<String, dynamic>.from(result as Map);
+}
+
+Future<void> publishConversation(Map<String, dynamic> snapshot) async {
+  for (final window in (await WindowController.getAll()).where(
+    (w) => _DetachedChatWindowConfig.matches(w.arguments),
+  )) {
+    try {
+      await window
+          .invokeMethod<void>('conversation_changed', snapshot)
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {
+      /* Main retains authoritative state. */
+    }
+  }
+}
 
 void bindSchoolProfile(
   Map<String, dynamic> Function()? read,
@@ -92,9 +158,9 @@ class _DetachedChatWindowConfig {
     );
     if (!arguments.startsWith(_detachedChatPrefix)) return fallback;
     try {
-      final values =
-          jsonDecode(arguments.substring(_detachedChatPrefix.length))
-              as Map<String, dynamic>;
+      final values = jsonDecode(
+        arguments.substring(_detachedChatPrefix.length),
+      ) as Map<String, dynamic>;
       double value(String key, double defaultValue) =>
           (values[key] as num?)?.toDouble() ?? defaultValue;
       return _DetachedChatWindowConfig(
@@ -114,13 +180,47 @@ Future<bool> isDetachedChatWindow() async {
   return _DetachedChatWindowConfig.matches(controller.arguments);
 }
 
-Future<void> closeDetachedChatWindow() => windowManager.close();
+Future<void> closeDetachedChatWindow() async {
+  if (await _prepareConversationClose?.call() == false) return;
+  await _notifyMainDetachedWindowClosed();
+  await windowManager.setPreventClose(false);
+  await windowManager.close();
+}
 
 Future<bool> hasDetachedChatWindow() async {
   final windows = await WindowController.getAll();
   return windows.any(
     (window) => _DetachedChatWindowConfig.matches(window.arguments),
   );
+}
+
+/// Logout must finish closing every child before another session can start.
+Future<void>? _endingDetachedSession;
+Future<void> endDetachedChatSession() => _endingDetachedSession ??=
+    _endDetachedChatSession().whenComplete(() => _endingDetachedSession = null);
+
+Future<void> _endDetachedChatSession() async {
+  for (final window in (await WindowController.getAll()).where(
+    (w) => _DetachedChatWindowConfig.matches(w.arguments),
+  )) {
+    await window.hide();
+    try {
+      await window
+          .invokeMethod<void>('end_chat_session')
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {
+      // Closing an engine can drop its reply. Verify native absence below.
+    }
+  }
+  for (var attempt = 0; attempt < 20; attempt++) {
+    await WindowController.cleanupClosedWindows();
+    if (!await hasDetachedChatWindow()) {
+      _mainDetachedChatOpen = false;
+      return;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  }
+  throw StateError('Detached chat session did not close');
 }
 
 Stream<bool> detachedChatWindowChanges() async* {
@@ -137,6 +237,22 @@ Future<void> initializeDetachedChatWindow() async {
   unawaited(_shutdownTrace('detached window initialized'));
   final config = _DetachedChatWindowConfig.fromArguments(controller.arguments);
   await controller.setWindowMethodHandler((call) async {
+    if (call.method == 'end_chat_session') {
+      // Explicit logout discards this session, including unacknowledged drafts.
+      await windowManager.setPreventClose(false);
+      unawaited(windowManager.close().catchError((Object _) {}));
+      return null;
+    }
+    if (call.method == 'appearance_changed') {
+      _appearanceChanges.add(call.arguments as String);
+      return null;
+    }
+    if (call.method == 'conversation_changed') {
+      _conversationChanges.add(
+        Map<String, dynamic>.from(call.arguments as Map),
+      );
+      return null;
+    }
     if (call.method == 'school_profile_changed') {
       _schoolProfileChanges.add(
         Map<String, dynamic>.from(call.arguments as Map),
@@ -153,7 +269,7 @@ Future<void> initializeDetachedChatWindow() async {
     }
     if (call.method == 'close_detached_chat') {
       await _shutdownTrace('detached close requested by main');
-      await windowManager.close();
+      await closeDetachedChatWindow();
       return null;
     }
     throw MissingPluginException(
@@ -178,13 +294,28 @@ Future<void> initializeDetachedChatWindow() async {
     },
   );
   windowManager.addListener(_detachedWindowCloseListener);
+  await windowManager.setPreventClose(true);
 }
 
 class _DetachedWindowCloseListener with WindowListener {
   @override
   void onWindowClose() {
     unawaited(_shutdownTrace('detached native close event received'));
-    unawaited(_notifyMainDetachedWindowClosed());
+    unawaited(_close());
+  }
+
+  bool _closing = false;
+  Future<void> _close() async {
+    if (_closing) return;
+    _closing = true;
+    try {
+      if (await _prepareConversationClose?.call() == false) return;
+      await _notifyMainDetachedWindowClosed();
+      await windowManager.setPreventClose(false);
+      await windowManager.close();
+    } finally {
+      _closing = false;
+    }
   }
 }
 
@@ -202,6 +333,36 @@ Future<void> _notifyMainDetachedWindowClosed() async {
 
 class _MainWindowCloseListener with WindowListener {
   bool _closing = false;
+  Timer? _saveTimer;
+  void _scheduleBoundsSave() {
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(milliseconds: 400), () async {
+      try {
+        if (await windowManager.isMaximized() ||
+            await windowManager.isMinimized()) {
+          return;
+        }
+        final bounds = await windowManager.getBounds();
+        final preferences = await SharedPreferences.getInstance();
+        await preferences.setString(
+          'university_path.window_bounds.v1',
+          jsonEncode({
+            'left': bounds.left,
+            'top': bounds.top,
+            'width': bounds.width,
+            'height': bounds.height,
+          }),
+        );
+      } catch (_) {
+        /* Window preference failure never changes academic data. */
+      }
+    });
+  }
+
+  @override
+  void onWindowMoved() => _scheduleBoundsSave();
+  @override
+  void onWindowResized() => _scheduleBoundsSave();
 
   @override
   void onWindowClose() {
@@ -258,6 +419,50 @@ class _MainWindowCloseListener with WindowListener {
 }
 
 final _mainWindowCloseListener = _MainWindowCloseListener();
+
+class _DisplayListener with ScreenListener {
+  bool _adjusting = false;
+  @override
+  void onScreenEvent(String eventName) {
+    unawaited(_recover());
+  }
+
+  Future<void> _recover() async {
+    if (_adjusting) return;
+    _adjusting = true;
+    try {
+      final displays = await screenRetriever.getAllDisplays();
+      if (displays.isEmpty) return;
+      final areas = [
+        for (final display in displays)
+          Rect.fromLTWH(
+            (display.visiblePosition ?? Offset.zero).dx,
+            (display.visiblePosition ?? Offset.zero).dy,
+            (display.visibleSize ?? display.size).width,
+            (display.visibleSize ?? display.size).height,
+          ),
+      ];
+      final bounds = await windowManager.getBounds();
+      if (!await windowManager.isMaximized() &&
+          !areas.any(
+            (area) =>
+                area.contains(bounds.topLeft) &&
+                area.contains(bounds.bottomRight - const Offset(1, 1)),
+          )) {
+        await windowManager.setBounds(restoreMainBounds(bounds, areas));
+      }
+      // A child may remain on a removed display. Return to the retained session
+      // instead of guessing new peer-window coordinates during topology changes.
+      await _dockDetachedChatInMainWindow();
+    } catch (_) {
+      /* OS events can arrive while engines are shutting down. */
+    } finally {
+      _adjusting = false;
+    }
+  }
+}
+
+final _displayListener = _DisplayListener();
 bool _mainDetachedChatOpen = false;
 StreamSubscription<bool>? _mainDetachedChatSubscription;
 
@@ -289,12 +494,34 @@ Future<void> _dockDetachedChatInMainWindow() async {
 
 Future<void> initializeMainWindowCloseBehavior() async {
   await windowManager.ensureInitialized();
+  await windowManager.setTitleBarStyle(
+    TitleBarStyle.hidden,
+    windowButtonVisibility: false,
+  );
   // The shell switches to compact navigation and then to a scroll fallback
   // below its reflow threshold, so a desktop-only 1365px minimum is not used.
   await windowManager.setMinimumSize(const Size(480, 520));
   await _applyMainWindowDefaultSize();
   final controller = await WindowController.fromCurrentEngine();
   await controller.setWindowMethodHandler((call) async {
+    if (call.method == 'read_conversation') {
+      if (_readConversation == null) {
+        throw StateError('Conversation unavailable');
+      }
+      return _readConversation!();
+    }
+    if (call.method == 'conversation_command') {
+      if (_conversationCommand == null) {
+        throw StateError('Conversation unavailable');
+      }
+      return _conversationCommand!(
+        Map<String, dynamic>.from(call.arguments as Map),
+      );
+    }
+    if (call.method == 'conversation_ready') {
+      _conversationReady.add(null);
+      return null;
+    }
     if (call.method == 'read_school_profile' ||
         call.method == 'save_school_profile') {
       if (_readSchoolProfile == null || _saveSchoolProfile == null) {
@@ -323,6 +550,7 @@ Future<void> initializeMainWindowCloseBehavior() async {
   });
   await windowManager.setPreventClose(true);
   windowManager.addListener(_mainWindowCloseListener);
+  screenRetriever.addListener(_displayListener);
   unawaited(_shutdownTrace('main close listener initialized'));
 }
 
@@ -330,22 +558,40 @@ Future<void> _applyMainWindowDefaultSize() async {
   if (await windowManager.isMaximized()) return;
   final displays = await screenRetriever.getAllDisplays();
   if (displays.isEmpty) return;
-  final display = displays.first;
-  final workPosition = display.visiblePosition ?? Offset.zero;
-  final workSize = display.visibleSize ?? display.size;
-  const margin = 32.0;
-  final width = (workSize.width - margin).clamp(480.0, 1440.0).toDouble();
-  final height = (workSize.height - margin).clamp(520.0, 900.0).toDouble();
-  await windowManager.setSize(Size(width, height));
-  await windowManager.setPosition(
-    Offset(
-      workPosition.dx + (workSize.width - width) / 2,
-      workPosition.dy + (workSize.height - height) / 2,
-    ),
-  );
+  Rect? saved;
+  try {
+    final raw = (await SharedPreferences.getInstance()).getString(
+      'university_path.window_bounds.v1',
+    );
+    if (raw != null) {
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      final values = [
+        for (final key in ['left', 'top', 'width', 'height'])
+          (data[key] as num).toDouble(),
+      ];
+      if (values.every((value) => value.isFinite) &&
+          values[2] >= 480 &&
+          values[3] >= 520) {
+        saved = Rect.fromLTWH(values[0], values[1], values[2], values[3]);
+      }
+    }
+  } catch (_) {
+    /* Invalid placement does not affect personal records. */
+  }
+  final areas = [
+    for (final display in displays)
+      Rect.fromLTWH(
+        (display.visiblePosition ?? Offset.zero).dx,
+        (display.visiblePosition ?? Offset.zero).dy,
+        (display.visibleSize ?? display.size).width,
+        (display.visibleSize ?? display.size).height,
+      ),
+  ];
+  await windowManager.setBounds(restoreMainBounds(saved, areas));
 }
 
 Future<void> openDetachedChatWindow({double width = 360}) async {
+  await _endingDetachedSession;
   final windows = await WindowController.getAll();
   for (final window in windows) {
     if (_DetachedChatWindowConfig.matches(window.arguments)) {
@@ -360,47 +606,45 @@ Future<void> openDetachedChatWindow({double width = 360}) async {
   final mainPosition = await windowManager.getPosition();
   final mainSize = await windowManager.getSize();
   final chatWidth = width.clamp(300.0, 480.0);
-  final mainCenter = Offset(
-    mainPosition.dx + mainSize.width / 2,
-    mainPosition.dy + mainSize.height / 2,
-  );
+  if (await windowManager.isMaximized()) {
+    throw StateError('Use the internal panel while maximized');
+  }
   final displays = await screenRetriever.getAllDisplays();
-  final display = displays.firstWhere((item) {
-    final position = item.visiblePosition ?? Offset.zero;
-    final size = item.visibleSize ?? item.size;
-    return Rect.fromLTWH(
-      position.dx,
-      position.dy,
-      size.width,
-      size.height,
-    ).contains(mainCenter);
-  }, orElse: () => displays.first);
-  final workPosition = display.visiblePosition ?? Offset.zero;
-  final workSize = display.visibleSize ?? display.size;
-  final rightEdge = workPosition.dx + workSize.width;
-  final canOpenOnRight =
-      mainPosition.dx + mainSize.width + chatWidth <= rightEdge;
-  // getBounds() already returns logical pixels. Leave one physical pixel
-  // between visible edges rather than fully overlapping the shadow frame.
-  final visualFrameOverlap = 15 / windowManager.getDevicePixelRatio();
-  final chatHeight = mainSize.height.clamp(420.0, workSize.height);
-  final chatTop = (mainPosition.dy).clamp(
-    workPosition.dy,
-    workPosition.dy + workSize.height - chatHeight,
+  final areas = [
+    for (final display in displays)
+      Rect.fromLTWH(
+        (display.visiblePosition ?? Offset.zero).dx,
+        (display.visiblePosition ?? Offset.zero).dy,
+        (display.visibleSize ?? display.size).width,
+        (display.visibleSize ?? display.size).height,
+      ),
+  ];
+  final bounds = detachedChatBounds(
+    Rect.fromLTWH(
+      mainPosition.dx,
+      mainPosition.dy,
+      mainSize.width,
+      mainSize.height,
+    ),
+    areas,
+    chatWidth,
   );
+  if (bounds == null) {
+    throw StateError('Not enough space to the right; use the internal panel');
+  }
   final config = _DetachedChatWindowConfig(
-    width: chatWidth,
-    height: chatHeight,
-    // It is a peer window, not an overlay. Prefer the right edge and use the
-    // left edge when the current display does not have enough room there.
-    left: canOpenOnRight
-        ? mainPosition.dx + mainSize.width - visualFrameOverlap
-        : mainPosition.dx - chatWidth + visualFrameOverlap,
-    top: chatTop,
+    width: bounds.width,
+    height: bounds.height,
+    left: bounds.left,
+    top: bounds.top,
+  );
+  final ready = _conversationReady.stream.first.timeout(
+    const Duration(seconds: 8),
   );
   await WindowController.create(
     WindowConfiguration(arguments: config.toArguments(), hiddenAtLaunch: true),
   );
+  await ready;
   _mainDetachedChatOpen = true;
   // The child makes itself visible only after its Dart side has set the final
   // size and position. Showing it here causes a distracting default-position

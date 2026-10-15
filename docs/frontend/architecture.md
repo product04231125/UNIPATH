@@ -7,6 +7,8 @@
 ## 진입과 공통 영역
 
 - `app.dart`: 테마와 Router 구성, 플랫폼 URL 제공자 수명주기
+- `shared/app_style.dart`: 3개 제품 테마·오류/삭제/제목표시줄 색상과 독립 기기 로컬 `AppAppearance`. 메인 선택은 저장 성공 뒤 IPC로 열린 AI 창에도 전달하며 새 창은 저장값을 읽는다. 학업·로그인·채팅 저장소와 분리한다.
+- `shared/widgets/task_focus_group.dart`: 위젯 작업 순서 기반 Tab 탐색. Router는 본문 작업 공간을 상단보다 먼저 두며 반응형 열은 각 열의 작업을 마친 뒤 다음 열로 이동한다.
 - `app_navigation.dart`: 주요 메뉴 경로 parser/delegate와 기존 메모리 로그인 목업 경계.
   주소와 Workspace 선택 메뉴를 연결하며 개인 기록·팝업·빠른 추가 의도는 경로에 저장하지 않는다.
 - `workspace.dart`: 선택 메뉴, 목업 데이터 표시, AI 도킹·분리 창 상태 조정
@@ -22,6 +24,9 @@
 - `shared/widgets/input_dialog.dart`: 다중 입력 모달·최신 작성 내용의 바깥 클릭 보호·수정/저장 중
   암묵적 닫기 차단을 공유한다. 기능은 `hasContent`, 변경 신호와 저장 상태를 제공한다.
   `showInputDialog`는 종료 애니메이션 완료 뒤 반환해 입력 controller의 조기 폐기를 방지한다.
+  명시적 취소는 `InputDialog.cancel`을 사용하고 기능별 `hasUnsavedChanges`로 원본 대비 변경을
+  판단한다. 신규 폼은 기본값을 제외한다. `confirmInputDiscard`는 채팅 내부 폼도 공유하며
+  계속 작성 기본 포커스와 이전 포커스 복귀를 제공한다. 저장 성공은 직접 pop한다.
 - `shared/widgets/content_scroll_view.dart`: 자체 controller와 16px 스크롤바 여백을 소유한다.
   모든 메뉴의 세로 본문·입력 폼·초안 미리보기에서 내용과 스크롤바를 분리한다.
   작업 공간의 화면 최소 폭에는 여백을 포함하며, 기록 카드 안의 중첩 세로 스크롤은 제거했다.
@@ -30,7 +35,10 @@
   주간표를 배치하며 채팅 상태를 주간표 도메인에 넣지 않는다.
 - `shared/widgets/page_header.dart`: 한글 제목·선택 문맥/설명·헤더 버튼의 정렬과 재배치,
   접근성 heading 표현. 문구·상태·데이터 소유권은 각 기능에 유지한다.
-- `shared/app_typography.dart`: 역할별 공통 글자 크기·줄높이, 앱 테마 적용
+- `shared/app_typography.dart`: 역할별 공통 글자 크기·줄높이, 학생·관리자 공통 테마 적용.
+  Pretendard Regular/Medium/SemiBold/Bold를 앱에 포함해 Web·Windows에서 사용한다.
+  글자 단계는 페이지 26, 섹션 18, 본문 14, 보조문 13이며 시스템 확대를 유지한다.
+  원본 글꼴과 SIL OFL 라이선스는 `frontend/assets/fonts/pretendard/`에 보관한다.
 - `shared/widgets/anchored_select_field.dart`: 트리거 기준 배치·키보드 포커스를 공유하는 선택 제어
 - `shared/external_links.dart`, `widgets/external_link_button.dart`: 브라우저 URL 검증·플랫폼 열기와
   이동 확인·실패·복사 UI. 저장 입력도 같은 URL 검증을 사용한다.
@@ -46,6 +54,7 @@
 | 모듈 | 소유 화면·로컬 상태 |
 | --- | --- |
 | `features/auth` | 로그인·회원가입 목업 |
+| `features/admin` | 공통 관리자 셸·입력 스키마·역할/범위·메모리 fake·변경 이력 |
 | `features/home` | 개인 계획 기반 이번 주 일정·준비 목록·우선 링크 |
 | `features/planning` | 기기 로컬 개인 계획 프로필·일정 repository |
 | `features/schedule` | 월간 개인 일정과 선택 날짜 목록, 일정 CRUD |
@@ -55,18 +64,26 @@
 | `features/records/experience` | 경험 입력 상태 |
 | `features/records/credential` | 자격 입력 상태 |
 | `features/records/portfolio` | 성과 원본, 포트폴리오 구성·지원 문서의 독립 로컬 초안 |
-| `features/assistant` | 학교 질의 HTTP 어댑터·응답 DTO, 창별 대화 상태, 도킹/분리 창의 공통 응답 UI |
+| `features/assistant` | 학교 질의 HTTP 어댑터·응답 DTO, 메인 소유 대화 상태와 IPC 원격 상태, 공통 응답 UI |
 | `features/settings` | 설정 진입 화면 |
 
 ## 임시 데이터와 API 전환
+
+- AppNavigation은 개발 역할과 관리자 repository를 소유한다. AdminRepository는 교체 경계,
+  FakeAdminRepository는 학생 저장소와 분리된 메모리 구현이다. 위젯은 입력·표시를 담당하고
+  fake는 최신 계정·범위·관계·버전을 검사한다. 실제 관리자 API는 서버 권한 검증이 필수다.
+- `features/admin/admin_shell.dart`는 역할별로 전달받은 메뉴의 반응형 탐색과 선택 상태만 담당한다.
+  학교 문맥·목록 검색/필터·현황·권한별 상세 작업은 AdminWorkspace, 필드 그룹과 작성 보호는
+  AdminEditor가 소유한다. 표시용 필드 그룹은 repository 모델·검증/전송 계약을 바꾸지 않는다.
 
 - `assistant_api.dart`는 Web/Windows 공통 `http.Client`와 명시적 요청·응답 모델을 사용한다.
   `API_BASE_URL`은 빌드 환경에서 주입한다. `AssistantGateway`는 테스트 주입 경계다.
 - `AssistantConversation`은 요청 중복 차단, 늦은 응답 폐기, 입력 보존과 같은 항목의 재시도를
   담당한다. 서버에는 질문과 사용자가 확인한 학교 문맥만 보내며 로컬 예시·개인 기록·로그인
-  입력을 보내지 않는다. 도킹과 분리 창은 같은 API를 사용하지만 대화 이력은 공유하지 않는다.
-- 질의 문맥은 창별 메모리 값이다. 메인 창의 질의 정보 폼은 저장된 학업 프로필을 초깃값으로
-  제안할 수 있으나 사용자가 `질의에 사용`을 눌러야 전송 문맥에 반영한다.
+  입력을 보내지 않는다. 메인 창이 요청·대화를 계속 소유하고 분리 창은 `RemoteConversation`으로
+  상태를 표시하며 입력·보내기·재시도를 IPC로 전달한다. 창 전환은 HTTP 클라이언트를 재생성하지 않는다.
+- `ConversationBridge`는 상태 revision과 명령 ID를 사용해 오래된 상태·중복 명령을 구분한다.
+  학교 문맥은 저장에 성공한 기기 프로필에서 공유하며 미저장 폼 값을 요청에 적용하지 않는다.
 
 - 기록 예시 행은 `features/records/fixtures/`, 졸업요건 표 행은
   `features/graduation/graduation_mock_fixture.dart`에 둔다.
@@ -90,3 +107,9 @@
 
 기능별 사용자 동작·fixture·후속 API 요구는 `features/`의 해당 문서에, 공통 UX는
 `docs/product-ux.md`에 기록한다. 기능 구조·상태 소유권을 바꿀 때만 이 문서를 갱신한다.
+
+### 개인 기록 저장 직렬화 (2026-10-15)
+- PersonalRecordRepository는 같은 기기/메인 isolate에서 종류별 작업 큐를 공유한다. 저장/삭제 직전 최신 저장 상태를 읽어 다른 객체의 변경을 덮어쓰지 않는다. 저장 키가 없어졌다면 재읽기의 메모리 목록도 비운다. 실패한 읽기 뒤 쓰기는 차단하며 실패가 후속 큐를 막지 않는다.
+- personal_records_test의 concurrent personal writes로 서로 다른 객체의 동시 추가·이전 객체 삭제·빈 저장 재읽기를 검증한다. 서버 동기화나 다른 OS 프로세스 사이의 잠금은 제공하지 않는다.
+
+- 작업 큐는 완료 전에 공유 슬롯을 해제한다. 완료 Future를 계속 보관하지 않아 종료된 비동기 실행 영역을 다음 화면/검사로 가져오지 않는다. 최종 전체 275개 및 저장 관련 42개 회귀 통과.

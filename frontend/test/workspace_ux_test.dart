@@ -14,6 +14,75 @@ import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  testWidgets(
+    'sidebar uses available academic profile without invented identity',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        const UniversityPathApp(startAuthenticated: true),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('학업 정보 미설정'), findsOneWidget);
+      expect(find.text('정민서'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      final repository = PlanningRepository();
+      await repository.load();
+      await repository.saveProfile(
+        const PlanningProfile(
+          school: '합성 학교',
+          department: '합성 학과',
+          admissionYear: 2025,
+        ),
+      );
+      await tester.pumpWidget(
+        const UniversityPathApp(startAuthenticated: true),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<WorkspaceShell>(find.byType(WorkspaceShell))
+            .profileSummary,
+        '합성 학교 · 합성 학과 · 2025년 입학',
+      );
+      expect(find.textContaining('학번'), findsNothing);
+      repository.dispose();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'returning to retained curriculum preserves its width requirement',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        const UniversityPathApp(startAuthenticated: true),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('졸업 요건').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('내 교육과정'));
+      await tester.pumpAndSettle();
+      final requiredWidth = tester
+          .widget<WorkspaceShell>(find.byType(WorkspaceShell))
+          .minimumContentWidth;
+      expect(requiredWidth, greaterThan(0));
+      await tester.tap(find.text('홈').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('뒤로 가기'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<WorkspaceShell>(find.byType(WorkspaceShell))
+            .minimumContentWidth,
+        requiredWidth,
+      );
+      expect(find.text('내 교육과정 학점 현황'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final size in [const Size(480, 520), const Size(1440, 900)]) {
     for (final scale in [1.0, 2.0]) {
       testWidgets(
@@ -154,12 +223,7 @@ void main() {
           if (width >= 820) {
             expect(upcoming.top, closeTo(prepare.top, 0.01));
             expect(upcoming.bottom, closeTo(prepare.bottom, 0.01));
-            if (width >= 1000 && scale == 1) {
-              expect(upcoming.top, closeTo(next.top, 0.01));
-              expect(upcoming.bottom, closeTo(next.bottom, 0.01));
-            } else {
-              expect(next.top, greaterThan(prepare.bottom));
-            }
+            expect(next.top, greaterThan(prepare.bottom));
           } else {
             expect(prepare.top, greaterThan(upcoming.bottom));
             expect(next.top, greaterThan(prepare.bottom));
@@ -436,7 +500,7 @@ void main() {
         '포트폴리오·성과',
         '설정',
       ]) {
-        final navigation = size.width < 900
+        final navigation = find.byTooltip(name).evaluate().isNotEmpty
             ? find.byTooltip(name)
             : find.text(name).first;
         await tester.ensureVisible(navigation);

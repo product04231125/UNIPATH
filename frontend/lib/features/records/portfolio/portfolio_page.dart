@@ -6,9 +6,14 @@ import '../personal_record_repository.dart';
 import 'portfolio_drafts_page.dart';
 
 class PortfolioPage extends StatefulWidget {
-  const PortfolioPage({super.key, required this.showMockData});
+  const PortfolioPage({
+    super.key,
+    required this.showMockData,
+    this.active = true,
+  });
 
   final bool showMockData;
+  final bool active;
 
   @override
   State<PortfolioPage> createState() => _PortfolioPageState();
@@ -46,8 +51,10 @@ class _PortfolioPageState extends State<PortfolioPage> {
         child: _stage == 0
             ? _records()
             : PortfolioDraftsPage(
+                active: widget.active,
                 key: ValueKey(_stage),
                 isDocument: _stage == 2,
+                onOpenAchievements: () => setState(() => _stage = 0),
               ),
       ),
     ],

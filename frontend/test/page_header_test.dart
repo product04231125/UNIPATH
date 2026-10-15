@@ -236,7 +236,12 @@ void main() {
         expect(tester.getTopLeft(find.text(title)), const Offset(28, 28));
         await tester.pumpAndSettle();
         expect(tester.getTopLeft(find.text(title)), const Offset(28, 28));
-        expect(find.textContaining('학교 정보가 없어도'), findsOneWidget);
+        expect(
+          find.textContaining(
+            page is CoursePage ? '졸업 반영은 학교의 확정 기록' : '학교 정보가 없어도',
+          ),
+          findsOneWidget,
+        );
         expect(find.textContaining('RECORDS'), findsNothing);
         expect(tester.takeException(), isNull);
       }

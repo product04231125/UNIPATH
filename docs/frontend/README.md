@@ -6,6 +6,7 @@ OpenAPI(`/api/v1/docs`)가 기준이다.
 
 ## 문서 구분
 
+- [백엔드 API 요구 명세](../api/frontend-backend-requirements.md): 현재 프런트의 서버 연결 요구, 기존 API와 신규 제안·후속 계약 구분
 - [architecture.md](architecture.md): 모듈 경계, 상태 소유권, fixture와 API 전환 방식
 - [platform-differences.md](platform-differences.md): 현재 구현된 Web·Windows 동작 차이
 - [ux-ui-verification.md](ux-ui-verification.md): 공통 카드·입력/탐색의 검증 근거와 Windows 최종 확인
@@ -21,6 +22,7 @@ fixture 또는 로컬 상태이며, 제품 계약이나 학교 공식 데이터�
 | 기능 | 문서 | 현재 상태 |
 | --- | --- | --- |
 | 인증 | [auth](features/auth.md) | 로그인·회원가입 목업 |
+| 관리자 | [admin](features/admin.md) | 개발용 공통 작업 공간·합성 CRUD·범위/버전/이력 |
 | 메뉴 탐색 | [navigation](features/navigation.md) | 주요 메뉴 hash URL·뒤로/앞으로·직접 진입 |
 | 홈 | [home](features/home.md) | 개인 계획 기반 시작 화면 |
 | 일정 | [schedule](features/schedule.md) | 기기 로컬 개인 일정 |

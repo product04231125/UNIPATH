@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/input_dialog.dart';
 import 'assistant_api.dart';
 
 class SchoolQueryContextForm extends StatefulWidget {
@@ -16,10 +17,10 @@ class SchoolQueryContextForm extends StatefulWidget {
   final VoidCallback onCancel;
   final bool enabled;
   @override
-  State<SchoolQueryContextForm> createState() => _ContextFormState();
+  SchoolQueryContextFormState createState() => SchoolQueryContextFormState();
 }
 
-class _ContextFormState extends State<SchoolQueryContextForm> {
+class SchoolQueryContextFormState extends State<SchoolQueryContextForm> {
   final _form = GlobalKey<FormState>();
   late final _school = TextEditingController(text: widget.initial.institution);
   late final _department = TextEditingController(
@@ -32,6 +33,28 @@ class _ContextFormState extends State<SchoolQueryContextForm> {
   bool _saving = false;
   bool _dirty = false;
   String? _error;
+  bool _confirming = false;
+
+  Future<bool> confirmLeave() async {
+    if (_saving || _confirming || !widget.enabled) return false;
+    final changed =
+        _school.text != (widget.initial.institution ?? '') ||
+        _department.text != (widget.initial.department ?? '') ||
+        _year.text != (widget.initial.admissionYear?.toString() ?? '') ||
+        _track != widget.initial.track;
+    if (changed) {
+      _confirming = true;
+      final discard = await confirmInputDiscard(context);
+      _confirming = false;
+      if (!discard) return false;
+    }
+    return mounted && !_saving && widget.enabled;
+  }
+
+  Future<void> _cancel() async {
+    if (await confirmLeave()) widget.onCancel();
+  }
+
   @override
   void dispose() {
     _school.dispose();
@@ -54,13 +77,10 @@ class _ContextFormState extends State<SchoolQueryContextForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              '테스트용 설정창',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
+            const Text('학교 정보', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
             const Text(
-              '설정과 같은 학교 정보를 사용합니다. 저장 후 질문을 보낼 때 질문과 아래 정보만 전송합니다. 개인 기록과 예시 졸업 기준은 전송하지 않습니다.',
+              '설정과 같은 학교 정보를 사용합니다. 저장 후 질문을 보낼 때 질문과 아래 정보만 전송합니다. 개인 기록은 전송하지 않습니다.',
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -128,7 +148,7 @@ class _ContextFormState extends State<SchoolQueryContextForm> {
               spacing: 8,
               children: [
                 TextButton(
-                  onPressed: _saving ? null : widget.onCancel,
+                  onPressed: _saving ? null : _cancel,
                   child: const Text('취소'),
                 ),
                 FilledButton(

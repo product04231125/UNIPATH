@@ -8,16 +8,17 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final color = status == '충족'
-        ? const Color(0xff157766)
+        ? (dark ? const Color(0xff7cdbc5) : const Color(0xff157766))
         : status == '미충족'
-        ? const Color(0xffb44232)
-        : const Color(0xff956720);
+        ? Theme.of(context).colorScheme.error
+        : (dark ? const Color(0xffedcb80) : const Color(0xff956720));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         status,

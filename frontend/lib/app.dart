@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'chat_window.dart' as chat_window;
 import 'features/assistant/detached_chat_page.dart';
 import 'features/assistant/assistant_api.dart';
-import 'shared/app_typography.dart';
+import 'shared/app_style.dart';
 import 'app_navigation.dart';
+import 'shared/widgets/task_focus_group.dart';
 
 Future<void> runUniversityPathApp() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,32 +18,8 @@ Future<void> runUniversityPathApp() async {
   runApp(detached ? const DetachedChatApp() : const UniversityPathApp());
 }
 
-ThemeData universityPathTheme() {
-  final base = ThemeData(
-    useMaterial3: true,
-    fontFamily: 'Malgun Gothic',
-    scaffoldBackgroundColor: const Color(0xfff7f8f8),
-    colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff193f59)),
-  );
-  final textTheme = AppTypography.apply(base.textTheme);
-  return base.copyWith(
-    textTheme: textTheme,
-    inputDecorationTheme: const InputDecorationTheme(
-      border: OutlineInputBorder(),
-      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-    ),
-    dialogTheme: DialogThemeData(
-      alignment: Alignment.center,
-      constraints: const BoxConstraints(maxWidth: 640),
-      titleTextStyle: textTheme.titleLarge,
-      contentTextStyle: textTheme.bodyMedium,
-    ),
-    listTileTheme: ListTileThemeData(
-      titleTextStyle: textTheme.bodyMedium,
-      subtitleTextStyle: textTheme.bodySmall,
-    ),
-  );
-}
+ThemeData universityPathTheme({AppPalette palette = AppPalette.cream}) =>
+    buildAppTheme(palette);
 
 class UniversityPathApp extends StatefulWidget {
   const UniversityPathApp({
@@ -86,13 +63,17 @@ class _UniversityPathAppState extends State<UniversityPathApp> {
   }
 
   @override
-  Widget build(BuildContext context) => MaterialApp.router(
-    debugShowCheckedModeBanner: false,
-    title: 'UniversityPath',
-    theme: universityPathTheme(),
-    routeInformationProvider: _information,
-    routeInformationParser: const AppLocationParser(),
-    routerDelegate: _navigation,
+  Widget build(BuildContext context) => AppPaletteHost(
+    builder: (theme, preview) => MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      title: 'UniversityPath',
+      theme: theme,
+      builder: (context, child) =>
+          preview(context, TaskFocusGroup(child: child!)),
+      routeInformationProvider: _information,
+      routeInformationParser: const AppLocationParser(),
+      routerDelegate: _navigation,
+    ),
   );
 }
 
@@ -100,10 +81,14 @@ class DetachedChatApp extends StatelessWidget {
   const DetachedChatApp({super.key});
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    debugShowCheckedModeBanner: false,
-    title: 'UniversityPath AI 도우미',
-    theme: universityPathTheme(),
-    home: const DetachedChatWindow(),
+  Widget build(BuildContext context) => AppPaletteHost(
+    builder: (theme, preview) => MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'UniversityPath AI 도우미',
+      theme: theme,
+      builder: (context, child) =>
+          preview(context, TaskFocusGroup(child: child!)),
+      home: const DetachedChatWindow(),
+    ),
   );
 }

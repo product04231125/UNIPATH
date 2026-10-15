@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+
+import 'app_role.dart';
+
 import 'package:university_path_frontend/shared/app_typography.dart';
 
 /// Temporary entry screen. It has no API, token, or role behavior yet.
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key, required this.onSignedIn});
+  const LoginPage({super.key, required this.onSignedIn, this.onSampleSignedIn});
 
   final VoidCallback onSignedIn;
+  final ValueChanged<AppRole>? onSampleSignedIn;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -46,7 +51,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xfff7f8f8),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -60,11 +64,11 @@ class _LoginPageState extends State<LoginPage> {
                   children: [
                     const _BrandHeader(),
                     const SizedBox(height: 46),
-                    const Text(
+                    Text(
                       'YOUR UNIVERSITY PATH',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Color(0xff5d7786),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: AppTypography.caption,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.5,
@@ -75,18 +79,17 @@ class _LoginPageState extends State<LoginPage> {
                       '나의 대학생활 경로를\n관리하세요.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        color: const Color(0xff1b3445),
-                        fontFamily: 'serif',
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w700,
                         height: 1.15,
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       '학업, 활동, 진로 기록을 한 곳에서 이어갑니다.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Color(0xff607386),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: AppTypography.body,
                         height: 1.5,
                       ),
@@ -102,44 +105,67 @@ class _LoginPageState extends State<LoginPage> {
                     FilledButton(
                       key: Key(_isLogin ? 'login-submit' : 'signup-submit'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xff193f59),
-                        foregroundColor: Colors.white,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(context)
+                            .colorScheme
+                            .onPrimary,
                         minimumSize: const Size.fromHeight(52),
-                        textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                        textStyle: TextStyle(fontWeight: FontWeight.w800),
                       ),
                       onPressed: _submit,
-                      child: Text(_isLogin ? '로그인' : '가입하고 목업 보기'),
+                      child: Text(_isLogin ? '로그인' : '회원가입'),
                     ),
-                    const SizedBox(height: 14),
-                    Text(
-                      _isLogin
-                          ? '인증 API 연동 전 화면 목업입니다. 입력값은 서버에 전송하거나 저장하지 않습니다.'
-                          : '회원가입은 화면 흐름만 재현합니다. 계정, 학교 정보, 역할은 생성·저장되지 않습니다.',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xff607386),
-                        fontSize: AppTypography.caption,
-                        height: 1.5,
+                    if (!kReleaseMode) ...[
+                      const SizedBox(height: 28),
+                      const Divider(),
+                      Text('개발용 샘플 진입 · 실제 인증 아님'),
+                      const SizedBox(height: 16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              key: const Key('sample-student-entry'),
+                              onPressed: () {
+                                if (widget.onSampleSignedIn != null) {
+                                  widget.onSampleSignedIn!(AppRole.user);
+                                } else {
+                                  widget.onSignedIn();
+                                }
+                              },
+                              child: Text('학생'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                OutlinedButton(
+                                  key: const Key('sample-school-admin-entry'),
+                                  onPressed: widget.onSampleSignedIn == null
+                                      ? null
+                                      : () => widget.onSampleSignedIn!(
+                                          AppRole.schoolAdmin,
+                                        ),
+                                  child: Text('학교관리자'),
+                                ),
+                                const SizedBox(height: 8),
+                                OutlinedButton(
+                                  key: const Key('sample-super-admin-entry'),
+                                  onPressed: widget.onSampleSignedIn == null
+                                      ? null
+                                      : () => widget.onSampleSignedIn!(
+                                          AppRole.superAdmin,
+                                        ),
+                                  child: Text('슈퍼관리자'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 28),
-                    const Divider(),
-                    const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      key: const Key('sample-student-entry'),
-                      onPressed: widget.onSignedIn,
-                      icon: const Icon(Icons.visibility_outlined),
-                      label: const Text('입력 없이 학생 화면 목업 보기'),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      '관리자 역할과 학교 검색은 API·권한 계약 확정 후 연결합니다.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Color(0xff778894),
-                        fontSize: AppTypography.caption,
-                      ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -229,47 +255,40 @@ class _LoginPageState extends State<LoginPage> {
     onFieldSubmitted: (_) => newPassword ? null : _submit(),
   );
 
-  InputDecoration _decoration(String label, [String? hint]) => InputDecoration(
-    labelText: label,
-    hintText: hint,
-    filled: true,
-    fillColor: Colors.white,
-    border: const OutlineInputBorder(),
-  );
+  InputDecoration _decoration(String label, [String? hint]) =>
+      InputDecoration(labelText: label, hintText: hint);
 }
 
 class _BrandHeader extends StatelessWidget {
   const _BrandHeader();
 
   @override
-  Widget build(BuildContext context) => const Row(
+  Widget build(BuildContext context) => Row(
     mainAxisAlignment: MainAxisAlignment.center,
     children: [
       CircleAvatar(
         radius: 20,
-        backgroundColor: Color(0xff193f59),
-        child: Icon(Icons.route_outlined, color: Colors.white),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        child: Icon(
+          Icons.route_outlined,
+          color: Theme.of(context).colorScheme.onPrimary,
+        ),
       ),
       SizedBox(width: 10),
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'UniversityPath',
-            style: TextStyle(
-              color: Color(0xff193f59),
-              fontSize: AppTypography.section,
-              fontWeight: FontWeight.w800,
+      Flexible(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'UniversityPath',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: AppTypography.section,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-          Text(
-            '화면 목업',
-            style: TextStyle(
-              color: Color(0xff607386),
-              fontSize: AppTypography.caption,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     ],
   );

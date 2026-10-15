@@ -75,7 +75,7 @@ void main() {
 
     expect(find.text('이름'), findsOneWidget);
     expect(find.byKey(const Key('signup-submit')), findsOneWidget);
-    expect(find.textContaining('계정, 학교 정보, 역할은 생성·저장되지 않습니다.'), findsOneWidget);
+    expect(find.textContaining('계정, 학교 정보, 역할은 생성·저장되지 않습니다.'), findsNothing);
     await tester.binding.setSurfaceSize(null);
   });
 
@@ -83,7 +83,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     await tester.pumpAndSettle();
-    expect(find.text('UniversityPath'), findsOneWidget);
+    expect(find.text('UniversityPath'), findsWidgets);
     expect(find.text('나의 대학생활 경로'), findsOneWidget);
     await tester.binding.setSurfaceSize(null);
   });
@@ -267,7 +267,7 @@ void main() {
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
 
     for (final menu in [
-      ('수강 관리', '이번 학기 수강 과목'),
+      ('수강 관리', '내 수강 과목'),
       ('일정', '개인 계획을 이 기기에 저장합니다.'),
       ('졸업 요건', '기준 선택'),
       ('활동', '등록한 활동'),

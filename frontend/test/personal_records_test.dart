@@ -4,9 +4,122 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_record_fields.dart';
+import 'package:university_path_frontend/features/records/course/course_page.dart';
+import 'package:university_path_frontend/features/records/activity/activity_page.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  test(
+    'concurrent personal writes across owners preserve unrelated records',
+    () async {
+      final first = PersonalRecordRepository(PersonalRecordKind.experience);
+      final second = PersonalRecordRepository(PersonalRecordKind.experience);
+      await first.load();
+      await second.load();
+      await Future.wait([
+        first.save(PersonalRecord(id: 'one', values: {'title': '첫 기록'})),
+        second.save(PersonalRecord(id: 'two', values: {'title': '다른 기록'})),
+      ]);
+      final read = PersonalRecordRepository(PersonalRecordKind.experience);
+      await read.load();
+      expect(read.records.map((r) => r.id).toSet(), {'one', 'two'});
+      await first.delete('one');
+      await read.load();
+      expect(read.records.single.id, 'two');
+      await (await SharedPreferences.getInstance()).remove(read.storageKey);
+      await read.load();
+      expect(read.records, isEmpty);
+    },
+  );
+
+  testWidgets(
+    'activity preserves recorded meaning and localizes stored approval',
+    (tester) async {
+      final repo = PersonalRecordRepository(PersonalRecordKind.activity);
+      await repo.load();
+      await repo.save(
+        PersonalRecord(
+          id: 'approval-label',
+          values: {'title': '내 활동', 'approval': 'needs_review'},
+        ),
+      );
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: ActivityPage(showMockData: true)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('기록됨'), findsOneWidget);
+      expect(find.text('충족'), findsNothing);
+      expect(find.textContaining('사용자가 확인한 승인 상태: 검토 필요'), findsOneWidget);
+      expect(find.textContaining('needs_review'), findsNothing);
+      final loaded = PersonalRecordRepository(PersonalRecordKind.activity);
+      await loaded.load();
+      expect(loaded.records.single.value('approval'), 'needs_review');
+    },
+  );
+
+  testWidgets('activity separates examples and collapses guidance', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(home: const Scaffold(body: ActivityPage(showMockData: true))),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('개인 기록이 없습니다. 직접 입력해 주세요.'), findsOneWidget);
+    expect(find.text('학과 멘토링'), findsOneWidget);
+    expect(find.byType(ExpansionTile), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final scale in [1.0, 2.0]) {
+    testWidgets(
+      'course prioritizes personal records and labels examples scale=$scale',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(480, 520));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final repo = PersonalRecordRepository(PersonalRecordKind.course);
+        await repo.load();
+        await repo.save(
+          PersonalRecord(
+            id: 'layout',
+            values: {'title': '내 과목', 'term': '2026-2', 'credits': '2'},
+          ),
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: universityPathTheme(),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(scale)),
+              child: child!,
+            ),
+            home: const Scaffold(body: CoursePage(showMockData: true)),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final own = find.text('내 과목');
+        final example = find.text('자료구조');
+        expect(
+          tester.getTopLeft(own).dy,
+          lessThan(tester.getTopLeft(example).dy),
+        );
+        expect(find.textContaining('개인 입력 합계 2.0학점'), findsOneWidget);
+        expect(find.textContaining('졸업 반영은 학교의 확정 기록'), findsOneWidget);
+        expect(find.textContaining('학교에서 확인한 정보가 없으면'), findsNothing);
+        await tester.ensureVisible(example);
+        await tester.pumpAndSettle();
+        expect(example.hitTestable(), findsOneWidget);
+        await tester.ensureVisible(find.text('교육과정 확인'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('교육과정 확인'));
+        await tester.pumpAndSettle();
+        expect(find.text('• 인정 영역과 학점 분류 확인'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   test('personal repositories persist CRUD and isolate domains', () async {
     for (final kind in PersonalRecordKind.values) {
