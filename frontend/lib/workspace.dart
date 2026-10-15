@@ -87,6 +87,7 @@ class _WorkspaceState extends State<Workspace> {
   var _chatWidth = 360.0;
   double _graduationMinimumWidth = 0;
   final _graduationPageKey = GlobalKey();
+  final _assistantPanelKey = GlobalKey();
   late final _assistantConversation = AssistantConversation(
     api: widget.assistantFactory?.call(),
   );
@@ -239,6 +240,7 @@ class _WorkspaceState extends State<Workspace> {
       pageBuilder: (context, layout) =>
           _buildPage(navigationItems.length, layout),
       assistantBuilder: (context, width) => AssistantPanel(
+        key: _assistantPanelKey,
         conversation: _assistantConversation,
         saveContext: _sharedSchoolContext.save,
         suggestContext: () {
