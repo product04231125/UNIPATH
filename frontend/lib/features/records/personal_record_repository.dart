@@ -40,12 +40,24 @@ class PersonalRecordRepository {
   List<PersonalRecord> _records = [];
   List<PersonalRecord> get records => List.unmodifiable(_records);
   String get storageKey => 'university_path.personal_records.${kind.name}.v1';
+  static final _operations = <PersonalRecordKind, Future<void>>{};
 
-  Future<void> load() async {
+  Future<void> _enqueue(Future<void> Function() operation) {
+    final result = (_operations[kind] ?? Future.value()).then(
+      (_) => operation(),
+    );
+    _operations[kind] = result.then<void>((_) {}, onError: (Object _) {});
+    return result;
+  }
+
+  Future<void> load() => _enqueue(_read);
+
+  Future<void> _read() async {
     _loaded = false;
     _preferences ??= await SharedPreferences.getInstance();
     final raw = _preferences!.getString(storageKey);
     if (raw == null) {
+      _records = [];
       _loaded = true;
       return;
     }
@@ -64,7 +76,9 @@ class PersonalRecordRepository {
     _loaded = true;
   }
 
-  Future<void> save(PersonalRecord record) async {
+  Future<void> save(PersonalRecord record) => _enqueue(() async {
+    if (!_loaded) throw StateError('Load records successfully before writing');
+    await _read();
     final next = [..._records];
     final index = next.indexWhere((r) => r.id == record.id);
     if (index < 0) {
@@ -73,10 +87,13 @@ class PersonalRecordRepository {
       next[index] = record;
     }
     await _write(next);
-  }
+  });
 
-  Future<void> delete(String id) =>
-      _write(_records.where((r) => r.id != id).toList());
+  Future<void> delete(String id) => _enqueue(() async {
+    if (!_loaded) throw StateError('Load records successfully before writing');
+    await _read();
+    await _write(_records.where((r) => r.id != id).toList());
+  });
 
   Future<void> _write(List<PersonalRecord> records) async {
     if (!_loaded) throw StateError('Load records successfully before writing');

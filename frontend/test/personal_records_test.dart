@@ -10,6 +10,29 @@ import 'package:university_path_frontend/features/records/activity/activity_page
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  test(
+    'concurrent personal writes across owners preserve unrelated records',
+    () async {
+      final first = PersonalRecordRepository(PersonalRecordKind.experience);
+      final second = PersonalRecordRepository(PersonalRecordKind.experience);
+      await first.load();
+      await second.load();
+      await Future.wait([
+        first.save(PersonalRecord(id: 'one', values: {'title': '첫 기록'})),
+        second.save(PersonalRecord(id: 'two', values: {'title': '다른 기록'})),
+      ]);
+      final read = PersonalRecordRepository(PersonalRecordKind.experience);
+      await read.load();
+      expect(read.records.map((r) => r.id).toSet(), {'one', 'two'});
+      await first.delete('one');
+      await read.load();
+      expect(read.records.single.id, 'two');
+      await (await SharedPreferences.getInstance()).remove(read.storageKey);
+      await read.load();
+      expect(read.records, isEmpty);
+    },
+  );
+
   testWidgets(
     'activity preserves recorded meaning and localizes stored approval',
     (tester) async {
