@@ -84,6 +84,7 @@ class _WorkspaceState extends State<Workspace> {
   bool _detachingChat = false;
   bool _signingOut = false;
   Future<void>? _pendingDetachedOpen;
+  Future<void>? _endingSession;
   final _assistantButtonFocus = FocusNode(debugLabel: 'AI 도우미 열기');
   late final ChatPreferences _chatPreferences;
   var _chatWidth = 360.0;
@@ -208,6 +209,7 @@ class _WorkspaceState extends State<Workspace> {
 
   @override
   void dispose() {
+    unawaited(_releaseSession().catchError((Object _) {}));
     _assistantButtonFocus.dispose();
     _detachedChatSubscription?.cancel();
     _mainWindowMaximizeSubscription?.cancel();
@@ -429,12 +431,7 @@ class _WorkspaceState extends State<Workspace> {
     if (_signingOut) return;
     _signingOut = true;
     try {
-      try {
-        await _pendingDetachedOpen;
-      } catch (_) {
-        /* Still close any child. */
-      }
-      await widget.windowHost.endSession();
+      await _releaseSession();
       if (mounted) widget.onSignedOut();
     } catch (_) {
       if (mounted) {
@@ -447,6 +444,23 @@ class _WorkspaceState extends State<Workspace> {
       }
     } finally {
       _signingOut = false;
+    }
+  }
+
+  Future<void> _releaseSession() => _endingSession ??= _endSession();
+
+  Future<void> _endSession() async {
+    final host = widget.windowHost;
+    try {
+      try {
+        await _pendingDetachedOpen;
+      } catch (_) {
+        /* Close even after a failed open. */
+      }
+      await host.endSession();
+    } catch (_) {
+      _endingSession = null;
+      rethrow;
     }
   }
 }

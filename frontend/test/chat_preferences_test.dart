@@ -55,6 +55,35 @@ class FakeWindowHost extends AssistantWindowHost {
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  testWidgets('removing workspace while child opens still ends old session', (
+    tester,
+  ) async {
+    final preferences = ChatPreferences();
+    await preferences.load();
+    await preferences.setMode(ChatOpeningMode.detached);
+    final host = FakeWindowHost()..opening = Completer<void>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Workspace(
+          windowHost: host,
+          chatPreferences: preferences,
+          onSignedOut: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('AI 도우미 열기'));
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox());
+    host.opening!.complete();
+    await tester.pumpAndSettle();
+    expect(host.open, isFalse);
+    expect(host.closes, 1);
+    preferences.dispose();
+    await host.maximize.close();
+    await host.detached.close();
+  });
+
   testWidgets(
     'logout waits for pending child open and closes it before leaving',
     (tester) async {

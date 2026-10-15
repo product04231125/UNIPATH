@@ -195,7 +195,11 @@ Future<bool> hasDetachedChatWindow() async {
 }
 
 /// Logout must finish closing every child before another session can start.
-Future<void> endDetachedChatSession() async {
+Future<void>? _endingDetachedSession;
+Future<void> endDetachedChatSession() => _endingDetachedSession ??=
+    _endDetachedChatSession().whenComplete(() => _endingDetachedSession = null);
+
+Future<void> _endDetachedChatSession() async {
   for (final window in (await WindowController.getAll()).where(
     (w) => _DetachedChatWindowConfig.matches(w.arguments),
   )) {
@@ -236,7 +240,7 @@ Future<void> initializeDetachedChatWindow() async {
     if (call.method == 'end_chat_session') {
       // Explicit logout discards this session, including unacknowledged drafts.
       await windowManager.setPreventClose(false);
-      unawaited(windowManager.close());
+      unawaited(windowManager.close().catchError((Object _) {}));
       return null;
     }
     if (call.method == 'appearance_changed') {
@@ -587,6 +591,7 @@ Future<void> _applyMainWindowDefaultSize() async {
 }
 
 Future<void> openDetachedChatWindow({double width = 360}) async {
+  await _endingDetachedSession;
   final windows = await WindowController.getAll();
   for (final window in windows) {
     if (_DetachedChatWindowConfig.matches(window.arguments)) {
