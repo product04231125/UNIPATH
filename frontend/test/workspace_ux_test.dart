@@ -14,6 +14,43 @@ import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  for (final width in [480.0, 900.0, 1000.0]) {
+    testWidgets(
+      'compact startup navigation stays compact after home actions at $width',
+      (tester) async {
+        await tester.binding.setSurfaceSize(Size(width, 768));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester.pumpWidget(
+          const UniversityPathApp(startAuthenticated: true),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byTooltip('홈'), findsOneWidget);
+        for (final label in ['설정', '홈', '활동', '홈', '일정', '홈']) {
+          final destination = find.byTooltip(label);
+          await tester.ensureVisible(destination);
+          await tester.tap(destination);
+          await tester.pumpAndSettle();
+          expect(
+            find.byTooltip('홈'),
+            findsOneWidget,
+            reason: 'navigation to $label must not change sidebar width',
+          );
+        }
+        final scheduleLink = find.text('전체 일정 보기 →').first;
+        await tester.ensureVisible(scheduleLink);
+        await tester.tap(scheduleLink);
+        await tester.pumpAndSettle();
+        expect(find.byTooltip('홈'), findsOneWidget);
+        await tester.tap(find.byTooltip('홈'));
+        await tester.pumpAndSettle();
+        await tester.binding.setSurfaceSize(const Size(1440, 900));
+        await tester.pumpAndSettle();
+        expect(find.text('홈'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets(
     'sidebar uses available academic profile without invented identity',
     (tester) async {
@@ -376,7 +413,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.binding.setSurfaceSize(const Size(950, 900));
     await tester.pumpAndSettle();
-    expect(find.text('홈'), findsOneWidget);
+    expect(find.byTooltip('홈'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
