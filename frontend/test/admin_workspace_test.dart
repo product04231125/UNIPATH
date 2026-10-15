@@ -62,6 +62,40 @@ Future<void> openEditor(
 }
 
 void main() {
+  testWidgets(
+    'compact admin header keeps school context and exposes work sooner',
+    (tester) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.binding.setSurfaceSize(const Size(480, 520));
+      final repo = FakeAdminRepository();
+      addTearDown(repo.dispose);
+      await tester.pumpWidget(
+        host(
+          AdminWorkspace(
+            repository: repo,
+            role: AppRole.superAdmin,
+            path: '/admin/schools',
+            onNavigate: (_) {},
+            onSignedOut: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('슈퍼관리자 · 관리자 작업 공간'), findsNothing);
+      expect(find.text('관리 범위: 전체 학교'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('admin-school-selector')),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .getTopLeft(find.byKey(const ValueKey('admin-section-institution')))
+            .dy,
+        lessThan(220),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('all paired admin sections use two columns and stack', (
     tester,
   ) async {

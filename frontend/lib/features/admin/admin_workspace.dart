@@ -815,120 +815,129 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       busy: _busy,
       onNavigate: widget.onNavigate,
       onSignedOut: widget.onSignedOut,
-      child: ContentScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('${_role.label} · 관리자 작업 공간'),
-
-              const SizedBox(height: 12),
-              if (_schools.isNotEmpty && allowed)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 440),
-                    child: AnchoredSelectField<String>(
-                      externalLabel: true,
-                      key: const ValueKey('admin-school-selector'),
-                      searchable: true,
-                      searchLabel: '학교 이름 검색',
-                      value: _schoolId,
-                      label: '현재 학교',
-                      options: [
-                        for (final school in _schools)
-                          SelectOption(school.id, school.name),
-                      ],
-                      onChanged: (v) {
-                        if (v == _schoolId) return;
-                        setState(() {
-                          _schoolId = v;
-                          _error = null;
-                          _queries.clear();
-                          _statuses.clear();
-                        });
-                        // The old detail cannot remain under the new school.
-                        if (_detailId != null) widget.onNavigate(_section);
-                      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compactHeader =
+              constraints.maxWidth < 760 ||
+              MediaQuery.textScalerOf(context).scale(14) > 18;
+          final title = allowed
+              ? AdminWorkspace.menus[_section]!
+              : '접근할 수 없습니다.';
+          return ContentScrollView(
+            child: Padding(
+              padding: EdgeInsets.all(compactHeader ? 16 : 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (compactHeader)
+                    PageHeader(title: title)
+                  else ...[
+                    Text('${_role.label} · 관리자 작업 공간'),
+                    const SizedBox(height: 12),
+                  ],
+                  if (_schools.isNotEmpty && allowed)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 440),
+                        child: AnchoredSelectField<String>(
+                          externalLabel: !compactHeader,
+                          key: const ValueKey('admin-school-selector'),
+                          searchable: true,
+                          searchLabel: '학교 이름 검색',
+                          value: _schoolId,
+                          label: '현재 학교',
+                          options: [
+                            for (final school in _schools)
+                              SelectOption(school.id, school.name),
+                          ],
+                          onChanged: (v) {
+                            if (v == _schoolId) return;
+                            setState(() {
+                              _schoolId = v;
+                              _error = null;
+                              _queries.clear();
+                              _statuses.clear();
+                            });
+                            // The old detail cannot remain under the new school.
+                            if (_detailId != null) widget.onNavigate(_section);
+                          },
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              if (widget.role != AppRole.user)
-                Text(
-                  _role == AppRole.superAdmin
-                      ? '관리 범위: 전체 학교'
-                      : '관리 범위: ${_repo.records.where((r) => r.kind == AdminKind.scope && r.status == 'active' && r.value('userId') == _actor && r.value('institutionId') == _schoolId).map(_scopeSummary).toSet().join(', ')}',
-                ),
-              const SizedBox(height: 12),
-              PageHeader(
-                title: allowed
-                    ? AdminWorkspace.menus[_section]!
-                    : '접근할 수 없습니다.',
+                  if (widget.role != AppRole.user)
+                    Text(
+                      _role == AppRole.superAdmin
+                          ? '관리 범위: 전체 학교'
+                          : '관리 범위: ${_repo.records.where((r) => r.kind == AdminKind.scope && r.status == 'active' && r.value('userId') == _actor && r.value('institutionId') == _schoolId).map(_scopeSummary).toSet().join(', ')}',
+                    ),
+                  const SizedBox(height: 12),
+                  if (!compactHeader) PageHeader(title: title),
+                  if (_loading)
+                    const LinearProgressIndicator()
+                  else if (_loadError != null) ...[
+                    Text(_loadError!),
+                    TextButton(onPressed: _load, child: const Text('다시 읽기')),
+                  ] else if (!allowed) ...[
+                    const Text('현재 계정 상태·역할·관리 범위로 이 화면에 접근할 수 없습니다.'),
+                    TextButton(
+                      onPressed: () => widget.onNavigate('/admin/overview'),
+                      child: const Text('관리 현황으로'),
+                    ),
+                  ] else if (_detailId != null)
+                    _detail(detail!)
+                  else ...[
+                    if (_error != null)
+                      Text(
+                        _error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    if (_section == '/admin/overview') _overview(),
+                    if (_section == '/admin/schools')
+                      ResponsiveColumns(
+                        enabled: true,
+                        first: _records(AdminKind.institution),
+                        second: _records(AdminKind.department),
+                      ),
+                    if (_section == '/admin/curricula')
+                      ResponsivePanels(
+                        children: [
+                          _records(AdminKind.curriculum),
+                          _records(AdminKind.course),
+                          _records(AdminKind.curriculumCourse),
+                        ],
+                      ),
+                    if (_section == '/admin/rules')
+                      ResponsiveColumns(
+                        enabled: true,
+                        first: _records(AdminKind.ruleSet),
+                        second: _records(AdminKind.rule),
+                      ),
+                    if (_section == '/admin/documents')
+                      _records(AdminKind.document),
+                    if (_section == '/admin/accounts')
+                      ResponsiveColumns(
+                        enabled: true,
+                        first: _records(AdminKind.account),
+                        second: _records(AdminKind.scope),
+                      ),
+                    if (_section == '/admin/history') _history(),
+                    if (_section == '/admin/settings')
+                      const Align(
+                        alignment: Alignment.topLeft,
+                        child: SizedBox(
+                          width: 548,
+                          child: AppearanceSettingsSection(),
+                        ),
+                      ),
+                  ],
+                ],
               ),
-              if (_loading)
-                const LinearProgressIndicator()
-              else if (_loadError != null) ...[
-                Text(_loadError!),
-                TextButton(onPressed: _load, child: const Text('다시 읽기')),
-              ] else if (!allowed) ...[
-                const Text('현재 계정 상태·역할·관리 범위로 이 화면에 접근할 수 없습니다.'),
-                TextButton(
-                  onPressed: () => widget.onNavigate('/admin/overview'),
-                  child: const Text('관리 현황으로'),
-                ),
-              ] else if (_detailId != null)
-                _detail(detail!)
-              else ...[
-                if (_error != null)
-                  Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                if (_section == '/admin/overview') _overview(),
-                if (_section == '/admin/schools')
-                  ResponsiveColumns(
-                    enabled: true,
-                    first: _records(AdminKind.institution),
-                    second: _records(AdminKind.department),
-                  ),
-                if (_section == '/admin/curricula')
-                  ResponsivePanels(
-                    children: [
-                      _records(AdminKind.curriculum),
-                      _records(AdminKind.course),
-                      _records(AdminKind.curriculumCourse),
-                    ],
-                  ),
-                if (_section == '/admin/rules')
-                  ResponsiveColumns(
-                    enabled: true,
-                    first: _records(AdminKind.ruleSet),
-                    second: _records(AdminKind.rule),
-                  ),
-                if (_section == '/admin/documents')
-                  _records(AdminKind.document),
-                if (_section == '/admin/accounts')
-                  ResponsiveColumns(
-                    enabled: true,
-                    first: _records(AdminKind.account),
-                    second: _records(AdminKind.scope),
-                  ),
-                if (_section == '/admin/history') _history(),
-                if (_section == '/admin/settings')
-                  const Align(
-                    alignment: Alignment.topLeft,
-                    child: SizedBox(
-                      width: 548,
-                      child: AppearanceSettingsSection(),
-                    ),
-                  ),
-              ],
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
