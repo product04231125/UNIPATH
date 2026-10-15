@@ -19,8 +19,10 @@ class PortfolioDraftsPage extends StatefulWidget {
     required this.isDocument,
     this.repository,
     this.onOpenAchievements,
+    this.active = true,
   });
   final bool isDocument;
+  final bool active;
   final PortfolioWorkspaceRepository? repository;
   final VoidCallback? onOpenAchievements;
   @override
@@ -31,6 +33,8 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
   late final PortfolioWorkspaceRepository _repository;
   bool _loading = true, _failed = false, _busy = false;
   String? _message;
+  Future<void> _pendingLoad = Future.value();
+  int _loadRevision = 0;
   @override
   void initState() {
     super.initState();
@@ -39,17 +43,27 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
   }
 
   Future<void> _load() async {
+    final revision = ++_loadRevision;
     setState(() {
       _loading = true;
       _failed = false;
     });
     try {
-      await _repository.load();
+      final operation = _pendingLoad.then((_) => _repository.load());
+      _pendingLoad = operation.then<void>((_) {}, onError: (Object _) {});
+      await operation;
     } catch (_) {
-      if (mounted) setState(() => _failed = true);
+      if (mounted && revision == _loadRevision) setState(() => _failed = true);
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && revision == _loadRevision)
+        setState(() => _loading = false);
     }
+  }
+
+  @override
+  void didUpdateWidget(covariant PortfolioDraftsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.active && widget.active) _load();
   }
 
   Future<void> _edit({

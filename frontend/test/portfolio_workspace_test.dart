@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_drafts_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
@@ -55,6 +56,84 @@ Widget portfolioPage() =>
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets(
+    'retained portfolio reloads edited and deleted experience on return including copied preview',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await seedRecords();
+      final drafts = PortfolioWorkspaceRepository();
+      await drafts.load();
+      await drafts.saveDocument(
+        ApplicationDocument(
+          id: 'return',
+          title: '복귀 검증 문서',
+          target: '기관',
+          role: '직무',
+          type: '이력서',
+          body: '보존할 직접 작성 본문',
+          sources: ['experience/experience-1'],
+        ),
+      );
+      await tester.pumpWidget(
+        const UniversityPathApp(startAuthenticated: true),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('포트폴리오·성과'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('3. 지원 문서'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('합성 경험'), findsOneWidget);
+      final experiences = PersonalRecordRepository(
+        PersonalRecordKind.experience,
+      );
+      await experiences.load();
+      await tester.tap(find.text('경험').first);
+      await tester.pumpAndSettle();
+      await experiences.save(
+        PersonalRecord(
+          id: 'experience-1',
+          values: {'title': '수정된 경험', 'role': '수정 역할'},
+        ),
+      );
+      await tester.tap(find.text('포트폴리오·성과'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('수정된 경험'), findsOneWidget);
+      expect(find.textContaining('합성 경험'), findsNothing);
+      await tester.tap(find.text('경험').first);
+      await tester.pumpAndSettle();
+      await experiences.delete('experience-1');
+      await tester.tap(find.text('포트폴리오·성과'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('원본 기록 삭제됨'), findsOneWidget);
+      await tester.tap(find.text('미리보기'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('보존할 직접 작성 본문'), findsOneWidget);
+      expect(find.textContaining('참고 원본 기록 삭제됨'), findsOneWidget);
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData')
+            copied = call.arguments['text'] as String;
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      await tester.tap(find.text('초안 텍스트 복사'));
+      await tester.pumpAndSettle();
+      expect(copied, contains('참고 원본 기록 삭제됨'));
+      expect(copied, contains('보존할 직접 작성 본문'));
+      expect(copied, isNot(contains('수정된 경험')));
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   test('compositions and documents persist independently without mutating source records', () async {
     await seedRecords();

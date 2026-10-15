@@ -342,7 +342,7 @@ class _WorkspaceState extends State<Workspace> {
         4 => ActivityPage(showMockData: _showMockData),
         5 => ExperiencePage(showMockData: _showMockData),
         6 => CredentialPage(showMockData: _showMockData),
-        7 => PortfolioPage(showMockData: _showMockData),
+        7 => PortfolioPage(showMockData: _showMockData, active: _page == 7),
         _ when index == settingsPage - 1 => SettingsPage(
           repository: _planningRepository,
           chatPreferences: widget.windowHost.supportsDetached
