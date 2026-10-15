@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:math';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -43,11 +44,20 @@ class PersonalRecordRepository {
   static final _operations = <PersonalRecordKind, Future<void>>{};
 
   Future<void> _enqueue(Future<void> Function() operation) {
-    final result = (_operations[kind] ?? Future.value()).then(
-      (_) => operation(),
-    );
-    _operations[kind] = result.then<void>((_) {}, onError: (Object _) {});
-    return result;
+    final previous = _operations[kind];
+    final finished = Completer<void>();
+    _operations[kind] = finished.future;
+    return (() async {
+      try {
+        if (previous != null) await previous;
+        await operation();
+      } finally {
+        if (identical(_operations[kind], finished.future)) {
+          _operations.remove(kind);
+        }
+        finished.complete();
+      }
+    })();
   }
 
   Future<void> load() => _enqueue(_read);
