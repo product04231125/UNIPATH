@@ -1,4 +1,6 @@
 Future<bool> isDetachedChatWindow() async => false;
+Stream<String> appearanceChanges() => const Stream.empty();
+Future<void> publishAppearance(String palette) async {}
 void bindSchoolProfile(
   Map<String, dynamic> Function()? read,
   Future<void> Function(Map<String, dynamic>)? save,

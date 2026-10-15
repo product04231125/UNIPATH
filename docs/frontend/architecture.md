@@ -7,6 +7,8 @@
 ## 진입과 공통 영역
 
 - `app.dart`: 테마와 Router 구성, 플랫폼 URL 제공자 수명주기
+- `shared/app_style.dart`: 3개 제품 테마·오류/삭제/제목표시줄 색상과 독립 기기 로컬 `AppAppearance`. 메인 선택은 저장 성공 뒤 IPC로 열린 AI 창에도 전달하며 새 창은 저장값을 읽는다. 학업·로그인·채팅 저장소와 분리한다.
+- `shared/widgets/task_focus_group.dart`: 위젯 작업 순서 기반 Tab 탐색. Router는 본문 작업 공간을 상단보다 먼저 두며 반응형 열은 각 열의 작업을 마친 뒤 다음 열로 이동한다.
 - `app_navigation.dart`: 주요 메뉴 경로 parser/delegate와 기존 메모리 로그인 목업 경계.
   주소와 Workspace 선택 메뉴를 연결하며 개인 기록·팝업·빠른 추가 의도는 경로에 저장하지 않는다.
 - `workspace.dart`: 선택 메뉴, 목업 데이터 표시, AI 도킹·분리 창 상태 조정

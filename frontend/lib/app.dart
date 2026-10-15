@@ -5,6 +5,7 @@ import 'features/assistant/detached_chat_page.dart';
 import 'features/assistant/assistant_api.dart';
 import 'shared/app_style.dart';
 import 'app_navigation.dart';
+import 'shared/widgets/task_focus_group.dart';
 
 Future<void> runUniversityPathApp() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,7 +68,8 @@ class _UniversityPathAppState extends State<UniversityPathApp> {
       debugShowCheckedModeBanner: false,
       title: 'UniversityPath',
       theme: theme,
-      builder: preview,
+      builder: (context, child) =>
+          preview(context, TaskFocusGroup(child: child!)),
       routeInformationProvider: _information,
       routeInformationParser: const AppLocationParser(),
       routerDelegate: _navigation,
@@ -84,7 +86,8 @@ class DetachedChatApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'UniversityPath AI 도우미',
       theme: theme,
-      builder: preview,
+      builder: (context, child) =>
+          preview(context, TaskFocusGroup(child: child!)),
       home: const DetachedChatWindow(),
     ),
   );

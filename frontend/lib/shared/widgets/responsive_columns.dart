@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'task_focus_group.dart';
+
 /// Reparents the same subtrees so resizing does not reset field focus or edits.
 class ResponsiveColumns extends StatefulWidget {
   const ResponsiveColumns({
@@ -23,8 +25,14 @@ class _ResponsiveColumnsState extends State<ResponsiveColumns> {
           widget.enabled &&
           constraints.maxWidth >= 760 &&
           MediaQuery.textScalerOf(context).scale(14) <= 18;
-      final first = KeyedSubtree(key: _first, child: widget.first);
-      final second = KeyedSubtree(key: _second, child: widget.second);
+      final first = KeyedSubtree(
+        key: _first,
+        child: TaskFocusGroup(child: widget.first),
+      );
+      final second = KeyedSubtree(
+        key: _second,
+        child: TaskFocusGroup(child: widget.second),
+      );
       return columns
           ? Row(
               key: const ValueKey('responsive-two-columns'),

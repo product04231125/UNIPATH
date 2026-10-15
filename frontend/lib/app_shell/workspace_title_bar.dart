@@ -45,7 +45,7 @@ class WorkspaceTitleBar extends StatelessWidget {
               icon: const Icon(Icons.arrow_forward),
             ),
             IconButton(
-              tooltip: sidebarVisible ? '사이드바 숨기기' : '사이드바 다시 열기',
+              tooltip: sidebarVisible ? '사이드바 축소' : '사이드바 펼치기',
               onPressed: onToggleSidebar,
               icon: Icon(sidebarVisible ? Icons.menu_open : Icons.menu),
             ),

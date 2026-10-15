@@ -44,6 +44,7 @@ class WorkspaceShell extends StatelessWidget {
     this.minimumContentWidth = 0,
     this.sidebarVisible = true,
     this.integratedTitleBar = false,
+    this.assistantButtonFocus,
   });
 
   final int selectedPage;
@@ -63,6 +64,7 @@ class WorkspaceShell extends StatelessWidget {
   final Widget Function(BuildContext context, double width) assistantBuilder;
   final double minimumContentWidth;
   final bool sidebarVisible, integratedTitleBar;
+  final FocusNode? assistantButtonFocus;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -91,6 +93,7 @@ class WorkspaceShell extends StatelessWidget {
     final overlayWidth = ((maxWidth - 72) / 2).clamp(200.0, 360.0);
     final dockWidth = showDockedAssistant ? assistantWidth + 6 : 0.0;
     final compactNavigation =
+        !sidebarVisible ||
         maxWidth < 900 ||
         MediaQuery.textScalerOf(context).scale(14) > 18 ||
         maxWidth -
@@ -109,16 +112,15 @@ class WorkspaceShell extends StatelessWidget {
       children: [
         Row(
           children: [
-            if (sidebarVisible)
-              _Sidebar(
-                compact: compactNavigation,
-                selectedPage: selectedPage,
-                navigationItems: navigationItems,
-                onPageSelected: onPageSelected,
-                showMockData: showMockData,
-                onMockDataChanged: onMockDataChanged,
-                onSignedOut: onSignedOut,
-              ),
+            _Sidebar(
+              compact: compactNavigation,
+              selectedPage: selectedPage,
+              navigationItems: navigationItems,
+              onPageSelected: onPageSelected,
+              showMockData: showMockData,
+              onMockDataChanged: onMockDataChanged,
+              onSignedOut: onSignedOut,
+            ),
             Expanded(
               child: ClipRect(
                 child: Column(
@@ -193,6 +195,7 @@ class WorkspaceShell extends StatelessWidget {
             right: 18,
             bottom: 18,
             child: FloatingActionButton(
+              focusNode: assistantButtonFocus,
               tooltip: assistantTooltip,
               onPressed: onOpenAssistant,
               backgroundColor: Theme.of(context).colorScheme.primary,

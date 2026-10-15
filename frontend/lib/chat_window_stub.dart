@@ -1,4 +1,6 @@
 Future<bool> isDetachedChatWindow() async => false;
+Stream<String> appearanceChanges() => const Stream.empty();
+Future<void> publishAppearance(String palette) async {}
 void bindConversation(
   Map<String, dynamic> Function()? read,
   Map<String, dynamic> Function(Map<String, dynamic>)? command,

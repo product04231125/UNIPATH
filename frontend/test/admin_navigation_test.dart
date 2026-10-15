@@ -19,10 +19,13 @@ void main() {
     await tester.tap(find.text('설정').first);
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, '작성 중 프로필');
-    await tester.tap(find.byTooltip('사이드바 숨기기'));
+    await tester.tap(find.byTooltip('사이드바 축소'));
     await tester.pumpAndSettle();
+    expect(find.byTooltip('홈'), findsOneWidget);
+    expect(find.byTooltip('설정'), findsOneWidget);
+    expect(find.byKey(const Key('logout-button')), findsOneWidget);
     expect(find.text('작성 중 프로필'), findsOneWidget);
-    await tester.tap(find.byTooltip('사이드바 다시 열기'));
+    await tester.tap(find.byTooltip('사이드바 펼치기'));
     await tester.pumpAndSettle();
     expect(find.text('작성 중 프로필'), findsOneWidget);
     await tester.tap(find.byTooltip('뒤로 가기'));
@@ -33,6 +36,32 @@ void main() {
     expect(find.text('학업 프로필'), findsOneWidget);
     expect(find.text('작성 중 프로필'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+  testWidgets('admin collapse retains icon destinations and current page', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const UniversityPathApp());
+    await tester.pumpAndSettle();
+    final entry = find.byKey(const Key('sample-super-admin-entry'));
+    await tester.ensureVisible(entry);
+    await tester.tap(entry);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('사이드바 축소'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('관리 현황'), findsOneWidget);
+    await tester.tap(find.byTooltip('졸업요건'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('admin-section-ruleSet')), findsOneWidget);
+    await tester.tap(find.byTooltip('사이드바 펼치기'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('admin-section-ruleSet')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('admin-menu-/admin/rules')),
+      findsOneWidget,
+    );
   });
   testWidgets(
     'administrator navigation and relogin preserve mock changes and student records',
@@ -62,6 +91,7 @@ void main() {
       await tester.tap(find.text('관리 현황'));
       await tester.pumpAndSettle();
       expect(find.text('관리 가능한 학교 3개'), findsOneWidget);
+      await tester.ensureVisible(find.text('로그아웃'));
       await tester.tap(find.text('로그아웃'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(entry);
@@ -96,6 +126,7 @@ void main() {
         find.text('관리자 관리'),
         role == AppRole.superAdmin ? findsOneWidget : findsNothing,
       );
+      await tester.ensureVisible(find.text('로그아웃'));
       await tester.tap(find.text('로그아웃'));
       await tester.pumpAndSettle();
       expect(find.byType(AdminWorkspace), findsNothing);

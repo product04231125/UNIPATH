@@ -82,6 +82,7 @@ class _WorkspaceState extends State<Workspace> {
   var _mainWindowMaximized = false;
   bool _openingChat = false;
   bool _detachingChat = false;
+  final _assistantButtonFocus = FocusNode(debugLabel: 'AI 도우미 열기');
   late final ChatPreferences _chatPreferences;
   var _chatWidth = 360.0;
   double _graduationMinimumWidth = 0;
@@ -187,6 +188,7 @@ class _WorkspaceState extends State<Workspace> {
 
   @override
   void dispose() {
+    _assistantButtonFocus.dispose();
     _detachedChatSubscription?.cancel();
     _mainWindowMaximizeSubscription?.cancel();
     if (widget.windowHost.supportsDetached) {
@@ -230,6 +232,7 @@ class _WorkspaceState extends State<Workspace> {
       assistantWidth: _chatWidth,
       assistantTooltip: _detachedChatActive ? '분리된 AI 도우미 앞으로' : 'AI 도우미 열기',
       onOpenAssistant: _openAssistant,
+      assistantButtonFocus: _assistantButtonFocus,
       onAssistantWidthChanged: (delta) => setState(() {
         _chatWidth = (_chatWidth - delta).clamp(300.0, 480.0);
       }),
@@ -362,10 +365,15 @@ class _WorkspaceState extends State<Workspace> {
     });
   }
 
-  void _closeChat() => setState(() {
-    _chatOpen = false;
-    _chatManuallyOpened = false;
-  });
+  void _closeChat() {
+    setState(() {
+      _chatOpen = false;
+      _chatManuallyOpened = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _assistantButtonFocus.requestFocus();
+    });
+  }
 
   Future<void> _openDetachedChat() async {
     if (_detachingChat || _mainWindowMaximized) return;

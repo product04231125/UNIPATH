@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../shared/widgets/content_scroll_view.dart';
 
-/// Shared navigation for both administrator roles; authorization stays in the
-/// workspace/repository. Menu entries are already filtered by the caller.
+/// Caller supplies role-filtered destinations; collapsing never removes access.
 class AdminShell extends StatelessWidget {
   const AdminShell({
     super.key,
@@ -17,120 +16,109 @@ class AdminShell extends StatelessWidget {
   });
   final Map<String, String> menus;
   final String section;
-  final bool busy;
+  final bool busy, sidebarVisible;
   final ValueChanged<String> onNavigate;
   final VoidCallback onSignedOut;
   final Widget child;
-  final bool sidebarVisible;
-
-  Widget _navigation(BuildContext context) => ContentScrollView(
-    padding: const EdgeInsets.all(12),
+  IconData _icon(String path) => switch (path) {
+    '/admin/overview' => Icons.dashboard_outlined,
+    '/admin/schools' => Icons.school_outlined,
+    '/admin/curricula' => Icons.menu_book_outlined,
+    '/admin/rules' => Icons.checklist_outlined,
+    '/admin/documents' => Icons.description_outlined,
+    '/admin/history' => Icons.history,
+    '/admin/accounts' => Icons.manage_accounts_outlined,
+    '/admin/settings' => Icons.settings_outlined,
+    _ => Icons.folder_outlined,
+  };
+  Widget _navigation(BuildContext context, bool compact) => ContentScrollView(
+    padding: EdgeInsets.all(compact ? 4 : 12),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Text(
-            'UniversityPath',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          child: compact
+              ? const Icon(
+                  Icons.school_outlined,
+                  semanticLabel: 'UniversityPath',
+                )
+              : Text(
+                  'UniversityPath',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
         ),
         for (final entry in menus.entries)
-          Semantics(
-            selected: entry.key == section,
-            child: ListTile(
-              key: ValueKey('admin-menu-${entry.key}'),
+          if (compact)
+            Semantics(
               selected: entry.key == section,
-              selectedTileColor: Theme.of(context)
-                  .colorScheme
-                  .secondaryContainer,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+              child: IconButton(
+                key: ValueKey('admin-menu-${entry.key}'),
+                tooltip: entry.value,
+                style: IconButton.styleFrom(
+                  backgroundColor: entry.key == section
+                      ? Theme.of(context).colorScheme.secondaryContainer
+                      : null,
+                ),
+                onPressed: busy ? null : () => onNavigate(entry.key),
+                icon: Icon(_icon(entry.key)),
               ),
-              title: Text(entry.value),
-              onTap: busy
-                  ? null
-                  : () {
-                      if (Scaffold.of(context).isDrawerOpen) {
-                        Navigator.of(context).pop();
-                      }
-                      onNavigate(entry.key);
-                    },
+            )
+          else
+            Semantics(
+              selected: entry.key == section,
+              child: ListTile(
+                key: ValueKey('admin-menu-${entry.key}'),
+                selected: entry.key == section,
+                selectedTileColor: Theme.of(context)
+                    .colorScheme
+                    .secondaryContainer,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                title: Text(entry.value),
+                onTap: busy ? null : () => onNavigate(entry.key),
+              ),
             ),
-          ),
         const Divider(height: 24),
-        TextButton.icon(
-          onPressed: busy ? null : onSignedOut,
-          icon: const Icon(Icons.logout, size: 18),
-          label: const Text('로그아웃'),
-        ),
+        if (compact)
+          IconButton(
+            tooltip: '로그아웃',
+            onPressed: busy ? null : onSignedOut,
+            icon: const Icon(Icons.logout),
+          )
+        else
+          TextButton.icon(
+            onPressed: busy ? null : onSignedOut,
+            icon: const Icon(Icons.logout, size: 18),
+            label: const Text('로그아웃'),
+          ),
       ],
     ),
   );
-
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final expanded =
-          sidebarVisible &&
-          constraints.maxWidth >= 760 &&
-          MediaQuery.textScalerOf(context).scale(14) < 21;
+      final compact =
+          !sidebarVisible ||
+          constraints.maxWidth < 760 ||
+          MediaQuery.textScalerOf(context).scale(14) >= 21;
       return Scaffold(
-        drawer: expanded
-            ? null
-            : Drawer(
-                child: SafeArea(child: Builder(builder: _navigation)),
-              ),
         body: SafeArea(
-          child: expanded
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      width: 196,
-                      child: Material(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerLow,
-                        child: Builder(builder: _navigation),
-                      ),
-                    ),
-                    const VerticalDivider(width: 1),
-                    Expanded(child: child),
-                  ],
-                )
-              : Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        children: [
-                          Builder(
-                            builder: (context) => IconButton(
-                              tooltip: '관리자 메뉴 열기',
-                              icon: const Icon(Icons.menu),
-                              onPressed: busy
-                                  ? null
-                                  : () => Scaffold.of(context).openDrawer(),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              menus[section] ?? '관리자 작업 공간',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: '로그아웃',
-                            icon: const Icon(Icons.logout),
-                            onPressed: busy ? null : onSignedOut,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(child: child),
-                  ],
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: compact ? 72 : 196,
+                child: Material(
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                  child: _navigation(context, compact),
                 ),
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(child: child),
+            ],
+          ),
         ),
       );
     },

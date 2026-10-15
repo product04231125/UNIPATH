@@ -1,5 +1,10 @@
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
+import '../chat_window.dart' as native;
 
 import 'app_typography.dart';
 
@@ -13,6 +18,13 @@ class AppAppearance extends ChangeNotifier {
   String? error;
   SharedPreferences? _preferences;
   bool _disposed = false;
+  void receive(String value) {
+    final next = AppPalette.values.where((p) => p.name == value).firstOrNull;
+    if (next == null || _disposed) return;
+    palette = next;
+    _changed();
+  }
+
   void _changed() {
     if (!_disposed) notifyListeners();
   }
@@ -45,6 +57,7 @@ class AppAppearance extends ChangeNotifier {
               _preferences!.setString(storageKey, value.name));
       if (!saved) throw StateError('Appearance write failed');
       palette = value;
+      unawaited(native.publishAppearance(value.name).catchError((Object _) {}));
     } catch (_) {
       error = '테마를 저장하지 못했습니다. 기존 테마를 유지합니다.';
     } finally {
@@ -80,14 +93,17 @@ class AppPaletteHost extends StatefulWidget {
 
 class _AppPaletteHostState extends State<AppPaletteHost> {
   final _appearance = AppAppearance();
+  StreamSubscription<String>? _subscription;
   @override
   void initState() {
     super.initState();
     _appearance.load();
+    _subscription = native.appearanceChanges().listen(_appearance.receive);
   }
 
   @override
   void dispose() {
+    _subscription?.cancel();
     _appearance.dispose();
     super.dispose();
   }

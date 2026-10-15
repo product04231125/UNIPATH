@@ -405,12 +405,19 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      if (compact) {
-        await tester.tap(find.byTooltip('관리자 메뉴 열기'));
-        await tester.pumpAndSettle();
-      }
       final overview = find.byKey(const ValueKey('admin-menu-/admin/overview'));
-      expect(tester.widget<ListTile>(overview).selected, isTrue);
+      if (compact) {
+        expect(
+          tester
+              .widget<IconButton>(overview)
+              .style!
+              .backgroundColor!
+              .resolve({}),
+          isNotNull,
+        );
+      } else {
+        expect(tester.widget<ListTile>(overview).selected, isTrue);
+      }
       expect(
         find.byKey(const ValueKey('admin-menu-/admin/accounts')),
         findsNothing,
@@ -424,11 +431,17 @@ void main() {
       await tester.pumpAndSettle();
       expect(path, '/admin/documents');
       if (compact) {
-        expect(documents, findsNothing);
-        await tester.tap(find.byTooltip('관리자 메뉴 열기'));
-        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<IconButton>(documents)
+              .style!
+              .backgroundColor!
+              .resolve({}),
+          isNotNull,
+        );
+      } else {
+        expect(tester.widget<ListTile>(documents).selected, isTrue);
       }
-      expect(tester.widget<ListTile>(documents).selected, isTrue);
       expect(tester.takeException(), isNull);
     });
   }

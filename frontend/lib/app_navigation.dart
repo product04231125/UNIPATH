@@ -7,6 +7,7 @@ import 'features/auth/app_role.dart';
 import 'features/admin/admin_workspace.dart';
 import 'features/admin/admin_repository.dart';
 import 'app_shell/workspace_title_bar.dart';
+import 'shared/widgets/task_focus_group.dart';
 
 class AppLocation {
   const AppLocation(this.path);
@@ -191,28 +192,42 @@ class AppNavigation extends RouterDelegate<AppLocation>
       pages: [
         MaterialPage<void>(
           key: ValueKey(key),
-          child: Column(
-            children: [
-              WorkspaceTitleBar(
-                title: _role == AppRole.user
-                    ? 'UniversityPath'
-                    : '${_role.label} · UniversityPath',
-                sidebarVisible: _sidebarVisible,
-                onToggleSidebar: authenticated
-                    ? () {
-                        _sidebarVisible = !_sidebarVisible;
-                        notifyListeners();
-                      }
-                    : null,
-                onBack: authenticated && _historyIndex > 0
-                    ? () => _travel(context, -1)
-                    : null,
-                onForward: authenticated && _historyIndex < _history.length - 1
-                    ? () => _travel(context, 1)
-                    : null,
-              ),
-              Expanded(child: page),
-            ],
+          child: FocusTraversalGroup(
+            policy: OrderedTraversalPolicy(),
+            child: Column(
+              children: [
+                FocusTraversalOrder(
+                  order: const NumericFocusOrder(1),
+                  child: TaskFocusGroup(
+                    child: WorkspaceTitleBar(
+                      title: _role == AppRole.user
+                          ? 'UniversityPath'
+                          : '${_role.label} · UniversityPath',
+                      sidebarVisible: _sidebarVisible,
+                      onToggleSidebar: authenticated
+                          ? () {
+                              _sidebarVisible = !_sidebarVisible;
+                              notifyListeners();
+                            }
+                          : null,
+                      onBack: authenticated && _historyIndex > 0
+                          ? () => _travel(context, -1)
+                          : null,
+                      onForward:
+                          authenticated && _historyIndex < _history.length - 1
+                          ? () => _travel(context, 1)
+                          : null,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: FocusTraversalOrder(
+                    order: const NumericFocusOrder(0),
+                    child: TaskFocusGroup(child: page),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],

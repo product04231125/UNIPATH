@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'content_scroll_view.dart';
+import 'task_focus_group.dart';
 
 Future<bool> confirmInputDiscard(BuildContext context) async {
   final previousFocus = FocusManager.instance.primaryFocus;
@@ -113,33 +114,35 @@ class InputDialog extends StatelessWidget {
       animation: changes,
       builder: (context, _) => PopScope(
         canPop: !saving && !editing && !hasContent(),
-        child: Dialog(
-          insetPadding: const EdgeInsets.all(24),
-          constraints: const BoxConstraints(maxWidth: 640),
-          child: Padding(
-            key: const Key('input-dialog-surface'),
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Semantics(
-                  header: true,
-                  child: DefaultTextStyle(
-                    style: Theme.of(context).textTheme.titleLarge!,
-                    child: title,
+        child: TaskFocusGroup(
+          child: Dialog(
+            insetPadding: const EdgeInsets.all(24),
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: Padding(
+              key: const Key('input-dialog-surface'),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Semantics(
+                    header: true,
+                    child: DefaultTextStyle(
+                      style: Theme.of(context).textTheme.titleLarge!,
+                      child: title,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Flexible(child: ContentScrollView(child: content)),
-                const SizedBox(height: 16),
-                Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: actions,
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Flexible(child: ContentScrollView(child: content)),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: actions,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

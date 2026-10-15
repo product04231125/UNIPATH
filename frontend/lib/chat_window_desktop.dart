@@ -11,6 +11,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_shell/window_placement.dart';
 
 const _detachedChatPrefix = 'university_path_ai_detached_chat:';
+final _appearanceChanges = StreamController<String>.broadcast();
+Stream<String> appearanceChanges() => _appearanceChanges.stream;
+Future<void> publishAppearance(String palette) async {
+  for (final window in (await WindowController.getAll()).where(
+    (w) => _DetachedChatWindowConfig.matches(w.arguments),
+  )) {
+    try {
+      await window
+          .invokeMethod<void>('appearance_changed', palette)
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {
+      /* The child restores the saved preference when reopened. */
+    }
+  }
+}
+
 final _mainWindowMaximizeController = StreamController<bool>.broadcast();
 final _schoolProfileChanges =
     StreamController<Map<String, dynamic>>.broadcast();
@@ -192,6 +208,10 @@ Future<void> initializeDetachedChatWindow() async {
   unawaited(_shutdownTrace('detached window initialized'));
   final config = _DetachedChatWindowConfig.fromArguments(controller.arguments);
   await controller.setWindowMethodHandler((call) async {
+    if (call.method == 'appearance_changed') {
+      _appearanceChanges.add(call.arguments as String);
+      return null;
+    }
     if (call.method == 'conversation_changed') {
       _conversationChanges.add(
         Map<String, dynamic>.from(call.arguments as Map),

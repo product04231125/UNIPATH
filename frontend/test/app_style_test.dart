@@ -32,6 +32,10 @@ void main() {
     final legacy = AppAppearance();
     await legacy.load();
     expect(legacy.palette, AppPalette.cream);
+    legacy.receive('orange');
+    expect(legacy.palette, AppPalette.orange);
+    legacy.receive('unknown');
+    expect(legacy.palette, AppPalette.orange);
     expect(AppPalette.values.length, 3);
     for (final item in [a, restored, failed, legacy]) {
       item.dispose();
