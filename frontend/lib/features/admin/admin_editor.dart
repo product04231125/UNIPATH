@@ -35,7 +35,7 @@ class AdminEditorState extends State<AdminEditor> {
   late final Map<String, TextEditingController> _controllers;
   late final Map<String, String> _initial;
   bool _saving = false;
-  String? _error;
+  String? _error, _message;
   bool get saving => _saving;
   bool get dirty =>
       _fields.any((f) => _value(f.key) != (_initial[f.key] ?? ''));
@@ -129,6 +129,7 @@ class AdminEditorState extends State<AdminEditor> {
     setState(() {
       _saving = true;
       _error = null;
+      _message = null;
     });
     try {
       if (widget.revoke) {
@@ -159,9 +160,7 @@ class AdminEditorState extends State<AdminEditor> {
       if (mounted) {
         if (widget.inline) {
           _reset();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('등록했습니다. 다음 내용을 입력할 수 있습니다.')),
-          );
+          setState(() => _message = '등록했습니다. 다음 내용을 입력할 수 있습니다.');
         } else {
           Navigator.pop(context);
         }
@@ -314,6 +313,8 @@ class AdminEditorState extends State<AdminEditor> {
                       ),
               ),
           ],
+          if (_message != null)
+            Semantics(liveRegion: true, child: Text(_message!)),
           if (_error != null)
             Text(
               _error!,

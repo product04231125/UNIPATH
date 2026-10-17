@@ -114,8 +114,9 @@ void main() {
         await db.close();
         final parent = Directory.systemTemp.absolute.path;
         if (!directory.absolute.path.startsWith(parent) ||
-            !directory.path.contains('unipath-material-test-'))
+            !directory.path.contains('unipath-material-test-')) {
           throw StateError('Unexpected test path');
+        }
         await directory.delete(recursive: true);
       }
     },
@@ -127,6 +128,8 @@ void main() {
       (tester) async {
         addTearDown(() => tester.binding.setSurfaceSize(null));
         await tester.binding.setSurfaceSize(size);
+        final semantics = tester.ensureSemantics();
+
         final repo = MemoryMaterials();
         XFile? selected;
         PersonalMaterial? exported;
@@ -164,6 +167,13 @@ void main() {
           await tester.enterText(field, value);
         }
 
+        expect(
+          tester
+              .getSemantics(find.byKey(const ValueKey('material-title')))
+              .label,
+          contains('자료 이름'),
+        );
+        semantics.dispose();
         final save = find.widgetWithText(FilledButton, '자료 등록');
         await fill('title', '내 이력서');
         await fill('description', '내 프로젝트와 성과가 들어 있는 자료');

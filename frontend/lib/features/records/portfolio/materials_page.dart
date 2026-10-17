@@ -211,14 +211,17 @@ class MaterialsPageState extends State<MaterialsPage> {
     padding: const EdgeInsets.only(bottom: 16),
     child: FieldLabel(
       label: label,
-      child: TextFormField(
-        key: ValueKey('material-$key'),
-        controller: controller,
-        enabled: !_busy,
-        maxLines: lines,
-        validator: (value) => required && (value?.trim().isEmpty ?? true)
-            ? '$label 입력이 필요합니다.'
-            : null,
+      child: Semantics(
+        label: label,
+        child: TextFormField(
+          key: ValueKey('material-$key'),
+          controller: controller,
+          enabled: !_busy,
+          maxLines: lines,
+          validator: (value) => required && (value?.trim().isEmpty ?? true)
+              ? '$label 입력이 필요합니다.'
+              : null,
+        ),
       ),
     ),
   );

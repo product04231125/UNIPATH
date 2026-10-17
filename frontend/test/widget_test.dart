@@ -312,7 +312,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('내 학교·학과 기준 설정'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('교육과정 추가'));
     await tester.pumpAndSettle();
     for (final entry in {
       'title': '개인 교육과정 A',
@@ -325,6 +324,10 @@ void main() {
       await tester.ensureVisible(field);
       await tester.enterText(field, entry.value);
     }
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('내 기록에 저장'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('내 기록에 저장'));
     await tester.pumpAndSettle();
 

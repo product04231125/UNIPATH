@@ -169,15 +169,18 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
       child: f.options.isEmpty
           ? FieldLabel(
               label: '${f.label}${f.required ? ' *' : ' (선택)'}',
-              child: TextFormField(
-                key: ValueKey('record-field-${f.key}'),
-                controller: c,
-                enabled: !_saving,
-                maxLines: f.multiline ? 3 : 1,
-                validator: f.validate,
-                keyboardType: f.type == PersonalFieldType.number
-                    ? TextInputType.number
-                    : TextInputType.text,
+              child: Semantics(
+                label: f.label,
+                child: TextFormField(
+                  key: ValueKey('record-field-${f.key}'),
+                  controller: c,
+                  enabled: !_saving,
+                  maxLines: f.multiline ? 3 : 1,
+                  validator: f.validate,
+                  keyboardType: f.type == PersonalFieldType.number
+                      ? TextInputType.number
+                      : TextInputType.text,
+                ),
               ),
             )
           : FormField<String>(
