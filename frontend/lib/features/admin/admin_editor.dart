@@ -348,7 +348,7 @@ class AdminEditorState extends State<AdminEditor> {
     required Widget content,
     required List<Widget> actions,
   }) {
-    if (!widget.inline)
+    if (!widget.inline) {
       return InputDialog(
         changes: changes,
         editing: editing,
@@ -359,6 +359,7 @@ class AdminEditorState extends State<AdminEditor> {
         content: content,
         actions: actions,
       );
+    }
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),

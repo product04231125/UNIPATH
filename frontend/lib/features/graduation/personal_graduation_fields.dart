@@ -140,8 +140,9 @@ Future<String?> validatePersonalGraduationLinks(
         .where((r) => r.id == values['departmentId'])
         .firstOrNull;
     if (department == null ||
-        department.value('schoolId') != values['schoolId'])
+        department.value('schoolId') != values['schoolId']) {
       return '학교와 학과의 연결을 확인하세요.';
+    }
   }
   final courseId = values['curriculumCourseId'] ?? '';
   if (courseId.isNotEmpty) {

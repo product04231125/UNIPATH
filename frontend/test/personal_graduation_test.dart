@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:university_path_frontend/features/planning/planning_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/graduation/personal_graduation_workspace.dart';
@@ -174,6 +175,42 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(Dialog), findsNothing);
       expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'explicit curriculum profile application preserves existing schedule settings',
+    (tester) async {
+      await seed(PersonalRecordKind.personalCurriculum, 'profile', {
+        'title': '내 교육과정',
+        'school': '내 학교',
+        'department': '내 학과',
+        'admissionYear': '2025',
+        'curriculumYear': '2025',
+      });
+      final planning = PlanningRepository();
+      addTearDown(planning.dispose);
+      await planning.load();
+      final week = planning.profile.weekStartsOn;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PersonalGraduationWorkspace(
+              onBack: () {},
+              planning: planning,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final use = find.text('학업 프로필로 사용');
+      await tester.ensureVisible(use);
+      await tester.pumpAndSettle();
+      await tester.tap(use);
+      await tester.pumpAndSettle();
+      expect(planning.profile.school, '내 학교');
+      expect(planning.profile.department, '내 학과');
+      expect(planning.profile.admissionYear, 2025);
+      expect(planning.profile.weekStartsOn, week);
     },
   );
   testWidgets(

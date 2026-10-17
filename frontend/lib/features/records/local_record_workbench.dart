@@ -116,12 +116,13 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
         setState(() => _message = '개인 자료를 기기에 저장했습니다.');
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = e is StateError
               ? e.message
               : '기기에 저장하지 못했습니다. 입력을 유지했으니 다시 시도하세요.',
         );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -201,9 +202,10 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                       if (_saving) return;
                       setState(() {
                         c.text = value;
-                        if (f.mirrorKey != null && value.isNotEmpty)
+                        if (f.mirrorKey != null && value.isNotEmpty) {
                           _controllers[f.mirrorKey]?.text =
                               f.optionLabels[value] ?? '';
+                        }
                       });
                       state.didChange(value);
                     },
@@ -222,7 +224,7 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
   }
 
   @override
-  Widget build(BuildContext context) => ContentScrollView(
+  Widget build(BuildContext buildContext) => ContentScrollView(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -277,8 +279,9 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                                 onPressed: _saving
                                     ? null
                                     : () async {
-                                        if (await allowLeave() && mounted)
+                                        if (await allowLeave() && mounted) {
                                           _reset(r);
+                                        }
                                       },
                                 child: const Text('수정'),
                               ),
@@ -290,7 +293,7 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                                           setState(() => _saving = true);
                                           try {
                                             await widget.onUse!(r);
-                                            if (mounted)
+                                            if (mounted) {
                                               ScaffoldMessenger.of(context)
                                                   .showSnackBar(
                                                     const SnackBar(
@@ -299,14 +302,17 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                                                       ),
                                                     ),
                                                   );
+                                            }
                                           } catch (_) {
-                                            if (mounted)
+                                            if (mounted) {
                                               setState(
                                                 () => _error = '학업 프로필에 적용하지 못했습니다. 다시 시도하세요.',
                                               );
+                                            }
                                           } finally {
-                                            if (mounted)
+                                            if (mounted) {
                                               setState(() => _saving = false);
+                                            }
                                           }
                                         },
                                   child: const Text('학업 프로필로 사용'),

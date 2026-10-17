@@ -118,3 +118,8 @@
 ### 개인 학업 본문 관리 (2026-10-17)
 - `LocalRecordWorkbench`는 개인 로컬 기록의 목록·본문 입력·작성 보호·실패 상태를 소유한다. 학업 필드/관계는 `personal_graduation_fields.dart`, 학교/학과/교육과정 탭은 `PersonalGraduationWorkspace`가 조정한다.
 - 개인 학교/학과 종류는 기존 PersonalRecordRepository의 독립 키를 사용한다. 프로필 적용만 기존 메인 소유 PlanningRepository를 주입하며 관리자 모델/권한과 공유하지 않는다.
+
+### 개인 자료 보관 (2026-10-17)
+- `MaterialsPage`는 등록 폼·선택 PDF·실패/수정/내보내기를, `MaterialRepository`는 자료 설명/바이너리의 원자적 보관과 한도 검증을 담당한다. 기존 성과/구성/지원 문서 저장소는 유지한다.
+- `MaterialDatabase`는 플랫폼 어댑터 경계다. Web은 IndexedDB(sembast_web), Windows는 앱 지원 디렉터리(sembast_io)이며 PDF를 SharedPreferences나 서버 DTO에 넣지 않는다. 테스트는 이 경계를 독립 메모리 DB로 주입한다.
+- 실제 자료 업로드·AI 요청·색인·삭제 전파는 아직 없다. 학교 질의 API에 개인 PDF/설명을 임의로 전송하지 않는다.

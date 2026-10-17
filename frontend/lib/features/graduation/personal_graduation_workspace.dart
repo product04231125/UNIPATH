@@ -63,8 +63,9 @@ class _PersonalGraduationWorkspaceState
             onPressed: () async {
               if (await (_editor.currentState?.allowLeave() ??
                       Future.value(true)) &&
-                  mounted)
+                  mounted) {
                 widget.onBack();
+              }
             },
             child: const Text('졸업 요건으로 돌아가기'),
           ),

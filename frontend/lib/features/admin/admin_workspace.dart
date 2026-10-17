@@ -59,8 +59,9 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   final _editorKeys = <AdminKind, GlobalKey<AdminEditorState>>{};
   Future<bool> _allowLeave() async {
     for (final key in _editorKeys.values) {
-      if (key.currentState != null && !await key.currentState!.allowLeave())
+      if (key.currentState != null && !await key.currentState!.allowLeave()) {
         return false;
+      }
     }
     return mounted;
   }
@@ -177,11 +178,12 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       if (_section != path || _detailId != null) await _navigate(path);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final target = _editorKeys[kind]?.currentContext;
-        if (target != null)
+        if (target != null) {
           Scrollable.ensureVisible(
             target,
             duration: const Duration(milliseconds: 200),
           );
+        }
       });
       return;
     }

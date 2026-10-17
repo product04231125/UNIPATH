@@ -75,7 +75,7 @@ void main() {
           host(const PortfolioPage(showMockData: false), scale: scale),
         );
         await tester.pumpAndSettle();
-        final tabs = ['1. 성과 기록', '2. 포트폴리오 구성', '3. 지원 문서'];
+        final tabs = ['성과 기록', '기존 구성', '기존 지원 문서'];
         final titles = ['성과 기록', '포트폴리오 구성', '지원 문서'];
         final anchor = tester.getTopLeft(find.byType(PageHeader));
         final tabRow = find
@@ -120,8 +120,8 @@ void main() {
           await tester.tap(find.text(label).first);
           await tester.pumpAndSettle();
           expect(tester.getTopLeft(find.byType(PageHeader)), personalAnchor);
-          expect(find.text('개인 학업 작업 공간'), findsOneWidget);
-          expect(find.textContaining('학교 공식 규칙이나 판정이 아닙니다.'), findsOneWidget);
+          expect(find.textContaining('개인 학업 정보'), findsOneWidget);
+          expect(find.textContaining('학교 공식 데이터나 졸업 판정이 아닙니다.'), findsOneWidget);
           expect(tester.takeException(), isNull);
         }
       });
