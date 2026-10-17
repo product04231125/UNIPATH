@@ -1,7 +1,7 @@
 # Flutter 프론트엔드 문서
 
 이 폴더는 Flutter Web·Windows 클라이언트의 구현 구조와 기능별 화면 상태를 기록한다. 공통
-접근성·레이아웃·AI 보조 원칙은 [제품 UX 기준](../product-ux.md), API의 실제 계약은 FastAPI
+접근성·레이아웃·AI 보조 원칙은 [제품 UX 기준](product-ux.md), API의 실제 계약은 FastAPI
 OpenAPI(`/api/v1/docs`)가 기준이다.
 
 ## 문서 구분

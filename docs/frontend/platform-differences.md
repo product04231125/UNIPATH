@@ -1,6 +1,6 @@
 # Flutter Web·Windows 플랫폼 차이
 
-이 문서는 **현재 구현된** 차이만 기록한다. 공통 UX 원칙은 [제품 UX 기준](../product-ux.md)을
+이 문서는 **현재 구현된** 차이만 기록한다. 공통 UX 원칙은 [제품 UX 기준](product-ux.md)을
 따르며, 구현 전 판단·개인 환경 이슈는 개인 노트에 둔다.
 
 | 영역 | Web | Windows |
