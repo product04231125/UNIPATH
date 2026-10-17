@@ -20,6 +20,7 @@ Future<void> fill(WidgetTester tester, Map<String, String> values) async {
   for (final e in values.entries) {
     final field = find.byKey(ValueKey('record-field-${e.key}'));
     await tester.ensureVisible(field);
+    await tester.pumpAndSettle();
     await tester.enterText(field, e.value);
   }
 }
@@ -27,6 +28,7 @@ Future<void> fill(WidgetTester tester, Map<String, String> values) async {
 Future<void> select(WidgetTester tester, String key, String label) async {
   final field = find.byKey(ValueKey('record-select-$key'));
   await tester.ensureVisible(field);
+  await tester.pumpAndSettle();
   await tester.tap(field);
   await tester.pumpAndSettle();
   await tester.tap(find.text(label).last);
@@ -122,6 +124,59 @@ void main() {
   );
 
   testWidgets(
+    'student creates school department and protects unfinished work',
+    (tester) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: PersonalGraduationWorkspace(onBack: () {})),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('학교'));
+      await tester.pumpAndSettle();
+      await fill(tester, {'title': '내 학교'});
+      await tester.tap(find.text('학과'));
+      await tester.pumpAndSettle();
+      expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
+      await tester.tap(find.text('계속 작성'));
+      await tester.pumpAndSettle();
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('학과'));
+      await tester.pumpAndSettle();
+      await fill(tester, {'title': '내 학과'});
+      final school = PersonalRecordRepository(
+        PersonalRecordKind.personalSchool,
+      );
+      await school.load();
+      await select(tester, 'schoolId', '내 학교');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
+      final department = PersonalRecordRepository(
+        PersonalRecordKind.personalDepartment,
+      );
+      await department.load();
+      expect(
+        department.records.single.value('schoolId'),
+        school.records.single.id,
+      );
+      await tester.binding.setSurfaceSize(const Size(480, 520));
+      await tester.pumpAndSettle();
+      expect(find.byType(Dialog), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
     'curriculum, course and rule CRUD persist independently with explicit links',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1440, 900));
@@ -137,7 +192,6 @@ void main() {
       );
       await tester.pumpWidget(page());
       await tester.pumpAndSettle();
-      await tester.tap(find.text('교육과정 추가'));
       await tester.pumpAndSettle();
       await fill(tester, {
         'title': '합성 교육과정',
@@ -146,20 +200,26 @@ void main() {
         'admissionYear': '2024',
         'curriculumYear': '2024',
       });
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('교육과정 과목').first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('교육과정 과목 추가'));
       await tester.pumpAndSettle();
       await fill(tester, {'title': '합성 과목', 'category': '전공', 'credits': '3'});
       await select(tester, 'requiredCourse', '필수');
       await select(tester, 'curriculumId', '합성 교육과정 · 2024');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('개인 규칙'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('개인 규칙 추가'));
       await tester.pumpAndSettle();
       await fill(tester, {
         'title': '합성 규칙',
@@ -173,10 +233,18 @@ void main() {
       await select(tester, 'curriculumId', '합성 교육과정 · 2024');
       await select(tester, 'curriculumCourseId', '합성 과목 · 전공');
       await select(tester, 'relatedRecord', '수강 · 연결할 합성 수강');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
       expect(find.text('0 이상의 숫자를 입력하세요.'), findsOneWidget);
       await fill(tester, {'requiredValue': '3'});
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
       expect(find.text('충족'), findsNothing);
@@ -187,18 +255,30 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('교육과정 과목').first);
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('수정'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('수정'));
       await tester.pumpAndSettle();
       await fill(tester, {'credits': '4'});
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
       expect(find.textContaining('과목 학점: 4'), findsOneWidget);
       await tester.tap(find.text('교육과정'));
       await tester.pumpAndSettle();
       // Editing the curriculum must not reset its rules or courses.
+      await tester.ensureVisible(find.text('수정'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('수정'));
       await tester.pumpAndSettle();
       await fill(tester, {'title': '수정된 교육과정'});
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('개인 규칙'));
@@ -206,12 +286,20 @@ void main() {
       expect(find.text('합성 규칙'), findsOneWidget);
       expect(find.textContaining('수정된 교육과정'), findsOneWidget);
       expect(find.textContaining('수강 · 연결할 합성 수강'), findsOneWidget);
+      await tester.ensureVisible(find.text('수정'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('수정'));
       await tester.pumpAndSettle();
       await fill(tester, {'title': '수정된 규칙'});
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('교육과정'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('삭제'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('삭제'));
       await tester.pumpAndSettle();
@@ -221,6 +309,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('수정된 규칙'), findsOneWidget);
       expect(find.textContaining('연결할 개인 교육과정: 연결 대상 없음'), findsOneWidget);
+      await tester.ensureVisible(find.text('삭제'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('삭제'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('삭제').last);
@@ -229,6 +319,8 @@ void main() {
       await tester.tap(find.text('교육과정 과목').first);
       await tester.pumpAndSettle();
       expect(find.text('합성 과목'), findsOneWidget);
+      await tester.ensureVisible(find.text('삭제'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('삭제'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('삭제').last);
@@ -254,11 +346,15 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('교육과정 추가'));
-      await tester.tap(find.text('교육과정 추가'));
       await tester.pumpAndSettle();
       await fill(tester, {'curriculumYear': '2024'});
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
       expect(find.text('내 기록에 저장').hitTestable(), findsOneWidget);
+      await tester.ensureVisible(find.text('취소'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('취소'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);

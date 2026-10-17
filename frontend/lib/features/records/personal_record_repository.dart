@@ -12,6 +12,8 @@ enum PersonalRecordKind {
   experience,
   credential,
   portfolio,
+  personalSchool,
+  personalDepartment,
   personalCurriculum,
   personalCurriculumCourse,
   personalGraduationRule,

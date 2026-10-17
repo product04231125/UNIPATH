@@ -339,6 +339,7 @@ class _WorkspaceState extends State<Workspace> {
         ),
         2 => CoursePage(showMockData: _showMockData),
         3 => GraduationPage(
+          planning: _planningRepository,
           key: _graduationPageKey,
           showMockData: _showMockData,
           onMinimumWidthChanged: (width) => setState(() {

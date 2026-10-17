@@ -114,3 +114,7 @@
 - personal_records_test의 concurrent personal writes로 서로 다른 객체의 동시 추가·이전 객체 삭제·빈 저장 재읽기를 검증한다. 서버 동기화나 다른 OS 프로세스 사이의 잠금은 제공하지 않는다.
 
 - 작업 큐는 완료 전에 공유 슬롯을 해제한다. 완료 Future를 계속 보관하지 않아 종료된 비동기 실행 영역을 다음 화면/검사로 가져오지 않는다. 최종 전체 275개 및 저장 관련 42개 회귀 통과.
+
+### 개인 학업 본문 관리 (2026-10-17)
+- `LocalRecordWorkbench`는 개인 로컬 기록의 목록·본문 입력·작성 보호·실패 상태를 소유한다. 학업 필드/관계는 `personal_graduation_fields.dart`, 학교/학과/교육과정 탭은 `PersonalGraduationWorkspace`가 조정한다.
+- 개인 학교/학과 종류는 기존 PersonalRecordRepository의 독립 키를 사용한다. 프로필 적용만 기존 메인 소유 PlanningRepository를 주입하며 관리자 모델/권한과 공유하지 않는다.
