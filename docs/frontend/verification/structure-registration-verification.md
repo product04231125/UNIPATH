@@ -1,5 +1,7 @@
 # 개인 학업·자료·관리자 등록 구조 변경 검증 (2026-10-17 KST)
 
+> 해당 작업 시점의 검토·검증 이력입니다. 현재 UI 기준은 [제품 UX 기준](../product-ux.md), 현재 기능은 [기능 문서](../README.md#기능-문서)를 따릅니다.
+
 ## 요구와 구현 근거
 
 | 사용자 요구 | 구현/검증 근거 |
@@ -8,7 +10,7 @@
 | 파일 종류·내용 설명 또는 PDF 등록, 이후 AI 활용 | MaterialsPage/MaterialRepository; 설명만 등록·PDF 선택/바이트 보관·편집·내보내기·삭제. 서버/RAG/AI 분석은 후속 계약이며 자동 전송하지 않음 |
 | 관리자 팝업을 본문 입력으로, 넓으면 목록과 나란히 | AdminWorkspace/Editor의 상시 입력, ResponsiveColumns, 좁으면 세로; 저장 실패 보존/중복 차단/성공 초기화/이동 보호·기존 권한/버전 회귀 |
 
-Gherkin 문서는 [workspace-registration.feature](specs/workspace-registration.feature)에 두었다. 별도 Gherkin 실행 도구를 도입하지 않았고 대응 동작은 Dart 위젯/저장소 검사로 검증했다.
+Gherkin 문서는 [workspace-registration.feature](../specs/workspace-registration.feature)에 두었다. 별도 Gherkin 실행 도구를 도입하지 않았고 대응 동작은 Dart 위젯/저장소 검사로 검증했다.
 
 ## 자동 검증 결과
 

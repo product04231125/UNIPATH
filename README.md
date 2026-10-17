@@ -362,6 +362,7 @@ university-path/
 │     ├─ product-ux.md
 │     ├─ architecture.md
 │     ├─ platform-differences.md
+│     ├─ verification/
 │     └─ features/
 ├─ compose.yaml
 ├─ .env.example
