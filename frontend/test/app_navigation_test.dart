@@ -126,6 +126,24 @@ void main() {
     },
   );
 
+  testWidgets(
+    'restored server session preserves the requested settings route',
+    (tester) async {
+      final provider = MemoryRouteProvider('/settings');
+      await tester.pumpWidget(
+        UniversityPathApp(
+          routeInformationProvider: provider,
+          authGateway: FakeAuth()..signedIn = true,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 8);
+      expect(provider.value.uri.path, '/settings');
+      await tester.pumpWidget(const SizedBox());
+      provider.dispose();
+    },
+  );
+
   testWidgets('unknown route offers recovery without an empty screen', (
     tester,
   ) async {

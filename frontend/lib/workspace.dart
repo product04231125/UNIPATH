@@ -438,6 +438,9 @@ class _WorkspaceState extends State<Workspace> {
       await widget.beforeSignedOut?.call();
       if (mounted) widget.onSignedOut();
     } catch (_) {
+      // A failed server logout keeps this workspace active. A child opened
+      // afterwards must also be closed by the next logout or disposal.
+      _endingSession = null;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
