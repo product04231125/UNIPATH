@@ -253,7 +253,7 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.text('테스트용 설정창'));
+    await tester.tap(find.text('학교 정보 설정'));
     await tester.pumpAndSettle();
     expect(find.byType(Dialog), findsNothing);
     await tester.enterText(

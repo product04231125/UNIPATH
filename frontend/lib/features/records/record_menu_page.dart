@@ -1,8 +1,9 @@
+import '../../shared/app_style.dart';
+
 import 'package:flutter/material.dart';
 
 import 'package:university_path_frontend/shared/app_typography.dart';
 
-import '../../shared/widgets/equal_height_row.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/status_badge.dart';
@@ -119,6 +120,13 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           changes: Listenable.merge(controllers.values.toList()),
           editing: record != null,
           saving: saving,
+          hasUnsavedChanges: () => fields.any(
+            (field) =>
+                controllers[field.key]!.text !=
+                    (record?.value(field.key) ?? '') &&
+                (record != null ||
+                    controllers[field.key]!.text.trim().isNotEmpty),
+          ),
           hasContent: () =>
               controllers.values.any((c) => c.text.trim().isNotEmpty),
           title: Text(record == null ? widget.addLabel : '개인 기록 수정'),
@@ -128,7 +136,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
+                Text(
                   '기기 로컬 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드·서버 전송은 하지 않습니다.',
                 ),
                 const SizedBox(height: 16),
@@ -215,8 +223,10 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           ),
           actions: [
             TextButton(
-              onPressed: saving ? null : () => Navigator.pop(dialogContext),
-              child: const Text('취소'),
+              onPressed: saving
+                  ? null
+                  : () => InputDialog.cancel<void>(dialogContext),
+              child: Text('취소'),
             ),
             FilledButton(
               onPressed: saving
@@ -280,16 +290,17 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('개인 기록 삭제'),
+        title: Text('개인 기록 삭제'),
         content: Text('${record.value('title')} 기록을 이 기기에서 삭제할까요?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
+            child: Text('취소'),
           ),
           FilledButton(
+            style: destructiveButtonStyle(context),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('삭제'),
+            child: Text('삭제'),
           ),
         ],
       ),
@@ -334,11 +345,12 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               url: record.value(field.key),
               label: field.label,
             ),
+          TextButton(onPressed: () => _showForm(record), child: Text('수정')),
           TextButton(
-            onPressed: () => _showForm(record),
-            child: const Text('수정'),
+            style: destructiveButtonStyle(context),
+            onPressed: () => _delete(record),
+            child: Text('삭제'),
           ),
-          TextButton(onPressed: () => _delete(record), child: const Text('삭제')),
         ],
       ),
     ],
@@ -352,8 +364,8 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('개인 기록을 읽지 못했습니다. 기존 저장 내용은 덮어쓰지 않습니다.'),
-            TextButton(onPressed: _load, child: const Text('다시 시도')),
+            Text('개인 기록을 읽지 못했습니다. 기존 저장 내용은 덮어쓰지 않습니다.'),
+            TextButton(onPressed: _load, child: Text('다시 시도')),
           ],
         ),
       );
@@ -362,28 +374,32 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         .where((r) => _term.isEmpty || r.value('term') == _term)
         .toList();
     final entries = [if (widget.showMockData) ...widget.fixture];
+    final isCourse = widget.kind == PersonalRecordKind.course;
     return ContentScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _header(),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            decoration: BoxDecoration(
-              color: const Color(0xfffff7e5),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xffefdba7)),
-            ),
-            child: Text(
-              widget.notice,
-              style: const TextStyle(
-                fontSize: AppTypography.caption,
-                color: Color(0xff795a22),
+          if (!isCourse)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+              child: Text(
+                widget.notice,
+                style: TextStyle(
+                  fontSize: AppTypography.caption,
+                  color: Theme.of(context).colorScheme.onSecondaryContainer,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 14),
+          if (!isCourse) const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
               final records = SurfaceCard(
@@ -392,23 +408,24 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                   children: [
                     Text(
                       widget.listTitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: AppTypography.section,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      '학교에서 확인한 정보가 없으면 내 기록을 직접 추가할 수 있습니다.',
-                      style: TextStyle(
-                        fontSize: AppTypography.caption,
-                        color: Color(0xff607386),
+                    if (!isCourse) const SizedBox(height: 4),
+                    if (!isCourse)
+                      Text(
+                        '학교에서 확인한 정보가 없으면 내 기록을 직접 추가할 수 있습니다.',
+                        style: TextStyle(
+                          fontSize: AppTypography.caption,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 12),
                     FilledButton.icon(
                       onPressed: _showForm,
-                      icon: const Icon(Icons.add),
+                      icon: Icon(Icons.add),
                       label: Text(widget.addLabel),
                     ),
                     const SizedBox(height: 10),
@@ -429,56 +446,52 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                       Text(
                         '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점 · 공식 이수학점 아님',
                       ),
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.notice,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 12),
                     ],
                     if (widget.kind == PersonalRecordKind.activity)
                       Text(
                         '사용자가 승인됨으로 기록한 봉사 시간 합계 ${personal.where((r) => r.value('approval') == 'approved').fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('approvedHours')) ?? 0))}시간 · 학교 검증 아님',
                       ),
-                    if (entries.isEmpty && personal.isEmpty)
-                      const Text('개인 기록이 없습니다. 직접 입력해 주세요.'),
-                    for (final entry in entries) _entry(entry),
+                    if (personal.isEmpty) Text('개인 기록이 없습니다. 직접 입력해 주세요.'),
                     for (final record in personal) _personalEntry(record),
+                    if (entries.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      const Divider(),
+
+                      for (final entry in entries) _entry(entry),
+                    ],
                   ],
                 ),
               );
-              final guide = SurfaceCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      widget.guideTitle,
-                      style: const TextStyle(
-                        fontSize: AppTypography.section,
-                        fontWeight: FontWeight.w800,
+                    records,
+                    const SizedBox(height: 12),
+                    ExpansionTile(
+                      title: Text(widget.guideTitle),
+                      childrenPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    for (final guide in widget.guides)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 11),
-                        child: Text(
-                          '• $guide',
-                          style: const TextStyle(
-                            fontSize: AppTypography.body,
-                            height: 1.4,
+                      expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final line in widget.guides)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text('• $line'),
                           ),
-                        ),
-                      ),
+                      ],
+                    ),
                     ...widget.guideActions,
                   ],
-                ),
-              );
-              return constraints.maxWidth >= 760
-                  ? EqualHeightRow(
-                      children: [
-                        Expanded(flex: 6, child: records),
-                        const SizedBox(width: 14),
-                        Expanded(flex: 4, child: guide),
-                      ],
-                    )
-                  : Column(
-                      children: [records, const SizedBox(height: 14), guide],
-                    );
+                );
+              }
             },
           ),
         ],
@@ -501,15 +514,17 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
 
   Widget _entry(RecordMockEntry entry) => Container(
     padding: const EdgeInsets.symmetric(vertical: 11),
-    decoration: const BoxDecoration(
-      border: Border(bottom: BorderSide(color: Color(0xffe4ebef))),
+    decoration: BoxDecoration(
+      border: Border(
+        bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
     ),
     child: Row(
       children: [
-        const Icon(
+        Icon(
           Icons.description_outlined,
           size: 19,
-          color: Color(0xff315a77),
+          color: Theme.of(context).colorScheme.onSurface,
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -518,7 +533,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
             children: [
               Text(
                 entry.title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: AppTypography.body,
                   fontWeight: FontWeight.w700,
                 ),
@@ -526,16 +541,16 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               const SizedBox(height: 2),
               Text(
                 entry.detail,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: AppTypography.caption,
-                  color: Color(0xff607386),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
           ),
         ),
         const SizedBox(width: 10),
-        StatusBadge(status: entry.status == '기록됨' ? '충족' : entry.status),
+        StatusBadge(status: entry.status),
       ],
     ),
   );

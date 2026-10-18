@@ -3,7 +3,9 @@
 import re
 from dataclasses import asdict
 
+from .budget import request_budget
 from .contracts import AnswerGenerator, AnswerStatus, GroundingRequest, QueryResult, SchoolContext
+from .providers import InvalidGeneratorOutput
 from .retriever import SchoolRetriever
 
 SYSTEM_INSTRUCTION = """공식 근거에 기반한 학사 안내만 작성한다.
@@ -21,6 +23,10 @@ class SchoolRagService:
         self.generator = generator
 
     def query(self, question: str, context: SchoolContext, *, preview: bool = False) -> QueryResult:
+        with request_budget():
+            return self._query(question, context, preview=preview)
+
+    def _query(self, question: str, context: SchoolContext, *, preview: bool) -> QueryResult:
         if not question.strip():
             return QueryResult(
                 AnswerStatus.NEEDS_USER_INPUT, None, "empty_question", missing_fields=["question"]
@@ -80,6 +86,8 @@ class SchoolRagService:
                 )
             if self.generator is None:
                 return QueryResult(AnswerStatus.FAILED, None, "answer_generator_not_configured")
+            if sum(len(hit.content) for hit in evidence) > 40_000:
+                return QueryResult(AnswerStatus.FAILED, None, "rag_processing_failed")
             request = GroundingRequest(
                 SYSTEM_INSTRUCTION,
                 question,
@@ -87,7 +95,13 @@ class SchoolRagService:
                 asdict(context),
             )
             generated = self.generator.generate(request)
-            if type(generated.insufficient_evidence) is not bool:
+            if (
+                type(generated.insufficient_evidence) is not bool
+                or not isinstance(generated.answer, str)
+                or len(generated.answer) > 8000
+                or not isinstance(generated.citation_ids, list)
+                or len(generated.citation_ids) > 64
+            ):
                 return QueryResult(AnswerStatus.FAILED, None, "invalid_generator_output")
             if generated.insufficient_evidence:
                 return QueryResult(
@@ -126,6 +140,8 @@ class SchoolRagService:
                 "generated_from_evidence",
                 citations=citations,
             )
+        except InvalidGeneratorOutput:
+            return QueryResult(AnswerStatus.FAILED, None, "invalid_generator_output")
         except Exception:
             # Do not leak provider exceptions, credentials, or question text.
             return QueryResult(AnswerStatus.FAILED, None, "rag_processing_failed")

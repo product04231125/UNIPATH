@@ -17,6 +17,8 @@ class FakeWindowHost extends AssistantWindowHost {
   int focuses = 0;
   bool supported = true;
   Completer<void>? opening;
+  bool failClosing = false;
+  int closes = 0;
   final maximize = StreamController<bool>.broadcast();
   final detached = StreamController<bool>.broadcast();
 
@@ -40,16 +42,152 @@ class FakeWindowHost extends AssistantWindowHost {
     }
     detached.add(true);
   }
+
+  @override
+  Future<void> endSession() async {
+    closes++;
+    if (failClosing) throw StateError('Close failed');
+    open = false;
+    detached.add(false);
+  }
 }
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  testWidgets('removing workspace while child opens still ends old session', (
+    tester,
+  ) async {
+    final preferences = ChatPreferences();
+    await preferences.load();
+    await preferences.setMode(ChatOpeningMode.detached);
+    final host = FakeWindowHost()..opening = Completer<void>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Workspace(
+          windowHost: host,
+          chatPreferences: preferences,
+          onSignedOut: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('AI 도우미 열기'));
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox());
+    host.opening!.complete();
+    await tester.pumpAndSettle();
+    expect(host.open, isFalse);
+    expect(host.closes, 1);
+    preferences.dispose();
+    await host.maximize.close();
+    await host.detached.close();
+  });
+
+  testWidgets(
+    'logout waits for pending child open and closes it before leaving',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final preferences = ChatPreferences();
+      await preferences.load();
+      await preferences.setMode(ChatOpeningMode.detached);
+      final host = FakeWindowHost()..opening = Completer<void>();
+      var signedOut = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Workspace(
+            windowHost: host,
+            chatPreferences: preferences,
+            onSignedOut: () {
+              expect(host.open, isFalse);
+              signedOut = true;
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('AI 도우미 열기'));
+      await tester.pump();
+      await tester.tap(find.text('로그아웃'));
+      await tester.pump();
+      expect(signedOut, isFalse);
+      host.opening!.complete();
+      await tester.pumpAndSettle();
+      expect(host.closes, 1);
+      expect(signedOut, isTrue);
+      expect(find.byType(AssistantPanel), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      preferences.dispose();
+      await host.maximize.close();
+      await host.detached.close();
+    },
+  );
+
+  testWidgets('logout close failure keeps session and retry closes child', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final host = FakeWindowHost()
+      ..open = true
+      ..failClosing = true;
+    var signedOut = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Workspace(windowHost: host, onSignedOut: () => signedOut = true),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('로그아웃'));
+    await tester.pumpAndSettle();
+    expect(signedOut, isFalse);
+    expect(host.open, isTrue);
+    expect(find.textContaining('로그아웃하지 않았습니다'), findsOneWidget);
+    host.failClosing = false;
+    await tester.tap(find.text('다시 시도'));
+    await tester.pumpAndSettle();
+    expect(signedOut, isTrue);
+    expect(host.open, isFalse);
+    await tester.pumpWidget(const SizedBox());
+    await host.maximize.close();
+    await host.detached.close();
+  });
+
+  test(
+    'old detached preference migrates once then preserves later choice',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        ChatPreferences.storageKey: 'detached',
+        'unrelated': 'preserve',
+      });
+      final first = ChatPreferences();
+      await first.load();
+      expect(first.mode, ChatOpeningMode.docked);
+      expect(
+        (await SharedPreferences.getInstance()).getBool(
+          ChatPreferences.migrationKey,
+        ),
+        isTrue,
+      );
+      await first.setMode(ChatOpeningMode.detached);
+      final restarted = ChatPreferences();
+      await restarted.load();
+      expect(restarted.mode, ChatOpeningMode.detached);
+      expect(
+        (await SharedPreferences.getInstance()).getString('unrelated'),
+        'preserve',
+      );
+      first.dispose();
+      restarted.dispose();
+    },
+  );
+
   test('default, restart and reset affect only chat opening mode', () async {
     SharedPreferences.setMockInitialValues({'unrelated': 'preserve'});
     final preferences = ChatPreferences();
     await preferences.load();
-    expect(preferences.mode, ChatOpeningMode.detached);
+    expect(preferences.mode, ChatOpeningMode.docked);
     await preferences.setMode(ChatOpeningMode.docked);
     final restarted = ChatPreferences();
     await restarted.load();
@@ -95,8 +233,8 @@ void main() {
       bool fail = true;
       final preferences = ChatPreferences(writer: (key, value) async => !fail);
       await preferences.load();
-      await preferences.setMode(ChatOpeningMode.docked);
-      expect(preferences.mode, ChatOpeningMode.detached);
+      await preferences.setMode(ChatOpeningMode.detached);
+      expect(preferences.mode, ChatOpeningMode.docked);
       expect(preferences.error, isNotNull);
       fail = false;
       await preferences.setMode(ChatOpeningMode.docked);
@@ -160,10 +298,17 @@ void main() {
   testWidgets('open failure falls back and closed window can reopen', (
     tester,
   ) async {
+    final preferences = ChatPreferences();
+    await preferences.load();
+    await preferences.setMode(ChatOpeningMode.detached);
     final host = FakeWindowHost()..fail = true;
     await tester.pumpWidget(
       MaterialApp(
-        home: Workspace(onSignedOut: () {}, windowHost: host),
+        home: Workspace(
+          onSignedOut: () {},
+          windowHost: host,
+          chatPreferences: preferences,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -178,8 +323,8 @@ void main() {
     host.open = false;
     host.detached.add(false);
     await tester.pumpAndSettle();
-    expect(find.byType(AssistantPanel), findsNothing);
-    await tester.tap(find.byTooltip('AI 도우미 열기'));
+    expect(find.byType(AssistantPanel), findsOneWidget);
+    await tester.tap(find.byTooltip('새 창으로 분리'));
     await tester.pumpAndSettle();
     expect(host.creates, 2);
     await tester.pumpWidget(const SizedBox());
@@ -215,7 +360,7 @@ void main() {
       await tester.ensureVisible(find.text('채팅 열기 방식만 기본값으로 복원'));
       await tester.tap(find.text('채팅 열기 방식만 기본값으로 복원'));
       await tester.pumpAndSettle();
-      expect(preferences.mode, ChatOpeningMode.detached);
+      expect(preferences.mode, ChatOpeningMode.docked);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       preferences.dispose();
@@ -255,10 +400,17 @@ void main() {
   );
 
   testWidgets('rapid open clicks create one detached window', (tester) async {
+    final preferences = ChatPreferences();
+    await preferences.load();
+    await preferences.setMode(ChatOpeningMode.detached);
     final host = FakeWindowHost()..opening = Completer<void>();
     await tester.pumpWidget(
       MaterialApp(
-        home: Workspace(onSignedOut: () {}, windowHost: host),
+        home: Workspace(
+          onSignedOut: () {},
+          windowHost: host,
+          chatPreferences: preferences,
+        ),
       ),
     );
     await tester.pumpAndSettle();

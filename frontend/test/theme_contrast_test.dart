@@ -43,7 +43,7 @@ void main() {
         );
       }
       final theme = universityPathTheme();
-      expect(theme.textTheme.bodyMedium!.fontFamily, 'Malgun Gothic');
+      expect(theme.textTheme.bodyMedium!.fontFamily, 'Pretendard');
       expect(theme.textTheme.bodyMedium!.color, isNotNull);
       expect(theme.dialogTheme.contentTextStyle!.color, isNotNull);
       expect(theme.listTileTheme.titleTextStyle!.color, isNotNull);

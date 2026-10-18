@@ -10,6 +10,7 @@ import 'features/assistant/assistant_conversation.dart';
 import 'features/assistant/assistant_api.dart';
 import 'features/assistant/assistant_panel.dart';
 import 'features/assistant/shared_school_context.dart';
+import 'features/assistant/conversation_bridge.dart';
 import 'chat_window.dart' as native;
 import 'features/graduation/graduation_page.dart';
 import 'features/home/home_page.dart';
@@ -34,6 +35,8 @@ class Workspace extends StatefulWidget {
     this.selectedPage,
     this.onPageChanged,
     this.assistantFactory,
+    this.sidebarVisible = true,
+    this.integratedTitleBar = false,
   });
 
   final VoidCallback onSignedOut;
@@ -42,6 +45,7 @@ class Workspace extends StatefulWidget {
   final int? selectedPage;
   final ValueChanged<int>? onPageChanged;
   final AssistantGateway Function()? assistantFactory;
+  final bool sidebarVisible, integratedTitleBar;
 
   @override
   State<Workspace> createState() => _WorkspaceState();
@@ -70,6 +74,7 @@ class _WorkspaceState extends State<Workspace> {
   ];
 
   var _page = 0;
+  final _visitedPages = <int>{};
   var _showMockData = true;
   var _chatOpen = false;
   var _chatManuallyOpened = false;
@@ -77,15 +82,21 @@ class _WorkspaceState extends State<Workspace> {
   var _mainWindowMaximized = false;
   bool _openingChat = false;
   bool _detachingChat = false;
+  bool _signingOut = false;
+  Future<void>? _pendingDetachedOpen;
+  Future<void>? _endingSession;
+  final _assistantButtonFocus = FocusNode(debugLabel: 'AI 도우미 열기');
   late final ChatPreferences _chatPreferences;
   var _chatWidth = 360.0;
   double _graduationMinimumWidth = 0;
   final _graduationPageKey = GlobalKey();
+  final _assistantPanelKey = GlobalKey();
   late final _assistantConversation = AssistantConversation(
     api: widget.assistantFactory?.call(),
   );
   final _planningRepository = PlanningRepository();
   late final SharedSchoolContext _sharedSchoolContext;
+  ConversationBridge? _conversationBridge;
   DateTime? _scheduleInitialDay;
   PendingUiAction? _scheduleAddRequest;
   StreamSubscription<bool>? _detachedChatSubscription;
@@ -100,6 +111,14 @@ class _WorkspaceState extends State<Workspace> {
       _assistantConversation,
     );
     if (widget.windowHost.supportsDetached) {
+      _conversationBridge = ConversationBridge(
+        _assistantConversation,
+        native.publishConversation,
+      );
+      native.bindConversation(
+        _conversationBridge!.read,
+        _conversationBridge!.command,
+      );
       native.bindSchoolProfile(
         () {
           if (_planningRepository.isLoading || _planningRepository.loadFailed) {
@@ -116,6 +135,7 @@ class _WorkspaceState extends State<Workspace> {
       );
       _planningRepository.addListener(_publishSchoolProfile);
     }
+    _planningRepository.addListener(_refreshProfile);
     _planningRepository.load();
     _chatPreferences = widget.chatPreferences ?? ChatPreferences();
     _chatPreferences.load();
@@ -127,15 +147,15 @@ class _WorkspaceState extends State<Workspace> {
     _detachedChatSubscription = widget.windowHost.detachedChanges.listen((
       isOpen,
     ) {
-      if (!mounted || _detachedChatActive == isOpen) return;
+      if (!mounted || _signingOut || _detachedChatActive == isOpen) return;
       setState(() {
         final wasDetached = _detachedChatActive;
         _detachedChatActive = isOpen;
         // Closing a detached Windows window returns to the same closed state as
         // closing the dock: the user can reopen the assistant from its button.
         if (wasDetached && !isOpen) {
-          _chatOpen = _mainWindowMaximized;
-          _chatManuallyOpened = _mainWindowMaximized;
+          _chatOpen = true;
+          _chatManuallyOpened = true;
         }
       });
     }, onError: (Object _) {});
@@ -162,25 +182,45 @@ class _WorkspaceState extends State<Workspace> {
     }
   }
 
+  void _refreshProfile() {
+    if (mounted) setState(() {});
+  }
+
+  String get _profileSummary {
+    if (_planningRepository.isLoading) return '학업 정보 불러오는 중';
+    if (_planningRepository.loadFailed) return '학업 정보를 읽을 수 없습니다';
+    final profile = _planningRepository.profile;
+    final parts = [
+      if (profile.school.trim().isNotEmpty) profile.school.trim(),
+      if (profile.department.trim().isNotEmpty) profile.department.trim(),
+      if (profile.admissionYear != null) '${profile.admissionYear}년 입학',
+    ];
+    return parts.isEmpty ? '학업 정보 미설정' : parts.join(' · ');
+  }
+
   @override
   void didUpdateWidget(covariant Workspace oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.selectedPage != null && widget.selectedPage != _page) {
       _scheduleAddRequest = null;
-      _graduationMinimumWidth = 0;
       _page = widget.selectedPage!;
     }
   }
 
   @override
   void dispose() {
+    unawaited(_releaseSession().catchError((Object _) {}));
+    _assistantButtonFocus.dispose();
     _detachedChatSubscription?.cancel();
     _mainWindowMaximizeSubscription?.cancel();
     if (widget.windowHost.supportsDetached) {
       native.bindSchoolProfile(null, null);
+      native.bindConversation(null, null);
     }
+    _conversationBridge?.dispose();
     _sharedSchoolContext.dispose();
     _assistantConversation.dispose();
+    _planningRepository.removeListener(_refreshProfile);
     _planningRepository.dispose();
     if (widget.chatPreferences == null) _chatPreferences.dispose();
     super.dispose();
@@ -194,6 +234,9 @@ class _WorkspaceState extends State<Workspace> {
       const WorkspaceNavigationItem(label: '설정', icon: Icons.settings_outlined),
     ];
     return WorkspaceShell(
+      profileSummary: _profileSummary,
+      sidebarVisible: widget.sidebarVisible,
+      integratedTitleBar: widget.integratedTitleBar,
       selectedPage: _page,
       navigationItems: navigationItems,
       onPageSelected: _selectPage,
@@ -207,18 +250,22 @@ class _WorkspaceState extends State<Workspace> {
       },
       showMockData: _showMockData,
       onMockDataChanged: (value) => setState(() => _showMockData = value),
-      onSignedOut: widget.onSignedOut,
+      onSignedOut: _signOut,
       isAssistantOpen: _chatOpen,
       isAssistantManuallyOpened: _chatManuallyOpened,
       assistantWidth: _chatWidth,
       assistantTooltip: _detachedChatActive ? '분리된 AI 도우미 앞으로' : 'AI 도우미 열기',
       onOpenAssistant: _openAssistant,
+      assistantButtonFocus: _assistantButtonFocus,
       onAssistantWidthChanged: (delta) => setState(() {
         _chatWidth = (_chatWidth - delta).clamp(300.0, 480.0);
       }),
       pageBuilder: (context, layout) =>
           _buildPage(navigationItems.length, layout),
-      assistantBuilder: (context, width) => AssistantPanel(
+      assistantBuilder: (context, width, fullScreen) => AssistantPanel(
+        key: _assistantPanelKey,
+        active: _chatOpen,
+        fullScreen: fullScreen,
         conversation: _assistantConversation,
         saveContext: _sharedSchoolContext.save,
         suggestContext: () {
@@ -243,13 +290,33 @@ class _WorkspaceState extends State<Workspace> {
     );
   }
 
-  Widget _buildPage(int settingsPage, WorkspaceShellLayout layout) =>
-      switch (_page) {
+  Widget _buildPage(int settingsPage, WorkspaceShellLayout layout) {
+    _visitedPages.add(_page);
+    return Stack(
+      children: [
+        for (final index in _visitedPages)
+          Positioned.fill(
+            child: Offstage(
+              key: ValueKey('retained-page-$index'),
+              offstage: index != _page,
+              child: ExcludeFocus(
+                excluding: index != _page,
+                child: TickerMode(
+                  enabled: index == _page,
+                  child: _pageFor(index, settingsPage, layout),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _pageFor(int index, int settingsPage, WorkspaceShellLayout layout) =>
+      switch (index) {
         0 => HomePage(
           repository: _planningRepository,
-          coveredRightWidth: layout.showAssistantOverlay
-              ? layout.assistantOverlayWidth
-              : 0,
+          coveredRightWidth: 0,
           onOpenPage: _selectPage,
           onOpenSettings: () => _selectPage(settingsPage - 1),
           onOpenSchedule: (day) {
@@ -278,8 +345,8 @@ class _WorkspaceState extends State<Workspace> {
         4 => ActivityPage(showMockData: _showMockData),
         5 => ExperiencePage(showMockData: _showMockData),
         6 => CredentialPage(showMockData: _showMockData),
-        7 => PortfolioPage(showMockData: _showMockData),
-        _ when _page == settingsPage - 1 => SettingsPage(
+        7 => PortfolioPage(showMockData: _showMockData, active: _page == 7),
+        _ when index == settingsPage - 1 => SettingsPage(
           repository: _planningRepository,
           chatPreferences: widget.windowHost.supportsDetached
               ? _chatPreferences
@@ -291,18 +358,17 @@ class _WorkspaceState extends State<Workspace> {
   void _selectPage(int value, {PendingUiAction? addRequest}) {
     setState(() {
       _scheduleAddRequest = addRequest;
-      if (_page != value) _graduationMinimumWidth = 0;
       _page = value;
     });
     widget.onPageChanged?.call(value);
   }
 
   Future<void> _openAssistant() async {
-    if (_openingChat) return;
+    if (_openingChat || _signingOut) return;
     _openingChat = true;
     try {
       await _chatPreferences.load();
-      if (!mounted) return;
+      if (!mounted || _signingOut) return;
       if (widget.windowHost.supportsDetached &&
           !_mainWindowMaximized &&
           (_detachedChatActive ||
@@ -324,18 +390,24 @@ class _WorkspaceState extends State<Workspace> {
     });
   }
 
-  void _closeChat() => setState(() {
-    _chatOpen = false;
-    _chatManuallyOpened = false;
-  });
+  void _closeChat() {
+    setState(() {
+      _chatOpen = false;
+      _chatManuallyOpened = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _assistantButtonFocus.requestFocus();
+    });
+  }
 
   Future<void> _openDetachedChat() async {
-    if (_detachingChat || _mainWindowMaximized) return;
+    if (_detachingChat || _mainWindowMaximized || _signingOut) return;
     _detachingChat = true;
     try {
-      await widget.windowHost.openDetached(_chatWidth);
+      _pendingDetachedOpen = widget.windowHost.openDetached(_chatWidth);
+      await _pendingDetachedOpen;
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || _signingOut) return;
       setState(() => _detachedChatActive = false);
       _showDock();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -347,12 +419,49 @@ class _WorkspaceState extends State<Workspace> {
     } finally {
       _detachingChat = false;
     }
-    if (!mounted) return;
+    if (!mounted || _signingOut) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     setState(() {
       _detachedChatActive = true;
       _chatOpen = _mainWindowMaximized;
       _chatManuallyOpened = _mainWindowMaximized;
     });
+  }
+
+  Future<void> _signOut() async {
+    if (_signingOut) return;
+    _signingOut = true;
+    try {
+      await _releaseSession();
+      if (mounted) widget.onSignedOut();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('AI 창을 닫지 못해 로그아웃하지 않았습니다.'),
+            action: SnackBarAction(label: '다시 시도', onPressed: _signOut),
+          ),
+        );
+      }
+    } finally {
+      _signingOut = false;
+    }
+  }
+
+  Future<void> _releaseSession() => _endingSession ??= _endSession();
+
+  Future<void> _endSession() async {
+    final host = widget.windowHost;
+    try {
+      try {
+        await _pendingDetachedOpen;
+      } catch (_) {
+        /* Close even after a failed open. */
+      }
+      await host.endSession();
+    } catch (_) {
+      _endingSession = null;
+      rethrow;
+    }
   }
 }
