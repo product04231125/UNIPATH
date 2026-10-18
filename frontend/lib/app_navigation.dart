@@ -249,16 +249,18 @@ class AppNavigation extends RouterDelegate<AppLocation>
         authenticated &&
         _location.path.startsWith('/admin')) {
       key = 'forbidden';
-      page = Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('관리자 화면에 접근할 권한이 없습니다.'),
-            TextButton(
-              onPressed: () => _select(context, 0),
-              child: const Text('홈으로 이동'),
-            ),
-          ],
+      page = Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('관리자 화면에 접근할 권한이 없습니다.'),
+              TextButton(
+                onPressed: () => _select(context, 0),
+                child: const Text('홈으로 이동'),
+              ),
+            ],
+          ),
         ),
       );
     } else if (_location.path.startsWith('/admin') && authenticated) {

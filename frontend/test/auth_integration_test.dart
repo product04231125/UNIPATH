@@ -177,6 +177,11 @@ void main() {
       expect(find.byType(AccountAccessPage), findsOneWidget);
       expect(find.text('서버 합성 학교'), findsOneWidget);
       expect(find.text('합성 대학 A'), findsNothing);
+      final emailStyle = DefaultTextStyle.of(
+        tester.element(find.text('synthetic@example.test')),
+      ).style;
+      expect(emailStyle.decoration, isNot(TextDecoration.underline));
+      expect(emailStyle.fontSize, lessThanOrEqualTo(20));
       expect(LocalDataOwner.currentUserId, userId);
       await tester.tap(find.widgetWithText(FilledButton, '로그아웃'));
       await tester.pumpAndSettle();

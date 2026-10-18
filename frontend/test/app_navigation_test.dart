@@ -144,6 +144,31 @@ void main() {
     },
   );
 
+  testWidgets('server student denied an admin route can return home', (
+    tester,
+  ) async {
+    final provider = MemoryRouteProvider('/admin/overview');
+    await tester.pumpWidget(
+      UniversityPathApp(
+        routeInformationProvider: provider,
+        authGateway: FakeAuth()..signedIn = true,
+      ),
+    );
+    await tester.pumpAndSettle();
+    final message = find.text('관리자 화면에 접근할 권한이 없습니다.');
+    expect(message, findsOneWidget);
+    expect(
+      DefaultTextStyle.of(tester.element(message)).style.decoration,
+      isNot(TextDecoration.underline),
+    );
+    await tester.tap(find.text('홈으로 이동'));
+    await tester.pumpAndSettle();
+    expect(find.byType(Workspace), findsOneWidget);
+    expect(provider.value.uri.path, '/home');
+    await tester.pumpWidget(const SizedBox());
+    provider.dispose();
+  });
+
   testWidgets('unknown route offers recovery without an empty screen', (
     tester,
   ) async {
