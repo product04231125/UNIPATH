@@ -25,7 +25,10 @@ def evaluate(chunks_path: Path, cases_path: Path, *, top_k: int = 3) -> dict:
     actual = {c["document_id"]: c["document_hash"] for c in chunks}
     if actual != sources:
         raise ValueError("Evaluation source versions changed; review expected evidence first")
-    pages = {(c["document_id"], c["page"]): c for c in chunks}
+    pages = {}
+    for c in sorted(chunks, key=lambda c: c.get("page_part_index", 0)):
+        key = (c["document_id"], c["page"])
+        pages[key] = pages.get(key, "") + c["content"]
     cases = [
         json.loads(line)
         for line in cases_path.read_text(encoding="utf-8").splitlines()
@@ -45,7 +48,7 @@ def evaluate(chunks_path: Path, cases_path: Path, *, top_k: int = 3) -> dict:
             expected = {(ref["document_id"], ref["page"]) for ref in case["evidence"]}
             for ref in case["evidence"]:
                 page = pages.get((ref["document_id"], ref["page"]))
-                if page is None or compact(ref["quote"]) not in compact(page["content"]):
+                if page is None or compact(ref["quote"]) not in compact(page):
                     raise ValueError(
                         f"Expected evidence no longer matches the source: {case['id']}"
                     )

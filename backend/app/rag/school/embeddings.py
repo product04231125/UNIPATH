@@ -1,6 +1,9 @@
 """Optional dense ranking adapter. This module chooses no model or API provider."""
 
+import hashlib
+import json
 import math
+from pathlib import Path
 from typing import Protocol
 
 
@@ -26,14 +29,36 @@ def unit_vector(vector: list[float], dimension: int | None = None) -> list[float
 class EmbeddingRanker:
     """Cosine ranking for an injected embedding provider; scope filtering remains upstream."""
 
-    def __init__(self, chunks: list[dict], provider: EmbeddingProvider):
+    def __init__(
+        self, chunks: list[dict], provider: EmbeddingProvider, *, cache_path: Path | None = None
+    ):
         self.provider = provider
         self.model_id = provider.model_id
-        vectors = provider.embed_documents([c["title"] + "\n" + c["content"] for c in chunks])
+        texts = [c["title"] + "\n" + c["content"] for c in chunks]
+        signature = hashlib.sha256(
+            json.dumps(
+                {"model_id": self.model_id, "texts": texts, "ids": [c["chunk_id"] for c in chunks]},
+                ensure_ascii=False,
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
+        vectors = None
+        if cache_path is not None and cache_path.exists():
+            cache = json.loads(cache_path.read_text(encoding="utf-8"))
+            if cache.get("signature") == signature:
+                vectors = cache["vectors"]
+        cached = vectors is not None
+        if vectors is None:
+            vectors = provider.embed_documents(texts)
         if len(vectors) != len(chunks) or not vectors:
             raise ValueError("Embedding provider returned the wrong number of vectors")
         self.dimension = len(vectors[0])
         self.vectors = [unit_vector(vector, self.dimension) for vector in vectors]
+        if cache_path is not None and not cached:
+            from ..ingestion.__main__ import write_atomic
+
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            write_atomic(cache_path, json.dumps({"signature": signature, "vectors": self.vectors}))
 
     def score(self, question: str, indices: list[int]) -> dict[int, float]:
         if self.provider.model_id != self.model_id:
