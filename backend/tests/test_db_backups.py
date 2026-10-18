@@ -135,8 +135,11 @@ def test_restore_check_accepts_only_equivalent_literal_array_casts():
         restored.replace("school_admin", "super_admin"),
         restored.replace(" = ANY", " <> ANY"),
         restored.replace("::character varying", "::integer"),
+        restored.replace(" = ANY", " <> ALL"),
     ]:
         assert backups.comparable_inventory(before) != backups.comparable_inventory(state(changed))
     assert backups.comparable_inventory(before) != backups.comparable_inventory(
         {**before, "tables": [{"count": 1, "fingerprint": "different"}]}
     )
+    unrelated = state("CHECK (note = '" + restored.replace("'", "''") + "')")
+    assert backups.comparable_inventory(unrelated) == unrelated

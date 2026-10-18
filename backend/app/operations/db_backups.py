@@ -399,10 +399,26 @@ def comparable_inventory(state: dict) -> dict:
     and accept existing manifests without rewriting their signed-off contents.
     """
     literal = r"'(?:[^']|'')*'::character varying"
+    literals = literal + r"(?:, " + literal + r")*"
+    element = r"\(" + literal + r"\)::text"
+    # Match the entire generated enum-like CHECK, never SQL inside a string
+    # literal or an unrelated expression with different cast semantics.
+    enum_check = re.compile(
+        r"CHECK \(\(\([a-z_][a-z0-9_]*\)::text = ANY "
+        + r"(?:\(\(ARRAY\["
+        + literals
+        + r"\]\)::text\[\]\)|\(ARRAY\["
+        + element
+        + r"(?:, "
+        + element
+        + r")*\]\))\)\)"
+    )
     array_cast = re.compile(r"\(\(ARRAY\[(" + literal + r"(?:, " + literal + r")*)\]\)::text\[\]\)")
     element_cast = re.compile(r"\((" + literal + r")\)::text")
 
     def canonical(definition: str) -> str:
+        if not enum_check.fullmatch(definition):
+            return definition
         definition = array_cast.sub(lambda match: "(ARRAY[" + match[1] + "])", definition)
         return element_cast.sub(lambda match: match[1], definition)
 
