@@ -3,7 +3,8 @@
 Python 3.12, FastAPI, SQLAlchemy, Psycopg, Alembic, PostgreSQL 17과 pgvector를
 사용한다. Docker 기반 이미지는 Python 3.12.14와 pgvector 0.8.6을 포함하며 digest로
 잠근다. Python 의존성은 `uv.lock`에 잠그며 Docker와 호스트가 같은 잠금 파일을
-사용한다. 인증 방식, LLM 및 클라우드 공급자는 아직 결정하지 않았다.
+사용한다. 이메일·비밀번호/서버 세션 인증과 역할·학교 전체 범위를 구현했다.
+외부 인증/SSO, LLM 및 클라우드 공급자는 미정이다. [인증 API](../docs/api/authentication.md)를 따른다.
 
 ## Docker로 시작
 
@@ -73,7 +74,7 @@ uv run --frozen uvicorn app.main:app --host 127.0.0.1 --port 8011 --reload --no-
 Flutter Web은 예를 들어 `flutter run -d chrome --web-port 3000`으로 고정 포트를
 사용한다. 다른 포트를 쓰면 `.env`의 `CORS_ORIGINS` JSON 배열도 갱신한다.
 프론트엔드 학교 질의는 `POST /api/v1/assistant/queries`와 연결한다.
-인증과 개인 기록·졸업 판정 화면은 아직 서버와 연결하지 않았다. Web 실행 주소는
+인증은 실제 서버와 연결하고 개인 기록은 계정별 기기 저장, 공식 졸업 판정은 미연결이다. Web 실행 주소는
 `http://localhost:3000`, 빌드 설정 `API_BASE_URL`은 실제 API 주소에 맞춘다.
 
 ## RAG 팀 모듈과 학교 질의 API
@@ -137,8 +138,9 @@ uv run --frozen alembic check
 
 새 모델은 `app/models/`에 두고 `app/models/__init__.py`에서 import해 Alembic의
 metadata에 포함한다. 생성된 마이그레이션은 직접 검토하며 공유된 파일을 수정하지 않는다.
-첫 마이그레이션은 `vector` 확장만 활성화한다. 도메인 테이블, 임베딩 차원과
-공식 졸업 규칙의 물리 스키마는 팀 합의 후 새 마이그레이션으로 구현한다.
+첫 마이그레이션은 vector 확장, `0002_identity_sessions`는 계정·세션·역할·학교 범위 관련
+6개 테이블을 생성한다. 임베딩 차원과 공식 학사/졸업 규칙 물리 스키마는 후속이다.
+준비 상태 API는 현재 migration head까지 적용되어야 200을 반환한다.
 첫 마이그레이션의 downgrade는 다른 벡터 테이블을 보호하기 위해 확장을 유지한다.
 
 저장소 루트에서 Docker와 실제 PostgreSQL/pgvector 검증을 실행한다.
@@ -150,8 +152,8 @@ docker compose --profile test run --build --rm test
 호스트에서도 `RUN_DB_TESTS=1 uv run --frozen pytest -q`로 DB 테스트를 포함할 수 있다.
 PowerShell에서는 `$env:RUN_DB_TESTS='1'`을 설정한 뒤 테스트 명령을 실행한다.
 통합 테스트는 합성 벡터를 임시 테이블에 넣어 최근접 검색을 확인하고 종료 시 제거한다.
-현재 도메인 테이블이 없으므로 학생 시드 데이터는 넣지 않는다. 실제 학생 데이터는
-테스트에 사용하지 않는다. 활성화된 `.github/workflows/backend-ci.yaml`은 린트·단위 테스트,
+인증 통합 테스트는 매번 별도 임시 스키마에 합성 계정을 만들고 종료 시 제거한다. 기본/공유
+관리자 계정은 시드하지 않는다. 실제 학생 데이터는 테스트하지 않는다. CI는 린트·단위 테스트,
 Docker 빌드·마이그레이션·실제 DB 통합 테스트·API Smoke 및 합성 DB 복구 검증을 실행한다.
 앱 다운로드 워크플로도 같은 백엔드·복구 검증을 거쳐 Web·Windows를 빌드한다.
 
@@ -187,7 +189,7 @@ uv run --frozen python -m app.operations.db_backups verify ../backups/시각-식
 - `migrations/`: Alembic 마이그레이션
 - `tests/`: API·설정·PostgreSQL/pgvector 검증
 
-졸업 판정의 계산 코어는 구현했으며 인증·CRUD·공식 졸업감사 API/DB는 후속 범위다. 학교 RAG는 팀의
+인증·역할·학교 전체 범위와 졸업 판정 코어는 구현했다. 학사 CRUD·공식 졸업감사 API/DB는 후속이다. 학교 RAG는 팀의
 오프라인 모듈과 HTTP 어댑터를 연결했으며 공식 문서 승인·운영 DB·실제 생성기는
 후속 구현 대상이다. 신규 패키지는 용도에 맞춰 최소한으로 추가한다.
 

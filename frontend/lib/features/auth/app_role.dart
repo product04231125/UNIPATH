@@ -1,4 +1,4 @@
-/// Client-facing roles for the isolated mock. Not an authentication contract.
+/// Server role names are mapped explicitly by AuthIdentity; samples never grant server access.
 enum AppRole { user, schoolAdmin, superAdmin }
 
 extension AppRoleLabel on AppRole {

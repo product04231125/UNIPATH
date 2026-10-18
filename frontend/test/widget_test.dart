@@ -1,6 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+
+import 'support/auth_fixture.dart';
+
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:university_path_frontend/features/assistant/assistant_api.dart';
@@ -43,9 +46,11 @@ void main() {
     expect(reloaded.events.single.title, '과제 마감');
   });
 
-  testWidgets('renders and validates the login mock', (tester) async {
+  testWidgets('renders login validation with an injected server gateway', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
-    await tester.pumpWidget(const UniversityPathApp());
+    await tester.pumpWidget(UniversityPathApp(authGateway: FakeAuth()));
 
     expect(find.text('나의 대학생활 경로를\n관리하세요.'), findsOneWidget);
     await tester.tap(find.byKey(const Key('login-submit')));
@@ -61,12 +66,11 @@ void main() {
     await tester.tap(find.byKey(const Key('login-submit')));
     await tester.pumpAndSettle();
     expect(find.text('나의 대학생활 경로'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('shows the sign-up mock without creating an account', (
-    tester,
-  ) async {
+  testWidgets('shows the sign-up form before submission', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     await tester.pumpWidget(const UniversityPathApp());
 

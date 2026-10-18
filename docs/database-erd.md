@@ -7,16 +7,48 @@
 모든 식별자는 UUID를 사용한다. 실제 DB 모델과 외부 API 스키마는 분리하며,
 각 단계에서 필요한 테이블만 Alembic 마이그레이션으로 생성한다.
 
-현재 개발환경의 첫 마이그레이션 `0001_enable_pgvector`는 `vector` 확장만 활성화한다.
-Alembic 이력 테이블 외에 아래 도메인 테이블은 아직 생성하지 않았다. 아래 단계별
-표는 도입 계획이며, 팀이 물리 스키마를 합의한 뒤 모델과 새 마이그레이션을 함께
-추가한다. 임베딩 모델과 벡터 차원도 아직 확정하지 않았다. 실제 PostgreSQL/pgvector
-통합 테스트는 합성 3차원 벡터를 임시 테이블에서만 사용하며 도메인 데이터를 남기지 않는다.
+`0001_enable_pgvector`는 vector 확장을 활성화하고 `0002_identity_sessions`는 실제
+users·auth_sessions·auth_throttles·institutions·admin_scopes·identity_audits 6개 테이블을
+생성한다. 사용자·세션·역할·학교 전체 관리 범위·변경 이력만 물리 구현했다. 아래 전체
+논리 ERD/단계 표의 학과·교육과정·공식 기록·판정·문서는 도입 계획이다. 현재 users에는
+학교/학과/교육과정 FK가 없으며 자유 입력 프로필을 공식 학적으로 승격하지 않는다.
+임베딩 모델/차원은 미정이며 pgvector 검사는 합성 임시 테이블을 사용한다.
+
+```mermaid
+erDiagram
+    USERS ||--o{ AUTH_SESSIONS : owns
+    USERS ||--o{ ADMIN_SCOPES : receives
+    INSTITUTIONS ||--o{ ADMIN_SCOPES : scopes
+    USERS o|--o{ IDENTITY_AUDITS : performs
+    INSTITUTIONS o|--o{ IDENTITY_AUDITS : concerns
+    USERS {
+        uuid id PK
+    }
+    AUTH_SESSIONS {
+        string token_hash PK
+    }
+    AUTH_THROTTLES {
+        string bucket PK
+    }
+    INSTITUTIONS {
+        uuid id PK
+    }
+    ADMIN_SCOPES {
+        uuid id PK
+    }
+    IDENTITY_AUDITS {
+        uuid id PK
+    }
+```
+
+인증 필드·운영자 생성·원자성과 후속 경계는 [인증 API](api/authentication.md)를 따른다.
+범위는 학교 전체만 지원하며 하위 학과/교육과정 범위는 미구현이다. 모델과 물리 스키마를
+`alembic check`로 대조한다.
 
 현재 학교 질의 API는 로컬 JSONL 청크와 메모리 BM25 인덱스를 사용한다.
 `DOCUMENT`·`DOCUMENT_CHUNK` 테이블이나 pgvector 검색은 아직 연결하지 않았으며,
 질문·답변·대화 이력을 DB에 저장하지 않는다. 파일 메타데이터는 운영 승인 DB를
-대체하지 않는다. 이 통합으로 새 도메인 테이블이나 마이그레이션은 추가하지 않았다.
+대체하지 않는다. 인증 테이블 추가가 학교 RAG/문서 승인 저장의 구현을 의미하지 않는다.
 
 `app/rules/`에는 학점·필수과목·봉사·자격증·논문 요건의 독립 계산 코어를 구현했다.
 공식 규칙의 계층·입학연도·이수경로·유효기간·버전 선택과 개인 기준 계산을 구분하며
@@ -624,7 +656,10 @@ erDiagram
 고려해 현재 유효한 문서를 우선한다. 원문 해시 또는 임베딩 모델 버전이 달라지면
 관련 청크를 재생성·재색인한다.
 
-## 단계별 실제 도입 범위
+## 단계별 도입 계획과 현재 구현
+
+현재 물리 구현은 위 인증/학교 범위 6개 테이블이다. 아래 표는 각 단계의 전체 목표이며
+나머지 학사·문서·판정 엔터티가 이미 생성됐다는 뜻이 아니다.
 
 | 단계 | 목표 | 실제 생성·구현 대상 |
 |---|---|---|

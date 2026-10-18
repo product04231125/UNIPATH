@@ -6,6 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
+from app.core.auth_errors import AuthError
 from app.schemas.common import ErrorCode, ErrorDetail, ErrorResponse, FieldError
 from app.services.health import NotReadyError
 
@@ -33,6 +34,16 @@ def error_response(
 
 
 def register_error_handlers(app: FastAPI) -> None:
+    @app.exception_handler(AuthError)
+    async def auth_error(request: Request, exc: AuthError):
+        response = error_response(request, exc.status, exc.code, exc.message)
+        response.headers["Cache-Control"] = "no-store"
+        if exc.status == 401:
+            response.headers["WWW-Authenticate"] = "Bearer"
+        if exc.status == 429:
+            response.headers["Retry-After"] = "900"
+        return response
+
     @app.middleware("http")
     async def request_id_middleware(request: Request, call_next):
         try:
@@ -48,6 +59,8 @@ def register_error_handlers(app: FastAPI) -> None:
                 request, 500, ErrorCode.INTERNAL_SERVER_ERROR, "서버에서 오류가 발생했습니다."
             )
         response.headers["X-Request-ID"] = str(request.state.request_id)
+        if request.url.path.startswith(("/api/v1/auth/", "/api/v1/admin/")):
+            response.headers["Cache-Control"] = "no-store"
         return response
 
     @app.exception_handler(RequestValidationError)

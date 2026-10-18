@@ -3,7 +3,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.access import router as access_router
 from app.api.assistant import router as assistant_router
+from app.api.auth import router as auth_router
 from app.api.health import health, router
 from app.core.config import Settings, get_settings
 from app.core.database import create_session_factory
@@ -18,6 +20,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
+        application.state.settings = config
         application.state.school_rag_service = create_school_rag_service(config)
         application.state.session_factory = create_session_factory(config)
         try:
@@ -33,6 +36,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         docs_url="/api/v1/docs",
         redoc_url="/api/v1/redoc",
         responses={
+            401: {"model": ErrorResponse},
+            403: {"model": ErrorResponse},
+            409: {"model": ErrorResponse},
+            429: {"model": ErrorResponse},
             404: {"model": ErrorResponse},
             422: {"model": ErrorResponse},
             500: {"model": ErrorResponse},
@@ -42,12 +49,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.add_middleware(
         CORSMiddleware,
         allow_origins=config.cors_origins,
+        allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
         expose_headers=["X-Request-ID"],
     )
     application.include_router(router, prefix="/api/v1")
     application.include_router(assistant_router, prefix="/api/v1")
+    application.include_router(auth_router, prefix="/api/v1")
+    application.include_router(access_router, prefix="/api/v1")
     # Compatibility alias for the README's infrastructure smoke check.
     application.add_api_route(
         "/health", health, response_model=HealthResponse, include_in_schema=False

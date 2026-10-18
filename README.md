@@ -52,7 +52,9 @@ PR과 `main`/`develop`의 백엔드 변경을 검증합니다. 앱 다운로드 
 - 배포 채널: `main`, `https://unipath.duckdns.org`
 - 통합·빌드·릴리스 담당: 이어진
 
-현재 로그인·개인 기록은 목업/기기 로컬 상태이며 공식 졸업감사·LLM은 미연결입니다.
+develop의 로그인·가입·세션·역할/학교 범위는 실제 API/DB로 구현했습니다.
+개인 기록은 계정별 기기 로컬이며 공식 졸업감사·LLM은 미연결입니다. main 채널의 기능은
+별도 승격 전까지 이전 릴리스를 유지합니다. [인증 계약과 초기 관리자](docs/api/authentication.md)를 참고하세요.
 배포 채널 제공과 실제 운영 서비스 완성은 구분합니다. 상세 빌드·다운로드·도메인 및
 HTTPS 설정은 [`docs/releases.md`](docs/releases.md)에 있습니다.
 
@@ -132,7 +134,8 @@ Flutter Web은 역할에 따라 학생 사용자 화면과 학교 관리자 화�
 메뉴와 조작을 구분하는 설계다. 슈퍼관리자는 학교 등록·학교 관리자 범위 부여/회수와
 전체 학교 공식 데이터를 관리하며 학교 관리자는 활성 범위 안에서 직접 검토·적용한다.
 학생 개인 기록 접근 권한은 자동 부여하지 않는다. 역할·계정 상태·범위·변경 이력의
-보완안은 [DB 설계](docs/database-erd.md)의 논리 제안이며 실제 인증·관리자 API 계약은 미확정이다.
+계정·세션·학교 전체 범위는 [인증 API](docs/api/authentication.md)로 구현했다.
+학과/교육과정 하위 범위와 학사 CRUD는 [DB 설계](docs/database-erd.md)의 후속 논리 모델이다.
 
 - 일반 사용자는 등록된 학교·학과 데이터가 없거나 지원하지 않는 학교·학과에 속해도
   자격증, 진로, 활동·경험, 채용 분석 등 공용 모듈을 사용할 수 있다. 학사정보와 과목도
@@ -400,7 +403,7 @@ API 문서는 `http://localhost:8010/api/v1/docs`, DB 준비 상태 확인은
 `http://localhost:8010/api/v1/health/ready`입니다. PostgreSQL 호스트 포트는 5433입니다.
 Docker 내부에서는 API 8000과 DB 5432를 사용합니다. 기존 서비스와 충돌하면
 `.env`에서 호스트 포트를 변경합니다. 실행 시 Alembic으로 pgvector를 활성화하며,
-도메인 테이블·인증·공식 졸업감사 API는 후속 구현 범위입니다. DB·LLM과 독립적인
+계정·세션·역할·학교 범위 테이블도 생성합니다. 공식 졸업감사·학사 CRUD는 후속입니다. DB·LLM과 독립적인
 학점·필수과목·봉사·자격증·논문 판정 코어와 호스트용 DB 백업·격리 복구 검증 도구는
 구현했습니다. 실행·계약은 [Rule Engine](docs/rule-engine.md)과
 [DB 백업](docs/database-backups.md)을 따릅니다.
@@ -424,7 +427,7 @@ python3 backend/scripts/smoke_api.py
 ### Flutter 프론트엔드 설치 및 실행 (Windows)
 
 `frontend/`는 Flutter Web과 Windows 화면을 함께 제공합니다. 학교 질의는 실제 API와
-연결하며 인증·개인 기록·졸업 판정은 목업 또는 기기 로컬 상태입니다. Flutter SDK를 내려받아
+연결하고 인증은 실제 계정 API를 사용합니다. 개인 기록은 계정별 기기 로컬이며 졸업 판정은 미연결입니다. Flutter SDK를 내려받아
 예를 들어 `C:\develop\flutter`에 압축을 풀고, `C:\develop\flutter\bin`을 사용자
 `Path`에 추가합니다. Windows 앱도 빌드하려면 Visual Studio의 **Desktop development
 with C++** 워크로드가 필요합니다. 자세한 설치 절차는 [Flutter 수동 설치 안내](https://docs.flutter.dev/install/manual)와 [Windows 개발 환경 안내](https://docs.flutter.dev/platform-integration/windows/setup)를 따른다.

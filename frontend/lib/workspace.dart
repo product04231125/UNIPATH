@@ -37,9 +37,11 @@ class Workspace extends StatefulWidget {
     this.assistantFactory,
     this.sidebarVisible = true,
     this.integratedTitleBar = false,
+    this.beforeSignedOut,
   });
 
   final VoidCallback onSignedOut;
+  final Future<void> Function()? beforeSignedOut;
   final AssistantWindowHost windowHost;
   final ChatPreferences? chatPreferences;
   final int? selectedPage;
@@ -433,12 +435,17 @@ class _WorkspaceState extends State<Workspace> {
     _signingOut = true;
     try {
       await _releaseSession();
+      await widget.beforeSignedOut?.call();
       if (mounted) widget.onSignedOut();
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('AI 창을 닫지 못해 로그아웃하지 않았습니다.'),
+            content: Text(
+              widget.beforeSignedOut == null
+                  ? 'AI 창을 닫지 못해 로그아웃하지 않았습니다.'
+                  : '로그아웃하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.',
+            ),
             action: SnackBarAction(label: '다시 시도', onPressed: _signOut),
           ),
         );
