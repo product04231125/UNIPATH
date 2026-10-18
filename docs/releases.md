@@ -24,9 +24,11 @@
 - Windows: `*-windows.zip` 전체를 압축 해제한 뒤 `university_path_frontend.exe`를
   실행한다. EXE만 복사하지 말고 DLL 및 `data/`를 함께 보관한다. x64 대상이며
   Visual C++ 런타임 DLL도 포함한다. 코드 서명·설치 프로그램은 아직 구성하지 않았다.
-- Web: `*-web.zip`을 풀고 Python이 있는 PC에서 `python -m http.server 3000`을
-  실행한 뒤 `http://localhost:3000`을 연다. 배포 시 웹 서버에서 정적 파일을 제공하고
-  화면 경로를 `index.html`로 돌려주는 SPA fallback을 설정한다.
+- Web: `*-web.zip`을 빌드 정보의 API 주소와 같은 HTTPS 출처에 배포한다.
+  웹 서버는 정적 파일과 API 프록시를 제공하고 화면 경로에는 `index.html` SPA fallback을
+  설정한다. `python -m http.server 3000`으로 정적 화면을 미리 볼 수 있으나 localhost
+  미리보기에서 원격 API의 세션 로그인은 지원하지 않는다. 로컬 인증 개발은 로컬 API와
+  허용된 localhost Origin을 함께 사용한다.
 - ZIP 내부의 `DOWNLOAD-README.txt`와 `build-info.json`에는 채널, API 주소,
   소스 커밋, SDK 및 버전이 기록된다. 첨부된 `.zip.sha256`으로 무결성을 확인한다.
 
@@ -123,9 +125,10 @@ HTTPS 도메인으로 설정했다. 워크플로 기본값도 동일하다. 실�
 | `POSTGRES_DB` | `unipath_staging` | `unipath_product` |
 | `POSTGRES_USER` | `unipath_staging` | `unipath_product` |
 
-`CORS_ORIGINS`에는 해당 HTTPS 도메인을 넣는다. 다운로드한 Web ZIP의 로컬 시연을
-지원하는 프리뷰에서는 `http://localhost:3000`, `http://127.0.0.1:3000`도 명시한다.
-실제 운영 전환 시 허용 주소를 운영 프론트엔드 원점으로 제한한다. JSONL 파일 코퍼스는
+`CORS_ORIGINS`에는 해당 HTTPS 도메인을 넣는다. 원격 API의 Strict 세션 쿠키는
+localhost에서의 로그인을 허용하지 않는다. localhost Origin을 추가하는 것만으로
+지원되지 않으며 로컬 인증 개발에는 로컬 API를 사용한다. 실제 운영 전환 시 허용 주소를
+운영 프론트엔드 원점으로 제한한다. JSONL 파일 코퍼스는
 `APP_ENV=local` 전용이므로 이 두 환경에서는 `compose.rag.yaml`을 함께 사용하지 않는다.
 현재 공식 승인 코퍼스가 없으므로 학교 질의의 근거 부족 안내가 정상이다.
 
