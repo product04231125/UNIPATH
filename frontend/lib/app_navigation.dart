@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'features/auth/login_page.dart';
@@ -8,6 +10,9 @@ import 'features/admin/admin_workspace.dart';
 import 'features/admin/admin_repository.dart';
 import 'app_shell/workspace_title_bar.dart';
 import 'shared/widgets/task_focus_group.dart';
+import 'features/auth/auth_api.dart';
+import 'features/auth/account_access_page.dart';
+import 'features/auth/local_data_owner.dart';
 
 class AppLocation {
   const AppLocation(this.path);
@@ -45,17 +50,112 @@ class AppLocationParser extends RouteInformationParser<AppLocation> {
       RouteInformation(uri: Uri(path: configuration.path));
 }
 
-/// Navigation only. Authentication remains the existing in-memory mock.
+/// Server identity owns live navigation; development samples remain isolated.
 class AppNavigation extends RouterDelegate<AppLocation>
-    with ChangeNotifier, PopNavigatorRouterDelegateMixin<AppLocation> {
-  AppNavigation({required this.authenticated, this.assistantFactory});
+    with
+        ChangeNotifier,
+        PopNavigatorRouterDelegateMixin<AppLocation>,
+        WidgetsBindingObserver {
+  AppNavigation({
+    required this.authenticated,
+    this.assistantFactory,
+    AuthGateway? authGateway,
+  }) : _auth = authGateway ?? AuthApi(),
+       _ownsAuth = authGateway == null {
+    WidgetsBinding.instance.addObserver(this);
+    if (!authenticated) unawaited(_refreshSession());
+  }
   final AssistantGateway Function()? assistantFactory;
+  final AuthGateway _auth;
+  final bool _ownsAuth;
+  AuthIdentity? _identity;
+  Timer? _sessionTimer;
+  bool _closed = false;
+  int _authEpoch = 0;
+
+  void _startSessionChecks() {
+    _sessionTimer?.cancel();
+    _sessionTimer = Timer.periodic(
+      const Duration(seconds: 60),
+      (_) => unawaited(_refreshSession()),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _identity != null) {
+      unawaited(_refreshSession());
+    }
+  }
+
+  Future<void> _refreshSession() async {
+    final epoch = _authEpoch;
+    try {
+      final next = await _auth.me();
+      if (_closed || epoch != _authEpoch) return;
+      if (next == null) {
+        if (_identity == null) return;
+        _identity = null;
+        authenticated = false;
+        _role = AppRole.user;
+        LocalDataOwner.currentUserId = null;
+        _sessionTimer?.cancel();
+        _location = const AppLocation('/login');
+      } else {
+        final wasAuthenticated = authenticated;
+        final previousRole = _role;
+        _identity = next;
+        authenticated = true;
+        _role = next.role;
+        LocalDataOwner.currentUserId = next.id;
+        if (!wasAuthenticated || previousRole != _role) {
+          if (_role != AppRole.user) {
+            _location = const AppLocation('/admin/overview');
+          } else if (previousRole != AppRole.user ||
+              _location.path == '/login') {
+            _location = const AppLocation('/home');
+          }
+        }
+        if (_sessionTimer == null || !_sessionTimer!.isActive) {
+          _startSessionChecks();
+        }
+      }
+      notifyListeners();
+    } catch (_) {
+      /* Do not treat a transport failure as a confirmed session revocation. */
+    }
+  }
+
+  Future<void> _authenticate({
+    required String email,
+    required String password,
+    String? displayName,
+  }) async {
+    final epoch = ++_authEpoch;
+    final next = await _auth.authenticate(
+      email: email,
+      password: password,
+      displayName: displayName,
+    );
+    if (_closed || epoch != _authEpoch) return;
+    _identity = next;
+    LocalDataOwner.currentUserId = next.id;
+    _startSessionChecks();
+  }
 
   bool authenticated;
   AppRole _role = AppRole.user;
   AdminRepository? _adminRepository;
   @override
   void dispose() {
+    _closed = true;
+    _authEpoch++;
+    _sessionTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    if (LocalDataOwner.currentUserId == _identity?.id) {
+      LocalDataOwner.currentUserId = null;
+    }
+    if (_ownsAuth) _auth.close();
     _adminRepository?.dispose();
     super.dispose();
   }
@@ -117,6 +217,10 @@ class AppNavigation extends RouterDelegate<AppLocation>
       });
 
   void _signedOut(BuildContext context) => Router.neglect(context, () {
+    _authEpoch++;
+    _sessionTimer?.cancel();
+    _identity = null;
+    LocalDataOwner.currentUserId = null;
     authenticated = false;
     _role = AppRole.user;
     _location = const AppLocation('/login');
@@ -131,7 +235,33 @@ class AppNavigation extends RouterDelegate<AppLocation>
     final menu = _location.menu;
     final Widget page;
     final String key;
-    if (_location.path.startsWith('/admin') && authenticated) {
+    if (_identity != null && authenticated && _role != AppRole.user) {
+      key = 'live-access';
+      page = AccountAccessPage(
+        identity: _identity!,
+        api: _auth,
+        onSignedOut: () async {
+          await _auth.logout();
+          if (!_closed && context.mounted) _signedOut(context);
+        },
+      );
+    } else if (_identity != null &&
+        authenticated &&
+        _location.path.startsWith('/admin')) {
+      key = 'forbidden';
+      page = Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('관리자 화면에 접근할 권한이 없습니다.'),
+            TextButton(
+              onPressed: () => _select(context, 0),
+              child: const Text('홈으로 이동'),
+            ),
+          ],
+        ),
+      );
+    } else if (_location.path.startsWith('/admin') && authenticated) {
       key = 'admin';
       page = AdminWorkspace(
         repository: _adminRepository ??= FakeAdminRepository(),
@@ -162,8 +292,15 @@ class AppNavigation extends RouterDelegate<AppLocation>
     } else if (!authenticated || _location.path == '/login') {
       key = 'login';
       page = LoginPage(
-        onSignedIn: () => _signedIn(context),
-        onSampleSignedIn: (role) => _signedIn(context, role),
+        authenticate: _authenticate,
+        onSignedIn: () => _signedIn(context, _identity?.role ?? AppRole.user),
+        onSampleSignedIn: (role) {
+          _authEpoch++;
+          _identity = null;
+          _sessionTimer?.cancel();
+          LocalDataOwner.currentUserId = null;
+          _signedIn(context, role);
+        },
       );
     } else if (_role != AppRole.user) {
       key = 'admin';
@@ -184,6 +321,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
         selectedPage: menu!,
         onPageChanged: (value) => _select(context, value),
         onSignedOut: () => _signedOut(context),
+        beforeSignedOut: _identity == null ? null : _auth.logout,
       );
     }
     return Navigator(

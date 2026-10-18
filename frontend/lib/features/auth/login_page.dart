@@ -2,15 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
 import 'app_role.dart';
+import 'auth_api.dart';
 
 import 'package:university_path_frontend/shared/app_typography.dart';
 
-/// Temporary entry screen. It has no API, token, or role behavior yet.
+/// Production delegates authentication to the server; sample callbacks are debug-only.
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key, required this.onSignedIn, this.onSampleSignedIn});
+  const LoginPage({
+    super.key,
+    required this.onSignedIn,
+    this.onSampleSignedIn,
+    this.authenticate,
+  });
 
   final VoidCallback onSignedIn;
   final ValueChanged<AppRole>? onSampleSignedIn;
+  final Future<void> Function({
+    required String email,
+    required String password,
+    String? displayName,
+  })?
+  authenticate;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -25,6 +37,9 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLogin = true;
   bool _obscurePassword = true;
   bool _obscurePasswordConfirm = true;
+  bool _submitting = false;
+  String? _error;
+  List<String> _serverFields = const [];
 
   @override
   void dispose() {
@@ -36,16 +51,47 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _selectMode(bool isLogin) {
-    if (_isLogin == isLogin) return;
+    if (_isLogin == isLogin || _submitting) return;
     setState(() {
       _isLogin = isLogin;
       _formKey.currentState?.reset();
+      _error = null;
+      _serverFields = const [];
     });
   }
 
-  void _submit() {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    widget.onSignedIn();
+  Future<void> _submit() async {
+    if (_submitting) return;
+    _serverFields = const [];
+    if (_submitting || !(_formKey.currentState?.validate() ?? false)) return;
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await widget.authenticate?.call(
+        email: _emailController.text,
+        password: _passwordController.text,
+        displayName: _isLogin ? null : _nameController.text,
+      );
+      if (mounted) {
+        _passwordController.clear();
+        _passwordConfirmController.clear();
+        widget.onSignedIn();
+      }
+    } on AuthFailure catch (error) {
+      if (mounted) {
+        setState(() {
+          _error = error.message;
+          _serverFields = error.fields;
+        });
+        _formKey.currentState?.validate();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _error = '처리하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.');
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   @override
@@ -102,6 +148,18 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 28),
                     if (_isLogin) ..._loginFields() else ..._signupFields(),
                     const SizedBox(height: 24),
+                    if (_error != null) ...[
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     FilledButton(
                       key: Key(_isLogin ? 'login-submit' : 'signup-submit'),
                       style: FilledButton.styleFrom(
@@ -112,8 +170,10 @@ class _LoginPageState extends State<LoginPage> {
                         minimumSize: const Size.fromHeight(52),
                         textStyle: TextStyle(fontWeight: FontWeight.w800),
                       ),
-                      onPressed: _submit,
-                      child: Text(_isLogin ? '로그인' : '회원가입'),
+                      onPressed: _submitting ? null : _submit,
+                      child: Text(
+                        _submitting ? '처리 중…' : (_isLogin ? '로그인' : '회원가입'),
+                      ),
                     ),
                     if (!kReleaseMode) ...[
                       const SizedBox(height: 28),
@@ -126,13 +186,15 @@ class _LoginPageState extends State<LoginPage> {
                           Expanded(
                             child: OutlinedButton(
                               key: const Key('sample-student-entry'),
-                              onPressed: () {
-                                if (widget.onSampleSignedIn != null) {
-                                  widget.onSampleSignedIn!(AppRole.user);
-                                } else {
-                                  widget.onSignedIn();
-                                }
-                              },
+                              onPressed: _submitting
+                                  ? null
+                                  : () {
+                                      if (widget.onSampleSignedIn != null) {
+                                        widget.onSampleSignedIn!(AppRole.user);
+                                      } else {
+                                        widget.onSignedIn();
+                                      }
+                                    },
                               child: Text('학생'),
                             ),
                           ),
@@ -143,7 +205,9 @@ class _LoginPageState extends State<LoginPage> {
                               children: [
                                 OutlinedButton(
                                   key: const Key('sample-school-admin-entry'),
-                                  onPressed: widget.onSampleSignedIn == null
+                                  onPressed:
+                                      widget.onSampleSignedIn == null ||
+                                          _submitting
                                       ? null
                                       : () => widget.onSampleSignedIn!(
                                           AppRole.schoolAdmin,
@@ -153,7 +217,9 @@ class _LoginPageState extends State<LoginPage> {
                                 const SizedBox(height: 8),
                                 OutlinedButton(
                                   key: const Key('sample-super-admin-entry'),
-                                  onPressed: widget.onSampleSignedIn == null
+                                  onPressed:
+                                      widget.onSampleSignedIn == null ||
+                                          _submitting
                                       ? null
                                       : () => widget.onSampleSignedIn!(
                                           AppRole.superAdmin,
@@ -184,12 +250,17 @@ class _LoginPageState extends State<LoginPage> {
 
   List<Widget> _signupFields() => [
     TextFormField(
+      enabled: !_submitting,
       controller: _nameController,
+      maxLength: 128,
       autofillHints: const [AutofillHints.name],
       textInputAction: TextInputAction.next,
       decoration: _decoration('이름', '예: 홍길동'),
-      validator: (value) =>
-          value == null || value.trim().isEmpty ? '이름을 입력해 주세요.' : null,
+      validator: (value) => value == null || value.trim().isEmpty
+          ? '이름을 입력해 주세요.'
+          : (_serverFields.contains('body.display_name')
+                ? '이름 형식과 길이를 확인해 주세요.'
+                : null),
     ),
     const SizedBox(height: 16),
     _emailField(),
@@ -197,6 +268,7 @@ class _LoginPageState extends State<LoginPage> {
     _passwordField(newPassword: true),
     const SizedBox(height: 16),
     TextFormField(
+      enabled: !_submitting,
       controller: _passwordConfirmController,
       obscureText: _obscurePasswordConfirm,
       autofillHints: const [AutofillHints.newPassword],
@@ -223,16 +295,21 @@ class _LoginPageState extends State<LoginPage> {
   ];
 
   TextFormField _emailField() => TextFormField(
+    enabled: !_submitting,
     controller: _emailController,
     keyboardType: TextInputType.emailAddress,
     autofillHints: const [AutofillHints.email],
     textInputAction: TextInputAction.next,
     decoration: _decoration('이메일 주소', 'name@example.com'),
-    validator: (value) =>
-        value == null || value.trim().isEmpty ? '이메일 주소를 입력해 주세요.' : null,
+    validator: (value) {
+      if (value == null || value.trim().isEmpty) return '이메일 주소를 입력해 주세요.';
+      if (_serverFields.contains('body.email')) return '이메일 주소 형식을 확인해 주세요.';
+      return null;
+    },
   );
 
   TextFormField _passwordField({bool newPassword = false}) => TextFormField(
+    enabled: !_submitting,
     controller: _passwordController,
     obscureText: _obscurePassword,
     autofillHints: [
@@ -240,6 +317,7 @@ class _LoginPageState extends State<LoginPage> {
     ],
     textInputAction: newPassword ? TextInputAction.next : TextInputAction.done,
     decoration: _decoration('비밀번호').copyWith(
+      helperText: newPassword ? '15~128자 · 공백을 포함한 긴 문장도 사용할 수 있습니다.' : null,
       suffixIcon: IconButton(
         tooltip: _obscurePassword ? '비밀번호 표시' : '비밀번호 숨기기',
         onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
@@ -250,8 +328,15 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     ),
-    validator: (value) =>
-        value == null || value.isEmpty ? '비밀번호를 입력해 주세요.' : null,
+    validator: (value) {
+      if (value == null || value.isEmpty) return '비밀번호를 입력해 주세요.';
+      if (value.runes.length > 128 ||
+          (newPassword && value.runes.length < 15) ||
+          _serverFields.contains('body.password')) {
+        return '비밀번호는 15~128자로 입력해 주세요.';
+      }
+      return null;
+    },
     onFieldSubmitted: (_) => newPassword ? null : _submit(),
   );
 

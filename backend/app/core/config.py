@@ -2,7 +2,7 @@ from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import SecretStr, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     database_url: SecretStr | None = None
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
     school_rag_corpus_path: Path | None = None
+    auth_session_hours: int = Field(default=12, ge=1, le=72)
 
     @model_validator(mode="after")
     def validate_local_corpus(self):

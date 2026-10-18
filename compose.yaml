@@ -13,6 +13,7 @@ x-backend: &backend
     POSTGRES_USER: ${POSTGRES_USER:-unipath}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env and set POSTGRES_PASSWORD}
     CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000","http://localhost:5173"]}
+    AUTH_SESSION_HOURS: ${AUTH_SESSION_HOURS:-12}
 
 services:
   db:

@@ -13,8 +13,11 @@ DB 준비 → 마이그레이션 성공 → API 시작 순서이며 도메인을
 호스트에서는 API 8010과 DB 5433을 사용하고 Docker 내부에서는 8000/5432를 사용한다.
 `backend/app/`에는 API·스키마·DB·서비스·Rule Engine·RAG 경계를 마련했다.
 아래 다이어그램의 도메인 기능과 외부 어댑터는 목표 구조이며 현재 기능 구현이 아니다.
-현재 API는 상태 확인, DB 준비 상태 확인과 `POST /api/v1/assistant/queries`를
-제공한다. 학교 질의의 공개 Pydantic 계약을 내부 RAG 서비스와 분리하고,
+현재 API는 상태/DB 준비 확인, `/auth/*` 계정·세션, `/admin/*` 계정·학교 범위 관리와
+`POST /api/v1/assistant/queries`를 제공한다. 사용자·역할·세션은 PostgreSQL에 저장하고
+Web은 HttpOnly 쿠키, Windows는 메모리 bearer 토큰을 사용한다. 보호 API는 DB의 현재
+상태·역할·활성 학교 범위를 확인한다. 실제 관리자 로그인은 서버 계정/관리 범위 화면이며
+학과·과목·공식 문서 CRUD는 아직 합성 개발 UI다. 학교 질의의 공개 계약은 내부 RAG와 분리하고,
 동기 검색은 FastAPI의 스레드풀에서 실행한다. 파일 인덱스는 앱 시작 시 한 번 읽는다.
 기본 실행은 빈 인덱스이며 선택적 `compose.rag.yaml`은 PDF 추출 후 API에 읽기 전용
 JSONL을 연결한다. 파일 코퍼스는 로컬 환경에서만 사용한다.
@@ -50,7 +53,7 @@ flowchart LR
   좁은 폭 오버레이를 사용한다.
 - 도킹·분리 창은 같은 학교 질의 HTTP 어댑터와 응답 위젯을 사용한다. 질문과 사용자가 확인한
   학교 문맥만 전송한다. 학교 질의 API와 Flutter 연동 코드가 이 브랜치에 함께 포함된다.
-- 대화 이력은 창별 메모리이며 서로 동기화하지 않는다. 학교 질의 문맥은 기기 로컬의 저장된
+- 대화·질문·요청은 메인이 소유하고 IPC로 창 사이에 공유한다. 학교 질의 문맥은 계정별 기기 로컬의 저장된
   프로필을 공유하고 Windows 분리 창은 메인 창에 IPC로 조회·저장을 요청한다. 서버 대화
   저장·동기화는 conversation_id 등의 별도 계약이 필요한 후속 구현이다.
 - 메인 창의 채팅 아이콘은 기존 독립 창이 있으면 새 창을 만들지 않고 해당 창을
@@ -61,6 +64,23 @@ flowchart LR
   이벤트 루프에서 즉시 해제해 앱 종료 지연을 방지한다.
 
 ## 전체 기술 관계도
+
+현재 인증 흐름:
+
+```mermaid
+flowchart LR
+    Login[Flutter 로그인·가입] --> AuthAPI[Auth API]
+    AuthAPI --> Passwords[Argon2id 검증]
+    AuthAPI --> Sessions[서버 세션 발급·폐기]
+    Sessions --> IdentityDB[(PostgreSQL 사용자·세션)]
+    AdminAPI[관리자 API] --> Guard[현재 계정·역할·학교 범위]
+    Guard --> IdentityDB
+    Guard --> AccessDB[(학교·관리 범위·변경 이력)]
+```
+
+아래 전체 도메인/외부 서비스 관계는 목표 구조다. 인증·운영자 초기화는
+[인증 API](api/authentication.md)를 따른다. 이메일/학교 담당자 신원 확인과 개인 자료
+서버 동기화는 후속이며 개인 로컬 자료는 사용자 UUID별로 분리한다.
 
 ```mermaid
 flowchart LR
@@ -352,9 +372,9 @@ flowchart TB
 `staging-unipath.duckdns.org`는 `unipath-staging` 프로젝트에, `unipath.duckdns.org`는
 `unipath-product` 프로젝트에 연결한다. 각 프로젝트의 API·DB 네트워크, DB 볼륨과
 비밀번호는 분리하고 동일한 FastAPI 이미지를 사용한다. 공개 게이트웨이에는 Web만
-연결하며 Web이 학교 질의와 readiness API를 내부 FastAPI로 프록시한다.
-다운로드 앱의 API도 해당 HTTPS 원점을 사용한다. 현재 배포 채널은 목업 인증·로컬
-기록·근거 부족 안내를 제공하는 프리뷰이며 실제 운영 기능의 완성을 의미하지 않는다.
+연결하며 Web이 인증·관리자·학교 질의·readiness API를 내부 FastAPI로 프록시한다.
+다운로드 앱의 API도 해당 HTTPS 원점을 사용한다. develop은 실제 계정/역할과 계정별 로컬
+기록을 제공한다. main은 명시적 승격 전 이전 프리뷰를 유지한다. 운영 학사/공식 판정·LLM 완성과 구분한다.
 구체적인 설정·HTTPS 개통·GitHub 다운로드 절차는 [`releases.md`](releases.md)를 따른다.
 
 ```mermaid

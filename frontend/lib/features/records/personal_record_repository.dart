@@ -4,6 +4,8 @@ import 'dart:math';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../auth/local_data_owner.dart';
+
 enum PersonalRecordKind {
   course,
   activity,
@@ -34,26 +36,29 @@ class PersonalRecord {
 }
 
 class PersonalRecordRepository {
-  PersonalRecordRepository(this.kind);
+  PersonalRecordRepository(this.kind, {LocalDataOwner? owner})
+    : _owner = owner ?? LocalDataOwner.current();
+  final LocalDataOwner _owner;
   final PersonalRecordKind kind;
   SharedPreferences? _preferences;
   bool _loaded = false;
   List<PersonalRecord> _records = [];
   List<PersonalRecord> get records => List.unmodifiable(_records);
-  String get storageKey => 'university_path.personal_records.${kind.name}.v1';
-  static final _operations = <PersonalRecordKind, Future<void>>{};
+  String get storageKey =>
+      _owner.key('university_path.personal_records.${kind.name}.v1');
+  static final _operations = <String, Future<void>>{};
 
   Future<void> _enqueue(Future<void> Function() operation) {
-    final previous = _operations[kind];
+    final previous = _operations[storageKey];
     final finished = Completer<void>();
-    _operations[kind] = finished.future;
+    _operations[storageKey] = finished.future;
     return (() async {
       try {
         if (previous != null) await previous;
         await operation();
       } finally {
-        if (identical(_operations[kind], finished.future)) {
-          _operations.remove(kind);
+        if (identical(_operations[storageKey], finished.future)) {
+          _operations.remove(storageKey);
         }
         finished.complete();
       }

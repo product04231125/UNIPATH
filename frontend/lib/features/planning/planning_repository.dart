@@ -3,15 +3,20 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../auth/local_data_owner.dart';
+
 /// Device-local personal planning data. It is deliberately separate from
 /// school records and will be replaced by an API adapter once that contract is
 /// available.
 class PlanningRepository extends ChangeNotifier {
-  PlanningRepository({this.writer});
+  PlanningRepository({this.writer, LocalDataOwner? owner})
+    : _storageKey = (owner ?? LocalDataOwner.current()).key(
+        'university_path.personal_planning.v1',
+      );
 
   final Future<bool> Function(String key, String value)? writer;
 
-  static const _storageKey = 'university_path.personal_planning.v1';
+  final String _storageKey;
 
   SharedPreferences? _preferences;
   bool _isLoading = true;

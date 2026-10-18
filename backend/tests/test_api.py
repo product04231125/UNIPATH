@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import OperationalError
 
 from app.api.dependencies import get_session
+from app.services.health import EXPECTED_REVISION
 
 
 @pytest.mark.parametrize("path", ["/health", "/api/v1/health"])
@@ -74,7 +75,7 @@ def test_internal_error_does_not_expose_details(client, caplog):
 def test_ready_requires_database_and_migration(client):
     class ReadySession:
         def scalar(self, statement):
-            return "0.8.6" if "pg_extension" in str(statement) else "0001_enable_pgvector"
+            return "0.8.6" if "pg_extension" in str(statement) else EXPECTED_REVISION
 
     client.app.dependency_overrides[get_session] = lambda: ReadySession()
     response = client.get("/api/v1/health/ready")
@@ -83,7 +84,7 @@ def test_ready_requires_database_and_migration(client):
         "status": "ready",
         "database": "ok",
         "pgvector_version": "0.8.6",
-        "migration_revision": "0001_enable_pgvector",
+        "migration_revision": EXPECTED_REVISION,
     }
 
 
@@ -113,9 +114,30 @@ def test_cors_only_allows_configured_origins(client):
     assert "access-control-allow-origin" not in response.headers
 
 
+def test_ready_rejects_outdated_schema(client):
+    class OldSchema:
+        def scalar(self, statement):
+            return "0.8.6" if "pg_extension" in str(statement) else "0001_enable_pgvector"
+
+    client.app.dependency_overrides[get_session] = lambda: OldSchema()
+    assert client.get("/api/v1/health/ready").status_code == 503
+
+
 def test_openapi_contract(client):
     schema = client.get("/api/v1/openapi.json").json()
     assert set(schema["paths"]) == {
+        "/api/v1/auth/register",
+        "/api/v1/auth/login",
+        "/api/v1/auth/me",
+        "/api/v1/auth/logout",
+        "/api/v1/auth/logout-all",
+        "/api/v1/admin/users",
+        "/api/v1/admin/users/{user_id}/role",
+        "/api/v1/admin/users/{user_id}/status",
+        "/api/v1/admin/institutions",
+        "/api/v1/admin/institutions/{institution_id}",
+        "/api/v1/admin/scopes",
+        "/api/v1/admin/scopes/{scope_id}/revoke",
         "/api/v1/health",
         "/api/v1/health/ready",
         "/api/v1/assistant/queries",

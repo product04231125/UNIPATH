@@ -154,6 +154,44 @@ void main() {
     await host.detached.close();
   });
 
+  testWidgets('server logout retry closes a child opened after failure', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final host = FakeWindowHost()..open = true;
+    var attempts = 0;
+    var signedOut = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Workspace(
+          windowHost: host,
+          beforeSignedOut: () async {
+            attempts++;
+            if (attempts == 1) throw StateError('Server unavailable');
+          },
+          onSignedOut: () => signedOut = true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('로그아웃'));
+    await tester.pumpAndSettle();
+    expect(signedOut, isFalse);
+    expect(host.open, isFalse);
+    expect(host.closes, 1);
+    host.open = true;
+    await tester.tap(find.text('다시 시도'));
+    await tester.pumpAndSettle();
+    expect(signedOut, isTrue);
+    expect(attempts, 2);
+    expect(host.open, isFalse);
+    expect(host.closes, 2);
+    await tester.pumpWidget(const SizedBox());
+    await host.maximize.close();
+    await host.detached.close();
+  });
+
   test(
     'old detached preference migrates once then preserves later choice',
     () async {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'chat_window.dart' as chat_window;
 import 'features/assistant/detached_chat_page.dart';
 import 'features/assistant/assistant_api.dart';
+import 'features/auth/auth_api.dart';
 import 'shared/app_style.dart';
 import 'app_navigation.dart';
 import 'shared/widgets/task_focus_group.dart';
@@ -27,12 +28,14 @@ class UniversityPathApp extends StatefulWidget {
     this.startAuthenticated = false,
     this.routeInformationProvider,
     this.assistantFactory,
+    this.authGateway,
   });
 
   /// Used by workspace widget tests until a real authentication contract exists.
   final bool startAuthenticated;
   final RouteInformationProvider? routeInformationProvider;
   final AssistantGateway Function()? assistantFactory;
+  final AuthGateway? authGateway;
 
   @override
   State<UniversityPathApp> createState() => _UniversityPathAppState();
@@ -42,6 +45,7 @@ class _UniversityPathAppState extends State<UniversityPathApp> {
   late final _navigation = AppNavigation(
     authenticated: widget.startAuthenticated,
     assistantFactory: widget.assistantFactory,
+    authGateway: widget.authGateway,
   );
   late final RouteInformationProvider _information =
       widget.routeInformationProvider ??
