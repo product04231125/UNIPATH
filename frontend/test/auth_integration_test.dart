@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
+import 'package:university_path_frontend/workspace.dart';
 import 'package:university_path_frontend/features/auth/account_access_page.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/auth/local_data_owner.dart';
@@ -177,12 +178,46 @@ void main() {
       expect(find.byType(AccountAccessPage), findsOneWidget);
       expect(find.text('서버 합성 학교'), findsOneWidget);
       expect(find.text('합성 대학 A'), findsNothing);
+      final emailStyle = DefaultTextStyle.of(
+        tester.element(find.text('synthetic@example.test')),
+      ).style;
+      expect(emailStyle.decoration, isNot(TextDecoration.underline));
+      expect(emailStyle.fontSize, lessThanOrEqualTo(20));
       expect(LocalDataOwner.currentUserId, userId);
       await tester.tap(find.widgetWithText(FilledButton, '로그아웃'));
       await tester.pumpAndSettle();
       expect(api.logouts, 1);
       expect(find.byType(LoginPage), findsOneWidget);
       expect(LocalDataOwner.currentUserId, isNull);
+    },
+  );
+
+  testWidgets(
+    'a session switched in another tab recreates the local workspace',
+    (tester) async {
+      final api = FakeAuth()..signedIn = true;
+      await tester.pumpWidget(UniversityPathApp(authGateway: api));
+      await tester.pumpAndSettle();
+      final originalWorkspace = tester.state(find.byType(Workspace));
+      final first = PlanningRepository();
+      await first.load();
+      await first.saveSchoolContext(school: '계정 A 학교');
+      api.id = otherId;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(LocalDataOwner.currentUserId, otherId);
+      expect(
+        tester.state(find.byType(Workspace)),
+        isNot(same(originalWorkspace)),
+      );
+      final second = PlanningRepository();
+      await second.load();
+      expect(second.profile.school, isEmpty);
+      expect(first.profile.school, '계정 A 학교');
+      first.dispose();
+      second.dispose();
+      await tester.pumpWidget(const SizedBox());
     },
   );
 
