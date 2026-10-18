@@ -71,10 +71,6 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     if (await _allowLeave()) widget.onNavigate(path);
   }
 
-  Future<void> _signOut() async {
-    if (await _allowLeave()) widget.onSignedOut();
-  }
-
   String _pathFor(AdminKind kind) => switch (kind) {
     AdminKind.institution || AdminKind.department => '/admin/schools',
     AdminKind.curriculum ||
@@ -124,7 +120,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   }
 
   Future<void> _signOut() async {
-    if (_busy) return;
+    if (_busy || !await _allowLeave() || _busy) return;
     setState(() {
       _busy = true;
       _error = null;
