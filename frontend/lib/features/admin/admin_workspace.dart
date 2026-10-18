@@ -14,7 +14,6 @@ import '../../shared/widgets/external_link_button.dart';
 import 'admin_models.dart';
 import 'admin_repository.dart';
 import 'admin_editor.dart';
-import 'admin_fields.dart';
 import 'admin_shell.dart';
 
 class AdminWorkspace extends StatefulWidget {
@@ -26,6 +25,8 @@ class AdminWorkspace extends StatefulWidget {
     required this.onSignedOut,
     this.repository,
     this.sidebarVisible = true,
+    this.actorId,
+    this.beforeSignedOut,
   });
   final AppRole role;
   final String path;
@@ -33,6 +34,8 @@ class AdminWorkspace extends StatefulWidget {
   final VoidCallback onSignedOut;
   final AdminRepository? repository;
   final bool sidebarVisible;
+  final String? actorId;
+  final Future<void> Function()? beforeSignedOut;
   static const menus = <String, String>{
     '/admin/overview': '관리 현황',
     '/admin/schools': '학교·학과',
@@ -56,7 +59,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   final _queries = <AdminKind, String>{};
   final _statuses = <AdminKind, String>{};
   String get _actor =>
-      widget.role == AppRole.superAdmin ? 'super-admin' : 'school-admin';
+      widget.actorId ??
+      (widget.role == AppRole.superAdmin ? 'super-admin' : 'school-admin');
   AppRole get _role =>
       widget.role == AppRole.user ? AppRole.user : _repo.role(_actor);
   String get _section {
@@ -90,6 +94,22 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _signOut() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await widget.beforeSignedOut?.call();
+      if (mounted) widget.onSignedOut();
+    } catch (_) {
+      if (mounted) setState(() => _error = '로그아웃하지 못했습니다. 연결을 확인하고 다시 시도하세요.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -97,8 +117,10 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     });
     try {
       await _repo.load();
-    } catch (_) {
-      _loadError = '관리 데이터를 읽지 못했습니다.';
+    } catch (error) {
+      _loadError = error is StateError
+          ? error.message.toString()
+          : '관리 데이터를 읽지 못했습니다.';
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -141,6 +163,25 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     Future<void> Function() operation,
   ) async {
     if (_busy) return;
+    int referenceCount = 0;
+    if (action == '삭제') {
+      setState(() => _busy = true);
+      try {
+        referenceCount = await _repo.referenceCount(r);
+      } catch (error) {
+        if (mounted) {
+          setState(
+            () => _error = error is StateError
+                ? error.message.toString()
+                : '연결 참조를 확인하지 못했습니다. 다시 시도하세요.',
+          );
+        }
+        return;
+      } finally {
+        if (mounted) setState(() => _busy = false);
+      }
+      if (!mounted) return;
+    }
     final references = _repo.records.where(
       (other) =>
           other.id != r.id &&
@@ -159,8 +200,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         title: Text('${r.name} · $action'),
         content: Text(
           action == '초안 적용'
-              ? 'v${r.version}의 내용·관리 범위·근거를 검토했습니까?'
-              : '대상과 연결 영향을 확인하세요. 참조가 남은 삭제는 차단하고 적용 이력은 보존합니다.\n연결된 항목 ${references.length}개: ${references.where((other) => _repo.canRead(_actor, other)).map((other) => other.name).join(', ')}',
+              ? 'v${r.revision}의 내용·관리 범위·근거를 검토했습니까?'
+              : '대상과 연결 영향을 확인하세요. 참조가 남은 삭제는 차단하고 적용 이력은 보존합니다.\n연결된 항목 $referenceCount개: ${references.where((other) => _repo.canRead(_actor, other)).map((other) => other.name).join(', ')}',
         ),
         actions: [
           TextButton(
@@ -369,12 +410,14 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                         ),
                       ),
                     if (kind.versioned)
-                      Text('v${r.version} · ${_statusLabel(r.status)}'),
+                      Text('v${r.revision} · ${_statusLabel(r.status)}'),
                     if (kind == AdminKind.scope) Text(_statusLabel(r.status)),
                     if (kind == AdminKind.account)
                       Text(
                         '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}',
                       ),
+                    if (kind == AdminKind.account && _repo.live)
+                      Text(r.value('email')),
                     const SizedBox(height: 16),
                     _recordActions(r),
                   ],
@@ -396,6 +439,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           label: const Text('상세'),
         ),
       if (_repo.canWrite(_actor, r) &&
+          !(_repo.live && r.kind == AdminKind.scope) &&
           r.status != 'applied' &&
           r.status != 'revoked' &&
           r.id != _actor)
@@ -481,7 +525,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         first: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final f in adminFields(r.kind))
+            for (final f in _repo.fields(r.kind))
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
@@ -500,12 +544,14 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             ),
             Text('마지막 변경: ${_timeLabel(r.updatedAt)}'),
             if (r.kind.versioned) ...[
-              Text('버전 ${r.version} · ${_statusLabel(r.status)}'),
+              Text('버전 ${r.revision} · ${_statusLabel(r.status)}'),
               Text(
                 '적용: ${_actorName(r.appliedBy)} · ${_timeLabel(r.appliedAt, empty: '미적용')}',
               ),
             ],
             if (r.kind == AdminKind.scope) ...[
+              if (_repo.live && r.value('revocationReason').isNotEmpty)
+                Text('회수 사유: ${r.value('revocationReason')}'),
               Text(
                 '부여: ${_actorName(r.value('grantedBy'))} · ${_timeLabel(DateTime.tryParse(r.value('grantedAt')))}',
               ),
@@ -551,6 +597,14 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   };
 
   String _actionLabel(String action) => switch (action) {
+    'role_changed' => '역할 변경',
+    'account_status_changed' => '계정 상태 변경',
+    'access_changed' => '역할·계정 상태 변경',
+    'scope_granted' => '관리 범위 부여',
+    'scope_revoked' => '관리 범위 회수',
+    'institution_created' => '학교 등록',
+    'super_admin_bootstrapped' => '최초 슈퍼관리자 생성',
+    'operator_credentials_rotated' => '운영자 계정 정보 갱신',
     'create' => '등록',
     'update' => '수정',
     'save' => '저장',
@@ -614,7 +668,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(r.name),
-                    subtitle: Text('${r.kind.label} · v${r.version} · 초안'),
+                    subtitle: Text('${r.kind.label} · v${r.revision} · 초안'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _busy
                         ? null
@@ -814,7 +868,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       section: _section,
       busy: _busy,
       onNavigate: widget.onNavigate,
-      onSignedOut: widget.onSignedOut,
+      onSignedOut: _signOut,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compactHeader =
@@ -872,6 +926,20 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                           : '관리 범위: ${_repo.records.where((r) => r.kind == AdminKind.scope && r.status == 'active' && r.value('userId') == _actor && r.value('institutionId') == _schoolId).map(_scopeSummary).toSet().join(', ')}',
                     ),
                   const SizedBox(height: 12),
+                  if (_repo.live) ...[
+                    const Text(
+                      '서버에 저장되는 관리 데이터 · 문서 적용은 RAG 승인이나 졸업 판정이 아닙니다.',
+                    ),
+                    if (_repo.warning != null) Text(_repo.warning!),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: _busy || _loading ? null : _load,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('다시 읽기'),
+                      ),
+                    ),
+                  ],
                   if (!compactHeader) PageHeader(title: title),
                   if (_loading)
                     const LinearProgressIndicator()

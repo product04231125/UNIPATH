@@ -39,7 +39,7 @@ class _AdminEditorState extends State<AdminEditor> {
     super.initState();
     _fields = widget.revoke
         ? [const AdminField('reason', '회수 사유', multiline: true)]
-        : adminFields(widget.kind);
+        : widget.repository.fields(widget.kind);
     _initial = {
       for (final f in _fields)
         f.key: widget.revoke
@@ -112,6 +112,10 @@ class _AdminEditorState extends State<AdminEditor> {
         final values = {
           ...?widget.record?.values,
           for (final f in _fields) f.key: _value(f.key).trim(),
+          if (widget.repository.live && widget.kind != AdminKind.institution)
+            'institutionId': _controllers.containsKey('institutionId')
+                ? _value('institutionId')
+                : widget.schoolId,
         };
         await widget.repository.save(
           widget.actorId,
@@ -220,7 +224,7 @@ class _AdminEditorState extends State<AdminEditor> {
                                   for (final r in _choices(field))
                                     SelectOption(
                                       r.id,
-                                      '${r.name}${r.kind.versioned ? ' · v${r.version}' : ''}',
+                                      '${r.name}${r.kind.versioned ? ' · v${r.revision}' : ''}',
                                     ),
                                   if (_value(field.key).isNotEmpty &&
                                       !field.options.containsKey(
@@ -245,6 +249,10 @@ class _AdminEditorState extends State<AdminEditor> {
                                         'institutionId',
                                         'departmentId',
                                         'curriculumId',
+                                        if (widget.repository.live) ...[
+                                          'effectiveFrom',
+                                          'effectiveTo',
+                                        ],
                                       ]) {
                                         _controllers[key]!.text = group.value(
                                           key,

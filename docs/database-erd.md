@@ -9,9 +9,11 @@
 
 `0001_enable_pgvector`는 vector 확장을 활성화하고 `0002_identity_sessions`는 실제
 users·auth_sessions·auth_throttles·institutions·admin_scopes·identity_audits 6개 테이블을
-생성한다. 사용자·세션·역할·학교 전체 관리 범위·변경 이력만 물리 구현했다. 아래 전체
-논리 ERD/단계 표의 학과·교육과정·공식 기록·판정·문서는 도입 계획이다. 현재 users에는
-학교/학과/교육과정 FK가 없으며 자유 입력 프로필을 공식 학적으로 승격하지 않는다.
+생성한다. `0003_academic_catalog`는 departments·curricula·courses·curriculum_courses·
+rule_sets·graduation_rules·official_documents를 추가해 **13개 테이블**을 물리 구현한다.
+학교 메타데이터/버전/삭제 표시와 범위 회수 사유도 추가한다.
+아래 전체 논리 ERD/단계 표 중 학생 공식 기록·판정·RAG 청크는 도입 계획이다.
+현재 users에는 학교/학과/교육과정 FK가 없으며 자유 입력 프로필을 공식 학적으로 승격하지 않는다.
 임베딩 모델/차원은 미정이며 pgvector 검사는 합성 임시 테이블을 사용한다.
 
 ```mermaid
@@ -21,6 +23,15 @@ erDiagram
     INSTITUTIONS ||--o{ ADMIN_SCOPES : scopes
     USERS o|--o{ IDENTITY_AUDITS : performs
     INSTITUTIONS o|--o{ IDENTITY_AUDITS : concerns
+    INSTITUTIONS ||--o{ DEPARTMENTS : has
+    DEPARTMENTS ||--o{ CURRICULA : provides
+    INSTITUTIONS ||--o{ COURSES : catalogs
+    CURRICULA ||--o{ CURRICULUM_COURSES : includes
+    COURSES ||--o{ CURRICULUM_COURSES : links
+    INSTITUTIONS ||--o{ RULE_SETS : scopes
+    RULE_SETS o|--o{ GRADUATION_RULES : groups
+    INSTITUTIONS ||--o{ OFFICIAL_DOCUMENTS : describes
+    GRADUATION_RULES o|--o{ OFFICIAL_DOCUMENTS : references
     USERS {
         uuid id PK
     }
@@ -48,7 +59,8 @@ erDiagram
 현재 학교 질의 API는 로컬 JSONL 청크와 메모리 BM25 인덱스를 사용한다.
 `DOCUMENT`·`DOCUMENT_CHUNK` 테이블이나 pgvector 검색은 아직 연결하지 않았으며,
 질문·답변·대화 이력을 DB에 저장하지 않는다. 파일 메타데이터는 운영 승인 DB를
-대체하지 않는다. 인증 테이블 추가가 학교 RAG/문서 승인 저장의 구현을 의미하지 않는다.
+대체하지 않는다. 공식 문서 메타데이터의 적용은 RAG 원문 승인·청크 저장을 의미하지 않는다. 학사 관리의
+버전·소속 복합 FK·삭제 보관 정책은 [학사 API](api/academic.md)를 따른다.
 
 `app/rules/`에는 학점·필수과목·봉사·자격증·논문 요건의 독립 계산 코어를 구현했다.
 공식 규칙의 계층·입학연도·이수경로·유효기간·버전 선택과 개인 기준 계산을 구분하며
@@ -306,7 +318,7 @@ AdminAuditLog는 관리자 변경의 수행자·행동·대상·학교·결과·
 규칙 묶음과 연결된 규칙은 버전 단위로 함께 보존해야 한다.
 
 계정 발급·인증/세션·최초 슈퍼관리자 CLI와 학교 전체 관리 범위의 물리 제약은
-위 6개 테이블 및 [인증 API](api/authentication.md)에 구현됐다. 학교 담당자의 실제
+위 인증 테이블 및 [인증 API](api/authentication.md)에 구현됐다. 학교 담당자의 실제
 신원 확인 절차, 학과/교육과정 범위의 물리 제약과 이력 보유기간은 후속 계약 항목이다.
 
 `GraduationRuleSet`은 규칙의 적용 계층을 표현한다. 한 사용자의 졸업감사에는
@@ -659,7 +671,7 @@ erDiagram
 
 ## 단계별 도입 계획과 현재 구현
 
-현재 물리 구현은 위 인증/학교 범위 6개 테이블이다. 아래 표는 각 단계의 전체 목표이며
+현재 물리 구현은 위 인증/학교 범위·학사 메타데이터 13개 테이블이다. 아래 표는 각 단계의 전체 목표이며
 나머지 학사·문서·판정 엔터티가 이미 생성됐다는 뜻이 아니다.
 
 | 단계 | 목표 | 실제 생성·구현 대상 |

@@ -1,3 +1,12 @@
+from app.models.academic import (
+    Course,
+    Curriculum,
+    CurriculumCourse,
+    Department,
+    GraduationRule,
+    OfficialDocument,
+    RuleSet,
+)
 from app.models.base import Base
 from app.models.identity import (
     AdminScope,
@@ -16,4 +25,11 @@ __all__ = [
     "Institution",
     "AdminScope",
     "IdentityAudit",
+    "Department",
+    "Curriculum",
+    "Course",
+    "CurriculumCourse",
+    "RuleSet",
+    "GraduationRule",
+    "OfficialDocument",
 ]

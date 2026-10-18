@@ -7,9 +7,9 @@ from sqlalchemy import exists, func, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.auth_errors import AuthError, conflict, forbidden
+from app.core.auth_errors import AuthError, conflict, forbidden, unauthenticated
 from app.models.identity import AdminScope, AuthSession, IdentityAudit, Institution, Role, User
-from app.schemas.auth import RoleChange, ScopeCreate, StatusChange
+from app.schemas.auth import RoleChange, ScopeCreate, StatusChange, UserAccessChange
 from app.schemas.common import ErrorCode
 from app.services.auth import Identity, require_institution
 
@@ -21,6 +21,17 @@ def lock_identity(db: Session):
 def require_super(db: Session, identity: Identity, *, lock: bool = False):
     if lock:
         lock_identity(db)
+        session = db.scalar(
+            select(AuthSession)
+            .where(AuthSession.token_hash == identity.session.token_hash)
+            .execution_options(populate_existing=True)
+        )
+        if (
+            session is None
+            or session.revoked_at is not None
+            or session.expires_at <= datetime.now(UTC)
+        ):
+            raise unauthenticated()
     # Reload after acquiring the lock; the dependency may predate another change.
     actor = db.scalar(
         select(User).where(User.id == identity.user.id).execution_options(populate_existing=True)
@@ -59,7 +70,7 @@ def change_user(
     db: Session,
     identity: Identity,
     user_id: UUID,
-    payload: RoleChange | StatusChange,
+    payload: RoleChange | StatusChange | UserAccessChange,
     request_id: UUID,
 ):
     require_super(db, identity, lock=True)
@@ -92,7 +103,7 @@ def change_user(
                     version=AdminScope.version + 1,
                 )
             )
-    else:
+    if isinstance(payload, (StatusChange, UserAccessChange)):
         user.account_status = payload.account_status
         action = "account_status_changed"
         if payload.account_status == "suspended":
@@ -101,6 +112,8 @@ def change_user(
                 .where(AuthSession.user_id == user.id)
                 .values(revoked_at=datetime.now(UTC))
             )
+    if isinstance(payload, UserAccessChange):
+        action = "access_changed"
     user.version += 1
     user.updated_at = datetime.now(UTC)
     audit(db, identity.user.id, action, user.id, request_id)
@@ -113,7 +126,7 @@ def institutions(
 ):
     if identity.user.role not in (Role.SCHOOL_ADMIN, Role.SUPER_ADMIN):
         raise forbidden()
-    statement = select(Institution)
+    statement = select(Institution).where(Institution.deleted_at.is_(None))
     if identity.user.role == Role.SCHOOL_ADMIN:
         statement = statement.where(
             exists().where(
@@ -129,9 +142,16 @@ def institutions(
     return list(db.scalars(statement.order_by(Institution.id).limit(limit + 1)))
 
 
-def create_institution(db: Session, identity: Identity, name: str, request_id: UUID):
+def create_institution(
+    db: Session,
+    identity: Identity,
+    name: str,
+    request_id: UUID,
+    country_code: str = "",
+    official_url: str = "",
+):
     require_super(db, identity, lock=True)
-    school = Institution(name=name)
+    school = Institution(name=name, country_code=country_code, official_url=official_url)
     db.add(school)
     try:
         db.flush()
@@ -148,7 +168,8 @@ def grant_scope(db: Session, identity: Identity, payload: ScopeCreate, request_i
     user = target_user(db, payload.user_id)
     if user.account_status != "active" or user.role == Role.SUPER_ADMIN:
         raise conflict()
-    if db.get(Institution, payload.institution_id) is None:
+    institution = db.get(Institution, payload.institution_id)
+    if institution is None or institution.deleted_at is not None:
         raise AuthError(404, ErrorCode.NOT_FOUND, "학교를 찾을 수 없습니다.")
     scope = AdminScope(
         user_id=user.id,
@@ -170,7 +191,14 @@ def grant_scope(db: Session, identity: Identity, payload: ScopeCreate, request_i
     return scope
 
 
-def revoke_scope(db: Session, identity: Identity, scope_id: UUID, version: int, request_id: UUID):
+def revoke_scope(
+    db: Session,
+    identity: Identity,
+    scope_id: UUID,
+    version: int,
+    request_id: UUID,
+    reason: str = "",
+):
     require_super(db, identity, lock=True)
     scope = db.get(AdminScope, scope_id)
     if scope is None:
@@ -183,6 +211,7 @@ def revoke_scope(db: Session, identity: Identity, scope_id: UUID, version: int, 
         datetime.now(UTC),
     )
     scope.version += 1
+    scope.revocation_reason = reason.strip()
     user = target_user(db, scope.user_id)
     user.version += 1
     user.updated_at = datetime.now(UTC)
@@ -194,6 +223,6 @@ def revoke_scope(db: Session, identity: Identity, scope_id: UUID, version: int, 
 def get_institution(db: Session, identity: Identity, institution_id: UUID):
     require_institution(db, identity, institution_id)
     school = db.get(Institution, institution_id)
-    if school is None:
+    if school is None or school.deleted_at is not None:
         raise AuthError(404, ErrorCode.NOT_FOUND, "학교를 찾을 수 없습니다.")
     return school

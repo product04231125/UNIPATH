@@ -17,6 +17,7 @@ from app.schemas.auth import (
     ScopeRevoke,
     ScopeView,
     StatusChange,
+    UserAccessChange,
     UserList,
     UserView,
 )
@@ -58,6 +59,17 @@ def status(
     return access.change_user(db, identity, user_id, payload, request.state.request_id)
 
 
+@router.patch("/users/{user_id}/access", response_model=UserView)
+def user_access(
+    user_id: UUID,
+    payload: UserAccessChange,
+    request: Request,
+    db: Database,
+    identity: CurrentIdentity,
+):
+    return access.change_user(db, identity, user_id, payload, request.state.request_id)
+
+
 @router.get("/institutions", response_model=InstitutionList)
 def institutions(
     db: Database,
@@ -76,7 +88,14 @@ def institutions(
 def create_institution(
     payload: InstitutionCreate, request: Request, db: Database, identity: CurrentIdentity
 ):
-    return access.create_institution(db, identity, payload.name, request.state.request_id)
+    return access.create_institution(
+        db,
+        identity,
+        payload.name,
+        request.state.request_id,
+        payload.country_code,
+        payload.official_url,
+    )
 
 
 @router.get("/institutions/{institution_id}", response_model=InstitutionView)
@@ -117,5 +136,5 @@ def revoke(
     scope_id: UUID, payload: ScopeRevoke, request: Request, db: Database, identity: CurrentIdentity
 ):
     return access.revoke_scope(
-        db, identity, scope_id, payload.expected_version, request.state.request_id
+        db, identity, scope_id, payload.expected_version, request.state.request_id, payload.reason
     )

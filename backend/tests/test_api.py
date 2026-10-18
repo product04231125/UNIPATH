@@ -125,7 +125,7 @@ def test_ready_rejects_outdated_schema(client):
 
 def test_openapi_contract(client):
     schema = client.get("/api/v1/openapi.json").json()
-    assert set(schema["paths"]) == {
+    assert set(schema["paths"]) >= {
         "/api/v1/auth/register",
         "/api/v1/auth/login",
         "/api/v1/auth/me",

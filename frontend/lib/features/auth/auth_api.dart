@@ -52,8 +52,16 @@ abstract class AuthGateway {
   void close();
 }
 
+abstract class ApiGateway {
+  Future<Map<String, dynamic>?> request(
+    String method,
+    String path, [
+    Map<String, Object?>? body,
+  ]);
+}
+
 /// Browser: HttpOnly cookie. Native: opaque token in this process only.
-class AuthApi implements AuthGateway {
+class AuthApi implements AuthGateway, ApiGateway {
   AuthApi({http.Client? client, Uri? baseUrl, bool? cookieMode})
     : _client = client ?? createAuthHttpClient(),
       _base =
@@ -69,6 +77,13 @@ class AuthApi implements AuthGateway {
   final Uri _base;
   final bool _cookieMode;
   String? _token;
+
+  @override
+  Future<Map<String, dynamic>?> request(
+    String method,
+    String path, [
+    Map<String, Object?>? body,
+  ]) => _request(method, path, body);
 
   Future<Map<String, dynamic>?> _request(
     String method,
@@ -103,7 +118,7 @@ class AuthApi implements AuthGateway {
             401 => '이메일·비밀번호를 확인하거나 다시 로그인해 주세요.',
             403 => '이 작업을 수행할 권한이 없습니다.',
             409 => '이미 등록되었거나 다른 변경이 있습니다. 입력을 확인해 주세요.',
-            422 => '입력 형식과 비밀번호 길이를 확인해 주세요.',
+            422 => '입력값의 형식과 길이를 확인해 주세요.',
             429 => '시도 횟수가 많습니다. 잠시 후 다시 시도해 주세요.',
             _ => '서버에서 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.',
           },

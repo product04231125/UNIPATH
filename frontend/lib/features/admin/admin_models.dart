@@ -39,6 +39,7 @@ class AdminRecord {
     required this.kind,
     required Map<String, String> values,
     this.version = 1,
+    int? revision,
     String? lineage,
     this.status = 'draft',
     this.createdBy = '',
@@ -46,12 +47,14 @@ class AdminRecord {
     this.appliedBy = '',
     this.updatedAt,
     this.appliedAt,
-  }) : values = Map.unmodifiable(values),
+  }) : revision = revision ?? version,
+       values = Map.unmodifiable(values),
        lineage = lineage ?? id;
   final String id, lineage, status, createdBy, updatedBy, appliedBy;
   final AdminKind kind;
   final Map<String, String> values;
   final int version;
+  final int revision;
   final DateTime? updatedAt, appliedAt;
   String value(String key) => values[key] ?? '';
   String get name => value('name');
@@ -68,6 +71,7 @@ class AdminRecord {
     values: values ?? this.values,
     lineage: lineage,
     version: version,
+    revision: revision,
     status: status ?? this.status,
     createdBy: createdBy,
     updatedBy: updatedBy ?? this.updatedBy,
