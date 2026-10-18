@@ -37,18 +37,21 @@ class ChatSettingsSection extends StatelessWidget {
                 label: '채팅창 열기 방식',
                 value: preferences.mode,
                 options: const [
-                  SelectOption(ChatOpeningMode.detached, '분리 창 (기본)'),
+                  SelectOption(ChatOpeningMode.detached, '분리 창'),
                   SelectOption(ChatOpeningMode.docked, '내부 패널'),
                 ],
                 onChanged: preferences.setMode,
               ),
             ),
-            TextButton(
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
               onPressed: preferences.saving
                   ? null
-                  : () => preferences.setMode(ChatOpeningMode.detached),
-              child: const Text('채팅 열기 방식만 기본값으로 복원'),
+                  : () => preferences.setMode(ChatOpeningMode.docked),
+              icon: const Icon(Icons.restore, size: 18),
+              label: const Text('채팅 열기 방식만 기본값으로 복원'),
             ),
+            const SizedBox(height: 8),
             const Text('현재 기기에만 저장합니다. 학업·일정·개인 기록·대화는 삭제하지 않습니다.'),
           ],
           if (preferences.saving) const Text('저장 중…'),

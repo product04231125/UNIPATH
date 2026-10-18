@@ -1,3 +1,5 @@
+import '../../../shared/app_style.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../shared/widgets/input_dialog.dart';
@@ -16,9 +18,13 @@ class PortfolioDraftsPage extends StatefulWidget {
     super.key,
     required this.isDocument,
     this.repository,
+    this.onOpenAchievements,
+    this.active = true,
   });
   final bool isDocument;
+  final bool active;
   final PortfolioWorkspaceRepository? repository;
+  final VoidCallback? onOpenAchievements;
   @override
   State<PortfolioDraftsPage> createState() => _PortfolioDraftsPageState();
 }
@@ -27,6 +33,8 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
   late final PortfolioWorkspaceRepository _repository;
   bool _loading = true, _failed = false, _busy = false;
   String? _message;
+  Future<void> _pendingLoad = Future.value();
+  int _loadRevision = 0;
   @override
   void initState() {
     super.initState();
@@ -35,17 +43,28 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
   }
 
   Future<void> _load() async {
+    final revision = ++_loadRevision;
     setState(() {
       _loading = true;
       _failed = false;
     });
     try {
-      await _repository.load();
+      final operation = _pendingLoad.then((_) => _repository.load());
+      _pendingLoad = operation.then<void>((_) {}, onError: (Object _) {});
+      await operation;
     } catch (_) {
-      if (mounted) setState(() => _failed = true);
+      if (mounted && revision == _loadRevision) setState(() => _failed = true);
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && revision == _loadRevision) {
+        setState(() => _loading = false);
+      }
     }
+  }
+
+  @override
+  void didUpdateWidget(covariant PortfolioDraftsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.active && widget.active) _load();
   }
 
   Future<void> _edit({
@@ -86,6 +105,7 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
             child: const Text('취소'),
           ),
           FilledButton(
+            style: destructiveButtonStyle(context),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('삭제'),
           ),
@@ -161,6 +181,7 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
                 child: const Text('미리보기'),
               ),
               TextButton(
+                style: destructiveButtonStyle(context),
                 onPressed: _busy ? null : delete,
                 child: const Text('삭제'),
               ),
@@ -212,6 +233,18 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
               padding: EdgeInsets.only(top: 14),
               child: Text('아직 만든 구성이 없습니다. 성과 기록을 먼저 추가하거나 빈 구성을 저장하세요.'),
             ),
+          if (!document &&
+              _repository.compositions.isEmpty &&
+              widget.onOpenAchievements != null) ...[
+            const SizedBox(height: 8),
+
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: widget.onOpenAchievements,
+              icon: const Icon(Icons.arrow_forward, size: 18),
+              label: const Text('개인 성과 기록으로 이동'),
+            ),
+          ],
           if (document)
             for (final d in _repository.documents)
               _card(

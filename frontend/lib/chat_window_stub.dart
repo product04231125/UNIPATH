@@ -1,4 +1,16 @@
 Future<bool> isDetachedChatWindow() async => false;
+Stream<String> appearanceChanges() => const Stream.empty();
+Future<void> publishAppearance(String palette) async {}
+void bindConversation(
+  Map<String, dynamic> Function()? read,
+  Map<String, dynamic> Function(Map<String, dynamic>)? command,
+) {}
+void bindConversationClose(Future<bool> Function()? prepare) {}
+Stream<Map<String, dynamic>> conversationChanges() => const Stream.empty();
+Future<Map<String, dynamic>> requestConversation([
+  Map<String, dynamic>? command,
+]) async => throw UnsupportedError('No conversation bridge');
+Future<void> publishConversation(Map<String, dynamic> snapshot) async {}
 void bindSchoolProfile(
   Map<String, dynamic> Function()? read,
   Future<void> Function(Map<String, dynamic>)? save,
@@ -9,6 +21,7 @@ Future<Map<String, dynamic>> requestSchoolProfile([
 ]) async => throw UnsupportedError('No native school profile bridge');
 Future<void> publishSchoolProfile(Map<String, dynamic> profile) async {}
 Future<void> closeDetachedChatWindow() async {}
+Future<void> endDetachedChatSession() async {}
 
 Future<void> initializeDetachedChatWindow() async {}
 

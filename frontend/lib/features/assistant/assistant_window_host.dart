@@ -21,4 +21,6 @@ class AssistantWindowHost {
   Future<bool> hasDetached() => native.hasDetachedChatWindow();
   Future<void> openDetached(double width) =>
       native.openDetachedChatWindow(width: width);
+  Future<void> endSession() =>
+      supportsDetached ? native.endDetachedChatSession() : Future.value();
 }

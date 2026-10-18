@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../shared/widgets/input_dialog.dart';
 
@@ -31,6 +32,11 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
   late bool _reviewed;
   bool _saving = false;
   String? _error;
+  late final List<String> _originalText;
+  late final List<String> _originalSelected;
+  late final PortfolioAudience _originalAudience;
+  late final String _originalType;
+  late final bool _originalReviewed;
 
   @override
   void initState() {
@@ -46,6 +52,17 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
     _audience = c?.audience ?? PortfolioAudience.private;
     _reviewed = c?.reviewed ?? false;
     _type = d?.type ?? '이력서';
+    _originalText = [
+      _title,
+      _description,
+      _target,
+      _role,
+      _body,
+    ].map((c) => c.text).toList();
+    _originalSelected = [..._selected];
+    _originalAudience = _audience;
+    _originalType = _type;
+    _originalReviewed = _reviewed;
   }
 
   @override
@@ -198,6 +215,21 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
       changes: Listenable.merge([_title, _description, _target, _role, _body]),
       editing: widget.composition != null || widget.document != null,
       saving: _saving,
+      hasUnsavedChanges: () =>
+          !listEquals(
+            [_title, _description, _target, _role, _body]
+                .map(
+                  (c) => widget.composition == null && widget.document == null
+                      ? c.text.trim()
+                      : c.text,
+                )
+                .toList(),
+            _originalText,
+          ) ||
+          !listEquals(_selected, _originalSelected) ||
+          _audience != _originalAudience ||
+          _type != _originalType ||
+          _reviewed != _originalReviewed,
       hasContent: () =>
           [
             _title,
@@ -314,7 +346,7 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
                   ),
                 ),
               ),
-            const Text('추가할 개인 기록 선택 · 예시 데이터는 제외됩니다.'),
+            const Text('추가할 개인 기록 선택'),
             if (candidates.isEmpty)
               const Text('개인 기록이 없습니다. 성과 기록 또는 경험 메뉴에서 먼저 추가하세요.'),
             for (final source in candidates.where(
@@ -347,7 +379,9 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _saving ? null : () => Navigator.pop(context, false),
+          onPressed: _saving
+              ? null
+              : () => InputDialog.cancel<bool>(context, false),
           child: const Text('취소'),
         ),
         FilledButton(

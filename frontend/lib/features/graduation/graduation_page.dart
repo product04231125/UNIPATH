@@ -49,9 +49,7 @@ class _GraduationPageState extends State<GraduationPage> {
         children: [
           PageHeader(
             title: '졸업 요건',
-            contextLabel: widget.showMockData
-                ? '예시 데이터 · 학교 연동·공식 판정 API 미연결'
-                : '학교 연동·공식 판정 API 미연결',
+            contextLabel: '학교 연동·공식 판정 API 미연결',
             actions: [
               OutlinedButton.icon(
                 onPressed: () {
@@ -74,9 +72,7 @@ class _GraduationPageState extends State<GraduationPage> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const Text(
-                  '아래 표는 화면 설명용 예시입니다. 실제 졸업 결과가 아닙니다. 내 자료는 개인 기준 설정에서 입력하세요.',
-                ),
+                const Text('학교 공식 졸업 판정이 아닙니다. 내 자료는 개인 기준 설정에서 입력하세요.'),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
@@ -124,9 +120,9 @@ class _GraduationPageState extends State<GraduationPage> {
 
   Widget _table() {
     final (title, headers, rows) = switch (_tab) {
-      '대학 공통' => ('대학 공통 기준 · 예시', commonRuleHeaders, commonRuleRows),
-      '내 교육과정' => ('내 교육과정 학점 현황 · 예시', curriculumHeaders, curriculumRows),
-      _ => ('학과 졸업인증 · 예시', departmentHeaders, departmentRows),
+      '대학 공통' => ('대학 공통 기준', commonRuleHeaders, commonRuleRows),
+      '내 교육과정' => ('내 교육과정 학점 현황', curriculumHeaders, curriculumRows),
+      _ => ('학과 졸업인증', departmentHeaders, departmentRows),
     };
     final compact = _tab == '내 교육과정';
     return SurfaceCard(
@@ -143,6 +139,45 @@ class _GraduationPageState extends State<GraduationPage> {
           const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
+              if (!compact &&
+                  (constraints.maxWidth < 600 ||
+                      MediaQuery.textScalerOf(context).scale(14) > 18)) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final row in rows)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              row.first,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            for (var i = 1; i < row.length; i++)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  children: [
+                                    Text('${headers[i]}:'),
+                                    if (headers[i] == '판정' ||
+                                        headers[i] == '상태')
+                                      StatusBadge(status: row[i])
+                                    else
+                                      Text(row[i]),
+                                  ],
+                                ),
+                              ),
+                            const Divider(),
+                          ],
+                        ),
+                      ),
+                  ],
+                );
+              }
               final cellWidth = math.max(
                 58.0,
                 (constraints.maxWidth - 92) / (headers.length - 1),

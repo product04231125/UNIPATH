@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,7 +19,68 @@ PlanningEvent event(String title) => PlanningEvent(
 );
 
 void main() {
+  test('planning write completing after owner disposal persists without notifying dead listeners', () async {
+    SharedPreferences.setMockInitialValues({});
+    final started = Completer<void>(), release = Completer<bool>();
+    final repository = PlanningRepository(
+      writer: (key, value) async {
+        started.complete();
+        await release.future;
+        return (await SharedPreferences.getInstance()).setString(key, value);
+      },
+    );
+    await repository.load();
+    final saving = repository.saveProfile(
+      const PlanningProfile(school: '지연 저장 학교'),
+    );
+    await started.future;
+    repository.dispose();
+    release.complete(true);
+    await saving;
+    expect(
+      (await SharedPreferences.getInstance()).getString(storageKey),
+      contains('지연 저장 학교'),
+    );
+    await expectLater(
+      repository.saveProfile(const PlanningProfile()),
+      throwsStateError,
+    );
+  });
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('settings reserves expansion space and stacks profile fields', (
+    tester,
+  ) async {
+    final repository = PlanningRepository();
+    await repository.load();
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: SettingsPage(repository: repository)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextFormField);
+    expect(
+      tester.getTopLeft(fields.at(1)).dx,
+      tester.getTopLeft(fields.at(0)).dx,
+    );
+    expect(
+      tester.getTopLeft(fields.at(1)).dy,
+      greaterThan(tester.getTopLeft(fields.at(0)).dy),
+    );
+    final expansion = find.byKey(const Key('settings-expansion-space'));
+    expect(
+      tester.getTopLeft(expansion).dx,
+      greaterThan(tester.getTopLeft(fields.first).dx),
+    );
+    await tester.enterText(fields.first, '작성 중 학교');
+    await tester.binding.setSurfaceSize(const Size(480, 520));
+    await tester.pumpAndSettle();
+    expect(find.text('작성 중 학교'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   test('planning writes commit state only after successful storage', () async {
     final original = PlanningRepository();
@@ -109,6 +171,7 @@ void main() {
         '새 합성 학교',
       );
       fail = false;
+      await tester.ensureVisible(find.text('기기에 저장'));
       await tester.tap(find.text('기기에 저장'));
       await tester.pumpAndSettle();
       expect(find.text('저장되었습니다.'), findsOneWidget);
