@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import secrets
 import subprocess
 import tempfile
@@ -376,7 +377,7 @@ def verify_backup(directory: Path) -> Manifest:
             _run(args, stdin=stream)
         with connect(settings) as connection:
             actual = inventory(connection)
-        if actual != manifest.inventory:
+        if comparable_inventory(actual) != comparable_inventory(manifest.inventory):
             raise BackupError("Restored schema or row fingerprints differ from the snapshot")
     report = {
         "backup_id": str(manifest.backup_id),
@@ -388,6 +389,27 @@ def verify_backup(directory: Path) -> Manifest:
     report_path = directory / ("verification-" + uuid4().hex[:12] + ".json")
     _write_private(report_path, json.dumps(report, indent=2) + "\n")
     return manifest
+
+
+def comparable_inventory(state: dict) -> dict:
+    """Normalize only PostgreSQL's equivalent varchar-literal array text casts.
+
+    pg_dump/restoration can distribute an array's varchar->text cast across
+    its literal elements. Keep all other schema and row comparisons exact,
+    and accept existing manifests without rewriting their signed-off contents.
+    """
+    literal = r"'(?:[^']|'')*'::character varying"
+    array_cast = re.compile(r"\(\(ARRAY\[(" + literal + r"(?:, " + literal + r")*)\]\)::text\[\]\)")
+    element_cast = re.compile(r"\((" + literal + r")\)::text")
+
+    def canonical(definition: str) -> str:
+        definition = array_cast.sub(lambda match: "(ARRAY[" + match[1] + "])", definition)
+        return element_cast.sub(lambda match: match[1], definition)
+
+    return {
+        **state,
+        "constraints": [[*row[:-1], canonical(row[-1])] for row in state.get("constraints", [])],
+    }
 
 
 def main():

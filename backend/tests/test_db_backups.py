@@ -113,3 +113,30 @@ def test_environment_mismatch_is_rejected_before_docker_commands(tmp_path, monke
     with pytest.raises(backups.BackupError, match="does not match"):
         backups.source(backups.Environment.LOCAL)
     assert not commands
+
+
+def test_restore_check_accepts_only_equivalent_literal_array_casts():
+    original = (
+        "CHECK (((role)::text = ANY ((ARRAY['user'::character varying, "
+        "'school_admin'::character varying])::text[])))"
+    )
+    restored = (
+        "CHECK (((role)::text = ANY (ARRAY[('user'::character varying)::text, "
+        "('school_admin'::character varying)::text])))"
+    )
+
+    def state(definition):
+        return {"constraints": [["public", "users", "ck_users_role", definition]], "tables": []}
+
+    before = state(original)
+    assert backups.comparable_inventory(before) == backups.comparable_inventory(state(restored))
+    assert before == state(original)  # Existing manifests remain untouched.
+    for changed in [
+        restored.replace("school_admin", "super_admin"),
+        restored.replace(" = ANY", " <> ANY"),
+        restored.replace("::character varying", "::integer"),
+    ]:
+        assert backups.comparable_inventory(before) != backups.comparable_inventory(state(changed))
+    assert backups.comparable_inventory(before) != backups.comparable_inventory(
+        {**before, "tables": [{"count": 1, "fingerprint": "different"}]}
+    )
