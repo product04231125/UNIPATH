@@ -187,14 +187,17 @@ def main() -> None:
             "ZIP 전체를 압축 해제한 뒤 university_path_frontend.exe를 실행하세요.\n"
             "data 폴더와 DLL을 함께 보관하세요. Flutter SDK 설치는 필요하지 않습니다.\n"
             if target == "windows"
-            else "압축 해제한 폴더에서 python -m http.server 3000을 실행하고\n"
-            "http://localhost:3000을 여세요. index.html을 직접 더블 클릭하지 마세요.\n"
+            else "웹 인증은 빌드 정보의 API 주소와 같은 HTTPS 출처에 배포해 사용하세요.\n"
             "배포 서버에는 화면 경로를 index.html로 돌려주는 SPA 설정이 필요합니다.\n"
+            "정적 화면만 미리 볼 때는 python -m http.server 3000으로 실행하고\n"
+            "http://localhost:3000을 여세요. 원격 API의 세션 로그인은 "
+            "이 미리보기에서 지원하지 않습니다.\n"
         )
         (bundle / "DOWNLOAD-README.txt").write_text(
             f"UniversityPath · {args.channel} · {args.version}\n"
             f"소스 커밋: {commit}\nAPI 주소: {api_url}\n\n{instructions}\n"
-            "현재 인증과 개인 기록은 목업 또는 기기 로컬 상태입니다.\n"
+            "로그인·가입·역할은 서버 API/DB를 사용하며 개인 기록은 계정별 기기 로컬 저장입니다.\n"
+            "대상 API 서버에도 같은 버전의 인증 기능과 DB 마이그레이션이 필요합니다.\n"
             "실제 PDF는 검토 대기이며 LLM·공식 졸업감사는 미연결입니다.\n"
             + (
                 "이 파일은 프리뷰이며 실제 운영 서비스 배포를 의미하지 않습니다.\n"
