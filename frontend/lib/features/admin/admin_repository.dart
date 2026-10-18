@@ -7,6 +7,23 @@ import 'admin_models.dart';
 import 'admin_fields.dart';
 
 abstract class AdminRepository extends ChangeNotifier {
+  bool get live => false;
+  String? get warning => null;
+  List<AdminField> fields(AdminKind kind) => adminFields(kind);
+  Future<int> referenceCount(AdminRecord record) async => records
+      .where(
+        (other) =>
+            other.id != record.id &&
+            [
+              'institutionId',
+              'departmentId',
+              'curriculumId',
+              'courseId',
+              'ruleId',
+              'ruleSetId',
+            ].any((key) => other.value(key) == record.id),
+      )
+      .length;
   List<AdminRecord> get records;
   List<AdminAuditEntry> get history;
   Future<void> load();

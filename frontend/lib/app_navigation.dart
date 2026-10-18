@@ -8,6 +8,7 @@ import 'workspace.dart';
 import 'features/auth/app_role.dart';
 import 'features/admin/admin_workspace.dart';
 import 'features/admin/admin_repository.dart';
+import 'features/admin/remote_admin_repository.dart';
 import 'app_shell/workspace_title_bar.dart';
 import 'shared/widgets/task_focus_group.dart';
 import 'features/auth/auth_api.dart';
@@ -95,6 +96,8 @@ class AppNavigation extends RouterDelegate<AppLocation>
       if (_closed || epoch != _authEpoch) return;
       if (next == null) {
         if (_identity == null) return;
+        _liveAdminRepository?.dispose();
+        _liveAdminRepository = null;
         _identity = null;
         authenticated = false;
         _role = AppRole.user;
@@ -102,6 +105,12 @@ class AppNavigation extends RouterDelegate<AppLocation>
         _sessionTimer?.cancel();
         _location = const AppLocation('/login');
       } else {
+        if (_liveAdminRepository != null &&
+            (next.id != _liveAdminRepository!.userId ||
+                next.role == AppRole.user)) {
+          _liveAdminRepository!.dispose();
+          _liveAdminRepository = null;
+        }
         final wasAuthenticated = authenticated;
         final previousRole = _role;
         final accountChanged = _identity != null && _identity!.id != next.id;
@@ -154,6 +163,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
   bool authenticated;
   AppRole _role = AppRole.user;
   AdminRepository? _adminRepository;
+  RemoteAdminRepository? _liveAdminRepository;
   @override
   void dispose() {
     _closed = true;
@@ -165,6 +175,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
     }
     if (_ownsAuth) _auth.close();
     _adminRepository?.dispose();
+    _liveAdminRepository?.dispose();
     super.dispose();
   }
 
@@ -228,6 +239,8 @@ class AppNavigation extends RouterDelegate<AppLocation>
     _authEpoch++;
     _sessionTimer?.cancel();
     _identity = null;
+    _liveAdminRepository?.dispose();
+    _liveAdminRepository = null;
     LocalDataOwner.currentUserId = null;
     authenticated = false;
     _role = AppRole.user;
@@ -244,15 +257,40 @@ class AppNavigation extends RouterDelegate<AppLocation>
     final Widget page;
     final String key;
     if (_identity != null && authenticated && _role != AppRole.user) {
-      key = 'live-access';
-      page = AccountAccessPage(
-        identity: _identity!,
-        api: _auth,
-        onSignedOut: () async {
-          await _auth.logout();
-          if (!_closed && context.mounted) _signedOut(context);
-        },
-      );
+      if (_auth is ApiGateway) {
+        if (_liveAdminRepository?.userId != _identity!.id) {
+          _liveAdminRepository?.dispose();
+          _liveAdminRepository = RemoteAdminRepository(
+            _identity!,
+            auth: _auth,
+            api: _auth as ApiGateway,
+          );
+        } else if (_liveAdminRepository!.permissionVersion !=
+            _identity!.version) {
+          _liveAdminRepository!.updateIdentity(_identity!);
+        }
+        key = 'live-admin:${_identity!.version}';
+        page = AdminWorkspace(
+          role: _role,
+          path: _location.path,
+          actorId: _identity!.id,
+          repository: _liveAdminRepository,
+          sidebarVisible: _sidebarVisible,
+          onNavigate: (path) => _go(context, path),
+          beforeSignedOut: _auth.logout,
+          onSignedOut: () => _signedOut(context),
+        );
+      } else {
+        key = 'live-access';
+        page = AccountAccessPage(
+          identity: _identity!,
+          api: _auth,
+          onSignedOut: () async {
+            await _auth.logout();
+            if (!_closed && context.mounted) _signedOut(context);
+          },
+        );
+      }
     } else if (_identity != null &&
         authenticated &&
         _location.path.startsWith('/admin')) {

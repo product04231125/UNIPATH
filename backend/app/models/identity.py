@@ -65,7 +65,12 @@ class Institution(Base):
     __tablename__ = "institutions"
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(128), unique=True)
+    country_code: Mapped[str] = mapped_column(String(2), server_default="")
+    official_url: Mapped[str] = mapped_column(String(2048), server_default="")
+    version: Mapped[int] = mapped_column(Integer, server_default="1")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AdminScope(Base):
@@ -77,6 +82,7 @@ class AdminScope(Base):
     status: Mapped[str] = mapped_column(String(16), default=ScopeStatus.ACTIVE)
     version: Mapped[int] = mapped_column(Integer, default=1)
     reason: Mapped[str] = mapped_column(String(500))
+    revocation_reason: Mapped[str] = mapped_column(String(500), server_default="")
     granted_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
     granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     revoked_by: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"))

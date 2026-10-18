@@ -93,6 +93,7 @@ class ScopeView(BaseModel):
     status: ScopeStatus
     version: int
     reason: str
+    revocation_reason: str = ""
     granted_by: UUID
     granted_at: datetime
     revoked_by: UUID | None
@@ -121,6 +122,10 @@ class StatusChange(StrictModel):
     expected_version: int = Field(ge=1)
 
 
+class UserAccessChange(RoleChange, StatusChange):
+    """Change role and status in a single optimistic transaction."""
+
+
 class ScopeCreate(StrictModel):
     user_id: UUID
     institution_id: UUID
@@ -136,10 +141,20 @@ class ScopeCreate(StrictModel):
 
 class ScopeRevoke(StrictModel):
     expected_version: int = Field(ge=1)
+    reason: str = Field(default="", max_length=500)
 
 
 class InstitutionCreate(StrictModel):
     name: Name
+    country_code: str = Field(default="", pattern=r"^(?:[A-Z]{2})?$")
+    official_url: str = Field(default="", max_length=2048)
+
+    @field_validator("official_url")
+    @classmethod
+    def valid_url(cls, value):
+        from app.schemas.academic import safe_url
+
+        return safe_url(value)
 
     @field_validator("name")
     @classmethod
@@ -154,7 +169,15 @@ class InstitutionView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     name: str
+    country_code: str = ""
+    official_url: str = ""
+    version: int = 1
     created_at: datetime
+    updated_at: datetime
+
+
+class InstitutionUpdate(InstitutionCreate):
+    expected_version: int = Field(ge=1)
 
 
 class UserList(BaseModel):

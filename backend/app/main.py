@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.academic import router as academic_router
 from app.api.access import router as access_router
 from app.api.assistant import router as assistant_router
 from app.api.auth import router as auth_router
@@ -58,6 +59,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(assistant_router, prefix="/api/v1")
     application.include_router(auth_router, prefix="/api/v1")
     application.include_router(access_router, prefix="/api/v1")
+    application.include_router(academic_router, prefix="/api/v1")
     # Compatibility alias for the README's infrastructure smoke check.
     application.add_api_route(
         "/health", health, response_model=HealthResponse, include_in_schema=False

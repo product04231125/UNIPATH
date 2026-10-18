@@ -16,8 +16,9 @@ DB 준비 → 마이그레이션 성공 → API 시작 순서이며 도메인을
 현재 API는 상태/DB 준비 확인, `/auth/*` 계정·세션, `/admin/*` 계정·학교 범위 관리와
 `POST /api/v1/assistant/queries`를 제공한다. 사용자·역할·세션은 PostgreSQL에 저장하고
 Web은 HttpOnly 쿠키, Windows는 메모리 bearer 토큰을 사용한다. 보호 API는 DB의 현재
-상태·역할·활성 학교 범위를 확인한다. 실제 관리자 로그인은 서버 계정/관리 범위 화면이며
-학과·과목·공식 문서 CRUD는 아직 합성 개발 UI다. 학교 질의의 공개 계약은 내부 RAG와 분리하고,
+상태·역할·활성 학교 범위를 확인한다. 실제 관리자 로그인은 RemoteAdminRepository를 통해
+학교·학과·교육과정·과목·규칙/문서 메타데이터·역할/범위·감사 API를 사용한다.
+검토한 조건 설명은 실행 가능한 Rule Engine 조건으로 해석하지 않는다. 학교 질의의 공개 계약은 내부 RAG와 분리하고,
 동기 검색은 FastAPI의 스레드풀에서 실행한다. 파일 인덱스는 앱 시작 시 한 번 읽는다.
 기본 실행은 빈 인덱스이며 선택적 `compose.rag.yaml`은 PDF 추출 후 API에 읽기 전용
 JSONL을 연결한다. 파일 코퍼스는 로컬 환경에서만 사용한다.
@@ -46,6 +47,23 @@ flowchart LR
     PrivateJson[비공개 개인 기준 JSON] --> RuleCore[독립적인 Rule Engine 코어]
     RuleCore --> PersonalResult[개인 기준 계산 · 공식 판정 아님]
 ```
+
+### 실제 관리자 저장 경로
+
+```mermaid
+flowchart LR
+    Admin[로그인한 관리자] --> Remote[Flutter RemoteAdminRepository]
+    Remote -->|Web 쿠키 또는 Windows 토큰| Guard[세션·역할·학교 범위 확인]
+    Guard --> Catalog[학사 DTO·관계·버전 검증]
+    Catalog --> CatalogDb[(PostgreSQL 학사 메타데이터)]
+    Catalog --> History[(변경 감사)]
+    CatalogDb --> Revisions[불변 적용본·새 초안]
+    Debug[개발 샘플] --> Fake[메모리 FakeAdminRepository]
+```
+
+변경은 권한 변경과 같은 transaction lock에서 신원/세션을 재확인한다.
+문서 메타데이터 등록/적용은 RAG 승인·임베딩·졸업 판정과 분리한다.
+[학사 API](api/academic.md)에 입력·참조·버전 계약을 정의한다.
 
 ### 학교 질의와 독립 AI 대화창
 

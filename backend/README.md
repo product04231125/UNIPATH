@@ -219,3 +219,10 @@ Psycopg 연결 문자열은 `postgresql+psycopg://`로 시작해야 한다.
 구성 참고: [FastAPI Docker 안내](https://fastapi.tiangolo.com/deployment/docker/),
 [pgvector 공식 Docker 이미지](https://github.com/pgvector/pgvector#docker),
 [Starlette TestClient](https://www.starlette.io/testclient/).
+
+## 관리자 학사 API
+
+`0003_academic_catalog`가 학사 메타데이터 7개 테이블을 추가한다. 현재 총 13개 테이블이며
+학교·학과·교육과정·과목·연결, 검토 기준/문서 버전·관리 이력을 실제 관리자 화면과 연결한다.
+조건 설명은 실행 가능한 Rule Engine 규칙이 아니며 문서 적용은 RAG 원문 승인이 아니다.
+[학사 계약](../docs/api/academic.md)을 따른다. 학생 개인 자료 서버 저장과 공식 졸업감사는 후속이다.
