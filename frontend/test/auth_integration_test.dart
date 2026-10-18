@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
+import 'package:university_path_frontend/workspace.dart';
 import 'package:university_path_frontend/features/auth/account_access_page.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/auth/local_data_owner.dart';
@@ -188,6 +189,35 @@ void main() {
       expect(api.logouts, 1);
       expect(find.byType(LoginPage), findsOneWidget);
       expect(LocalDataOwner.currentUserId, isNull);
+    },
+  );
+
+  testWidgets(
+    'a session switched in another tab recreates the local workspace',
+    (tester) async {
+      final api = FakeAuth()..signedIn = true;
+      await tester.pumpWidget(UniversityPathApp(authGateway: api));
+      await tester.pumpAndSettle();
+      final originalWorkspace = tester.state(find.byType(Workspace));
+      final first = PlanningRepository();
+      await first.load();
+      await first.saveSchoolContext(school: '계정 A 학교');
+      api.id = otherId;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(LocalDataOwner.currentUserId, otherId);
+      expect(
+        tester.state(find.byType(Workspace)),
+        isNot(same(originalWorkspace)),
+      );
+      final second = PlanningRepository();
+      await second.load();
+      expect(second.profile.school, isEmpty);
+      expect(first.profile.school, '계정 A 학교');
+      first.dispose();
+      second.dispose();
+      await tester.pumpWidget(const SizedBox());
     },
   );
 

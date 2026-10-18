@@ -35,7 +35,10 @@ class _AccountAccessPageState extends State<AccountAccessPage> {
   @override
   void didUpdateWidget(covariant AccountAccessPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.identity.version != widget.identity.version) _load();
+    if (oldWidget.identity.id != widget.identity.id ||
+        oldWidget.identity.version != widget.identity.version) {
+      _load();
+    }
   }
 
   Future<void> _load() async {

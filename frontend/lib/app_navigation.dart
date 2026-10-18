@@ -104,11 +104,19 @@ class AppNavigation extends RouterDelegate<AppLocation>
       } else {
         final wasAuthenticated = authenticated;
         final previousRole = _role;
+        final accountChanged = _identity != null && _identity!.id != next.id;
+        if (accountChanged) {
+          _authEpoch++;
+          _history.clear();
+          _historyIndex = -1;
+          _sidebarVisible = true;
+          _location = const AppLocation('/home');
+        }
         _identity = next;
         authenticated = true;
         _role = next.role;
         LocalDataOwner.currentUserId = next.id;
-        if (!wasAuthenticated || previousRole != _role) {
+        if (!wasAuthenticated || accountChanged || previousRole != _role) {
           if (_role != AppRole.user) {
             _location = const AppLocation('/admin/overview');
           } else if (previousRole != AppRole.user ||
@@ -331,7 +339,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
       onDidRemovePage: (_) {},
       pages: [
         MaterialPage<void>(
-          key: ValueKey(key),
+          key: ValueKey('$key:${_identity?.id ?? "sample"}'),
           child: FocusTraversalGroup(
             policy: OrderedTraversalPolicy(),
             child: Column(
