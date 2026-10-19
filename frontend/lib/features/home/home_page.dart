@@ -83,7 +83,7 @@ class HomePage extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '오늘 일정 ${todayEvents.length}개 · ${year == null ? '개인 계획 미설정' : '개인 계획 $year학년'} · 기기 로컬 저장',
+                        '오늘 일정 ${todayEvents.length}개 · ${year == null ? '개인 계획 미설정' : '개인 계획 $year학년'} · ${repository.storageLabel}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                       if (profile.isConfigured)

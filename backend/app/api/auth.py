@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Header, Request, Response
 from fastapi.security import APIKeyCookie, HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -30,6 +30,13 @@ def get_identity(
     local_cookie: Annotated[
         str | None, Depends(APIKeyCookie(name="unipath_session", auto_error=False))
     ],
+    expected_owner: Annotated[
+        str | None,
+        Header(
+            alias="X-Unipath-Owner",
+            description="Optional workspace account UUID precondition; never a credential",
+        ),
+    ] = None,
 ):
     return auth.current_identity(request, db)
 

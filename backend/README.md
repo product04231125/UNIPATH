@@ -74,7 +74,7 @@ uv run --frozen uvicorn app.main:app --host 127.0.0.1 --port 8011 --reload --no-
 Flutter Web은 예를 들어 `flutter run -d chrome --web-port 3000`으로 고정 포트를
 사용한다. 다른 포트를 쓰면 `.env`의 `CORS_ORIGINS` JSON 배열도 갱신한다.
 프론트엔드 학교 질의는 `POST /api/v1/assistant/queries`와 연결한다.
-인증은 실제 서버와 연결하고 개인 기록은 계정별 기기 저장, 공식 졸업 판정은 미연결이다. Web 실행 주소는
+인증·학업 프로필·일정은 실제 서버와 연결하고 다른 개인 기록은 계정별 기기 저장, 공식 졸업 판정은 미연결이다. Web 실행 주소는
 `http://localhost:3000`, 빌드 설정 `API_BASE_URL`은 실제 API 주소에 맞춘다.
 
 ## RAG 팀 모듈과 학교 질의 API
@@ -278,7 +278,7 @@ dart format frontend/lib/features/api/student_api_models.dart
 최소 UUID 대응표를 보존해 중복 전송·삭제 후 재시도에 안전하게 응답한다.
 `GET /me/personal-imports/{id}`는 본인의 이전 당시 영수증만 조회한다.
 [이전 계약](../docs/api/personal-imports.md)과 생성된 Dart 타입/전송 코드를 제공한다.
-실제 원본을 읽는 동의/시간대 확인·화면 전환은 후속이다.
+[학업 프로필·일정 화면](../docs/api/planning-integration.md)은 동의/시간대 확인·서버 전환을 구현했으며 다른 개인 자료는 후속이다.
 
 ## 공식 실행 규칙과 자격증 기준
 

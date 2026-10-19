@@ -77,6 +77,39 @@ class AuthApi implements AuthGateway, ApiGateway {
   final Uri _base;
   final bool _cookieMode;
   String? _token;
+  String? _ownerId;
+  int _sessionEpoch = 0;
+
+  /// Pin a workspace to this login. Server checks the owner as well, including
+  /// cookies changed by a different browser tab before our next session poll.
+  ApiGateway forOwner(String ownerId) {
+    if (_ownerId != ownerId) throw const AuthFailure('다시 로그인해 주세요.');
+    return _OwnerGateway(this, ownerId, _sessionEpoch);
+  }
+
+  Future<Map<String, dynamic>?> _ownedRequest(
+    String ownerId,
+    int epoch,
+    String method,
+    String path,
+    Map<String, Object?>? body,
+  ) async {
+    void check() {
+      if (_ownerId != ownerId || epoch != _sessionEpoch) {
+        throw const AuthFailure('계정이 변경되었습니다. 다시 로그인해 주세요.');
+      }
+    }
+
+    check();
+    final result = await _request(method, path, body, ownerId);
+    check();
+    return result;
+  }
+
+  void _setOwner(String? value) {
+    if (_ownerId != value) _sessionEpoch++;
+    _ownerId = value;
+  }
 
   @override
   Future<Map<String, dynamic>?> request(
@@ -89,10 +122,14 @@ class AuthApi implements AuthGateway, ApiGateway {
     String method,
     String path, [
     Map<String, Object?>? body,
+    String? expectedOwner,
   ]) async {
     try {
       final request = http.Request(method, _base.resolve('/api/v1/$path'));
       request.headers['Content-Type'] = 'application/json';
+      if (expectedOwner != null) {
+        request.headers['X-Unipath-Owner'] = expectedOwner;
+      }
       if (_token != null) request.headers['Authorization'] = 'Bearer $_token';
       if (body != null) request.body = jsonEncode(body);
       final response = await _client
@@ -163,6 +200,8 @@ class AuthApi implements AuthGateway, ApiGateway {
         }
         _token = token;
       }
+      _sessionEpoch++;
+      _setOwner(identity.id);
       return identity;
     } catch (_) {
       throw const AuthFailure('로그인 응답을 확인하지 못했습니다. 다시 시도해 주세요.');
@@ -172,12 +211,20 @@ class AuthApi implements AuthGateway, ApiGateway {
   @override
   Future<AuthIdentity?> me() async {
     final requestedToken = _token;
+    final epoch = _sessionEpoch;
     if (!_cookieMode && _token == null) return null;
     try {
-      return AuthIdentity.fromJson((await _request('GET', 'auth/me'))!);
+      final identity = AuthIdentity.fromJson(
+        (await _request('GET', 'auth/me'))!,
+      );
+      if (epoch == _sessionEpoch) _setOwner(identity.id);
+      return identity;
     } on AuthFailure catch (error) {
       if (error.status != 401) rethrow;
-      if (_token == requestedToken) _token = null;
+      if (_token == requestedToken && epoch == _sessionEpoch) {
+        _token = null;
+        _setOwner(null);
+      }
       return null;
     } catch (_) {
       throw const AuthFailure('계정 정보를 확인하지 못했습니다. 다시 시도해 주세요.');
@@ -186,12 +233,17 @@ class AuthApi implements AuthGateway, ApiGateway {
 
   @override
   Future<void> logout() async {
+    final epoch = _sessionEpoch;
     try {
       await _request('POST', 'auth/logout');
     } on AuthFailure catch (error) {
       if (error.status != 401) rethrow;
     }
-    _token = null;
+    if (epoch == _sessionEpoch) {
+      _token = null;
+      _sessionEpoch++;
+      _setOwner(null);
+    }
   }
 
   @override
@@ -227,6 +279,21 @@ class AuthApi implements AuthGateway, ApiGateway {
   @override
   void close() {
     _token = null;
+    _sessionEpoch++;
+    _setOwner(null);
     _client.close();
   }
+}
+
+class _OwnerGateway implements ApiGateway {
+  const _OwnerGateway(this.auth, this.ownerId, this.epoch);
+  final AuthApi auth;
+  final String ownerId;
+  final int epoch;
+  @override
+  Future<Map<String, dynamic>?> request(
+    String method,
+    String path, [
+    Map<String, Object?>? body,
+  ]) => auth._ownedRequest(ownerId, epoch, method, path, body);
 }

@@ -15,6 +15,8 @@ import 'chat_window.dart' as native;
 import 'features/graduation/graduation_page.dart';
 import 'features/home/home_page.dart';
 import 'features/planning/planning_repository.dart';
+import 'features/planning/remote_planning_repository.dart';
+import 'features/api/student_api.dart';
 import 'features/planning/weekly_schedule.dart';
 import 'features/records/activity/activity_page.dart';
 import 'features/records/course/course_page.dart';
@@ -38,10 +40,12 @@ class Workspace extends StatefulWidget {
     this.sidebarVisible = true,
     this.integratedTitleBar = false,
     this.beforeSignedOut,
+    this.studentApi,
   });
 
   final VoidCallback onSignedOut;
   final Future<void> Function()? beforeSignedOut;
+  final StudentApi? studentApi;
   final AssistantWindowHost windowHost;
   final ChatPreferences? chatPreferences;
   final int? selectedPage;
@@ -96,7 +100,9 @@ class _WorkspaceState extends State<Workspace> {
   late final _assistantConversation = AssistantConversation(
     api: widget.assistantFactory?.call(),
   );
-  final _planningRepository = PlanningRepository();
+  late final PlanningRepository _planningRepository = widget.studentApi == null
+      ? PlanningRepository()
+      : RemotePlanningRepository(widget.studentApi!);
   late final SharedSchoolContext _sharedSchoolContext;
   ConversationBridge? _conversationBridge;
   DateTime? _scheduleInitialDay;

@@ -94,6 +94,16 @@ def current_identity(request: Request, db: Session) -> Identity:
     ).first()
     if row is None:
         raise unauthenticated()
+    # A browser cookie can change in another tab while a form remains open.
+    # This is an additional precondition, never an alternative credential.
+    expected_owner = request.headers.get("x-unipath-owner")
+    if expected_owner is not None:
+        try:
+            matches_owner = UUID(expected_owner) == row[0].id
+        except ValueError:
+            matches_owner = False
+        if not matches_owner:
+            raise forbidden()
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         check_origin(request, cookie=mode == SessionMode.COOKIE)
     return Identity(*row)

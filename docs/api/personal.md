@@ -98,7 +98,7 @@ audience와 reviewed는 사용 의도/개인 확인 기록이며 실제 공개·
 4. 실패 시 원본을 지우지 않고 client_id 조회와 같은 본문 재시도로 재개한다. 바뀐 내용은
    현재 version을 읽은 PATCH로 저장한다. 익명/다른 계정 자료를 자동 귀속하지 않는다.
 5. 로컬 일정의 offset 없는 시각은 원래 시간대 확인 후 변환해야 한다. 임의로 Z를 붙이거나
-   서버 시간대로 해석하지 않는다. 기존 자료를 이전하는 동의/변환 UI와 저장소 연결은 후속이다.
+   서버 시간대로 해석하지 않는다. [프로필·일정의 동의/변환 UI와 서버 저장](planning-integration.md)을 연결했으며 다른 개인 자료는 후속이다.
    `frontend/lib/features/api/`의 공통 AuthApi 전송 adapter·생성 DTO는 사용할 수 있다.
 
 주요 프론트 매핑: camelCase는 snake_case, 수강 상태 `계획/수강 중/이수 기록`은

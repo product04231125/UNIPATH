@@ -14,6 +14,7 @@ import 'shared/widgets/task_focus_group.dart';
 import 'features/auth/auth_api.dart';
 import 'features/auth/account_access_page.dart';
 import 'features/auth/local_data_owner.dart';
+import 'features/api/student_api.dart';
 
 class AppLocation {
   const AppLocation(this.path);
@@ -363,6 +364,12 @@ class AppNavigation extends RouterDelegate<AppLocation>
     } else {
       key = 'workspace';
       page = Workspace(
+        studentApi: _identity != null && _auth is AuthApi
+            ? StudentApi(
+                (_auth).forOwner(_identity!.id),
+                ownerId: _identity!.id,
+              )
+            : null,
         sidebarVisible: _sidebarVisible,
         integratedTitleBar: true,
         assistantFactory: assistantFactory,
