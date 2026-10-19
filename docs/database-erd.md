@@ -14,7 +14,8 @@ rule_sets·graduation_rules·official_documents를 추가했다. `0004_personal_
 개인 프로필·개인 자료 11종·순서 참조 2종·재시도 영수증 15개를 추가했다.
 `0005_personal_evaluations`는 개인 계산 이력 하나를 추가한다. `0006_school_knowledge`는
 학교 문서 추출/검토와 청크 2개를 추가한다. `0007_official_rule_programs`는 자격증/발급기관
-마스터와 실행 규칙·근거·마스터 참조 7개를 추가해 **총 38개 테이블**을 물리 구현한다.
+마스터와 실행 규칙·근거·마스터 참조 7개를 추가한다. `0008_personal_imports`는 개인 자료
+일괄 이전의 최소 영수증 하나를 추가해 **총 39개 테이블**을 물리 구현한다.
 학교 메타데이터/버전/삭제 표시와 범위 회수 사유도 추가한다.
 아래 전체 논리 ERD/단계 표 중 학생 공식 기록·공식 판정·벡터 임베딩은 도입 계획이다.
 현재 users에는 학교/학과/교육과정 FK가 없으며 자유 입력 프로필을 공식 학적으로 승격하지 않는다.
@@ -76,6 +77,7 @@ erDiagram
     USERS ||--o{ PORTFOLIO_COMPOSITIONS : owns
     USERS ||--o{ APPLICATION_DOCUMENTS : owns
     USERS ||--o{ PERSONAL_CREATION_RECEIPTS : retries
+    USERS ||--o{ PERSONAL_IMPORT_RECEIPTS : imports
     USERS ||--o{ PERSONAL_EVALUATIONS : retains
     PERSONAL_EVALUATIONS {
         uuid id PK
@@ -85,6 +87,15 @@ erDiagram
         date evaluated_on
         jsonb result_json
         jsonb input_snapshot_json
+    }
+    PERSONAL_IMPORT_RECEIPTS {
+        uuid owner_id PK,FK
+        uuid import_id PK
+        string digest
+        int record_count
+        int profile_version "historical version"
+        jsonb mappings_json "historical UUIDs and versions, no live FK"
+        datetime committed_at
     }
     PERSONAL_CURRICULA ||--o{ PERSONAL_CURRICULUM_COURSES : includes
     PERSONAL_CURRICULA ||--o{ PERSONAL_GRADUATION_RULES : defines
@@ -106,6 +117,9 @@ erDiagram
 ```
 
 인증 필드·운영자 생성·원자성과 후속 경계는 [인증 API](api/authentication.md)를 따른다.
+개인 일괄 이전은 자료·관계·생성 영수증과 최소 이전 영수증을 한 트랜잭션에 저장한다.
+대응표의 자료 ID/버전은 이력이며 삭제 후에도 재생성하지 않도록 live FK로 연결하지 않는다.
+원문을 영수증에 중복 저장하지 않는다. [이전 API](api/personal-imports.md)를 따른다.
 범위는 학교 전체만 지원하며 하위 학과/교육과정 범위는 미구현이다. 모델과 물리 스키마를
 `alembic check`로 대조한다.
 
@@ -791,7 +805,7 @@ erDiagram
 
 ## 단계별 도입 계획과 현재 구현
 
-현재 물리 구현은 인증/학교 범위·학사 메타데이터·개인 자료/참조/영수증·개인 계산·학교 지식·실행 규칙/자격증 38개 테이블이다. 아래 표는 각 단계의 전체 목표이며
+현재 물리 구현은 인증/학교 범위·학사 메타데이터·개인 자료/참조/생성 및 이전 영수증·개인 계산·학교 지식·실행 규칙/자격증 39개 테이블이다. 아래 표는 각 단계의 전체 목표이며
 나머지 학사·문서·판정 엔터티가 이미 생성됐다는 뜻이 아니다.
 
 | 단계 | 목표 | 실제 생성·구현 대상 |

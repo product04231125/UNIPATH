@@ -17165,6 +17165,236 @@
         }
       }
     },
+    "/api/v1/me/personal-imports": {
+      "post": {
+        "tags": [
+          "personal workspace import"
+        ],
+        "summary": "Create",
+        "operationId": "create_api_v1_me_personal_imports_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonalImportCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalImportView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request Entity Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/personal-imports/{import_id}": {
+      "get": {
+        "tags": [
+          "personal workspace import"
+        ],
+        "summary": "Detail",
+        "operationId": "detail_api_v1_me_personal_imports__import_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "import_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Import Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalImportView"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/api/v1/catalog/institutions": {
       "get": {
         "tags": [
@@ -31020,6 +31250,1034 @@
         ],
         "title": "HealthStatus"
       },
+      "ImportAchievementRecord": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Detail",
+            "default": ""
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "started_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started On"
+          },
+          "ended_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended On"
+          },
+          "achievement_type": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Achievement Type"
+          },
+          "thesis_type": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Thesis Type",
+            "default": ""
+          },
+          "thesis_status_label": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Thesis Status Label",
+            "default": ""
+          },
+          "thesis_grade": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Thesis Grade",
+            "default": ""
+          },
+          "thesis_approved_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thesis Approved On"
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Role"
+          },
+          "result": {
+            "type": "string",
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Result"
+          },
+          "evidence_url": {
+            "type": "string",
+            "maxLength": 2048,
+            "title": "Evidence Url",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "client_id",
+          "achievement_type",
+          "role",
+          "result"
+        ],
+        "title": "ImportAchievementRecord"
+      },
+      "ImportActivityRecord": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Detail",
+            "default": ""
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "started_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started On"
+          },
+          "ended_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended On"
+          },
+          "organization": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Organization",
+            "default": ""
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Role",
+            "default": ""
+          },
+          "reported_hours": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,9}|(?=[\\d.]{1,13}0*$)\\d{0,9}\\.\\d{0,3}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reported Hours"
+          },
+          "approved_hours": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,9}|(?=[\\d.]{1,13}0*$)\\d{0,9}\\.\\d{0,3}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved Hours"
+          },
+          "approval": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "approved",
+                  "rejected",
+                  "needs_review"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval"
+          },
+          "observed_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed On"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "client_id"
+        ],
+        "title": "ImportActivityRecord"
+      },
+      "ImportApplicationDocument": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Detail",
+            "default": ""
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "target": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Target"
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Role"
+          },
+          "document_type": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Document Type"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 32000,
+            "title": "Body",
+            "default": ""
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRecordReference"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Sources"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "client_id",
+          "target",
+          "role",
+          "document_type"
+        ],
+        "title": "ImportApplicationDocument"
+      },
+      "ImportComposition": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Detail",
+            "default": ""
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "private",
+              "application",
+              "public_review"
+            ],
+            "title": "Audience",
+            "default": "private"
+          },
+          "reviewed": {
+            "type": "boolean",
+            "title": "Reviewed",
+            "default": false
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRecordReference"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Sources"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "client_id"
+        ],
+        "title": "ImportComposition"
+      },
+      "ImportCourseRecord": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Detail",
+            "default": ""
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "term": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Term"
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Category"
+          },
+          "credits": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)"
+              }
+            ],
+            "title": "Credits"
+          },
+          "section": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Section",
+            "default": ""
+          },
+          "course_code": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Course Code",
+            "default": ""
+          },
+          "grade": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Grade",
+            "default": ""
+          },
+          "completion": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "in_progress",
+              "recorded"
+            ],
+            "title": "Completion",
+            "default": "planned"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "client_id",
+          "term",
+          "category",
+          "credits"
+        ],
+        "title": "ImportCourseRecord"
+      },
+      "ImportCredentialRecord": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Detail",
+            "default": ""
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "provider": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Provider",
+            "default": ""
+          },
+          "level": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Level",
+            "default": ""
+          },
+          "earned_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earned On"
+          },
+          "expires_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires On"
+          },
+          "status_label": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Status Label",
+            "default": ""
+          },
+          "evidence_url": {
+            "type": "string",
+            "maxLength": 2048,
+            "title": "Evidence Url",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "client_id"
+        ],
+        "title": "ImportCredentialRecord"
+      },
+      "ImportCurriculumCourse": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Detail",
+            "default": ""
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "curriculum_client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Curriculum Client Id"
+          },
+          "course_record_client_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Record Client Id"
+          },
+          "course_code": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Course Code",
+            "default": ""
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Category"
+          },
+          "credits": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)"
+              }
+            ],
+            "title": "Credits"
+          },
+          "required": {
+            "type": "boolean",
+            "title": "Required"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "client_id",
+          "curriculum_client_id",
+          "category",
+          "credits",
+          "required"
+        ],
+        "title": "ImportCurriculumCourse"
+      },
+      "ImportEvent": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Detail",
+            "default": ""
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Starts At"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ends At"
+          },
+          "time_zone": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Time Zone"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "academic",
+              "personal",
+              "activity",
+              "deadline"
+            ],
+            "title": "Category"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "client_id",
+          "starts_at",
+          "ends_at",
+          "time_zone",
+          "category"
+        ],
+        "title": "ImportEvent"
+      },
+      "ImportExperienceRecord": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Detail",
+            "default": ""
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "started_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started On"
+          },
+          "ended_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended On"
+          },
+          "experience_type": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Experience Type"
+          },
+          "organization": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Organization",
+            "default": ""
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Role",
+            "default": ""
+          },
+          "result": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Result",
+            "default": ""
+          },
+          "status_label": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Status Label",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "client_id",
+          "experience_type"
+        ],
+        "title": "ImportExperienceRecord"
+      },
+      "ImportGraduationRule": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Detail",
+            "default": ""
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "curriculum_client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Curriculum Client Id"
+          },
+          "curriculum_course_client_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curriculum Course Client Id"
+          },
+          "rule_code": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Rule Code",
+            "default": ""
+          },
+          "rule_type": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Rule Type"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "institution",
+              "department",
+              "curriculum"
+            ],
+            "title": "Scope"
+          },
+          "required_value": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Value"
+          },
+          "current_value": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Value"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Unit",
+            "default": ""
+          },
+          "condition": {
+            "type": "string",
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Condition"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective To"
+          },
+          "evidence_url": {
+            "type": "string",
+            "maxLength": 2048,
+            "title": "Evidence Url",
+            "default": ""
+          },
+          "related_record": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImportRecordReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "client_id",
+          "curriculum_client_id",
+          "rule_type",
+          "scope",
+          "condition"
+        ],
+        "title": "ImportGraduationRule"
+      },
+      "ImportMapping": {
+        "properties": {
+          "resource": {
+            "type": "string",
+            "enum": [
+              "events",
+              "course-records",
+              "activity-records",
+              "experience-records",
+              "credential-records",
+              "achievement-records",
+              "personal-curricula",
+              "personal-curriculum-courses",
+              "personal-graduation-rules",
+              "portfolio-compositions",
+              "application-documents"
+            ],
+            "title": "Resource"
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "record_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Record Id"
+          },
+          "version_at_import": {
+            "type": "integer",
+            "title": "Version At Import"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "created",
+              "reused"
+            ],
+            "title": "Outcome"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resource",
+          "client_id",
+          "record_id",
+          "version_at_import",
+          "outcome"
+        ],
+        "title": "ImportMapping"
+      },
+      "ImportPersonalCurriculum": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "Detail",
+            "default": ""
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "school": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "School"
+          },
+          "department": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Department"
+          },
+          "admission_year": {
+            "type": "integer",
+            "maximum": 9999.0,
+            "minimum": 1000.0,
+            "title": "Admission Year"
+          },
+          "curriculum_year": {
+            "type": "integer",
+            "maximum": 9999.0,
+            "minimum": 1000.0,
+            "title": "Curriculum Year"
+          },
+          "evidence_url": {
+            "type": "string",
+            "maxLength": 2048,
+            "title": "Evidence Url",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "client_id",
+          "school",
+          "department",
+          "admission_year",
+          "curriculum_year"
+        ],
+        "title": "ImportPersonalCurriculum"
+      },
+      "ImportRecordReference": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "course",
+              "activity",
+              "experience",
+              "credential",
+              "achievement"
+            ],
+            "title": "Kind"
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "client_id"
+        ],
+        "title": "ImportRecordReference"
+      },
       "InstitutionCreate": {
         "properties": {
           "name": {
@@ -33512,6 +34770,198 @@
         ],
         "title": "PersonalGraduationRuleView"
       },
+      "PersonalImportCreate": {
+        "properties": {
+          "import_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Import Id"
+          },
+          "source_owner_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source Owner Id"
+          },
+          "consent_confirmed": {
+            "type": "boolean",
+            "title": "Consent Confirmed"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ImportEvent"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Events"
+          },
+          "course_records": {
+            "items": {
+              "$ref": "#/components/schemas/ImportCourseRecord"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Course Records"
+          },
+          "activity_records": {
+            "items": {
+              "$ref": "#/components/schemas/ImportActivityRecord"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Activity Records"
+          },
+          "experience_records": {
+            "items": {
+              "$ref": "#/components/schemas/ImportExperienceRecord"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Experience Records"
+          },
+          "credential_records": {
+            "items": {
+              "$ref": "#/components/schemas/ImportCredentialRecord"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Credential Records"
+          },
+          "achievement_records": {
+            "items": {
+              "$ref": "#/components/schemas/ImportAchievementRecord"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Achievement Records"
+          },
+          "personal_curricula": {
+            "items": {
+              "$ref": "#/components/schemas/ImportPersonalCurriculum"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Personal Curricula"
+          },
+          "personal_curriculum_courses": {
+            "items": {
+              "$ref": "#/components/schemas/ImportCurriculumCourse"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Personal Curriculum Courses"
+          },
+          "personal_graduation_rules": {
+            "items": {
+              "$ref": "#/components/schemas/ImportGraduationRule"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Personal Graduation Rules"
+          },
+          "portfolio_compositions": {
+            "items": {
+              "$ref": "#/components/schemas/ImportComposition"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Portfolio Compositions"
+          },
+          "application_documents": {
+            "items": {
+              "$ref": "#/components/schemas/ImportApplicationDocument"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Application Documents"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "import_id",
+          "source_owner_id",
+          "consent_confirmed"
+        ],
+        "title": "PersonalImportCreate"
+      },
+      "PersonalImportView": {
+        "properties": {
+          "import_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Import Id"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Owner Id"
+          },
+          "committed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Committed At"
+          },
+          "record_count": {
+            "type": "integer",
+            "title": "Record Count"
+          },
+          "profile_version_at_import": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Version At Import"
+          },
+          "mappings": {
+            "items": {
+              "$ref": "#/components/schemas/ImportMapping"
+            },
+            "type": "array",
+            "title": "Mappings"
+          },
+          "replayed": {
+            "type": "boolean",
+            "title": "Replayed"
+          },
+          "origin": {
+            "type": "string",
+            "const": "personal",
+            "title": "Origin",
+            "default": "personal"
+          },
+          "official": {
+            "type": "boolean",
+            "const": false,
+            "title": "Official",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "import_id",
+          "owner_id",
+          "committed_at",
+          "record_count",
+          "profile_version_at_import",
+          "mappings",
+          "replayed"
+        ],
+        "title": "PersonalImportView"
+      },
       "PortfolioCompositionCreate": {
         "properties": {
           "title": {
@@ -33776,6 +35226,114 @@
           "title"
         ],
         "title": "PortfolioCompositionView"
+      },
+      "ProfileData": {
+        "properties": {
+          "school": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "School",
+            "default": ""
+          },
+          "department": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Department",
+            "default": ""
+          },
+          "admission_year": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 9999.0,
+                "minimum": 1900.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Year"
+          },
+          "track": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Track"
+          },
+          "academic_year_override": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 4.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Year Override"
+          },
+          "week_starts_on": {
+            "type": "string",
+            "enum": [
+              "sunday",
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday"
+            ],
+            "title": "Week Starts On",
+            "default": "sunday"
+          },
+          "institution_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution Id"
+          },
+          "department_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department Id"
+          },
+          "curriculum_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curriculum Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ProfileData"
       },
       "ProfilePatch": {
         "properties": {

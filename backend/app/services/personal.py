@@ -149,7 +149,14 @@ def profile(db, owner_id):
 
 def save_profile(db, request, payload):
     identity = locked_identity(db, request)
-    previous = profile(db, identity.user.id)
+    result = save_profile_record(db, identity.user.id, payload)
+    commit(db)
+    return result
+
+
+def save_profile_record(db, owner_id, payload):
+    """Caller holds the identity lock and commits the enclosing transaction."""
+    previous = profile(db, owner_id)
     if previous["version"] != payload.expected_version:
         raise conflict()
     fields = dto.ProfileData.model_fields
@@ -171,16 +178,16 @@ def save_profile(db, request, payload):
                 raise missing()
             if model == Curriculum and row.department_id != data["department_id"]:
                 raise conflict()
-    item = db.get(PlanningProfile, identity.user.id)
+    item = db.get(PlanningProfile, owner_id)
     if item is None:
-        item = PlanningProfile(owner_id=identity.user.id)
+        item = PlanningProfile(owner_id=owner_id)
         db.add(item)
     for key, value in data.items():
         setattr(item, key, value)
     item.version = previous["version"] + 1
     item.updated_at = datetime.now(UTC)
-    commit(db)
-    return profile(db, identity.user.id)
+    db.flush()
+    return profile(db, owner_id)
 
 
 def listing(
@@ -299,7 +306,13 @@ def invalidate_reviews(db, item):
 
 def save(db, request, resource, payload, record_id=None):
     identity = locked_identity(db, request)
-    owner_id = identity.user.id
+    result = save_record(db, identity.user.id, resource, payload, record_id)
+    commit(db)
+    return result
+
+
+def save_record(db, owner_id, resource, payload, record_id=None):
+    """Caller authorizes the owner under the identity lock and owns commit."""
     model, prefix = RESOURCES[resource]
     schema = getattr(dto, prefix + "Create")
     item = get(db, owner_id, model, record_id) if record_id else None
@@ -361,7 +374,7 @@ def save(db, request, resource, payload, record_id=None):
                     digest=digest,
                 )
             )
-        commit(db)
+        db.flush()
     except IntegrityError:
         db.rollback()
         raise conflict() from None

@@ -55,6 +55,8 @@ PR과 `main`/`develop`의 백엔드 변경을 검증합니다. 앱 다운로드 
 develop의 로그인·가입·세션·역할/학교 범위는 실제 API/DB로 구현했습니다.
 개인 화면은 계정별 기기 로컬이며 [서버 저장 API](docs/api/personal.md)와 전송 adapter는 준비됐습니다.
 [개인 기준 계산 API](docs/api/personal-evaluations.md)와 불변 결과 이력도 구현했습니다.
+[개인 자료 일괄 이전 API](docs/api/personal-imports.md)는 본인 확인·동의한 자료와 관계를
+원자적으로 추가하고 ID 대응표·안전한 재시도를 제공합니다. 이전 화면 연결은 후속입니다.
 [학교 문서 검토·DB 검색 API](docs/api/school-knowledge.md)는 적용 문서의 추출본 등록,
 별도 승인·회수와 로그인 사용자의 UUID 문맥 검색을 제공합니다. 실제 LLM은 미연결입니다.
 [공식 실행 규칙](docs/api/rule-programs.md)은 적용 메타데이터에 명시적인 조건·승인 근거를
