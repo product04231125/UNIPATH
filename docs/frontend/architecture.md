@@ -3,7 +3,7 @@
 `frontend/lib`은 Flutter Web과 Windows에서 같은 화면 코드를 사용한다. 학교 질의는
 `POST /api/v1/assistant/queries`를 호출한다. 다른 도메인의 fixture와 기기 로컬 상태는
 합성 학사 모델은 실제 서버 모델이 아니다. 인증·역할·학교 범위는 실제 API이며,
-기록 CRUD·공식 졸업 판정 API는 아직 연결하지 않았다. [인증 계약](../api/authentication.md)을 따른다.
+학업 프로필·일정 CRUD는 서버에 연결했으며 다른 개인 기록 CRUD·공식 졸업 판정 화면 API는 아직 연결하지 않았다. [인증 계약](../api/authentication.md)을 따른다.
 
 ## 진입과 공통 영역
 
@@ -57,7 +57,7 @@
 | `features/auth` | 로그인·회원가입 목업 |
 | `features/admin` | 공통 관리자 셸·입력 스키마·역할/범위·메모리 fake·변경 이력 |
 | `features/home` | 개인 계획 기반 이번 주 일정·준비 목록·우선 링크 |
-| `features/planning` | 기기 로컬 개인 계획 프로필·일정 repository |
+| `features/planning` | 실제 계정 서버 프로필·일정 repository와 원본 보존/동의 이전, debug 로컬 저장소 |
 | `features/schedule` | 월간 개인 일정과 선택 날짜 목록, 일정 CRUD |
 | `features/graduation` | 졸업요건 fixture, 개인 교육과정·과목·규칙 입력과 로컬 관계 검증 |
 | `features/records/course` | 수강 관리와 수강 직접 입력 상태 |
@@ -84,12 +84,11 @@
   입력을 보내지 않는다. 메인 창이 요청·대화를 계속 소유하고 분리 창은 `RemoteConversation`으로
   상태를 표시하며 입력·보내기·재시도를 IPC로 전달한다. 창 전환은 HTTP 클라이언트를 재생성하지 않는다.
 - `ConversationBridge`는 상태 revision과 명령 ID를 사용해 오래된 상태·중복 명령을 구분한다.
-  학교 문맥은 저장에 성공한 기기 프로필에서 공유하며 미저장 폼 값을 요청에 적용하지 않는다.
+  학교 문맥은 저장에 성공한 개인 프로필에서 공유하며 미저장 폼 값을 요청에 적용하지 않는다.
 
 - 기록 예시 행은 `features/records/fixtures/`, 졸업요건 표 행은
   `features/graduation/graduation_mock_fixture.dart`에 둔다.
-- `planning`의 프로필·일정은 `SharedPreferences`에 저장하는 기기 로컬 개인 계획이다. 학교 공식
-  학사정보·일정·졸업 판정 데이터가 아니며, API 계약이 정해지면 repository를 교체한다.
+- `planning`의 실제 일반 계정 프로필·일정은 `RemotePlanningRepository`가 서버에 저장한다. debug 샘플과 기기 원본은 `PlanningRepository`의 SharedPreferences에 보관한다. 어느 쪽도 학교 공식 학사정보·일정·졸업 판정 데이터가 아니다. [동의 이전·버전 충돌·계정 전환](../api/planning-integration.md)을 따른다.
 - `planning_repository.dart`는 읽기 성공 전 쓰기를 차단하고 저장 성공 뒤에만 메모리 상태를
   확정한다. `planning_storage_state.dart`는 홈·일정·설정의 읽기 오류·재시도 표현을 공유한다.
 - `features/records/personal_record_repository.dart`는 메뉴별 v1 키의 기기 로컬 개인 기록을 소유한다.

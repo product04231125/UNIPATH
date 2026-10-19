@@ -72,8 +72,7 @@ flowchart LR
 
 개별 CRUD와 같은 서비스 검증을 사용하되 커밋은 묶음 전체 마지막에 한 번만 한다.
 이전은 기존 프로필을 덮어쓰지 않고 개인 자료를 학교 확정 기록으로 바꾸지 않는다.
-프론트 타입/전송 adapter와 [이전 API](api/personal-imports.md)를 제공하며 실제 원본을
-읽는 동의·시간대 확인과 저장소 전환 화면은 후속이다.
+프론트 타입/전송 adapter와 [이전 API](api/personal-imports.md)를 제공한다. [학업 프로필·일정 화면](api/planning-integration.md)은 동의·시간대 확인과 서버 저장소 전환을 연결했으며 다른 개인 자료 화면은 후속이다.
 
 ### 실제 관리자 저장 경로
 
@@ -144,8 +143,7 @@ flowchart LR
   좁은 폭 오버레이를 사용한다.
 - 도킹·분리 창은 같은 학교 질의 HTTP 어댑터와 응답 위젯을 사용한다. 질문과 사용자가 확인한
   학교 문맥만 전송한다. 학교 질의 API와 Flutter 연동 코드가 이 브랜치에 함께 포함된다.
-- 대화·질문·요청은 메인이 소유하고 IPC로 창 사이에 공유한다. 학교 질의 문맥은 계정별 기기 로컬의 저장된
-  프로필을 공유하고 Windows 분리 창은 메인 창에 IPC로 조회·저장을 요청한다. 서버 대화
+- 대화·질문·요청은 메인이 소유하고 IPC로 창 사이에 공유한다. 학교 질의 문맥은 저장된 개인 프로필(실제 일반 계정은 서버 저장)을 공유하고 Windows 분리 창은 메인 창에 IPC로 조회·저장을 요청한다. 서버 대화
   저장·동기화는 conversation_id 등의 별도 계약이 필요한 후속 구현이다.
 - 메인 창의 채팅 아이콘은 기존 독립 창이 있으면 새 창을 만들지 않고 해당 창을
   전면화한다. Windows 목업에서 메인 창을 닫으면 분리 AI 창을 먼저 명시적으로
@@ -172,8 +170,7 @@ flowchart LR
 아래 전체 도메인/외부 서비스 관계는 목표 구조다. 인증·운영자 초기화는
 [인증 API](api/authentication.md)를 따른다. 이메일/학교 담당자 신원 확인은 후속이다.
 [개인 자료 API](api/personal.md)와 [학생용 학사 조회](api/student-catalog.md)는 구현했고,
-프론트의 현재 개인 화면은 계속 사용자 UUID별 로컬 저장이다. 공통 AuthApi를 사용하는 전송
-adapter와 Pydantic 생성 DTO를 제공하지만 화면 전환·자료 이전/동기화 UI는 후속이다.
+프론트의 실제 일반 계정 프로필·일정은 서버 저장이며 다른 개인 화면은 사용자 UUID별 로컬 저장이다. 공통 AuthApi의 사용자 UUID·로그인 세대에 묶인 전송 adapter와 Pydantic DTO를 사용한다. 서버는 선택 X-Unipath-Owner 헤더를 실제 신원과 비교해 탭 간 계정 전환 중 저장을 차단한다. 프로필·일정의 동의 이전은 기기 journal로 같은 요청을 재개하며 원본을 보존한다. 다른 개인 자료의 화면 전환·이전은 후속이다.
 [개인 계산 API](api/personal-evaluations.md)는 별도 typed 전송 adapter를 제공하며
 현재 개인 화면의 계산 버튼에는 연결하지 않았다. RAG/LLM은 이 계산에 참여하지 않는다.
 
@@ -193,7 +190,13 @@ flowchart LR
     Auth --> Catalog[학생 카탈로그 API]
     Catalog --> Published[삭제 학교 제외·기준일·최신 적용본 필터]
     Published --> Academic[(학사 메타데이터)]
-    Existing[기존 개인 화면] --> Local[계정별 기기 로컬 자료]
+    Planning[학업 프로필·일정 화면] --> Bound[계정 UUID·로그인 세대에 묶인 전송]
+    Bound --> Auth
+    Legacy[기기 원본] --> Consent[범위·시간대 확인과 이전 동의]
+    Consent --> Journal[계정별 재시도 journal]
+    Journal --> Import[원자적 개인 이전 API]
+    Import --> Personal
+    Existing[다른 개인 화면] --> Local[계정별 기기 로컬 자료]
 ```
 
 ```mermaid
@@ -487,8 +490,7 @@ flowchart TB
 `unipath-product` 프로젝트에 연결한다. 각 프로젝트의 API·DB 네트워크, DB 볼륨과
 비밀번호는 분리하고 동일한 FastAPI 이미지를 사용한다. 공개 게이트웨이에는 Web만
 연결하며 Web이 인증·관리자·학교 질의·readiness API를 내부 FastAPI로 프록시한다.
-다운로드 앱의 API도 해당 HTTPS 원점을 사용한다. develop은 실제 계정/역할과 계정별 로컬
-기록을 제공한다. main은 명시적 승격 전 이전 프리뷰를 유지한다. 운영 학사/공식 판정·LLM 완성과 구분한다.
+다운로드 앱의 API도 해당 HTTPS 원점을 사용한다. develop은 실제 계정/역할·학업 프로필/일정 서버 저장과 다른 개인 기록의 계정별 로컬 저장을 제공한다. main은 명시적 승격 전 이전 프리뷰를 유지한다. 운영 학사/공식 판정·LLM 완성과 구분한다.
 구체적인 설정·HTTPS 개통·GitHub 다운로드 절차는 [`releases.md`](releases.md)를 따른다.
 
 ```mermaid

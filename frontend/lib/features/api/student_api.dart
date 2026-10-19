@@ -1,8 +1,8 @@
 import '../auth/auth_api.dart';
 import 'student_api_models.dart';
 
-/// Contract adapter only. Existing personal screens keep their local repository
-/// until the user-facing migration/synchronization flow is connected.
+/// Typed personal contract adapter. Live planning uses an owner-bound gateway;
+/// other personal screens retain their local repositories until connected.
 class StudentResource<T extends StudentPayload> {
   const StudentResource(this.path, this.decode);
   final String path;

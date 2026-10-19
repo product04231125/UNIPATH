@@ -11,6 +11,8 @@ import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/page_header.dart';
 import '../planning/planning_dates.dart';
+import '../planning/remote_planning_repository.dart';
+import '../auth/auth_api.dart';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({
@@ -115,7 +117,8 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Widget _header({List<Widget> actions = const []}) => PageHeader(
     title: '일정',
-    description: '개인 계획을 이 기기에 저장합니다. 학교 공식 일정·알림·반복 일정은 아직 연결되지 않았습니다.',
+    description:
+        '개인 계획 · ${widget.repository.storageLabel}. 학교 공식 일정·알림·반복 일정은 아직 연결되지 않았습니다.',
     actions: actions,
   );
 
@@ -341,6 +344,7 @@ class _EventEditorState extends State<_EventEditor> {
   final _formKey = GlobalKey<FormState>();
   bool _saving = false;
   String? _error;
+  late final String _id = widget.event?.id ?? planningClientId();
 
   @override
   void initState() {
@@ -400,6 +404,7 @@ class _EventEditorState extends State<_EventEditor> {
           TextFormField(
             enabled: !_saving,
             controller: _title,
+            maxLength: 128,
             autofocus: true,
             decoration: const InputDecoration(
               labelText: '제목',
@@ -425,6 +430,8 @@ class _EventEditorState extends State<_EventEditor> {
             _end,
             (value) => setState(() => _end = value),
           ),
+          if (widget.repository.isServerBacked)
+            const Text('일시는 이 기기의 시간대로 입력·표시하고 서버에는 UTC 시각으로 저장합니다.'),
           const SizedBox(height: 12),
           AnchoredSelectField<PlanningEventCategory>(
             value: _category,
@@ -439,6 +446,7 @@ class _EventEditorState extends State<_EventEditor> {
           TextFormField(
             enabled: !_saving,
             controller: _memo,
+            maxLength: 8000,
             minLines: 2,
             maxLines: 4,
             decoration: const InputDecoration(labelText: '메모 (선택)'),
@@ -507,7 +515,9 @@ class _EventEditorState extends State<_EventEditor> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('개인 일정 삭제'),
-        content: Text('${widget.event!.title} 일정을 이 기기에서 삭제할까요?'),
+        content: Text(
+          '${widget.event!.title} 일정을 ${widget.repository.isServerBacked ? '계정 서버' : '이 기기'}에서 삭제할까요?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -522,7 +532,12 @@ class _EventEditorState extends State<_EventEditor> {
       ),
     );
     if (confirmed == true && mounted) {
-      await _persist(() => widget.repository.deleteEvent(widget.event!.id));
+      await _persist(
+        () => widget.repository.deleteEvent(
+          widget.event!.id,
+          expectedVersion: widget.event!.version,
+        ),
+      );
     }
   }
 
@@ -534,9 +549,13 @@ class _EventEditorState extends State<_EventEditor> {
     try {
       await write();
       if (mounted) Navigator.pop(context);
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        setState(() => _error = '기기에 저장하지 못했습니다. 입력과 기존 일정을 유지했으니 다시 시도하세요.');
+        setState(
+          () => _error = error is AuthFailure
+              ? '${error.message} 입력은 유지됩니다.'
+              : '${widget.repository.isServerBacked ? '서버' : '기기'}에 저장하지 못했습니다. 입력과 기존 일정을 유지했으니 다시 시도하세요.',
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -552,7 +571,8 @@ class _EventEditorState extends State<_EventEditor> {
       return;
     }
     final event = PlanningEvent(
-      id: widget.event?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      id: _id,
+      version: widget.event?.version,
       title: _title.text.trim(),
       start: _start,
       end: _end,
