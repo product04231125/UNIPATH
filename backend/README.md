@@ -242,7 +242,7 @@ Psycopg 연결 문자열은 `postgresql+psycopg://`로 시작해야 한다.
 [개인 자료 계약](../docs/api/personal.md), [학생 카탈로그](../docs/api/student-catalog.md)를 따른다.
 비밀번호 변경은 `/auth/change-password`에서 기존 비밀번호 검증·전체 세션 폐기를 수행한다.
 
-프론트 전송 DTO는 아래 명령으로 Pydantic에서 재생성한다. 기존 개인 화면은 계속 로컬 저장이다.
+프론트 전송 DTO는 아래 명령으로 Pydantic에서 재생성한다. 학업 프로필·일정 화면은 서버 저장이며 다른 개인 화면은 로컬 저장이다.
 
 ```bash
 uv run --frozen python ../scripts/export_student_contracts.py
@@ -258,7 +258,7 @@ dart format frontend/lib/features/api/student_api_models.dart
 결과·조건·최소 입력 snapshot을 불변 이력으로 저장하고 목록/상세/본인 삭제를 제공한다.
 소유권·버전·재시도를 검증하고 원본이 바뀌어도 과거 결과는 유지한다.
 [계산 계약](../docs/api/personal-evaluations.md)을 따른다. Flutter typed 전송 adapter는
-`personal_evaluation_api.dart`이며 현재 개인 화면은 로컬 저장·계산 API 미연결이다.
+`personal_evaluation_api.dart`이며 현재 개인 계산 화면은 로컬 자료를 사용하며 계산 버튼 API는 미연결이다.
 
 ## 학교 문서 검토·DB 검색
 
