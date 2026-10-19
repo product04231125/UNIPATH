@@ -73,6 +73,11 @@ class RegisterRequest(LoginRequest):
         return value
 
 
+class PasswordChangeRequest(StrictModel):
+    old_password: SecretStr = Field(min_length=1, max_length=128)
+    new_password: SecretStr = Field(min_length=15, max_length=128)
+
+
 class UserView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
