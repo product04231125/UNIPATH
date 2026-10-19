@@ -1,6 +1,8 @@
 """Prove restoration using synthetic data in two disposable PostgreSQL containers."""
 
 import hashlib
+import os
+import subprocess
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -19,6 +21,44 @@ IMAGE = (
     "pgvector/pgvector:0.8.6-pg17-bookworm@sha256:"
     "cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f"
 )
+
+
+def application_schema_backup(directory: Path):
+    """Check the actual migration CHECKs/FKs too, beyond the small data fixture."""
+    with disposable_database(IMAGE) as (container, settings):
+        environment = {
+            **os.environ,
+            "APP_ENV": "local",
+            "POSTGRES_HOST": settings.postgres_host,
+            "POSTGRES_PORT": str(settings.postgres_port),
+            "POSTGRES_DB": settings.postgres_db,
+            "POSTGRES_USER": settings.postgres_user,
+            "POSTGRES_PASSWORD": settings.postgres_password.get_secret_value(),
+        }
+        environment.pop("DATABASE_URL", None)
+        subprocess.run(
+            ["uv", "run", "--frozen", "alembic", "upgrade", "head"],
+            cwd=Path(__file__).resolve().parents[1],
+            env=environment,
+            check=True,
+        )
+        backup = backup_database(container, IMAGE, settings, Environment.LOCAL, directory)
+        manifest = verify_backup(backup)
+        tables = {row["table"] for row in manifest.inventory["tables"]}
+        assert {
+            "users",
+            "personal_evaluations",
+            "school_knowledge_documents",
+            "school_knowledge_chunks",
+            "certificate_providers",
+            "certificates",
+            "official_rule_programs",
+            "official_program_rules",
+            "official_program_evidence",
+            "official_program_course_refs",
+            "official_program_certificate_refs",
+        } <= tables
+    print("Application migration backup restored with all constraints and indexes intact.")
 
 
 def main():
@@ -95,6 +135,7 @@ def main():
                 raise AssertionError("Unreadable archive was accepted")
             after = original_run(["docker", "ps", "-aq", "--filter", "label=unipath.restorecheck"])
             assert before == after, "Failed restore left a container behind"
+        application_schema_backup(Path(temporary) / "application-backups")
     print(
         "Backup smoke passed: Unicode, decimals, JSON, vectors, constraints, snapshot, corruption."
     )

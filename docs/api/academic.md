@@ -57,7 +57,8 @@ transaction advisory lock 안에서 세션과 역할을 다시 읽는다. 코드
 
 **현재 `rules.definition`은 검토한 사람의 조건 설명이다. 실행 가능한 Rule Engine
 조건 JSON으로 해석하지 않는다.** 종류는 `credits/required_course/volunteer/thesis/certificate/custom`다.
-공식 기록 매핑, 실행 조건 스키마와 판정 HTTP API는 별도 작업이다.
+실행 조건은 별도 [공식 실행 규칙 API](rule-programs.md)로 등록·검토한다.
+공식 기록 매핑과 판정 HTTP API는 후속이다. 기존 메타데이터 편집으로 실행 조건을 덮어쓰지 않는다.
 
 문서 종류는 `academic/graduation/other`다. 원문 URL과 메타데이터를 저장하며 URL을 서버에서
 자동 다운로드하지 않는다. 추출 본문·청크·관리자 검토는 별도 [학교 지식 API](school-knowledge.md)에

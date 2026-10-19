@@ -8,11 +8,19 @@ from app.api.access import router as access_router
 from app.api.assistant import router as assistant_router
 from app.api.auth import router as auth_router
 from app.api.catalog import router as catalog_router
+from app.api.certificates import (
+    public_router as certificate_catalog_router,
+)
+from app.api.certificates import (
+    router as certificates_router,
+)
 from app.api.evaluations import router as evaluations_router
 from app.api.health import health, router
 from app.api.knowledge import router as knowledge_router
 from app.api.knowledge import student_router as knowledge_student_router
 from app.api.personal import router as personal_router
+from app.api.rule_programs import public_router as program_catalog_router
+from app.api.rule_programs import router as program_router
 from app.core.config import Settings, get_settings
 from app.core.database import create_session_factory
 from app.core.errors import register_error_handlers
@@ -72,6 +80,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(evaluations_router, prefix="/api/v1")
     application.include_router(knowledge_router, prefix="/api/v1")
     application.include_router(knowledge_student_router, prefix="/api/v1")
+    application.include_router(certificates_router, prefix="/api/v1")
+    application.include_router(certificate_catalog_router, prefix="/api/v1")
+    application.include_router(program_router, prefix="/api/v1")
+    application.include_router(program_catalog_router, prefix="/api/v1")
     # Compatibility alias for the README's infrastructure smoke check.
     application.add_api_route(
         "/health", health, response_model=HealthResponse, include_in_schema=False

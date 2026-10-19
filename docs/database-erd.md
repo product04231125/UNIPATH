@@ -13,7 +13,8 @@ users·auth_sessions·auth_throttles·institutions·admin_scopes·identity_audit
 rule_sets·graduation_rules·official_documents를 추가했다. `0004_personal_records`는
 개인 프로필·개인 자료 11종·순서 참조 2종·재시도 영수증 15개를 추가했다.
 `0005_personal_evaluations`는 개인 계산 이력 하나를 추가한다. `0006_school_knowledge`는
-학교 문서 추출/검토와 청크 2개를 추가해 **총 31개 테이블**을 물리 구현한다.
+학교 문서 추출/검토와 청크 2개를 추가한다. `0007_official_rule_programs`는 자격증/발급기관
+마스터와 실행 규칙·근거·마스터 참조 7개를 추가해 **총 38개 테이블**을 물리 구현한다.
 학교 메타데이터/버전/삭제 표시와 범위 회수 사유도 추가한다.
 아래 전체 논리 ERD/단계 표 중 학생 공식 기록·공식 판정·벡터 임베딩은 도입 계획이다.
 현재 users에는 학교/학과/교육과정 FK가 없으며 자유 입력 프로필을 공식 학적으로 승격하지 않는다.
@@ -115,11 +116,35 @@ pgvector 임베딩은 미연결이며 질문·답변·대화 이력도 DB에 저
 파일 플래그와 공식 문서 메타데이터 적용은 이 별도 RAG 승인 절차를 대신하지 않는다. 학사 관리의
 버전·소속 복합 FK·삭제 보관 정책은 [학사 API](api/academic.md)를 따른다.
 
+공식 실행 규칙의 물리 관계는 다음과 같다. 실행본은 적용된 집합 또는 독립 요건 하나를
+참조한다. 하위 실행 조건·근거·과목 참조는 학교 복합 FK로 다른 학교 자료 연결을 차단한다.
+`school_knowledge_chunks(id, institution_id)` 고유 키도 새 마이그레이션에서 추가한다.
+초안 삭제 시 하위 조건/근거/참조만 cascade하며 원본·과목·문서·자격증은 삭제하지 않는다.
+승인본·회수본은 이력으로 보존한다. 세부 계약은 [실행 규칙](api/rule-programs.md)과
+[자격증 마스터](api/certificates.md)를 따른다.
+
+```mermaid
+erDiagram
+    CERTIFICATE_PROVIDERS ||--o{ CERTIFICATES : issues
+    RULE_SETS o|--o{ OFFICIAL_RULE_PROGRAMS : anchors
+    GRADUATION_RULES o|--o{ OFFICIAL_RULE_PROGRAMS : anchors_standalone
+    INSTITUTIONS ||--o{ OFFICIAL_RULE_PROGRAMS : scopes
+    OFFICIAL_RULE_PROGRAMS ||--o{ OFFICIAL_PROGRAM_RULES : defines
+    GRADUATION_RULES ||--o{ OFFICIAL_PROGRAM_RULES : describes
+    OFFICIAL_PROGRAM_RULES ||--o{ OFFICIAL_PROGRAM_EVIDENCE : cites
+    SCHOOL_KNOWLEDGE_CHUNKS ||--o{ OFFICIAL_PROGRAM_EVIDENCE : supports
+    OFFICIAL_PROGRAM_RULES ||--o{ OFFICIAL_PROGRAM_COURSE_REFS : requires
+    COURSES ||--o{ OFFICIAL_PROGRAM_COURSE_REFS : snapshots
+    OFFICIAL_PROGRAM_RULES ||--o{ OFFICIAL_PROGRAM_CERTIFICATE_REFS : accepts
+    CERTIFICATES ||--o{ OFFICIAL_PROGRAM_CERTIFICATE_REFS : snapshots
+```
+
 `app/rules/`에는 학점·필수과목·봉사·자격증·논문 요건의 독립 계산 코어를 구현했다.
 공식 규칙의 계층·입학연도·이수경로·유효기간·버전 선택과 개인 기준 계산을 구분하며
 내부의 `RuleSet`·`Snapshot`·`Evaluation` 계약을 사용한다. 이 계약은 SQLAlchemy 모델이나
-공개 API 스키마가 아니며 아래 논리 엔터티를 생성하지 않는다. 공식 승인·소유권·학교별
-성적/재수강 정책을 확인하는 공식 DB 어댑터와 공식 감사 저장은 후속 단계다.
+공개 API 스키마가 아니며 아래 논리 엔터티를 생성하지 않는다. 승인 실행본을 코어로 전달하는
+내부 어댑터를 제공한다. 학교 확정 기록·소유권·학교별 성적/재수강 정책을 확인하는
+공식 기록 DB 어댑터와 공식 감사 저장은 후속 단계다.
 개인 DB 어댑터는 별도 DTO로 본인 자료·명시적 조건을 검증하고
 `personal_evaluations`에 불변 결과·조건·최소 계산 입력·버전을 보관한다.
 과정/자료 ID는 삭제 후에도 과거 결과가 유지되는 역사적 참조이며 live FK가 아니다.
@@ -766,7 +791,7 @@ erDiagram
 
 ## 단계별 도입 계획과 현재 구현
 
-현재 물리 구현은 인증/학교 범위·학사 메타데이터·개인 자료/참조/영수증·개인 계산·학교 지식 31개 테이블이다. 아래 표는 각 단계의 전체 목표이며
+현재 물리 구현은 인증/학교 범위·학사 메타데이터·개인 자료/참조/영수증·개인 계산·학교 지식·실행 규칙/자격증 38개 테이블이다. 아래 표는 각 단계의 전체 목표이며
 나머지 학사·문서·판정 엔터티가 이미 생성됐다는 뜻이 아니다.
 
 | 단계 | 목표 | 실제 생성·구현 대상 |
