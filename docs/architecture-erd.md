@@ -26,7 +26,8 @@ JSONL을 연결한다. 파일 코퍼스는 로컬 환경에서만 사용한다.
 현재 PDF는 미승인이고 실제 생성기는 없으므로 공식 답변은 생성하지 않는다.
 졸업 판정 요청은 `rule_engine_required`로 안내하며 HTTP 졸업감사 호출은 후속 구현이다.
 `app/rules/`의 결정론적인 계산 코어는 DB·HTTP·LLM과 분리해 구현했다. 내부의 공식 규칙
-계산과 개인 기준 계산을 구분하고, 공개 API는 아직 이 코어를 호출하지 않는다.
+계산과 개인 기준 계산을 구분한다. 개인 계산 API는 본인 DB 자료와 명시적 조건을 코어에
+전달하며 불변 결과/입력 snapshot을 저장한다. 공식 졸업감사 HTTP API는 후속이다.
 `app/operations/db_backups.py`는 호스트에서 실행하는 읽기 전용 DB 백업·임시 DB 복구 검증
 도구이며 애플리케이션 요청 경로에 포함하지 않는다.
 현재 구현 흐름은 아래와 같다. 상세 API 계약은
@@ -46,7 +47,10 @@ flowchart LR
     Approval -->|승인 근거 없음| Missing[insufficient_evidence]
     Approval -->|승인 근거 있음 · 생성기 없음| Failed[failed]
     PrivateJson[비공개 개인 기준 JSON] --> RuleCore[독립적인 Rule Engine 코어]
+    PersonalAPI[인증한 개인 계산 API] --> Owned[본인 자료·명시 조건·버전 검증]
+    Owned --> RuleCore
     RuleCore --> PersonalResult[개인 기준 계산 · 공식 판정 아님]
+    PersonalResult --> History[(본인 불변 결과·최소 입력 snapshot)]
 ```
 
 ### 실제 관리자 저장 경로
@@ -102,6 +106,8 @@ flowchart LR
 [개인 자료 API](api/personal.md)와 [학생용 학사 조회](api/student-catalog.md)는 구현했고,
 프론트의 현재 개인 화면은 계속 사용자 UUID별 로컬 저장이다. 공통 AuthApi를 사용하는 전송
 adapter와 Pydantic 생성 DTO를 제공하지만 화면 전환·자료 이전/동기화 UI는 후속이다.
+[개인 계산 API](api/personal-evaluations.md)는 별도 typed 전송 adapter를 제공하며
+현재 개인 화면의 계산 버튼에는 연결하지 않았다. RAG/LLM은 이 계산에 참여하지 않는다.
 
 ```mermaid
 flowchart LR
@@ -110,6 +116,12 @@ flowchart LR
     Me --> Owner[세션 소유자 및 버전·참조 검증]
     Owner --> Personal[(개인 프로필·기록·초안·순서 참조)]
     Owner --> Receipt[(생성 재시도 영수증)]
+    Auth --> Calculation[개인 계산 API]
+    Calculation --> PrivateGuard[본인 과정·자료·명시 조건·버전 확인]
+    Personal --> PrivateGuard
+    PrivateGuard --> Engine[결정론적 개인 계산]
+    Engine --> Snapshots[(본인 불변 계산 이력·최소 입력)]
+    Calculation --> Receipt
     Auth --> Catalog[학생 카탈로그 API]
     Catalog --> Published[삭제 학교 제외·기준일·최신 적용본 필터]
     Published --> Academic[(학사 메타데이터)]

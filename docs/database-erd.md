@@ -11,7 +11,8 @@
 users·auth_sessions·auth_throttles·institutions·admin_scopes·identity_audits 6개 테이블을
 생성한다. `0003_academic_catalog`는 departments·curricula·courses·curriculum_courses·
 rule_sets·graduation_rules·official_documents를 추가했다. `0004_personal_records`는
-개인 프로필·개인 자료 11종·순서 참조 2종·재시도 영수증 15개를 추가해 **총 28개 테이블**을 물리 구현한다.
+개인 프로필·개인 자료 11종·순서 참조 2종·재시도 영수증 15개를 추가했다.
+`0005_personal_evaluations`는 개인 계산 이력 하나를 추가해 **총 29개 테이블**을 물리 구현한다.
 학교 메타데이터/버전/삭제 표시와 범위 회수 사유도 추가한다.
 아래 전체 논리 ERD/단계 표 중 학생 공식 기록·판정·RAG 청크는 도입 계획이다.
 현재 users에는 학교/학과/교육과정 FK가 없으며 자유 입력 프로필을 공식 학적으로 승격하지 않는다.
@@ -73,6 +74,16 @@ erDiagram
     USERS ||--o{ PORTFOLIO_COMPOSITIONS : owns
     USERS ||--o{ APPLICATION_DOCUMENTS : owns
     USERS ||--o{ PERSONAL_CREATION_RECEIPTS : retries
+    USERS ||--o{ PERSONAL_EVALUATIONS : retains
+    PERSONAL_EVALUATIONS {
+        uuid id PK
+        uuid owner_id FK
+        uuid curriculum_id "historical identity, no live FK"
+        int curriculum_version
+        date evaluated_on
+        jsonb result_json
+        jsonb input_snapshot_json
+    }
     PERSONAL_CURRICULA ||--o{ PERSONAL_CURRICULUM_COURSES : includes
     PERSONAL_CURRICULA ||--o{ PERSONAL_GRADUATION_RULES : defines
     PERSONAL_COURSE_RECORDS o|--o{ PERSONAL_CURRICULUM_COURSES : links
@@ -106,7 +117,13 @@ erDiagram
 공식 규칙의 계층·입학연도·이수경로·유효기간·버전 선택과 개인 기준 계산을 구분하며
 내부의 `RuleSet`·`Snapshot`·`Evaluation` 계약을 사용한다. 이 계약은 SQLAlchemy 모델이나
 공개 API 스키마가 아니며 아래 논리 엔터티를 생성하지 않는다. 공식 승인·소유권·학교별
-성적/재수강 정책을 확인하는 DB 어댑터와 감사 저장은 후속 단계다.
+성적/재수강 정책을 확인하는 공식 DB 어댑터와 공식 감사 저장은 후속 단계다.
+개인 DB 어댑터는 별도 DTO로 본인 자료·명시적 조건을 검증하고
+`personal_evaluations`에 불변 결과·조건·최소 계산 입력·버전을 보관한다.
+과정/자료 ID는 삭제 후에도 과거 결과가 유지되는 역사적 참조이며 live FK가 아니다.
+소유자 FK·개인 표시/상태 CHECK·소유자/재시도 키 UNIQUE와 목록 인덱스를 적용한다.
+소유자는 결과/snapshot을 삭제할 수 있고 생성 영수증은 삭제 결과의 재생성을 막는다.
+[개인 계산 계약](api/personal-evaluations.md)을 따르며 아래 공식 GraduationAudit와 구별한다.
 계산 경로·누락 정보 처리·범위/버전 충돌은 [Rule Engine 문서](rule-engine.md)를 따른다.
 현재 DB의 백업·격리 복구 검증은 [백업 문서](database-backups.md)를 따른다.
 
@@ -711,7 +728,7 @@ erDiagram
 
 ## 단계별 도입 계획과 현재 구현
 
-현재 물리 구현은 인증/학교 범위·학사 메타데이터·개인 자료/참조/영수증 28개 테이블이다. 아래 표는 각 단계의 전체 목표이며
+현재 물리 구현은 인증/학교 범위·학사 메타데이터·개인 자료/참조/영수증·개인 계산 이력 29개 테이블이다. 아래 표는 각 단계의 전체 목표이며
 나머지 학사·문서·판정 엔터티가 이미 생성됐다는 뜻이 아니다.
 
 | 단계 | 목표 | 실제 생성·구현 대상 |
