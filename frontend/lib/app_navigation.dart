@@ -120,8 +120,17 @@ class AppNavigation extends RouterDelegate<AppLocation>
                 '현재 세션이 종료되었습니다. 앞선 요청의 완료 여부까지 확정된 것은 아닙니다. 다시 로그인하여 확인하세요.',
               AccountSecurityOutcome.changed => null,
             };
-            // A confirmed periodic expiry may already have shown the login page.
-            if (_identity == null) notifyListeners();
+            // Permissions can replace the page (and remove its dialog) while
+            // this request is in flight. Session termination belongs to the
+            // captured account, not to the lifetime of that old dialog route.
+            if (outcome != AccountSecurityOutcome.changed) {
+              final navigationContext = navigatorKey?.currentContext;
+              if (navigationContext != null && navigationContext.mounted) {
+                _signedOut(navigationContext);
+              } else if (_identity == null) {
+                notifyListeners();
+              }
+            }
           },
         ),
       );

@@ -566,6 +566,57 @@ void main() {
   );
 
   testWidgets(
+    'known204 ends the account after permission refresh removed its old dialog route',
+    (tester) async {
+      final response = Completer<http.Response>();
+      int permissionVersion = 1;
+      final auth = AuthApi(
+        cookieMode: true,
+        client: MockClient((r) async {
+          if (r.url.path.endsWith('/change-password')) {
+            return response.future;
+          }
+          if (r.url.path.endsWith('/me')) {
+            final identity = identityJson(role: 'school_admin');
+            return json({
+              ...identity,
+              'user': {
+                ...identity['user']! as Map,
+                'version': permissionVersion,
+              },
+              'permission_version': permissionVersion,
+            });
+          }
+          return json({'items': [], 'next_cursor': null});
+        }),
+      );
+      addTearDown(auth.close);
+      await tester.pumpWidget(UniversityPathApp(authGateway: auth));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 50));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('계정 보안'));
+      await tester.pumpAndSettle();
+      await fill(tester);
+      final button = find.widgetWithText(FilledButton, '비밀번호 변경');
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pump();
+      permissionVersion = 2;
+      await tester.pump(const Duration(seconds: 11));
+      await tester.pumpAndSettle();
+      expect(find.byType(AccountSecurityDialog), findsNothing);
+      expect(find.byType(LoginPage), findsNothing);
+      response.complete(http.Response('', 204));
+      await tester.pumpAndSettle();
+      expect(find.byType(LoginPage), findsOneWidget);
+      expect(find.text('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
     'development samples do not expose an unbacked account-security action',
     (tester) async {
       await tester.pumpWidget(
