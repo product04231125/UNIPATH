@@ -231,8 +231,13 @@ void main() {
       throwsA(isA<AuthFailure>()),
     );
     first.dispose();
+    await local.saveEvent(event(title: '로컬 후속 수정'));
+    final latestOriginal = preferences.getString(key);
+    expect(latestOriginal, isNot(original));
     final retry = repo(server);
     await retry.load();
+    expect(retry.localPlanningPreview.join(), contains('합성 일정'));
+    expect(retry.localPlanningPreview.join(), isNot(contains('로컬 후속 수정')));
     await retry.importLocalPlanning(confirmed: true);
     final imports = server.calls
         .where((c) => c.$2 == 'me/personal-imports')
@@ -241,7 +246,7 @@ void main() {
     expect(imports[0].$3, imports[1].$3);
     expect(imports[0].$3!['profile'], containsPair('school', '기기 합성 학교'));
     expect(retry.canImportLocalPlanning, isFalse);
-    expect(preferences.getString(key), original);
+    expect(preferences.getString(key), latestOriginal);
     local.dispose();
     retry.dispose();
   });
@@ -267,6 +272,23 @@ void main() {
     expect(repository.profile.school, '서버');
     local.dispose();
     anonymous.dispose();
+    repository.dispose();
+  });
+  test('invalid import journal disables import without blocking server planning or overwriting local data', () async {
+    final preferences = await SharedPreferences.getInstance();
+    final key = const LocalDataOwner(userId)
+        .key('university_path.planning_import.v1');
+    const corrupted = '{"completed":false,"request":{}}';
+    await preferences.setString(key, corrupted);
+    final server = PlanningServer();
+    final repository = repo(server);
+    await repository.load();
+    expect(repository.loadFailed, isFalse);
+    expect(repository.canImportLocalPlanning, isFalse);
+    expect(repository.localPlanningNotice, contains('기기 자료를 확인하지 못했습니다'));
+    expect(preferences.getString(key), corrupted);
+    await repository.saveEvent(event());
+    expect(server.events, hasLength(1));
     repository.dispose();
   });
   test('old bound native and browser gateways stop before sending after account switch', () async {

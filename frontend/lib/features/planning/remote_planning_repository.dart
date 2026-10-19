@@ -22,6 +22,7 @@ class RemotePlanningRepository extends PlanningRepository {
   PlanningProfile? _localProfile;
   List<PlanningEvent> _localEvents = [];
   Map<String, dynamic>? _journal;
+  PersonalImportRequest? _importRequest;
   SharedPreferences? _preferences;
   bool _localReadFailed = false;
   final _records = <String, StudentRecord<StudentEventCreate>>{};
@@ -52,14 +53,29 @@ class RemotePlanningRepository extends PlanningRepository {
           _localEvents.isNotEmpty ||
           (_hasLocalProfile && _profile.version == 0));
   @override
-  List<String> get localPlanningPreview => [
-    if (_hasLocalProfile)
-      '기기 학업 정보: ${_localProfile!.school} · ${_localProfile!.department} · '
-          '${_localProfile!.admissionYear ?? '입학연도 미입력'} '
-          '(${_profile.version == 0 ? '서버 초기화 대상' : '서버 기존 정보 유지'})',
-    for (final event in _localEvents.take(100))
-      '${event.title}: ${event.start.toLocal()} ~ ${event.end.toLocal()}',
-  ];
+  List<String> get localPlanningPreview {
+    // Retry consent must show the preserved request, even if an older app has
+    // meanwhile edited the original local store.
+    if (_importRequest != null && _journal?['completed'] != true) {
+      final request = _importRequest!;
+      return [
+        if (request.profile != null)
+          '이전 요청의 학업 정보: ${request.profile!.school} · ${request.profile!.department} · '
+              '${request.profile!.admissionYear ?? '입학연도 미입력'}',
+        for (final event in request.events)
+          '${event.title}: ${event.startsAt.toLocal()} ~ ${event.endsAt.toLocal()}',
+      ];
+    }
+    return [
+      if (_hasLocalProfile)
+        '기기 학업 정보: ${_localProfile!.school} · ${_localProfile!.department} · '
+            '${_localProfile!.admissionYear ?? '입학연도 미입력'} '
+            '(${_profile.version == 0 ? '서버 초기화 대상' : '서버 기존 정보 유지'})',
+      for (final event in _localEvents.take(100))
+        '${event.title}: ${event.start.toLocal()} ~ ${event.end.toLocal()}',
+    ];
+  }
+
   @override
   String? get localPlanningNotice {
     if (_localReadFailed) return '기기 자료를 확인하지 못했습니다. 서버 자료만 표시합니다. 다시 불러와 주세요.';
@@ -150,6 +166,19 @@ class RemotePlanningRepository extends PlanningRepository {
       _journal = raw == null
           ? null
           : Map<String, dynamic>.from(jsonDecode(raw) as Map);
+      _importRequest = null;
+      if (_journal != null) {
+        if (_journal!['completed'] is! bool) {
+          throw const FormatException('Invalid import journal');
+        }
+        final request = PersonalImportRequest.fromJson(
+          Map<String, dynamic>.from(_journal!['request'] as Map),
+        );
+        if (request.sourceOwnerId != api.ownerId || !request.consentConfirmed) {
+          throw const FormatException('Unexpected import owner or consent');
+        }
+        _importRequest = request;
+      }
       _localReadFailed = false;
     } catch (_) {
       _localReadFailed = true;
@@ -332,6 +361,7 @@ class RemotePlanningRepository extends PlanningRepository {
           throw StateError('Could not preserve import retry information');
         }
         _journal = journal;
+        _importRequest = request;
       }
       final request = PersonalImportRequest.fromJson(
         Map<String, dynamic>.from(_journal!['request'] as Map),
