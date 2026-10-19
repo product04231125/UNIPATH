@@ -21,6 +21,7 @@ FROM base AS test
 RUN uv sync --frozen --no-install-project
 COPY backend/tests ./tests
 COPY docs/sources /docs/sources
+COPY docs/api/openapi.json /docs/api/openapi.json
 ENV PYTEST_ADDOPTS="-o cache_dir=/tmp/pytest-cache"
 USER appuser
 CMD ["pytest", "-q"]

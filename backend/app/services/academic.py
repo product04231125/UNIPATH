@@ -17,6 +17,7 @@ from app.models.academic import (
     RuleSet,
 )
 from app.models.identity import AdminScope, IdentityAudit, Institution, Role
+from app.models.personal import PlanningProfile
 from app.schemas.common import ErrorCode
 from app.services import access, auth
 
@@ -45,9 +46,7 @@ def failure(message, status=409):
 
 def lock_actor(db, request):
     # Shared with role/scope changes, avoiding a write authorized before revocation.
-    access.lock_identity(db)
-    db.expire_all()
-    return auth.current_identity(request, db)
+    return access.locked_identity(db, request)
 
 
 def school(db, identity, institution_id):
@@ -219,6 +218,13 @@ def references(db, identity, model, record_id):
             )
         ):
             result.append({"id": scope.id, "kind": "scope", "name": "활성 학교 관리 범위"})
+    profile_key = {Department: "department_id", Curriculum: "curriculum_id"}.get(model)
+    if profile_key and db.scalar(
+        select(exists().where(getattr(PlanningProfile, profile_key) == record_id))
+    ):
+        # A profile FK must prevent catalog deletion without exposing a student's
+        # identity, profile values, or the number of profiles using the item.
+        result.append({"id": record_id, "kind": "protected_reference", "name": "보호된 연결 참조"})
     return result
 
 

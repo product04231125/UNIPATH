@@ -11,6 +11,9 @@ frontend
 data
 docs/*
 !docs/sources/
+!docs/api/
+docs/api/*
+!docs/api/openapi.json
 **/AGENTS.md
 **/SKILL.md
 **/.codex

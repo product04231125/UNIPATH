@@ -10,7 +10,8 @@
 `0001_enable_pgvector`는 vector 확장을 활성화하고 `0002_identity_sessions`는 실제
 users·auth_sessions·auth_throttles·institutions·admin_scopes·identity_audits 6개 테이블을
 생성한다. `0003_academic_catalog`는 departments·curricula·courses·curriculum_courses·
-rule_sets·graduation_rules·official_documents를 추가해 **13개 테이블**을 물리 구현한다.
+rule_sets·graduation_rules·official_documents를 추가했다. `0004_personal_records`는
+개인 프로필·개인 자료 11종·순서 참조 2종·재시도 영수증 15개를 추가해 **총 28개 테이블**을 물리 구현한다.
 학교 메타데이터/버전/삭제 표시와 범위 회수 사유도 추가한다.
 아래 전체 논리 ERD/단계 표 중 학생 공식 기록·판정·RAG 청크는 도입 계획이다.
 현재 users에는 학교/학과/교육과정 FK가 없으며 자유 입력 프로필을 공식 학적으로 승격하지 않는다.
@@ -50,6 +51,45 @@ erDiagram
     IDENTITY_AUDITS {
         uuid id PK
     }
+```
+
+개인 자료의 물리 관계는 아래와 같다. 모든 개인 항목은 owner_id로 제한하며 자원 간 참조는
+(id, owner_id) 복합 FK를 사용한다. 개인 과목·규칙의 교육과정도 같은 소유자/과정으로 검사한다.
+생성 영수증은 삭제된 자료를 재시도로 되살리지 않도록 원문 없이 식별자·지문만 보존한다.
+공식 학적·성적 테이블과 구별하며 [개인 자료 계약](api/personal.md)을 따른다.
+
+```mermaid
+erDiagram
+    USERS ||--o| PLANNING_PROFILES : plans
+    USERS ||--o{ PERSONAL_EVENTS : schedules
+    USERS ||--o{ PERSONAL_COURSE_RECORDS : owns
+    USERS ||--o{ PERSONAL_ACTIVITY_RECORDS : owns
+    USERS ||--o{ PERSONAL_EXPERIENCE_RECORDS : owns
+    USERS ||--o{ PERSONAL_CREDENTIAL_RECORDS : owns
+    USERS ||--o{ PERSONAL_ACHIEVEMENT_RECORDS : owns
+    USERS ||--o{ PERSONAL_CURRICULA : owns
+    USERS ||--o{ PERSONAL_CURRICULUM_COURSES : owns
+    USERS ||--o{ PERSONAL_GRADUATION_RULES : owns
+    USERS ||--o{ PORTFOLIO_COMPOSITIONS : owns
+    USERS ||--o{ APPLICATION_DOCUMENTS : owns
+    USERS ||--o{ PERSONAL_CREATION_RECEIPTS : retries
+    PERSONAL_CURRICULA ||--o{ PERSONAL_CURRICULUM_COURSES : includes
+    PERSONAL_CURRICULA ||--o{ PERSONAL_GRADUATION_RULES : defines
+    PERSONAL_COURSE_RECORDS o|--o{ PERSONAL_CURRICULUM_COURSES : links
+    PERSONAL_CURRICULUM_COURSES o|--o{ PERSONAL_GRADUATION_RULES : references
+    PERSONAL_COURSE_RECORDS o|--o{ PERSONAL_GRADUATION_RULES : relates
+    PERSONAL_ACTIVITY_RECORDS o|--o{ PERSONAL_GRADUATION_RULES : relates
+    PERSONAL_EXPERIENCE_RECORDS o|--o{ PERSONAL_GRADUATION_RULES : relates
+    PERSONAL_CREDENTIAL_RECORDS o|--o{ PERSONAL_GRADUATION_RULES : relates
+    PERSONAL_ACHIEVEMENT_RECORDS o|--o{ PERSONAL_GRADUATION_RULES : relates
+    PORTFOLIO_COMPOSITIONS ||--o{ PORTFOLIO_SOURCES : orders
+    PERSONAL_ACHIEVEMENT_RECORDS ||--o{ PORTFOLIO_SOURCES : sources
+    APPLICATION_DOCUMENTS ||--o{ APPLICATION_DOCUMENT_SOURCES : orders
+    PERSONAL_ACHIEVEMENT_RECORDS o|--o{ APPLICATION_DOCUMENT_SOURCES : sources
+    PERSONAL_EXPERIENCE_RECORDS o|--o{ APPLICATION_DOCUMENT_SOURCES : sources
+    INSTITUTIONS o|--o{ PLANNING_PROFILES : selected
+    DEPARTMENTS o|--o{ PLANNING_PROFILES : selected
+    CURRICULA o|--o{ PLANNING_PROFILES : selected
 ```
 
 인증 필드·운영자 생성·원자성과 후속 경계는 [인증 API](api/authentication.md)를 따른다.
@@ -671,7 +711,7 @@ erDiagram
 
 ## 단계별 도입 계획과 현재 구현
 
-현재 물리 구현은 위 인증/학교 범위·학사 메타데이터 13개 테이블이다. 아래 표는 각 단계의 전체 목표이며
+현재 물리 구현은 인증/학교 범위·학사 메타데이터·개인 자료/참조/영수증 28개 테이블이다. 아래 표는 각 단계의 전체 목표이며
 나머지 학사·문서·판정 엔터티가 이미 생성됐다는 뜻이 아니다.
 
 | 단계 | 목표 | 실제 생성·구현 대상 |

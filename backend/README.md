@@ -189,7 +189,7 @@ uv run --frozen python -m app.operations.db_backups verify ../backups/시각-식
 - `migrations/`: Alembic 마이그레이션
 - `tests/`: API·설정·PostgreSQL/pgvector 검증
 
-인증·역할·학교 전체 범위와 졸업 판정 코어는 구현했다. 학사 CRUD·공식 졸업감사 API/DB는 후속이다. 학교 RAG는 팀의
+인증·역할·학교 전체 범위와 졸업 판정 코어는 구현했다. 학사 CRUD·개인 자료 API/DB와 학생용 카탈로그를 구현했고 공식 졸업감사 API는 후속이다. 학교 RAG는 팀의
 오프라인 모듈과 HTTP 어댑터를 연결했으며 공식 문서 승인·운영 DB·실제 생성기는
 후속 구현 대상이다. 신규 패키지는 용도에 맞춰 최소한으로 추가한다.
 
@@ -208,7 +208,8 @@ uv run --frozen python -m app.operations.db_backups verify ../backups/시각-식
 호스트 실행/외부 배포에서 사용할 선택적 전체 연결 문자열이다. 로컬 Compose는
 `POSTGRES_*`를 사용하며 외부 DB 연결 문자열을 가져오지 않는다.
 Psycopg 연결 문자열은 `postgresql+psycopg://`로 시작해야 한다.
-현재 `APP_ENV` 자체가 인증이나 배포 정책을 구현하지는 않는다.
+`APP_ENV`는 세션 쿠키의 Secure·이름 정책에 반영된다. 역할·소유권은 환경 이름이 아닌
+실제 서버 계정·세션·범위로 검증한다.
 
 오류는 `error.code`, `message`, `field_errors`, UUID `request_id`로 반환한다.
 `X-Request-ID`로 UUID를 보내면 같은 값을 응답에 포함하고, 없거나 잘못된 형식이면
@@ -222,7 +223,24 @@ Psycopg 연결 문자열은 `postgresql+psycopg://`로 시작해야 한다.
 
 ## 관리자 학사 API
 
-`0003_academic_catalog`가 학사 메타데이터 7개 테이블을 추가한다. 현재 총 13개 테이블이며
+`0003_academic_catalog`가 학사 메타데이터 7개 테이블을 추가한다. 당시 총 13개 테이블이며
 학교·학과·교육과정·과목·연결, 검토 기준/문서 버전·관리 이력을 실제 관리자 화면과 연결한다.
 조건 설명은 실행 가능한 Rule Engine 규칙이 아니며 문서 적용은 RAG 원문 승인이 아니다.
-[학사 계약](../docs/api/academic.md)을 따른다. 학생 개인 자료 서버 저장과 공식 졸업감사는 후속이다.
+[학사 계약](../docs/api/academic.md)을 따른다. 학생 개인 자료 API는 아래와 같으며 공식 졸업감사는 후속이다.
+
+## 학생 개인 자료·카탈로그 API
+
+`0004_personal_records`는 개인 프로필·11개 개인 컬렉션·순서 있는 초안 참조·생성 재시도 영수증의
+15개 테이블을 추가한다. 현재 물리 테이블은 총 28개다(Alembic 테이블 제외).
+`/api/v1/me/*`는 세션 소유자만 읽고 변경하며 관리자 역할로 다른 학생 기록을 조회하지 못한다.
+`/api/v1/catalog/*`는 로그인한 학생에게 적용본과 등록된 학교·과정·과목 메타데이터만 조회한다.
+[개인 자료 계약](../docs/api/personal.md), [학생 카탈로그](../docs/api/student-catalog.md)를 따른다.
+비밀번호 변경은 `/auth/change-password`에서 기존 비밀번호 검증·전체 세션 폐기를 수행한다.
+
+프론트 전송 DTO는 아래 명령으로 Pydantic에서 재생성한다. 기존 개인 화면은 계속 로컬 저장이다.
+
+```bash
+uv run --frozen python ../scripts/export_student_contracts.py
+# 저장소 루트에서 실행
+dart format frontend/lib/features/api/student_api_models.dart
+```

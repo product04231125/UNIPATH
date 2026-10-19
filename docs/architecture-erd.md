@@ -14,6 +14,7 @@ DB 준비 → 마이그레이션 성공 → API 시작 순서이며 도메인을
 `backend/app/`에는 API·스키마·DB·서비스·Rule Engine·RAG 경계를 마련했다.
 아래 다이어그램의 도메인 기능과 외부 어댑터는 목표 구조이며 현재 기능 구현이 아니다.
 현재 API는 상태/DB 준비 확인, `/auth/*` 계정·세션, `/admin/*` 계정·학교 범위 관리와
+`/me/*` 개인 자료, `/catalog/*` 학생 학사 조회와
 `POST /api/v1/assistant/queries`를 제공한다. 사용자·역할·세션은 PostgreSQL에 저장하고
 Web은 HttpOnly 쿠키, Windows는 메모리 bearer 토큰을 사용한다. 보호 API는 DB의 현재
 상태·역할·활성 학교 범위를 확인한다. 실제 관리자 로그인은 RemoteAdminRepository를 통해
@@ -97,8 +98,23 @@ flowchart LR
 ```
 
 아래 전체 도메인/외부 서비스 관계는 목표 구조다. 인증·운영자 초기화는
-[인증 API](api/authentication.md)를 따른다. 이메일/학교 담당자 신원 확인과 개인 자료
-서버 동기화는 후속이며 개인 로컬 자료는 사용자 UUID별로 분리한다.
+[인증 API](api/authentication.md)를 따른다. 이메일/학교 담당자 신원 확인은 후속이다.
+[개인 자료 API](api/personal.md)와 [학생용 학사 조회](api/student-catalog.md)는 구현했고,
+프론트의 현재 개인 화면은 계속 사용자 UUID별 로컬 저장이다. 공통 AuthApi를 사용하는 전송
+adapter와 Pydantic 생성 DTO를 제공하지만 화면 전환·자료 이전/동기화 UI는 후속이다.
+
+```mermaid
+flowchart LR
+    Client[학생용 전송 adapter] --> Auth[공통 AuthApi 세션]
+    Auth --> Me[개인 자료 API]
+    Me --> Owner[세션 소유자 및 버전·참조 검증]
+    Owner --> Personal[(개인 프로필·기록·초안·순서 참조)]
+    Owner --> Receipt[(생성 재시도 영수증)]
+    Auth --> Catalog[학생 카탈로그 API]
+    Catalog --> Published[삭제 학교 제외·기준일·최신 적용본 필터]
+    Published --> Academic[(학사 메타데이터)]
+    Existing[기존 개인 화면] --> Local[계정별 기기 로컬 자료]
+```
 
 ```mermaid
 flowchart LR

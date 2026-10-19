@@ -59,7 +59,9 @@ def register_error_handlers(app: FastAPI) -> None:
                 request, 500, ErrorCode.INTERNAL_SERVER_ERROR, "서버에서 오류가 발생했습니다."
             )
         response.headers["X-Request-ID"] = str(request.state.request_id)
-        if request.url.path.startswith(("/api/v1/auth/", "/api/v1/admin/")):
+        if request.url.path.startswith(
+            ("/api/v1/auth/", "/api/v1/admin/", "/api/v1/me/", "/api/v1/catalog/")
+        ):
             response.headers["Cache-Control"] = "no-store"
         return response
 

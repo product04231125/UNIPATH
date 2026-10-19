@@ -16,6 +16,23 @@ from app.models.identity import (
     Institution,
     User,
 )
+from app.models.personal import (
+    AchievementRecord,
+    ActivityRecord,
+    ApplicationDocument,
+    ApplicationSource,
+    CourseRecord,
+    CredentialRecord,
+    ExperienceRecord,
+    PersonalCreationReceipt,
+    PersonalCurriculum,
+    PersonalCurriculumCourse,
+    PersonalEvent,
+    PersonalGraduationRule,
+    PlanningProfile,
+    PortfolioComposition,
+    PortfolioSource,
+)
 
 __all__ = [
     "Base",
@@ -32,4 +49,19 @@ __all__ = [
     "RuleSet",
     "GraduationRule",
     "OfficialDocument",
+    "AchievementRecord",
+    "ActivityRecord",
+    "ApplicationDocument",
+    "ApplicationSource",
+    "CourseRecord",
+    "CredentialRecord",
+    "ExperienceRecord",
+    "PersonalCreationReceipt",
+    "PersonalCurriculum",
+    "PersonalCurriculumCourse",
+    "PersonalEvent",
+    "PersonalGraduationRule",
+    "PlanningProfile",
+    "PortfolioComposition",
+    "PortfolioSource",
 ]
