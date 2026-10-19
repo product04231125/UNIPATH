@@ -9,6 +9,8 @@ on:
       - 'compose*.yaml'
       - '.env.example'
       - '.dockerignore'
+      - 'deploy/gateway/**'
+      - 'deploy/preview/**'
       - '.github/workflows/backend-ci.yaml'
   push:
     branches: [main, develop]
@@ -19,6 +21,8 @@ on:
       - 'compose*.yaml'
       - '.env.example'
       - '.dockerignore'
+      - 'deploy/gateway/**'
+      - 'deploy/preview/**'
       - '.github/workflows/backend-ci.yaml'
 
 permissions:
@@ -65,6 +69,8 @@ jobs:
         run: docker compose -f compose.yaml -f compose.rag.yaml run --rm --no-deps migrate alembic check
       - name: Smoke check
         run: python3 backend/scripts/smoke_api.py
+      - name: Verify staged requests through both gateway layers
+        run: python3 backend/scripts/smoke_gateway_proxy.py
       - name: Verify backup restoration with synthetic data
         working-directory: backend
         run: uv run --frozen python -m scripts.smoke_db_backup

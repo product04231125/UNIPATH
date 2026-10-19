@@ -23,6 +23,8 @@ COPY backend/tests ./tests
 COPY backend/scripts ./scripts
 COPY docs/sources /docs/sources
 COPY docs/api/openapi.json /docs/api/openapi.json
+COPY deploy/gateway /deploy/gateway
+COPY deploy/preview/nginx.conf /deploy/preview/nginx.conf
 ENV PYTEST_ADDOPTS="-o cache_dir=/tmp/pytest-cache"
 USER appuser
 CMD ["pytest", "-q"]
