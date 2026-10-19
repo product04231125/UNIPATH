@@ -274,3 +274,49 @@ def test_profile_catalog_reference_blocks_delete_without_student_identity(auth_c
         ).status_code
         == 204
     )
+
+
+def test_archived_school_preference_does_not_block_unrelated_profile_updates(auth_client, auth_db):
+    c = auth_client
+    h = operator(c, auth_db)
+    student = authorization(register(c))
+    inst = school(c, h)
+    assert (
+        c.patch(
+            "/api/v1/me/planning-profile",
+            headers=student,
+            json={
+                "expected_version": 0,
+                "institution_id": inst["id"],
+            },
+        ).status_code
+        == 200
+    )
+    assert (
+        c.delete(
+            "/api/v1/admin/institutions/" + inst["id"] + "?expected_version=1", headers=h
+        ).status_code
+        == 204
+    )
+    response = c.patch(
+        "/api/v1/me/planning-profile",
+        headers=student,
+        json={
+            "expected_version": 1,
+            "week_starts_on": "monday",
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["institution_id"] == inst["id"] and response.json()["official"] is False
+    other = authorization(register(c, "other-profile@example.test"))
+    assert (
+        c.patch(
+            "/api/v1/me/planning-profile",
+            headers=other,
+            json={
+                "expected_version": 0,
+                "institution_id": inst["id"],
+            },
+        ).status_code
+        == 404
+    )

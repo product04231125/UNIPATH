@@ -59,6 +59,8 @@ URL은 로그인 정보가 없는 HTTP(S) 링크이며 서버에서 가져오거
   선택 `institution_id/department_id/curriculum_id`는 등록된 소속 관계를 검사하지만 공식 학적을
   증명하지 않는다. 자유 입력 이름으로 FK를 자동 추론하지 않는다. 선택 중인 학과/교육과정의
   삭제는 FK로 차단하며 관리자 참조 조회에는 학생 정보가 없는 보호된 참조 표시만 반환한다.
+  이후 학교가 보관 처리돼도 기존 개인 선택은 보존하고 주 시작 요일 등 무관한 부분 수정은
+  허용한다. 보관된 학교를 새로 선택할 수는 없으며 이 선택은 관리 권한을 부여하지 않는다.
 - `/events?ends_after=...&starts_before=...`는 해당 순간 구간과 겹치는 일정을 반환한다.
   종료/시작 경계는 각각 `end > ends_after`, `start < starts_before`다. 시각은 PostgreSQL
   timestamptz로 보존하고 표시용 IANA time_zone을 함께 보존한다. UUID 페이지 순서는 시간순이 아니다.

@@ -157,9 +157,12 @@ def save_profile(db, request, payload):
     merged.update(payload.model_dump(exclude_unset=True, exclude={"expected_version"}))
     data = validate(dto.ProfileData, merged).model_dump()
     institution_id = data["institution_id"]
+    context_changed = any(
+        data[key] != previous[key] for key in ("institution_id", "department_id", "curriculum_id")
+    )
     if institution_id:
         school = db.get(Institution, institution_id)
-        if school is None or school.deleted_at is not None:
+        if school is None or (school.deleted_at is not None and context_changed):
             raise missing()
     for key, model in (("department_id", Department), ("curriculum_id", Curriculum)):
         if data[key]:
