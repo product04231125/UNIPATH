@@ -1,7 +1,6 @@
 # ERD 기준 개인 수동 입력 경계
 
-기준은 [논리 ERD](../database-erd.md)이며 실제 전송 계약은 OpenAPI다. 현재 도메인 API와
-물리 도메인 테이블은 없으므로 아래 개인 입력은 기기 로컬 어댑터이며 서버 DTO가 아니다.
+기준은 [논리 ERD](../database-erd.md)이며 실제 전송 계약은 OpenAPI다. [개인 자료 API](../api/personal.md)와 물리 테이블은 구현했다. 실제 일반 계정의 학업 프로필·일정은 [서버 저장/동의 이전](../api/planning-integration.md)을 사용하고 다른 개인 입력 화면은 기기 로컬 어댑터다. 로컬 필드가 곧 서버 DTO라는 뜻은 아니다.
 사용자가 입력한 값은 학교 공식 데이터·승인·이수·졸업 판정으로 승격되지 않는다.
 ERD·HTML의 동작별 구현·검증 근거와 미구현 계약 범위는 [완료 대조표](manual-input-audit.md)를 따른다.
 
@@ -13,9 +12,9 @@ ERD·HTML의 동작별 구현·검증 근거와 미구현 계약 범위는 [완�
 | 활동 | VolunteerRecord, Experience.details | 기관·기간·역할, 직접 입력 시간, 사용자가 확인한 승인 시간·상태·확인일 | 학교 승인 행위가 아니며 승인 시간 합계는 개인 기록 집계일 뿐 |
 | 경험 | Experience | 종류·제목·기관·시작/종료일·진행 상태·역할·결과 | 역량 판정·ExperienceSkill 관계는 생성하지 않음 |
 | 자격 | UserCertificate, CertificateProvider/Certificate | 자격명·기관·점수/등급·취득/만료일·상태·증빙 링크 | 마스터 FK·유효성 정책·기관 인증은 확정하지 않음; 자격증 번호는 수집하지 않음 |
-| 성과·포트폴리오 | Experience.details 및 HTML 성과 목업 | 성과 메타데이터 CRUD, 구성·항목 순서·사용 의도, 지원처별 직접 작성 문서·경험/성과 참조 | ERD에 별도 구성·문서 테이블 없음; 로컬 확장이며 공개 게시·파일 업로드·AI 생성은 하지 않음 |
+| 성과·포트폴리오 | Experience.details 및 HTML 성과 목업 | 성과 메타데이터 CRUD, 구성·항목 순서·사용 의도, 지원처별 직접 작성 문서·경험/성과 참조 | 개인 구성·지원 문서 서버 테이블/API는 구현했으나 해당 화면은 로컬 저장; 공개 게시·파일 업로드·AI 생성은 하지 않음 |
 | 논문·캡스톤 (성과 기록 안) | ThesisRecord | 제목·논문 유형·개인 기록 상태·원 성적·사용자가 확인한 승인일, 역할·결과·기간·링크 | 별도 공식 ThesisRecord/서버 FK를 생성하지 않음; 승인 처리·성적 환산·졸업 충족 판정 없음 |
-| 일정 | 현재 ERD에 독립 일정 엔터티 없음 | 기존 기기 로컬 일정 CRUD | 학교 공식 일정이 아님 |
+| 일정 | personal_events | 실제 일반 계정 서버 일정 CRUD·동의 이전, debug 기기 저장 | 학교 공식 일정이 아님 |
 | 설정 | User, Institution/Department/Curriculum 범위 | 기존 개인 학교·학과·입학연도·계획 학년·시작 요일 | 학교·학과 마스터와 관리자 범위는 수정하지 않음 |
 | 졸업 | Curriculum/CurriculumCourse, GraduationRuleSet/Rule의 개인 분리 정책 | 개인 교육과정·과목·규칙 CRUD, 개인 기록 UUID 연결, 조건·단위·직접 확인한 현재 값·기간·출처 | 공식 마스터/FK·규칙·감사·충족 계산은 서버 Rule Engine 책임 |
 

@@ -25,7 +25,7 @@ fixture 또는 로컬 상태이며, 제품 계약이나 학교 공식 데이터�
 | 관리자 | [admin](features/admin.md) | 실제 API 학사 관리·역할/범위·검토 버전/감사, debug 합성 샘플 |
 | 메뉴 탐색 | [navigation](features/navigation.md) | 주요 메뉴 hash URL·뒤로/앞으로·직접 진입 |
 | 홈 | [home](features/home.md) | 개인 계획 기반 시작 화면 |
-| 일정 | [schedule](features/schedule.md) | 기기 로컬 개인 일정 |
+| 일정 | [schedule](features/schedule.md) | 실제 계정 서버 개인 일정·동의 이전 |
 | 수강 관리 | [course](features/course.md) | 기기 로컬 개인 수강 CRUD·학기 필터 |
 | 졸업 요건 | [graduation](features/graduation.md) | 기기 로컬 교육과정·과목·개인 규칙 CRUD·기록 연결 |
 | 활동 | [activity](features/activity.md) | 기기 로컬 개인 활동·봉사 CRUD |
@@ -33,13 +33,13 @@ fixture 또는 로컬 상태이며, 제품 계약이나 학교 공식 데이터�
 | 자격 | [credential](features/credential.md) | 기기 로컬 개인 자격 CRUD |
 | 포트폴리오·성과 | [portfolio](features/portfolio.md) | 로컬 성과 CRUD·구성/순서/사용 의도·지원 문서 초안 |
 | AI 도우미 | [assistant](features/assistant.md) | 학교 질의 API·상태/인용 표시·창별 메모리 대화 |
-| 설정 | [settings](features/settings.md) | 학업과 계획 로컬 설정 |
+| 설정 | [settings](features/settings.md) | 실제 계정 서버 학업과 계획·기기 원본 보존 |
 | 외부 링크 | [external-links](features/external-links.md) | 1365·Q-Net·개인 증빙 URL 확인·열기·복사 |
 
 ## 학생 API 전송 계약
 
 `lib/features/api/student_api_models.dart`는 Pydantic에서 생성한 22개 wire DTO다.
 `student_api.dart`, `student_catalog_api.dart`는 공통 AuthApi를 사용하는 전송 adapter이며
-현재 개인 화면의 로컬 저장소를 교체하지 않는다. 계정 변경 시 StudentApi를 폐기하고 새 신원으로 생성한다.
+학업 프로필·일정은 계정에 묶인 전송 객체로 서버 저장소를 사용하며 다른 개인 화면은 로컬 저장소를 유지한다. 계정 변경 시 StudentApi를 폐기하고 새 신원으로 생성한다.
 [개인 자료 계약](../api/personal.md), [학생용 학사 조회](../api/student-catalog.md)의 이전 순서·
 부분 PATCH·서버 ID/로컬 client_id 매핑·시간대 정책을 따라 화면을 연결한다.
