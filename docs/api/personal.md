@@ -1,7 +1,7 @@
 # 학생 개인 자료 API
 
 2026-10-19 구현. prefix는 `/api/v1/me`, 모든 요청에 기존 로그인 세션이 필요하다.
-계약 원본은 [OpenAPI](openapi.json)다. 실제 일반 계정의 **학업 프로필·일정 화면은 서버 저장**에 연결했다. 다른 개인 화면은 로컬 저장소를 사용한다. [화면 연결·동의 이전](planning-integration.md)을 따른다. 자동 업로드·계정 자동 귀속·로컬 삭제는 수행하지 않는다.
+계약 원본은 [OpenAPI](openapi.json)다. 실제 일반 계정의 **프로필·일정·개인 기록·구성·지원 문서 화면은 서버 저장**에 연결했다. [개인 작업 공간 연결](personal-workspace-integration.md)을 따른다. [화면 연결·동의 이전](planning-integration.md)을 따른다. 자동 업로드·계정 자동 귀속·로컬 삭제는 수행하지 않는다.
 
 ## 소유권과 공통 계약
 
@@ -97,7 +97,7 @@ audience와 reviewed는 사용 의도/개인 확인 기록이며 실제 공개·
 4. 실패 시 원본을 지우지 않고 client_id 조회와 같은 본문 재시도로 재개한다. 바뀐 내용은
    현재 version을 읽은 PATCH로 저장한다. 익명/다른 계정 자료를 자동 귀속하지 않는다.
 5. 로컬 일정의 offset 없는 시각은 원래 시간대 확인 후 변환해야 한다. 임의로 Z를 붙이거나
-   서버 시간대로 해석하지 않는다. [프로필·일정의 동의/변환 UI와 서버 저장](planning-integration.md)을 연결했으며 다른 개인 자료는 후속이다.
+   서버 시간대로 해석하지 않는다. [프로필·일정의 동의/변환 UI와 서버 저장](planning-integration.md)을 연결했으며 [다른 개인 자료 10종](personal-workspace-integration.md)도 별도 동의 이전을 제공한다.
    `frontend/lib/features/api/`의 공통 AuthApi 전송 adapter·생성 DTO는 사용할 수 있다.
 
 주요 프론트 매핑: camelCase는 snake_case, 수강 상태 `계획/수강 중/이수 기록`은

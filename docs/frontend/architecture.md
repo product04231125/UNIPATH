@@ -3,7 +3,7 @@
 `frontend/lib`은 Flutter Web과 Windows에서 같은 화면 코드를 사용한다. 학교 질의는
 `POST /api/v1/assistant/queries`를 호출한다. 다른 도메인의 fixture와 기기 로컬 상태는
 합성 학사 모델은 실제 서버 모델이 아니다. 인증·역할·학교 범위는 실제 API이며,
-학업 프로필·일정 CRUD는 서버에 연결했으며 다른 개인 기록 CRUD·공식 졸업 판정 화면 API는 아직 연결하지 않았다. [인증 계약](../api/authentication.md)을 따른다.
+학업 프로필·일정 CRUD는 서버에 연결했으며 다른 개인 기록 CRUD도 연결했고 개인 계산 버튼·공식 졸업 판정 화면 API는 아직 연결하지 않았다. [인증 계약](../api/authentication.md)을 따른다.
 
 ## 진입과 공통 영역
 
@@ -59,12 +59,12 @@
 | `features/home` | 개인 계획 기반 이번 주 일정·준비 목록·우선 링크 |
 | `features/planning` | 실제 계정 서버 프로필·일정 repository와 원본 보존/동의 이전, debug 로컬 저장소 |
 | `features/schedule` | 월간 개인 일정과 선택 날짜 목록, 일정 CRUD |
-| `features/graduation` | 졸업요건 fixture, 개인 교육과정·과목·규칙 입력과 로컬 관계 검증 |
+| `features/graduation` | 졸업요건 fixture, 개인 교육과정·과목·규칙 서버 저장과 관계 검증 |
 | `features/records/course` | 수강 관리와 수강 직접 입력 상태 |
 | `features/records/activity` | 활동 입력 상태 |
 | `features/records/experience` | 경험 입력 상태 |
 | `features/records/credential` | 자격 입력 상태 |
-| `features/records/portfolio` | 성과 원본, 포트폴리오 구성·지원 문서의 독립 로컬 초안 |
+| `features/records/portfolio` | 성과 원본, 포트폴리오 구성·지원 문서의 본인 서버 초안 |
 | `features/assistant` | 학교 질의 HTTP 어댑터·응답 DTO, 메인 소유 대화 상태와 IPC 원격 상태, 공통 응답 UI |
 | `features/settings` | 설정 진입 화면 |
 
@@ -91,14 +91,13 @@
 - `planning`의 실제 일반 계정 프로필·일정은 `RemotePlanningRepository`가 서버에 저장한다. debug 샘플과 기기 원본은 `PlanningRepository`의 SharedPreferences에 보관한다. 어느 쪽도 학교 공식 학사정보·일정·졸업 판정 데이터가 아니다. [동의 이전·버전 충돌·계정 전환](../api/planning-integration.md)을 따른다.
 - `planning_repository.dart`는 읽기 성공 전 쓰기를 차단하고 저장 성공 뒤에만 메모리 상태를
   확정한다. `planning_storage_state.dart`는 홈·일정·설정의 읽기 오류·재시도 표현을 공유한다.
-- `features/records/personal_record_repository.dart`는 메뉴별 v1 키의 기기 로컬 개인 기록을 소유한다.
+- `features/records/personal_record_repository.dart`는 debug/기기 원본의 로컬 저장소다. 실제 계정의 `PersonalRepositoryScope`는 `RemotePersonalRecordRepository`와 `RemotePortfolioWorkspaceRepository`를 선택하며 선택기·원본 참조도 같은 계정을 사용한다. [서버 화면 연결/10종 동의 이전](../api/personal-workspace-integration.md)을 따른다.
   `personal_record_fields.dart`는 메뉴별 로컬 입력 스키마·검증이며 서버 DTO가 아니다.
   `RecordMenuPage`는 해당 메뉴 저장소를 읽고 구조화 입력·수정·삭제를 제공한다.
 - 개인 졸업 작업 공간도 같은 저장소의 세 종류를 사용한다. `personal_graduation_fields.dart`는
   저장된 개인 교육과정·과목·기록의 선택 목록과 관계 검증을 소유하며 규칙을 실행하지 않는다.
 - `목업용` 스위치는 예시 행만 표시·숨김 처리한다. 개인 기록은 메뉴 전환·재시작 뒤에도 유지한다.
-- `portfolio_workspace_repository.dart`는 구성·지원 문서를 별도 v1 키에 저장하고, 경험·성과
-  원본 저장소를 참조한다. `portfolio_editor_dialog.dart`는 입력·선택·정렬,
+- `portfolio_workspace_repository.dart`는 debug/기기 원본을 별도 v1 키에 저장한다. 실제 계정은 서버 구성·지원 문서·성과/경험 UUID를 사용하며 소유자와 버전·참조를 서버에서 확인한다. `portfolio_editor_dialog.dart`는 입력·선택·정렬,
   `portfolio_drafts_page.dart`는 읽기·실패·목록·미리보기·삭제 UI를 소유한다.
 - OpenAPI 계약이 확정되면 feature별 fixture와 로컬 상태를 repository/adapter로 교체한다.
   클라이언트는 OpenAPI에 없는 필드·상태·판정을 제품 계약으로 만들지 않는다.

@@ -6,6 +6,7 @@ import '../../../shared/widgets/input_dialog.dart';
 import '../../../shared/widgets/anchored_select_field.dart';
 import '../personal_record_repository.dart';
 import 'portfolio_workspace_repository.dart';
+import '../../auth/auth_api.dart';
 
 class PortfolioEditorDialog extends StatefulWidget {
   const PortfolioEditorDialog({
@@ -31,6 +32,8 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
   late String _type;
   late bool _reviewed;
   bool _saving = false;
+  late final String _operationId =
+      widget.document?.id ?? widget.composition?.id ?? PersonalRecord.newId();
   String? _error;
   late final List<String> _originalText;
   late final List<String> _originalSelected;
@@ -172,7 +175,8 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
       if (widget.isDocument) {
         await widget.repository.saveDocument(
           ApplicationDocument(
-            id: widget.document?.id ?? PersonalRecord.newId(),
+            id: _operationId,
+            version: widget.document?.version,
             title: _title.text.trim(),
             target: _target.text.trim(),
             role: _role.text.trim(),
@@ -184,7 +188,8 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
       } else {
         await widget.repository.saveComposition(
           PortfolioComposition(
-            id: widget.composition?.id ?? PersonalRecord.newId(),
+            id: _operationId,
+            version: widget.composition?.version,
             title: _title.text.trim(),
             description: _description.text.trim(),
             audience: _audience,
@@ -194,11 +199,13 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
         );
       }
       if (mounted) Navigator.pop(context, true);
-    } catch (_) {
+    } catch (failure) {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error = '기기에 저장하지 못했습니다. 입력은 유지됩니다. 원본 연결과 저장소 상태를 확인하고 다시 시도하세요.';
+          _error = failure is AuthFailure
+              ? '${failure.message} 입력은 유지됩니다.'
+              : '${widget.repository.isServerBacked ? '서버' : '기기'}에 저장하지 못했습니다. 입력은 유지됩니다. 원본 연결과 저장소 상태를 확인하고 다시 시도하세요.';
         });
       }
     }
@@ -249,7 +256,9 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('기기 로컬 초안 · 온라인 게시·제출·파일 업로드·AI 생성은 하지 않습니다.'),
+            Text(
+              '${widget.repository.isServerBacked ? '계정 서버' : '기기 로컬'} 초안 · 온라인 게시·제출·파일 업로드·AI 생성은 하지 않습니다.',
+            ),
             const SizedBox(height: 16),
             _field(
               _title,

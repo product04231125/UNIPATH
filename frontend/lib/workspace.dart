@@ -17,6 +17,10 @@ import 'features/home/home_page.dart';
 import 'features/planning/planning_repository.dart';
 import 'features/planning/remote_planning_repository.dart';
 import 'features/api/student_api.dart';
+import 'features/records/personal_repository_scope.dart';
+import 'features/records/personal_workspace_importer.dart';
+import 'features/records/remote_personal_record_repository.dart';
+import 'features/records/portfolio/remote_portfolio_workspace_repository.dart';
 import 'features/planning/weekly_schedule.dart';
 import 'features/records/activity/activity_page.dart';
 import 'features/records/course/course_page.dart';
@@ -103,6 +107,20 @@ class _WorkspaceState extends State<Workspace> {
   late final PlanningRepository _planningRepository = widget.studentApi == null
       ? PlanningRepository()
       : RemotePlanningRepository(widget.studentApi!);
+  late final StudentApi? _personalApi = widget.studentApi;
+  late final PersonalWorkspaceImporter? _personalImporter = _personalApi == null
+      ? null
+      : PersonalWorkspaceImporter(
+          _personalApi,
+          ensureOpen: _ensurePersonalOpen,
+        );
+  bool _personalClosed = false;
+  void _ensurePersonalOpen() {
+    if (_personalClosed || _signingOut) {
+      throw StateError('Personal workspace is closed');
+    }
+  }
+
   late final SharedSchoolContext _sharedSchoolContext;
   ConversationBridge? _conversationBridge;
   DateTime? _scheduleInitialDay;
@@ -217,6 +235,8 @@ class _WorkspaceState extends State<Workspace> {
 
   @override
   void dispose() {
+    _personalClosed = true;
+    _personalImporter?.dispose();
     unawaited(_releaseSession().catchError((Object _) {}));
     _assistantButtonFocus.dispose();
     _detachedChatSubscription?.cancel();
@@ -241,7 +261,7 @@ class _WorkspaceState extends State<Workspace> {
         WorkspaceNavigationItem(label: _labels[index], icon: _icons[index]),
       const WorkspaceNavigationItem(label: '설정', icon: Icons.settings_outlined),
     ];
-    return WorkspaceShell(
+    final shell = WorkspaceShell(
       profileSummary: _profileSummary,
       sidebarVisible: widget.sidebarVisible,
       integratedTitleBar: widget.integratedTitleBar,
@@ -296,6 +316,21 @@ class _WorkspaceState extends State<Workspace> {
         width: width,
       ),
     );
+    return _personalApi == null
+        ? shell
+        : PersonalRepositoryScope(
+            importer: _personalImporter,
+            records: (kind) => RemotePersonalRecordRepository(
+              _personalApi,
+              kind,
+              ensureOpen: _ensurePersonalOpen,
+            ),
+            portfolio: () => RemotePortfolioWorkspaceRepository(
+              _personalApi,
+              ensureOpen: _ensurePersonalOpen,
+            ),
+            child: shell,
+          );
   }
 
   Widget _buildPage(int settingsPage, WorkspaceShellLayout layout) {
