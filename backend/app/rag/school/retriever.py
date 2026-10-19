@@ -47,7 +47,21 @@ def validate_chunks(chunks: list[dict]) -> None:
         document_hash = chunk.get("document_hash")
         if not isinstance(document_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", document_hash):
             raise ValueError("Invalid document_hash")
-        version = (document_hash, page_count, chunk["institution"], chunk["department"])
+        blank_pages = chunk.get("reviewed_blank_pages", [])
+        if (
+            not isinstance(blank_pages, list)
+            or any(type(page) is not int or not 1 <= page <= page_count for page in blank_pages)
+            or len(set(blank_pages)) != len(blank_pages)
+            or chunk["page"] in blank_pages
+        ):
+            raise ValueError("Invalid reviewed blank pages")
+        version = (
+            document_hash,
+            page_count,
+            chunk["institution"],
+            chunk["department"],
+            tuple(sorted(blank_pages)),
+        )
         previous = document_versions.setdefault(chunk["document_id"], version)
         if previous != version:
             raise ValueError("Mixed document versions or identities; rebuild the corpus")
@@ -299,7 +313,8 @@ class SchoolRetriever:
         for document_id in documents:
             group = [c for c in self.chunks if c["document_id"] == document_id]
             expected = {c.get("document_page_count") for c in group}
-            if expected != {len({c["page"] for c in group})}:
+            blank_pages = set(group[0].get("reviewed_blank_pages", []))
+            if expected != {len({c["page"] for c in group} | blank_pages)}:
                 return []
         scores = {hit.chunk_id: hit.score for hit in hits}
         return [self._hit(i, scores.get(self.chunks[i]["chunk_id"], 0)) for i in indices]

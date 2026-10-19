@@ -55,6 +55,8 @@ PR과 `main`/`develop`의 백엔드 변경을 검증합니다. 앱 다운로드 
 develop의 로그인·가입·세션·역할/학교 범위는 실제 API/DB로 구현했습니다.
 개인 화면은 계정별 기기 로컬이며 [서버 저장 API](docs/api/personal.md)와 전송 adapter는 준비됐습니다.
 [개인 기준 계산 API](docs/api/personal-evaluations.md)와 불변 결과 이력도 구현했습니다.
+[학교 문서 검토·DB 검색 API](docs/api/school-knowledge.md)는 적용 문서의 추출본 등록,
+별도 승인·회수와 로그인 사용자의 UUID 문맥 검색을 제공합니다. 실제 LLM은 미연결입니다.
 개인 화면의 서버 전환·계산 버튼과 공식 졸업감사·LLM은 미연결입니다. main 채널의 기능은
 별도 승격 전까지 이전 릴리스를 유지합니다. [인증 계약과 초기 관리자](docs/api/authentication.md)를 참고하세요.
 배포 채널 제공과 실제 운영 서비스 완성은 구분합니다. 상세 빌드·다운로드·도메인 및
@@ -420,6 +422,9 @@ Docker 내부에서는 API 8000과 DB 5432를 사용합니다. 기존 서비스�
 [`backend/README.md`](backend/README.md)를 참고합니다.
 
 RAG 팀의 PDF 추출·학교 검색 모듈은 `POST /api/v1/assistant/queries`로 연결했습니다.
+이 기존 경로는 로컬 이름 기반 계약을 유지합니다. 운영 DB 자료는 별도 관리자 검토 후
+`POST /api/v1/me/school-searches`와 `/me/school-queries`에서 학교·학과·교육과정 UUID로
+선택합니다. [JSONL 초안 가져오기·검토·검색 계약](docs/api/school-knowledge.md)을 따릅니다.
 [질의 API 계약](docs/api/assistant.md)과 [OpenAPI 사본](docs/api/openapi.json)을
 기준으로 프론트엔드 모델과 상태 처리를 연결합니다. 현재 PDF는 검토 대기 상태이며
 실제 LLM 생성기는 연결하지 않았습니다. 기본 실행은 빈 인덱스를 사용합니다.

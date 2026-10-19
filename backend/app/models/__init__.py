@@ -17,6 +17,7 @@ from app.models.identity import (
     Institution,
     User,
 )
+from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
 from app.models.personal import (
     AchievementRecord,
     ActivityRecord,
@@ -66,4 +67,6 @@ __all__ = [
     "PortfolioComposition",
     "PortfolioSource",
     "PersonalEvaluation",
+    "KnowledgeDocument",
+    "KnowledgeChunk",
 ]

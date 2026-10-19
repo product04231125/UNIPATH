@@ -24,6 +24,8 @@ Web은 HttpOnly 쿠키, Windows는 메모리 bearer 토큰을 사용한다. 보�
 기본 실행은 빈 인덱스이며 선택적 `compose.rag.yaml`은 PDF 추출 후 API에 읽기 전용
 JSONL을 연결한다. 파일 코퍼스는 로컬 환경에서만 사용한다.
 현재 PDF는 미승인이고 실제 생성기는 없으므로 공식 답변은 생성하지 않는다.
+별도 인증 경로 `/me/school-searches`, `/me/school-queries`는 등록 UUID와 입학연도·이수경로를
+검증하고 DB의 승인 문서만 조회한다. 기존 이름 기반 `/assistant/queries`와 자동으로 섞지 않는다.
 졸업 판정 요청은 `rule_engine_required`로 안내하며 HTTP 졸업감사 호출은 후속 구현이다.
 `app/rules/`의 결정론적인 계산 코어는 DB·HTTP·LLM과 분리해 구현했다. 내부의 공식 규칙
 계산과 개인 기준 계산을 구분한다. 개인 계산 API는 본인 DB 자료와 명시적 조건을 코어에
@@ -69,6 +71,31 @@ flowchart LR
 변경은 권한 변경과 같은 transaction lock에서 신원/세션을 재확인한다.
 문서 메타데이터 등록/적용은 RAG 승인·임베딩·졸업 판정과 분리한다.
 [학사 API](api/academic.md)에 입력·참조·버전 계약을 정의한다.
+
+### 학교 지식 검토와 DB 검색
+
+```mermaid
+flowchart LR
+    Extraction[RAG 팀 JSONL·원본 hash] --> Import[가져오기 도구 · 기존 초안 이어서 처리]
+    Import --> Guard[현재 관리자·허용 학교·원본 버전 확인]
+    Guard --> Draft[(DB 추출 초안·페이지·분할·범위·경고)]
+    Draft --> Review[관리자 출처·범위·추출·전체 원본 검토]
+    Review --> Published[(불변 승인본 · 회수 이력)]
+    Student[로그인한 학생의 등록 UUID·연도·이수경로] --> Selection[현재 학교 소속·기간·최신 적용본·승인 상태]
+    Published --> Selection
+    Selection --> Cache[질문을 저장하지 않는 제한된 본문 인덱스 캐시]
+    Cache --> BM25[RAG 팀 BM25·전체 조건 페이지 확인]
+    BM25 --> Sources[출처·발췌 검색 결과]
+    BM25 --> Generation[공통 생성 인터페이스 · 실제 생성기 미설정]
+    Sources --> Recheck[응답 전 세션·문서 버전 재확인]
+    Generation --> Recheck
+```
+
+동일 문서의 본문을 요청마다 읽고 재인덱싱하지 않으며 캐시 키에 선택 범위·문서/학교 버전·날짜를
+포함한다. 승인 회수·새 적용본이 나타나면 과거 근거와 진행 중 결과를 버린다. 검토한 빈 페이지는
+완전성에만 포함하고 본문·인용을 만들지 않는다. 전체 corpus 한도를 넘으면 부분 자료로
+생성하지 않는다. 원문 파일 다운로드·파일 자동 승인·실제 LLM/임베딩·대화 저장은 하지 않는다.
+[검토·검색 API](api/school-knowledge.md)를 따르며 새 검토/검색 화면 연결은 후속이다.
 
 ### 학교 질의와 독립 AI 대화창
 

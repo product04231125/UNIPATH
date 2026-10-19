@@ -115,8 +115,8 @@ PowerShell에서 Python 실행 명령이 `python`이면 `python3` 대신 사용�
 현재 PDF는 모두 미승인이며 공식 출처 URL·적용 범위가 확인되지 않았다. HTTP API에는
 preview 옵션이 없어 이 자료로 답변이나 인용을 만들지 않는다. 실제 LLM·임베딩 공급자는
 연결하지 않았다. 파일의 승인 플래그는 관리자 승인 시스템이 아니므로 JSONL 코퍼스는
-`APP_ENV=local`에서만 허용한다. 인증·공식 문서 승인·DB의 범위/버전/유효기간 관리가
-구현되기 전에는 운영 질의 시스템으로 배포하지 않는다.
+`APP_ENV=local`에서만 허용한다. 운영 DB의 별도 검토·범위/버전/기간 관리는 아래
+학교 지식 API를 사용한다. 기존 PDF는 실제 검토·생성기/사실성 검증 전까지 운영 답변에 사용하지 않는다.
 
 동기 RAG 함수는 FastAPI 작업 스레드에서 실행하며 질문·답변·후보를 저장하거나 로그에
 기록하지 않는다. 졸업 가능 여부 질문은 `rule_engine_required`와 `graduation_audit`
@@ -190,8 +190,9 @@ uv run --frozen python -m app.operations.db_backups verify ../backups/시각-식
 - `tests/`: API·설정·PostgreSQL/pgvector 검증
 
 인증·역할·학교 전체 범위와 졸업 판정 코어는 구현했다. 학사 CRUD·개인 자료 API/DB와 학생용 카탈로그를 구현했고 공식 졸업감사 API는 후속이다. 학교 RAG는 팀의
-오프라인 모듈과 HTTP 어댑터를 연결했으며 공식 문서 승인·운영 DB·실제 생성기는
-후속 구현 대상이다. 신규 패키지는 용도에 맞춰 최소한으로 추가한다.
+오프라인 모듈과 HTTP 어댑터를 연결했다. 별도 [문서 검토·DB 검색](../docs/api/school-knowledge.md)은
+관리자의 추출 초안·승인·회수와 UUID 문맥 검색을 제공하며 실제 생성기는 후속이다.
+신규 패키지는 용도에 맞춰 최소한으로 추가한다.
 
 | 의존성 | 용도 |
 |---|---|
@@ -232,7 +233,8 @@ Psycopg 연결 문자열은 `postgresql+psycopg://`로 시작해야 한다.
 
 `0004_personal_records`는 개인 프로필·11개 개인 컬렉션·순서 있는 초안 참조·생성 재시도 영수증의
 15개 테이블을 추가한다. `0005_personal_evaluations`는 개인 계산 이력을 추가해
-현재 물리 테이블은 총 29개다(Alembic 테이블 제외).
+당시 물리 테이블은 총 29개다. `0006_school_knowledge`가 검토 문서/청크 2개를 추가해
+현재 총 31개다(Alembic 테이블 제외).
 `/api/v1/me/*`는 세션 소유자만 읽고 변경하며 관리자 역할로 다른 학생 기록을 조회하지 못한다.
 `/api/v1/catalog/*`는 로그인한 학생에게 적용본과 등록된 학교·과정·과목 메타데이터만 조회한다.
 [개인 자료 계약](../docs/api/personal.md), [학생 카탈로그](../docs/api/student-catalog.md)를 따른다.
@@ -255,3 +257,14 @@ dart format frontend/lib/features/api/student_api_models.dart
 소유권·버전·재시도를 검증하고 원본이 바뀌어도 과거 결과는 유지한다.
 [계산 계약](../docs/api/personal-evaluations.md)을 따른다. Flutter typed 전송 adapter는
 `personal_evaluation_api.dart`이며 현재 개인 화면은 로컬 저장·계산 API 미연결이다.
+
+## 학교 문서 검토·DB 검색
+
+`/admin/knowledge-revisions`에 적용 문서의 추출 초안을 등록하고 전체 원본·출처·범위를
+명시적으로 검토한다. 승인본은 불변이며 회수하면 검색·진행 중 결과에서 제외한다.
+`/me/school-searches`와 `/me/school-queries`는 로그인과 등록 UUID·입학연도·이수경로를 사용한다.
+원문은 DB, 검증된 본문 인덱스만 제한된 메모리 캐시에 보관한다. 질문/답변은 저장하지 않는다.
+팀의 JSONL 가져오기 도구는 `python -m scripts.import_school_knowledge --help`다.
+먼저 `--dry-run`으로 원본 hash·페이지·분할을 확인하고 서버 초안으로 전송한다.
+실제 PDF·파일 플래그를 자동 승인하지 않으며 실제 LLM/임베딩과 검토 UI는 후속이다.
+[상세 계약](../docs/api/school-knowledge.md)을 따른다.

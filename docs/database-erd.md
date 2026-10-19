@@ -12,9 +12,10 @@ users·auth_sessions·auth_throttles·institutions·admin_scopes·identity_audit
 생성한다. `0003_academic_catalog`는 departments·curricula·courses·curriculum_courses·
 rule_sets·graduation_rules·official_documents를 추가했다. `0004_personal_records`는
 개인 프로필·개인 자료 11종·순서 참조 2종·재시도 영수증 15개를 추가했다.
-`0005_personal_evaluations`는 개인 계산 이력 하나를 추가해 **총 29개 테이블**을 물리 구현한다.
+`0005_personal_evaluations`는 개인 계산 이력 하나를 추가한다. `0006_school_knowledge`는
+학교 문서 추출/검토와 청크 2개를 추가해 **총 31개 테이블**을 물리 구현한다.
 학교 메타데이터/버전/삭제 표시와 범위 회수 사유도 추가한다.
-아래 전체 논리 ERD/단계 표 중 학생 공식 기록·판정·RAG 청크는 도입 계획이다.
+아래 전체 논리 ERD/단계 표 중 학생 공식 기록·공식 판정·벡터 임베딩은 도입 계획이다.
 현재 users에는 학교/학과/교육과정 FK가 없으며 자유 입력 프로필을 공식 학적으로 승격하지 않는다.
 임베딩 모델/차원은 미정이며 pgvector 검사는 합성 임시 테이블을 사용한다.
 
@@ -107,10 +108,11 @@ erDiagram
 범위는 학교 전체만 지원하며 하위 학과/교육과정 범위는 미구현이다. 모델과 물리 스키마를
 `alembic check`로 대조한다.
 
-현재 학교 질의 API는 로컬 JSONL 청크와 메모리 BM25 인덱스를 사용한다.
-`DOCUMENT`·`DOCUMENT_CHUNK` 테이블이나 pgvector 검색은 아직 연결하지 않았으며,
-질문·답변·대화 이력을 DB에 저장하지 않는다. 파일 메타데이터는 운영 승인 DB를
-대체하지 않는다. 공식 문서 메타데이터의 적용은 RAG 원문 승인·청크 저장을 의미하지 않는다. 학사 관리의
+기존 학교 질의 API는 로컬 JSONL 청크와 메모리 BM25 인덱스를 사용한다.
+새 UUID 문맥 검색은 `school_knowledge_documents`·`school_knowledge_chunks`에 관리자 범위로
+추출본·검토/회수 이력·최소 본문/범위를 저장하고 승인본의 BM25 인덱스를 재사용한다.
+pgvector 임베딩은 미연결이며 질문·답변·대화 이력도 DB에 저장하지 않는다.
+파일 플래그와 공식 문서 메타데이터 적용은 이 별도 RAG 승인 절차를 대신하지 않는다. 학사 관리의
 버전·소속 복합 FK·삭제 보관 정책은 [학사 API](api/academic.md)를 따른다.
 
 `app/rules/`에는 학점·필수과목·봉사·자격증·논문 요건의 독립 계산 코어를 구현했다.
@@ -126,6 +128,42 @@ erDiagram
 [개인 계산 계약](api/personal-evaluations.md)을 따르며 아래 공식 GraduationAudit와 구별한다.
 계산 경로·누락 정보 처리·범위/버전 충돌은 [Rule Engine 문서](rule-engine.md)를 따른다.
 현재 DB의 백업·격리 복구 검증은 [백업 문서](database-backups.md)를 따른다.
+
+학교 지식의 물리 관계는 다음과 같다. 학사 문서 UUID별 추출본은 하나이며 새 원본은 학사 문서의
+새 적용 판본을 사용한다. 소속은 원본에서 결정하고 학교 복합 FK로 보호한다. 승인/회수본은
+불변이며 초안 삭제만 청크를 함께 지운다. chunk 행의 is_blank는 검토자가 확인한 빈 페이지이고
+검색 본문·인용에는 포함하지 않는다. 원본 hash는 검토자 제공 값이며 파일 자동 검증을 뜻하지 않는다.
+
+```mermaid
+erDiagram
+    OFFICIAL_DOCUMENTS ||--o| SCHOOL_KNOWLEDGE_DOCUMENTS : extracts
+    INSTITUTIONS ||--o{ SCHOOL_KNOWLEDGE_DOCUMENTS : scopes
+    DEPARTMENTS o|--o{ SCHOOL_KNOWLEDGE_DOCUMENTS : scopes
+    CURRICULA o|--o{ SCHOOL_KNOWLEDGE_DOCUMENTS : scopes
+    USERS ||--o{ SCHOOL_KNOWLEDGE_DOCUMENTS : reviews
+    SCHOOL_KNOWLEDGE_DOCUMENTS ||--o{ SCHOOL_KNOWLEDGE_CHUNKS : contains
+    SCHOOL_KNOWLEDGE_DOCUMENTS {
+        uuid id PK
+        uuid source_document_id FK "unique"
+        uuid institution_id FK
+        string document_hash
+        string status "draft / approved / revoked"
+        int version
+    }
+    SCHOOL_KNOWLEDGE_CHUNKS {
+        uuid id PK
+        uuid knowledge_document_id FK
+        int page
+        int part_index
+        bool is_blank
+        string content_hash
+        jsonb admission_years
+        jsonb tracks
+    }
+```
+
+업로드·검토·기간/판본/캐시 경계는 [학교 지식 API](api/school-knowledge.md)를 따른다.
+아래 논리 Document/DocumentChunk/DocumentScope는 임베딩·다른 지식 종류까지 포함한 목표 모델이다.
 
 ## 1. 학사 및 사용자 코어
 
@@ -728,7 +766,7 @@ erDiagram
 
 ## 단계별 도입 계획과 현재 구현
 
-현재 물리 구현은 인증/학교 범위·학사 메타데이터·개인 자료/참조/영수증·개인 계산 이력 29개 테이블이다. 아래 표는 각 단계의 전체 목표이며
+현재 물리 구현은 인증/학교 범위·학사 메타데이터·개인 자료/참조/영수증·개인 계산·학교 지식 31개 테이블이다. 아래 표는 각 단계의 전체 목표이며
 나머지 학사·문서·판정 엔터티가 이미 생성됐다는 뜻이 아니다.
 
 | 단계 | 목표 | 실제 생성·구현 대상 |

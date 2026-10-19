@@ -60,7 +60,8 @@ transaction advisory lock 안에서 세션과 역할을 다시 읽는다. 코드
 공식 기록 매핑, 실행 조건 스키마와 판정 HTTP API는 별도 작업이다.
 
 문서 종류는 `academic/graduation/other`다. 원문 URL과 메타데이터를 저장하며 URL을 서버에서
-자동 다운로드하지 않는다. 파일 업로드·본문·청크·임베딩·학교 문서 신원 확인은 미구현이다.
+자동 다운로드하지 않는다. 추출 본문·청크·관리자 검토는 별도 [학교 지식 API](school-knowledge.md)에
+구현했다. 이 경로 자체는 파일 업로드·임베딩·학교 담당자 외부 신원 확인을 수행하지 않는다.
 `applied`가 RAG의 `approved/verified/eligible_for_official_answers`를 부여하지 않는다.
 
 ## 계정·감사 연결
@@ -91,5 +92,6 @@ Windows 메모리 토큰을 공유한다. 전송 DTO는 UUID/숫자/boolean/날�
 
 개인 프로필·수강·봉사·일정·포트폴리오 서버 저장은 [개인 자료 API](personal.md),
 학생 조회는 [학생 카탈로그](student-catalog.md), 비밀번호 변경은 [인증 API](authentication.md)로
-구현했다. 기존 개인 화면의 서버 전환, 공식 졸업감사, 승인 문서 RAG, SSO·이메일 검증·
+구현했다. 별도 학교 지식 API에 문서 검토·DB 검색을 연결했다. 기존 개인 화면의 서버 전환,
+공식 졸업감사, 실제 RAG 생성기·문서 검토/검색 화면, SSO·이메일 검증·
 비밀번호 재설정은 후속이다.
