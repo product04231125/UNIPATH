@@ -17,6 +17,49 @@ SYSTEM_INSTRUCTION = """공식 근거에 기반한 학사 안내만 작성한다
 출력은 answer, citation_ids, insufficient_evidence를 갖는 구조화된 결과여야 한다."""
 
 
+def query_requirements(
+    question: str, context: SchoolContext, *, require_complete_scope: bool = False
+) -> QueryResult | None:
+    """Shared input requirements for approved source search and generated answers."""
+    if not question.strip():
+        return QueryResult(
+            AnswerStatus.NEEDS_USER_INPUT, None, "empty_question", missing_fields=["question"]
+        )
+    if re.search(r"졸업\s*(?:이\s*)?(?:가능|할\s*수|되나요|되나|되죠)", question):
+        return QueryResult(
+            AnswerStatus.NEEDS_USER_INPUT,
+            None,
+            "rule_engine_required",
+            missing_fields=["graduation_audit"],
+        )
+    missing = [key for key in ("institution", "department") if not getattr(context, key)]
+    if missing:
+        return QueryResult(
+            AnswerStatus.NEEDS_USER_INPUT,
+            None,
+            "school_context_required",
+            missing_fields=missing,
+        )
+    years = {int(year) for year in re.findall(r"(\d{4})\s*(?:학번|학년도|년\s*입학)", question)}
+    if context.admission_year is not None and years and years != {context.admission_year}:
+        return QueryResult(
+            AnswerStatus.NEEDS_USER_INPUT,
+            None,
+            "conflicting_admission_year",
+            missing_fields=["admission_year"],
+        )
+    if require_complete_scope or any(word in question for word in ("학점", "전공필수", "전공선택")):
+        missing = [key for key in ("admission_year", "track") if getattr(context, key) is None]
+        if missing:
+            return QueryResult(
+                AnswerStatus.NEEDS_USER_INPUT,
+                None,
+                "academic_scope_required",
+                missing_fields=missing,
+            )
+    return None
+
+
 class SchoolRagService:
     def __init__(self, retriever: SchoolRetriever, generator: AnswerGenerator | None = None):
         self.retriever = retriever
@@ -27,42 +70,9 @@ class SchoolRagService:
             return self._query(question, context, preview=preview)
 
     def _query(self, question: str, context: SchoolContext, *, preview: bool) -> QueryResult:
-        if not question.strip():
-            return QueryResult(
-                AnswerStatus.NEEDS_USER_INPUT, None, "empty_question", missing_fields=["question"]
-            )
-        if re.search(r"졸업\s*(?:이\s*)?(?:가능|할\s*수|되나요|되나|되죠)", question):
-            return QueryResult(
-                AnswerStatus.NEEDS_USER_INPUT,
-                None,
-                "rule_engine_required",
-                missing_fields=["graduation_audit"],
-            )
-        missing = [key for key in ("institution", "department") if not getattr(context, key)]
-        if missing:
-            return QueryResult(
-                AnswerStatus.NEEDS_USER_INPUT,
-                None,
-                "school_context_required",
-                missing_fields=missing,
-            )
-        years = {int(year) for year in re.findall(r"(\d{4})\s*(?:학번|학년도|년\s*입학)", question)}
-        if context.admission_year is not None and years and years != {context.admission_year}:
-            return QueryResult(
-                AnswerStatus.NEEDS_USER_INPUT,
-                None,
-                "conflicting_admission_year",
-                missing_fields=["admission_year"],
-            )
-        if any(word in question for word in ("학점", "전공필수", "전공선택")):
-            missing = [key for key in ("admission_year", "track") if getattr(context, key) is None]
-            if missing:
-                return QueryResult(
-                    AnswerStatus.NEEDS_USER_INPUT,
-                    None,
-                    "academic_scope_required",
-                    missing_fields=missing,
-                )
+        required = query_requirements(question, context)
+        if required is not None:
+            return required
         try:
             hits = self.retriever.search(question, context, preview=preview)
             if preview:

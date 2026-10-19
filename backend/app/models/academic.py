@@ -131,7 +131,7 @@ for model in (RuleSet, GraduationRule, OfficialDocument):
     )
 
 # Keep school/department membership valid even for non-HTTP database writers.
-for model in (Department, Curriculum, Course, RuleSet, GraduationRule):
+for model in (Department, Curriculum, Course, RuleSet, GraduationRule, OfficialDocument):
     model.__table__.append_constraint(UniqueConstraint("id", "institution_id"))
 Curriculum.__table__.append_constraint(
     UniqueConstraint("id", "department_id", "institution_id", name="uq_curricula_scope")

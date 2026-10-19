@@ -5,6 +5,8 @@ Flutter Web/Windows 팀 작업에 학교 질의 API 연동을 추가했다. 기�
 연결했다. 개인 화면은 계정별 로컬 저장이며 채팅은 질문과 확인한 학교 문맥만 전송한다.
 개인 자료·카탈로그·[개인 계산](../docs/api/personal-evaluations.md)의 typed 전송 adapter는
 준비됐으며 개인 화면의 서버 저장·계산 버튼 연결은 후속이다. 공식 졸업감사는 미연결이다.
+학교 문서 검토·UUID 문맥 검색에도 Pydantic 생성 DTO와 `school_knowledge_api.dart`를
+제공한다. [계약](../docs/api/school-knowledge.md)을 따르며 새 검토/검색 화면 연결은 후속이다.
 
 ## 로컬 실행
 
