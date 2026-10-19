@@ -12,6 +12,8 @@ import '../../shared/widgets/surface_card.dart';
 import 'fixtures/record_mock_entry.dart';
 import 'personal_record_repository.dart';
 import 'personal_record_fields.dart';
+import 'personal_repository_scope.dart';
+import '../auth/auth_api.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/external_link_button.dart';
 
@@ -63,15 +65,35 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
   bool _loadFailed = false;
   String _term = '';
   List<PersonalRecordField> _fields = [];
+  Listenable? _importChanges;
+  int _loadRevision = 0;
 
   @override
   void initState() {
     super.initState();
-    _repository = PersonalRecordRepository(widget.kind);
+    _repository =
+        PersonalRepositoryScope.read(context)?.records(widget.kind) ??
+        PersonalRecordRepository(widget.kind);
+    _importChanges = PersonalRepositoryScope.read(context)
+        ?.importer
+        ?.importedRevision;
+    _importChanges?.addListener(_reloadAfterImport);
     _load();
   }
 
+  void _reloadAfterImport() {
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _importChanges?.removeListener(_reloadAfterImport);
+    _loadRevision++;
+    super.dispose();
+  }
+
   Future<void> _load() async {
+    final revision = ++_loadRevision;
     if (mounted) {
       setState(() {
         _loading = true;
@@ -80,13 +102,18 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     }
     try {
       await _repository.load();
-      _fields =
+      final fields =
           await widget.fieldsLoader?.call() ??
           personalRecordFields(widget.kind);
+      if (mounted && revision == _loadRevision) _fields = fields;
     } catch (_) {
-      if (mounted) setState(() => _loadFailed = true);
+      if (mounted && revision == _loadRevision) {
+        setState(() => _loadFailed = true);
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && revision == _loadRevision) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -111,6 +138,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         field.key: TextEditingController(text: record?.value(field.key) ?? ''),
     };
     final form = GlobalKey<FormState>();
+    final operationId = record?.id ?? PersonalRecord.newId();
     bool saving = false;
     String? error;
     await showInputDialog<void>(
@@ -137,7 +165,9 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  '기기 로컬 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드·서버 전송은 하지 않습니다.',
+                  _repository.isServerBacked
+                      ? '계정 서버 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드는 하지 않습니다.'
+                      : '기기 로컬 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드·서버 전송은 하지 않습니다.',
                 ),
                 const SizedBox(height: 16),
                 for (final field in fields)
@@ -260,17 +290,20 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                         }
                         await _repository.save(
                           PersonalRecord(
-                            id: record?.id ?? PersonalRecord.newId(),
+                            id: operationId,
+                            version: record?.version,
                             values: values,
                           ),
                         );
                         if (mounted) setState(() {});
                         if (dialogContext.mounted) Navigator.pop(dialogContext);
-                      } catch (_) {
+                      } catch (failure) {
                         if (dialogContext.mounted) {
                           updateDialog(() {
                             saving = false;
-                            error = '기기에 저장하지 못했습니다. 입력을 유지했으니 다시 시도하세요.';
+                            error = failure is AuthFailure
+                                ? '${failure.message} 입력은 유지됩니다.'
+                                : '${_repository.isServerBacked ? '서버' : '기기'}에 저장하지 못했습니다. 입력을 유지했으니 다시 시도하세요.';
                           });
                         }
                       }
@@ -291,7 +324,9 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('개인 기록 삭제'),
-        content: Text('${record.value('title')} 기록을 이 기기에서 삭제할까요?'),
+        content: Text(
+          '${record.value('title')} 기록을 ${_repository.isServerBacked ? '계정 서버' : '이 기기'}에서 삭제할까요?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -307,13 +342,19 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     );
     if (confirmed != true) return;
     try {
-      await _repository.delete(record.id);
+      await _repository.delete(record.id, expectedVersion: record.version);
       if (mounted) setState(() {});
-    } catch (_) {
+    } catch (failure) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('삭제하지 못했습니다. 기록은 유지됩니다.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              failure is AuthFailure && failure.status == 409
+                  ? '연결된 자료가 있거나 기록이 변경되었습니다. 연결을 정리하거나 서버 기록을 다시 불러와 주세요.'
+                  : '삭제하지 못했습니다. 기록은 유지됩니다.',
+            ),
+          ),
+        );
       }
     }
   }
@@ -503,6 +544,14 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     title: widget.title,
     contextLabel: widget.contextLabel,
     description: widget.description,
+    actions: [
+      if (_repository.isServerBacked)
+        TextButton.icon(
+          onPressed: _loading ? null : _load,
+          icon: const Icon(Icons.refresh),
+          label: const Text('서버 기록 다시 불러오기'),
+        ),
+    ],
   );
 
   Widget _statePage({required Widget child}) => ContentScrollView(

@@ -72,7 +72,7 @@ flowchart LR
 
 개별 CRUD와 같은 서비스 검증을 사용하되 커밋은 묶음 전체 마지막에 한 번만 한다.
 이전은 기존 프로필을 덮어쓰지 않고 개인 자료를 학교 확정 기록으로 바꾸지 않는다.
-프론트 타입/전송 adapter와 [이전 API](api/personal-imports.md)를 제공한다. [학업 프로필·일정 화면](api/planning-integration.md)은 동의·시간대 확인과 서버 저장소 전환을 연결했으며 다른 개인 자료 화면은 후속이다.
+프론트 타입/전송 adapter와 [이전 API](api/personal-imports.md)를 제공한다. [학업 프로필·일정 화면](api/planning-integration.md)은 동의·시간대 확인과 서버 저장소 전환을 연결했으며 [다른 개인 자료 10종](api/personal-workspace-integration.md)도 별도 서버 저장/동의 이전을 연결했다.
 
 ### 실제 관리자 저장 경로
 
@@ -170,7 +170,7 @@ flowchart LR
 아래 전체 도메인/외부 서비스 관계는 목표 구조다. 인증·운영자 초기화는
 [인증 API](api/authentication.md)를 따른다. 이메일/학교 담당자 신원 확인은 후속이다.
 [개인 자료 API](api/personal.md)와 [학생용 학사 조회](api/student-catalog.md)는 구현했고,
-프론트의 실제 일반 계정 프로필·일정은 서버 저장이며 다른 개인 화면은 사용자 UUID별 로컬 저장이다. 공통 AuthApi의 사용자 UUID·로그인 세대에 묶인 전송 adapter와 Pydantic DTO를 사용한다. 서버는 선택 X-Unipath-Owner 헤더를 실제 신원과 비교해 탭 간 계정 전환 중 저장을 차단한다. 프로필·일정의 동의 이전은 기기 journal로 같은 요청을 재개하며 원본을 보존한다. 다른 개인 자료의 화면 전환·이전은 후속이다.
+프론트의 실제 일반 계정 프로필·일정·개인 기록·구성·지원 문서는 서버 저장이며 기기 원본/debug는 사용자 UUID별 로컬 저장이다. 공통 AuthApi의 사용자 UUID·로그인 세대에 묶인 전송 adapter와 Pydantic DTO를 사용한다. 서버는 선택 X-Unipath-Owner 헤더를 실제 신원과 비교해 탭 간 계정 전환 중 저장을 차단한다. 프로필·일정의 동의 이전은 기기 journal로 같은 요청을 재개하며 원본을 보존한다. 다른 개인 자료 10종은 전체 참조/순서를 변환해 별도 동의 이전을 제공한다. 실제 관리자 전송도 같은 소유자 조건을 사용한다.
 [개인 계산 API](api/personal-evaluations.md)는 별도 typed 전송 adapter를 제공하며
 현재 개인 화면의 계산 버튼에는 연결하지 않았다. RAG/LLM은 이 계산에 참여하지 않는다.
 
@@ -196,7 +196,8 @@ flowchart LR
     Consent --> Journal[계정별 재시도 journal]
     Journal --> Import[원자적 개인 이전 API]
     Import --> Personal
-    Existing[다른 개인 화면] --> Local[계정별 기기 로컬 자료]
+    Records[8종 개인 기록·구성·지원 문서 화면] --> Bound
+    Originals[보존한 기기 원본·debug 샘플] --> Local[계정별 기기 로컬 자료]
 ```
 
 ```mermaid
@@ -490,7 +491,7 @@ flowchart TB
 `unipath-product` 프로젝트에 연결한다. 각 프로젝트의 API·DB 네트워크, DB 볼륨과
 비밀번호는 분리하고 동일한 FastAPI 이미지를 사용한다. 공개 게이트웨이에는 Web만
 연결하며 Web이 인증·관리자·학교 질의·readiness API를 내부 FastAPI로 프록시한다.
-다운로드 앱의 API도 해당 HTTPS 원점을 사용한다. develop은 실제 계정/역할·학업 프로필/일정 서버 저장과 다른 개인 기록의 계정별 로컬 저장을 제공한다. main은 명시적 승격 전 이전 프리뷰를 유지한다. 운영 학사/공식 판정·LLM 완성과 구분한다.
+다운로드 앱의 API도 해당 HTTPS 원점을 사용한다. develop은 실제 계정/역할·학업 프로필/일정·개인 기록·구성·지원 문서의 서버 저장과 기기 원본 보존을 제공한다. main은 명시적 승격 전 이전 프리뷰를 유지한다. 운영 학사/공식 판정·LLM 완성과 구분한다.
 구체적인 설정·HTTPS 개통·GitHub 다운로드 절차는 [`releases.md`](releases.md)를 따른다.
 
 ```mermaid

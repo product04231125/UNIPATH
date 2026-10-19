@@ -1,15 +1,16 @@
 import '../records/personal_record_fields.dart';
 import '../records/personal_record_repository.dart';
+import '../records/personal_repository_scope.dart';
 
-/// Explicit links between client-local UUIDs only; no school master FK mapping.
+/// Links between personal UUIDs in the selected store; no school master mapping.
 Future<List<PersonalRecordField>> personalGraduationFields(
-  PersonalRecordKind kind,
-) async {
+  PersonalRecordKind kind, {
+  PersonalRepositoryFactory? repositoryFactory,
+}) async {
   final fields = personalRecordFields(kind);
   if (kind == PersonalRecordKind.personalCurriculum) return fields;
-  final curricula = PersonalRecordRepository(
-    PersonalRecordKind.personalCurriculum,
-  );
+  final create = repositoryFactory ?? PersonalRecordRepository.new;
+  final curricula = create(PersonalRecordKind.personalCurriculum);
   await curricula.load();
   fields.add(
     _reference(
@@ -20,13 +21,11 @@ Future<List<PersonalRecordField>> personalGraduationFields(
     ),
   );
   if (kind == PersonalRecordKind.personalCurriculumCourse) {
-    final courses = PersonalRecordRepository(PersonalRecordKind.course);
+    final courses = create(PersonalRecordKind.course);
     await courses.load();
     fields.add(_reference('courseRecordId', '연결할 개인 수강 기록', courses.records));
   } else {
-    final courses = PersonalRecordRepository(
-      PersonalRecordKind.personalCurriculumCourse,
-    );
+    final courses = create(PersonalRecordKind.personalCurriculumCourse);
     await courses.load();
     fields.add(
       _reference('curriculumCourseId', '관련 개인 교육과정 과목', courses.records),
@@ -39,7 +38,7 @@ Future<List<PersonalRecordField>> personalGraduationFields(
       PersonalRecordKind.credential,
       PersonalRecordKind.portfolio,
     ]) {
-      final repo = PersonalRecordRepository(type);
+      final repo = create(type);
       await repo.load();
       for (final record in repo.records) {
         labels['${type.name}/${record.id}'] =
@@ -85,9 +84,14 @@ String _menuName(PersonalRecordKind kind) => switch (kind) {
 
 Future<String?> validatePersonalGraduationLinks(
   PersonalRecordKind kind,
-  Map<String, String> values,
-) async {
-  final fields = await personalGraduationFields(kind);
+  Map<String, String> values, {
+  PersonalRepositoryFactory? repositoryFactory,
+}) async {
+  final create = repositoryFactory ?? PersonalRecordRepository.new;
+  final fields = await personalGraduationFields(
+    kind,
+    repositoryFactory: create,
+  );
   for (final field in fields.where((f) => f.options.isNotEmpty)) {
     if (field.validate(values[field.key]) != null) {
       return '${field.label}을 다시 선택하세요. 연결 대상이 변경되었을 수 있습니다.';
@@ -95,9 +99,7 @@ Future<String?> validatePersonalGraduationLinks(
   }
   final courseId = values['curriculumCourseId'] ?? '';
   if (courseId.isNotEmpty) {
-    final repo = PersonalRecordRepository(
-      PersonalRecordKind.personalCurriculumCourse,
-    );
+    final repo = create(PersonalRecordKind.personalCurriculumCourse);
     await repo.load();
     final course = repo.records.where((r) => r.id == courseId).first;
     if (course.value('curriculumId') != values['curriculumId']) {

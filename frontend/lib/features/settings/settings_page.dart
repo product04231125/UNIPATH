@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../auth/auth_api.dart';
 import '../planning/planning_import_section.dart';
+import '../records/personal_repository_scope.dart';
+import '../records/personal_workspace_import_section.dart';
 
 import 'package:university_path_frontend/shared/app_typography.dart';
 
@@ -131,6 +133,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     const SizedBox(height: 18),
                     if (widget.repository.isServerBacked)
                       PlanningImportSection(repository: widget.repository),
+                    if (PersonalRepositoryScope.read(context)?.importer
+                        case final importer?)
+                      PersonalWorkspaceImportSection(importer: importer),
                     IgnorePointer(
                       ignoring: _saving,
                       child: _settingsCard(

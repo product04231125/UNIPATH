@@ -17,12 +17,16 @@ enum PersonalRecordKind {
   personalGraduationRule,
 }
 
-/// Client-local personal data, never a transport DTO or official school record.
+/// Personal UI model, never a transport DTO or official school record.
 class PersonalRecord {
-  PersonalRecord({required this.id, required Map<String, String> values})
-    : values = Map.unmodifiable(values);
+  PersonalRecord({
+    required this.id,
+    required Map<String, String> values,
+    this.version,
+  }) : values = Map.unmodifiable(values);
   final String id;
   final Map<String, String> values;
+  final int? version;
 
   String value(String key) => values[key] ?? '';
 
@@ -40,6 +44,7 @@ class PersonalRecordRepository {
     : _owner = owner ?? LocalDataOwner.current();
   final LocalDataOwner _owner;
   final PersonalRecordKind kind;
+  bool get isServerBacked => false;
   SharedPreferences? _preferences;
   bool _loaded = false;
   List<PersonalRecord> _records = [];
@@ -104,7 +109,7 @@ class PersonalRecordRepository {
     await _write(next);
   });
 
-  Future<void> delete(String id) => _enqueue(() async {
+  Future<void> delete(String id, {int? expectedVersion}) => _enqueue(() async {
     if (!_loaded) throw StateError('Load records successfully before writing');
     await _read();
     await _write(_records.where((r) => r.id != id).toList());

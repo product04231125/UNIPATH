@@ -74,7 +74,7 @@ uv run --frozen uvicorn app.main:app --host 127.0.0.1 --port 8011 --reload --no-
 Flutter Web은 예를 들어 `flutter run -d chrome --web-port 3000`으로 고정 포트를
 사용한다. 다른 포트를 쓰면 `.env`의 `CORS_ORIGINS` JSON 배열도 갱신한다.
 프론트엔드 학교 질의는 `POST /api/v1/assistant/queries`와 연결한다.
-인증·학업 프로필·일정은 실제 서버와 연결하고 다른 개인 기록은 계정별 기기 저장, 공식 졸업 판정은 미연결이다. Web 실행 주소는
+인증·학업 프로필·일정·개인 기록·구성·지원 문서는 실제 서버와 연결했고 공식 졸업 판정은 미연결이다. Web 실행 주소는
 `http://localhost:3000`, 빌드 설정 `API_BASE_URL`은 실제 API 주소에 맞춘다.
 
 ## RAG 팀 모듈과 학교 질의 API
@@ -242,7 +242,7 @@ Psycopg 연결 문자열은 `postgresql+psycopg://`로 시작해야 한다.
 [개인 자료 계약](../docs/api/personal.md), [학생 카탈로그](../docs/api/student-catalog.md)를 따른다.
 비밀번호 변경은 `/auth/change-password`에서 기존 비밀번호 검증·전체 세션 폐기를 수행한다.
 
-프론트 전송 DTO는 아래 명령으로 Pydantic에서 재생성한다. 학업 프로필·일정 화면은 서버 저장이며 다른 개인 화면은 로컬 저장이다.
+프론트 전송 DTO는 아래 명령으로 Pydantic에서 재생성한다. 학업 프로필·일정과 [개인 작업 공간](../docs/api/personal-workspace-integration.md) 화면은 서버 저장이다.
 
 ```bash
 uv run --frozen python ../scripts/export_student_contracts.py
@@ -258,7 +258,7 @@ dart format frontend/lib/features/api/student_api_models.dart
 결과·조건·최소 입력 snapshot을 불변 이력으로 저장하고 목록/상세/본인 삭제를 제공한다.
 소유권·버전·재시도를 검증하고 원본이 바뀌어도 과거 결과는 유지한다.
 [계산 계약](../docs/api/personal-evaluations.md)을 따른다. Flutter typed 전송 adapter는
-`personal_evaluation_api.dart`이며 현재 개인 계산 화면은 로컬 자료를 사용하며 계산 버튼 API는 미연결이다.
+`personal_evaluation_api.dart`이며 현재 개인 계산 화면은 개인 자료를 사용하며 계산 버튼 API는 미연결이다.
 
 ## 학교 문서 검토·DB 검색
 
@@ -278,7 +278,7 @@ dart format frontend/lib/features/api/student_api_models.dart
 최소 UUID 대응표를 보존해 중복 전송·삭제 후 재시도에 안전하게 응답한다.
 `GET /me/personal-imports/{id}`는 본인의 이전 당시 영수증만 조회한다.
 [이전 계약](../docs/api/personal-imports.md)과 생성된 Dart 타입/전송 코드를 제공한다.
-[학업 프로필·일정 화면](../docs/api/planning-integration.md)은 동의/시간대 확인·서버 전환을 구현했으며 다른 개인 자료는 후속이다.
+[학업 프로필·일정 화면](../docs/api/planning-integration.md)은 동의/시간대 확인·서버 전환을 구현했다. [다른 개인 자료 10종](../docs/api/personal-workspace-integration.md)도 별도 동의 이전을 제공한다.
 
 ## 공식 실행 규칙과 자격증 기준
 

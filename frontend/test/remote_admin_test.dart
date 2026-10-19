@@ -345,6 +345,18 @@ void main() {
           isTrue,
         );
         expect(server.saved, isTrue);
+        final writes = server.requests.where(
+          (request) =>
+              request.url.path.startsWith('/api/v1/admin/') &&
+              request.method != 'GET',
+        );
+        expect(writes, isNotEmpty);
+        expect(
+          writes.every(
+            (request) => request.headers['X-Unipath-Owner'] == userId,
+          ),
+          isTrue,
+        );
         final logout = find.byTooltip('로그아웃');
         if (logout.evaluate().isNotEmpty) {
           await tester.ensureVisible(logout);

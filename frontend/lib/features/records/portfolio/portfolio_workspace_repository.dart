@@ -21,11 +21,13 @@ class PortfolioComposition {
     this.audience = PortfolioAudience.private,
     this.reviewed = false,
     required List<String> sources,
+    this.version,
   }) : sources = List.unmodifiable(sources);
   final String id, title, description;
   final PortfolioAudience audience;
   final bool reviewed;
   final List<String> sources;
+  final int? version;
 }
 
 class ApplicationDocument {
@@ -37,9 +39,11 @@ class ApplicationDocument {
     required this.type,
     this.body = '',
     required List<String> sources,
+    this.version,
   }) : sources = List.unmodifiable(sources);
   final String id, title, target, role, type, body;
   final List<String> sources;
+  final int? version;
 }
 
 class PortfolioSource {
@@ -74,6 +78,7 @@ class PortfolioWorkspaceRepository {
   PortfolioWorkspaceRepository({this.writer, LocalDataOwner? owner})
     : _owner = owner ?? LocalDataOwner.current();
   final LocalDataOwner _owner;
+  bool get isServerBacked => false;
   final Future<bool> Function(String key, String value)? writer;
   static const storageKey = 'university_path.portfolio_workspace.v1';
   String get _accountStorageKey => _owner.key(storageKey);
@@ -218,9 +223,9 @@ class PortfolioWorkspaceRepository {
     }
   }
 
-  Future<void> deleteComposition(String id) =>
+  Future<void> deleteComposition(String id, {int? expectedVersion}) =>
       _write(_compositions.where((c) => c.id != id).toList(), _documents);
-  Future<void> deleteDocument(String id) =>
+  Future<void> deleteDocument(String id, {int? expectedVersion}) =>
       _write(_compositions, _documents.where((d) => d.id != id).toList());
 
   Future<void> _write(

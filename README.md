@@ -53,10 +53,10 @@ PR과 `main`/`develop`의 백엔드 변경을 검증합니다. 앱 다운로드 
 - 통합·빌드·릴리스 담당: 이어진
 
 develop의 로그인·가입·세션·역할/학교 범위는 실제 API/DB로 구현했습니다.
-학업 프로필·일정은 [서버 저장과 동의 이전 화면](docs/api/planning-integration.md)을 연결했습니다. 다른 개인 화면은 계정별 기기 로컬이며 [서버 API](docs/api/personal.md)와 전송 adapter는 준비됐습니다.
+학업 프로필·일정은 [서버 저장과 동의 이전 화면](docs/api/planning-integration.md)을 연결했습니다. [다른 개인 기록·구성·지원 문서 화면](docs/api/personal-workspace-integration.md)도 서버 저장과 동의 이전을 연결했습니다. 기기 원본은 보존합니다.
 [개인 기준 계산 API](docs/api/personal-evaluations.md)와 불변 결과 이력도 구현했습니다.
 [개인 자료 일괄 이전 API](docs/api/personal-imports.md)는 본인 확인·동의한 자료와 관계를
-원자적으로 추가하고 ID 대응표·안전한 재시도를 제공합니다. 프로필·일정의 이전 화면은 연결했고 다른 개인 자료는 후속입니다.
+원자적으로 추가하고 ID 대응표·안전한 재시도를 제공합니다. 프로필·일정과 다른 개인 자료 10종의 별도 동의 이전 화면을 연결했습니다.
 [학교 문서 검토·DB 검색 API](docs/api/school-knowledge.md)는 적용 문서의 추출본 등록,
 별도 승인·회수와 로그인 사용자의 UUID 문맥 검색을 제공합니다. 실제 LLM은 미연결입니다.
 [공식 실행 규칙](docs/api/rule-programs.md)은 적용 메타데이터에 명시적인 조건·승인 근거를
@@ -149,7 +149,7 @@ Flutter Web은 역할에 따라 학생 사용자 화면과 학교 관리자 화�
 [학사 API](docs/api/academic.md)로 구현했다. 조건 설명은 실행 가능한 판정 규칙이 아니며,
 학생 자료 서버 저장과 학생용 학사 조회는 [학생 API](docs/api/personal.md)로 구현했다.
 본인 자료와 명시적 조건을 사용하는 [개인 계산](docs/api/personal-evaluations.md)은
-공식 판정과 분리해 구현했다. 학업 프로필·일정은 서버 저장·동의 이전을 연결했다. 다른 개인 화면 전환·자료 이전, 공식 졸업감사·하위 관리 범위는 후속이다.
+공식 판정과 분리해 구현했다. 학업 프로필·일정은 서버 저장·동의 이전을 연결했다. 나머지 개인 기록·구성·지원 문서도 서버 화면과 동의 이전을 연결했다. 개인 계산 버튼·공식 졸업감사·하위 관리 범위는 후속이다.
 
 - 일반 사용자는 등록된 학교·학과 데이터가 없거나 지원하지 않는 학교·학과에 속해도
   자격증, 진로, 활동·경험, 채용 분석 등 공용 모듈을 사용할 수 있다. 학사정보와 과목도
@@ -446,7 +446,7 @@ python3 backend/scripts/smoke_api.py
 ### Flutter 프론트엔드 설치 및 실행 (Windows)
 
 `frontend/`는 Flutter Web과 Windows 화면을 함께 제공합니다. 학교 질의는 실제 API와
-연결하고 인증은 실제 계정 API를 사용합니다. 학업 프로필·일정은 서버 저장이고 다른 개인 기록은 계정별 기기 로컬이며 졸업 판정은 미연결입니다. Flutter SDK를 내려받아
+연결하고 인증은 실제 계정 API를 사용합니다. 학업 프로필·일정·개인 기록·구성·지원 문서는 서버 저장이며 졸업 판정은 미연결입니다. Flutter SDK를 내려받아
 예를 들어 `C:\develop\flutter`에 압축을 풀고, `C:\develop\flutter\bin`을 사용자
 `Path`에 추가합니다. Windows 앱도 빌드하려면 Visual Studio의 **Desktop development
 with C++** 워크로드가 필요합니다. 자세한 설치 절차는 [Flutter 수동 설치 안내](https://docs.flutter.dev/install/manual)와 [Windows 개발 환경 안내](https://docs.flutter.dev/platform-integration/windows/setup)를 따른다.

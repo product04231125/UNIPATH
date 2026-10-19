@@ -264,7 +264,9 @@ class AppNavigation extends RouterDelegate<AppLocation>
           _liveAdminRepository = RemoteAdminRepository(
             _identity!,
             auth: _auth,
-            api: _auth as ApiGateway,
+            api: _auth is AuthApi
+                ? (_auth).forOwner(_identity!.id)
+                : _auth as ApiGateway,
           );
         } else if (_liveAdminRepository!.permissionVersion !=
             _identity!.version) {
