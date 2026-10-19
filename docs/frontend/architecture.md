@@ -3,7 +3,7 @@
 `frontend/lib`은 Flutter Web과 Windows에서 같은 화면 코드를 사용한다. 학교 질의는
 `POST /api/v1/assistant/queries`를 호출한다. 다른 도메인의 fixture와 기기 로컬 상태는
 합성 학사 모델은 실제 서버 모델이 아니다. 인증·역할·학교 범위는 실제 API이며,
-학업 프로필·일정 CRUD는 서버에 연결했으며 다른 개인 기록 CRUD도 연결했고 개인 계산 버튼·공식 졸업 판정 화면 API는 아직 연결하지 않았다. [인증 계약](../api/authentication.md)을 따른다.
+학업 프로필·일정 CRUD는 서버에 연결했으며 다른 개인 기록 CRUD도 연결했고 개인 명시 조건·계산·불변 이력 화면도 연결했다. 공식 졸업 판정 화면 API는 아직 연결하지 않았다. [인증 계약](../api/authentication.md)을 따른다.
 
 ## 진입과 공통 영역
 

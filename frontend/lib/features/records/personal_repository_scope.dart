@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'personal_record_repository.dart';
 import 'portfolio/portfolio_workspace_repository.dart';
 import 'personal_workspace_importer.dart';
+import '../graduation/personal_calculation_controller.dart';
 
 typedef PersonalRepositoryFactory = PersonalRecordRepository Function(
   PersonalRecordKind kind,
@@ -17,10 +18,12 @@ class PersonalRepositoryScope extends InheritedWidget {
     required this.records,
     required this.portfolio,
     this.importer,
+    this.calculations,
   });
   final PersonalRepositoryFactory records;
   final PortfolioWorkspaceRepository Function() portfolio;
   final PersonalWorkspaceImporter? importer;
+  final PersonalCalculationController? calculations;
   static PersonalRepositoryScope? read(BuildContext context) =>
       context.getInheritedWidgetOfExactType<PersonalRepositoryScope>();
   @override
