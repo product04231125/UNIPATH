@@ -234,7 +234,8 @@ Psycopg 연결 문자열은 `postgresql+psycopg://`로 시작해야 한다.
 `0004_personal_records`는 개인 프로필·11개 개인 컬렉션·순서 있는 초안 참조·생성 재시도 영수증의
 15개 테이블을 추가한다. `0005_personal_evaluations`는 개인 계산 이력을 추가해
 당시 물리 테이블은 총 29개다. `0006_school_knowledge`가 검토 문서/청크 2개를 추가해
-현재 총 31개다(Alembic 테이블 제외).
+31개다. `0007_official_rule_programs`가 전역 자격증/기관 마스터와 공식 실행 규칙·근거·
+과목/자격증 참조 7개를 추가해 현재 총 38개다(Alembic 테이블 제외).
 `/api/v1/me/*`는 세션 소유자만 읽고 변경하며 관리자 역할로 다른 학생 기록을 조회하지 못한다.
 `/api/v1/catalog/*`는 로그인한 학생에게 적용본과 등록된 학교·과정·과목 메타데이터만 조회한다.
 [개인 자료 계약](../docs/api/personal.md), [학생 카탈로그](../docs/api/student-catalog.md)를 따른다.
@@ -268,3 +269,13 @@ dart format frontend/lib/features/api/student_api_models.dart
 먼저 `--dry-run`으로 원본 hash·페이지·분할을 확인하고 서버 초안으로 전송한다.
 실제 PDF·파일 플래그를 자동 승인하지 않으며 실제 LLM/임베딩과 검토 UI는 후속이다.
 [상세 계약](../docs/api/school-knowledge.md)을 따른다.
+
+## 공식 실행 규칙과 자격증 기준
+
+`/admin/rule-programs`는 적용된 규칙 메타데이터의 명시적 실행 조건·근거·적용 범위를
+별도 초안으로 등록하고 검토·승인·회수한다. `/catalog/rule-programs`는 로그인 사용자의
+등록 UUID·입학연도·이수경로로 현재 실행본을 선택한다. 누락·수동 확인 요건을 유지하고
+`catalog_complete`는 항상 false다. 학교 확정 기록 연동·공식 졸업감사 HTTP는 후속이다.
+전역 `/admin/certificate-providers`, `/admin/certificates`는 슈퍼관리자만 변경하며
+로그인 사용자는 `/catalog/*`에서 활성 마스터를 읽는다. 학생 보유 여부와 구별한다.
+[실행 규칙](../docs/api/rule-programs.md), [자격증 마스터](../docs/api/certificates.md)를 따른다.

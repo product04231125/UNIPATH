@@ -90,6 +90,7 @@ class KnowledgeChunk(Base):
     tracks: Mapped[list | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
     warnings: Mapped[list] = mapped_column(JSONB)
     __table_args__ = (
+        UniqueConstraint("id", "institution_id"),
         UniqueConstraint("knowledge_document_id", "page", "part_index"),
         ForeignKeyConstraint(
             ["knowledge_document_id", "institution_id"],

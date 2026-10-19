@@ -2,8 +2,9 @@
 
 `backend/app/rules/`는 DB·HTTP·LLM과 독립적인 계산 모듈이다. 인증 방식이나 임베딩
 공급자 없이 단위 테스트와 로컬 실행이 가능하다. 개인 기록 DB는
-[개인 계산 API](api/personal-evaluations.md)로 연결했다. 공식 졸업감사 API·공식 승인
-어댑터는 후속이며 학교 질의 API의 `rule_engine_required` 안내도 유지한다.
+[개인 계산 API](api/personal-evaluations.md)로 연결했다. [공식 실행 규칙 API](api/rule-programs.md)는
+승인 실행본의 등록·선택과 내부 코어 어댑터를 제공한다. 학교 확정 기록 어댑터·공식 졸업감사
+API는 후속이며 학교 질의 API의 `rule_engine_required` 안내도 유지한다.
 
 ## 구현 범위
 
@@ -14,7 +15,7 @@
 | `minimum_volunteer_hours` | 승인된 봉사 시간 합계 | 승인 상태와 승인 시간 |
 | `any_certificate` | 명시한 자격증 중 유효한 하나 | 자격증 ID·확인 상태·유효성 확인·만료일 |
 | `thesis` | 논문/캡스톤 종류별 완료, 필요 시 승인과 허용 성적 | 종류·완료·승인, 규칙에 명시한 허용 성적 |
-| `manual_review` | 조건 미확정 요건을 확인 필요로 유지 | 내부 어댑터 전용, 공개 조건 종류 아님 |
+| `manual_review` | 조건 미확정 요건을 확인 필요로 유지 | 공식 실행본의 custom 요건, 개인 계산 API에서는 직접 지정하지 않음 |
 
 실제 학교 기준이나 성적 환산표는 내장하지 않는다. 테스트와 `--demo`의 기준·문서·기록은
 모두 합성 예시다. 자유로운 계산식이나 Python 표현식을 실행하지 않고 허용한 다섯 종류만
@@ -57,7 +58,8 @@ DB 모델이나 공개 API 스키마와는 별개다. UUID 식별자·snake_case
 
 `evaluate_official()`은 앞으로 승인된 DB 어댑터가 호출할 내부 함수다. 이 함수가 관리자
 신원·공식 URL·승인 권한을 검증하는 것은 아니다. 호출자가 검증된 공식 규칙과 기록을
-제공해야 하며, 현재 이를 제공하는 운영 DB 어댑터와 공개 HTTP 경로는 없다.
+제공해야 한다. 승인 실행 규칙의 DB 어댑터는 구현했으나 학교 확정 기록 공급자와
+공식 판정 공개 HTTP 경로는 아직 없다. 실행본 선택 API의 `catalog_complete`는 항상 false다.
 
 - `origin=official`, `approval_status=approved`, 활성·유효기간 조건을 만족한 규칙만 선택한다.
   승인된 공식 규칙의 내부 계약에는 문서 UUID·제목·URL·페이지 근거가 필수다.

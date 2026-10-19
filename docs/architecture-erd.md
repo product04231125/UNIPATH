@@ -97,6 +97,27 @@ flowchart LR
 생성하지 않는다. 원문 파일 다운로드·파일 자동 승인·실제 LLM/임베딩·대화 저장은 하지 않는다.
 [검토·검색 API](api/school-knowledge.md)를 따르며 새 검토/검색 화면 연결은 후속이다.
 
+### 실행 규칙 검토와 선택
+
+```mermaid
+flowchart LR
+    Metadata[적용된 규칙 메타데이터] --> Draft[명시적 조건·연도·이수경로 초안]
+    Knowledge[승인 학교 문서 청크] --> Draft
+    Masters[같은 학교 과목·전역 자격증 마스터] --> Draft
+    Draft --> Review[관리자 전체 조건·출처·범위·예외 검토]
+    Review --> Published[(불변 승인 실행본·근거·참조 snapshot)]
+    Context[등록 학교·학과·교육과정·입학연도·경로] --> Selection[최신 적용본·기간·출처 상태 재검증]
+    Published --> Selection
+    Selection --> Result[실행본·누락 요건·수동 확인 요건]
+    Published --> Adapter[내부 코어 규칙 어댑터]
+    Adapter --> Core[결정론적 Rule Engine]
+    Future[미정인 학교 확정 기록 연동] -.-> Core
+```
+
+등록된 실행본 선택의 `catalog_complete`는 항상 false다. 학교가 확정한 기록 공급자와
+전체 규정 완전성 확인 없이 공식 졸업 판정으로 표시하지 않는다. 실제 판정 HTTP·공식 감사
+저장·검토 화면 연결은 후속이다. [실행 규칙 API](api/rule-programs.md)를 따른다.
+
 ### 학교 질의와 독립 AI 대화창
 
 - Windows에서는 우측 AI 패널을 별도 Flutter OS 창으로 분리할 수 있다. Web은 도킹 패널과

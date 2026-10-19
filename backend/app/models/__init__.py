@@ -8,6 +8,7 @@ from app.models.academic import (
     RuleSet,
 )
 from app.models.base import Base
+from app.models.certificates import Certificate, CertificateProvider
 from app.models.evaluations import PersonalEvaluation
 from app.models.identity import (
     AdminScope,
@@ -34,6 +35,13 @@ from app.models.personal import (
     PlanningProfile,
     PortfolioComposition,
     PortfolioSource,
+)
+from app.models.rule_programs import (
+    ProgramCertificateRef,
+    ProgramCourseRef,
+    ProgramEvidence,
+    ProgramRule,
+    RuleProgram,
 )
 
 __all__ = [
@@ -69,4 +77,11 @@ __all__ = [
     "PersonalEvaluation",
     "KnowledgeDocument",
     "KnowledgeChunk",
+    "Certificate",
+    "CertificateProvider",
+    "RuleProgram",
+    "ProgramRule",
+    "ProgramEvidence",
+    "ProgramCourseRef",
+    "ProgramCertificateRef",
 ]

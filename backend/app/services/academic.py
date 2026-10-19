@@ -18,6 +18,7 @@ from app.models.academic import (
 )
 from app.models.identity import AdminScope, IdentityAudit, Institution, Role
 from app.models.personal import PlanningProfile
+from app.models.rule_programs import ProgramCourseRef, ProgramRule, RuleProgram
 from app.schemas.common import ErrorCode
 from app.services import access, auth
 
@@ -225,6 +226,16 @@ def references(db, identity, model, record_id):
         # A profile FK must prevent catalog deletion without exposing a student's
         # identity, profile values, or the number of profiles using the item.
         result.append({"id": record_id, "kind": "protected_reference", "name": "보호된 연결 참조"})
+    if model is Course:
+        for program in db.scalars(
+            select(RuleProgram)
+            .join(ProgramRule, ProgramRule.program_id == RuleProgram.id)
+            .join(ProgramCourseRef, ProgramCourseRef.program_rule_id == ProgramRule.id)
+            .where(ProgramCourseRef.course_id == record_id)
+            .distinct()
+            .order_by(RuleProgram.id)
+        ):
+            result.append({"id": program.id, "kind": "ruleProgram", "name": program.name})
     return result
 
 

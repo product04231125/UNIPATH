@@ -7,6 +7,9 @@ Flutter Web/Windows 팀 작업에 학교 질의 API 연동을 추가했다. 기�
 준비됐으며 개인 화면의 서버 저장·계산 버튼 연결은 후속이다. 공식 졸업감사는 미연결이다.
 학교 문서 검토·UUID 문맥 검색에도 Pydantic 생성 DTO와 `school_knowledge_api.dart`를
 제공한다. [계약](../docs/api/school-knowledge.md)을 따르며 새 검토/검색 화면 연결은 후속이다.
+공식 실행 규칙·자격증 마스터의 타입과 전송 adapter는 `rule_program_models.dart`·
+`rule_program_api.dart`에 있다. 조건은 닫힌 타입으로 구분하며 규칙 선택을 졸업 판정으로
+표시하지 않는다. [실행 규칙 계약](../docs/api/rule-programs.md)의 화면 연결은 후속이다.
 
 ## 로컬 실행
 
