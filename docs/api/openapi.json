@@ -19996,6 +19996,483 @@
           }
         }
       }
+    },
+    "/api/v1/me/personal-evaluations": {
+      "post": {
+        "tags": [
+          "personal calculations"
+        ],
+        "summary": "Create",
+        "operationId": "create_api_v1_me_personal_evaluations_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonalEvaluationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalEvaluationView"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "personal calculations"
+        ],
+        "summary": "Listing",
+        "operationId": "listing_api_v1_me_personal_evaluations_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "curriculum_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Curriculum Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalEvaluationList"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/personal-evaluations/{evaluation_id}": {
+      "get": {
+        "tags": [
+          "personal calculations"
+        ],
+        "summary": "Detail",
+        "operationId": "detail_api_v1_me_personal_evaluations__evaluation_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "evaluation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Evaluation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalEvaluationView"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "personal calculations"
+        ],
+        "summary": "Remove",
+        "operationId": "remove_api_v1_me_personal_evaluations__evaluation_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "evaluation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Evaluation Id"
+            }
+          },
+          {
+            "name": "expected_version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Expected Version"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -21501,6 +21978,127 @@
         ],
         "title": "AuditView"
       },
+      "CertificateCondition": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "any_certificate",
+            "title": "Kind"
+          },
+          "certificates": {
+            "items": {
+              "$ref": "#/components/schemas/CertificateObservation"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Certificates"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "certificates"
+        ],
+        "title": "CertificateCondition"
+      },
+      "CertificateObservation": {
+        "properties": {
+          "credential_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Credential Id"
+          },
+          "possession": {
+            "type": "string",
+            "enum": [
+              "held",
+              "not_held",
+              "unknown"
+            ],
+            "title": "Possession",
+            "default": "unknown"
+          },
+          "validity_known": {
+            "type": "boolean",
+            "title": "Validity Known",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "credential_id"
+        ],
+        "title": "CertificateObservation"
+      },
+      "CourseCondition-Input": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "required_courses",
+            "title": "Kind"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/RequiredCourse-Input"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Courses"
+          },
+          "grades": {
+            "items": {
+              "$ref": "#/components/schemas/GradeObservation-Input"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Grades"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "courses"
+        ],
+        "title": "CourseCondition"
+      },
+      "CourseCondition-Output": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "required_courses",
+            "title": "Kind"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/RequiredCourse-Output"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Courses"
+          },
+          "grades": {
+            "items": {
+              "$ref": "#/components/schemas/GradeObservation-Output"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Grades"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "courses"
+        ],
+        "title": "CourseCondition"
+      },
       "CourseCreate": {
         "properties": {
           "name": {
@@ -22494,6 +23092,115 @@
           "title"
         ],
         "title": "CredentialRecordView"
+      },
+      "CreditCondition-Input": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "minimum_credits",
+            "title": "Kind"
+          },
+          "minimum": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              }
+            ],
+            "title": "Minimum"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "course_record_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array",
+                "maxItems": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Record Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "minimum"
+        ],
+        "title": "CreditCondition"
+      },
+      "CreditCondition-Output": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "minimum_credits",
+            "title": "Kind"
+          },
+          "minimum": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)",
+            "title": "Minimum"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "course_record_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": "array",
+                "maxItems": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Record Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "minimum"
+        ],
+        "title": "CreditCondition"
       },
       "CurriculumCourseCreate": {
         "properties": {
@@ -23920,6 +24627,143 @@
         ],
         "title": "ErrorResponse"
       },
+      "EvaluationItem": {
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Rule Id"
+          },
+          "rule_version": {
+            "type": "integer",
+            "title": "Rule Version"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "satisfied",
+              "not_satisfied",
+              "needs_review",
+              "not_applicable"
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current"
+          },
+          "required": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required"
+          },
+          "deficit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deficit"
+          },
+          "missing_course_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Missing Course Ids"
+          },
+          "uncertain_course_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Uncertain Course Ids"
+          },
+          "evidence_record_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Evidence Record Ids"
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/CreditCondition-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CourseCondition-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/VolunteerCondition-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CertificateCondition"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ThesisCondition"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "kind",
+                  "mapping": {
+                    "any_certificate": "#/components/schemas/CertificateCondition",
+                    "minimum_credits": "#/components/schemas/CreditCondition-Output",
+                    "minimum_volunteer_hours": "#/components/schemas/VolunteerCondition-Output",
+                    "required_courses": "#/components/schemas/CourseCondition-Output",
+                    "thesis": "#/components/schemas/ThesisCondition"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condition"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule_id",
+          "rule_version",
+          "title",
+          "status",
+          "reason"
+        ],
+        "title": "EvaluationItem"
+      },
       "EventCreate": {
         "properties": {
           "title": {
@@ -24615,6 +25459,71 @@
           "reason"
         ],
         "title": "FieldError"
+      },
+      "GradeObservation-Input": {
+        "properties": {
+          "course_record_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Course Record Id"
+          },
+          "points": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              }
+            ],
+            "title": "Points"
+          },
+          "scale": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Scale"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "course_record_id",
+          "points",
+          "scale"
+        ],
+        "title": "GradeObservation"
+      },
+      "GradeObservation-Output": {
+        "properties": {
+          "course_record_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Course Record Id"
+          },
+          "points": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)",
+            "title": "Points"
+          },
+          "scale": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Scale"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "course_record_id",
+          "points",
+          "scale"
+        ],
+        "title": "GradeObservation"
       },
       "HealthResponse": {
         "properties": {
@@ -25607,6 +26516,301 @@
           "curriculum_year"
         ],
         "title": "PersonalCurriculumView"
+      },
+      "PersonalEvaluationCreate": {
+        "properties": {
+          "curriculum_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Curriculum Id"
+          },
+          "expected_curriculum_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Curriculum Version"
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "calculations": {
+            "items": {
+              "$ref": "#/components/schemas/RuleCalculation"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Calculations"
+          },
+          "expected_source_versions": {
+            "items": {
+              "$ref": "#/components/schemas/SourceVersion"
+            },
+            "type": "array",
+            "maxItems": 2000,
+            "title": "Expected Source Versions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "curriculum_id",
+          "expected_curriculum_version"
+        ],
+        "title": "PersonalEvaluationCreate"
+      },
+      "PersonalEvaluationList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalEvaluationSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "PersonalEvaluationList"
+      },
+      "PersonalEvaluationSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Owner Id"
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "curriculum_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Curriculum Id"
+          },
+          "curriculum_version": {
+            "type": "integer",
+            "title": "Curriculum Version"
+          },
+          "curriculum_title": {
+            "type": "string",
+            "title": "Curriculum Title"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "evaluated_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Evaluated On"
+          },
+          "official": {
+            "type": "boolean",
+            "const": false,
+            "title": "Official",
+            "default": false
+          },
+          "label": {
+            "type": "string",
+            "const": "개인 기준 계산 · 학교 공식 판정 아님",
+            "title": "Label",
+            "default": "개인 기준 계산 · 학교 공식 판정 아님"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "satisfied",
+              "not_satisfied",
+              "needs_review",
+              "not_applicable"
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "owner_id",
+          "client_id",
+          "curriculum_id",
+          "curriculum_version",
+          "curriculum_title",
+          "created_at",
+          "evaluated_on",
+          "status",
+          "reason"
+        ],
+        "title": "PersonalEvaluationSummary"
+      },
+      "PersonalEvaluationView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Owner Id"
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "curriculum_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Curriculum Id"
+          },
+          "curriculum_version": {
+            "type": "integer",
+            "title": "Curriculum Version"
+          },
+          "curriculum_title": {
+            "type": "string",
+            "title": "Curriculum Title"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "evaluated_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Evaluated On"
+          },
+          "official": {
+            "type": "boolean",
+            "const": false,
+            "title": "Official",
+            "default": false
+          },
+          "label": {
+            "type": "string",
+            "const": "개인 기준 계산 · 학교 공식 판정 아님",
+            "title": "Label",
+            "default": "개인 기준 계산 · 학교 공식 판정 아님"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "satisfied",
+              "not_satisfied",
+              "needs_review",
+              "not_applicable"
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluationItem"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "source_versions": {
+            "items": {
+              "$ref": "#/components/schemas/SourceVersion"
+            },
+            "type": "array",
+            "title": "Source Versions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "owner_id",
+          "client_id",
+          "curriculum_id",
+          "curriculum_version",
+          "curriculum_title",
+          "created_at",
+          "evaluated_on",
+          "status",
+          "reason",
+          "results",
+          "source_versions"
+        ],
+        "title": "PersonalEvaluationView"
       },
       "PersonalGraduationRuleCreate": {
         "properties": {
@@ -26885,6 +28089,120 @@
         ],
         "title": "RegisterRequest"
       },
+      "RequiredCourse-Input": {
+        "properties": {
+          "curriculum_course_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Curriculum Course Id"
+          },
+          "minimum_credits": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Credits"
+          },
+          "minimum_grade_points": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Grade Points"
+          },
+          "comparison_grade_scale": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison Grade Scale"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "curriculum_course_id"
+        ],
+        "title": "RequiredCourse"
+      },
+      "RequiredCourse-Output": {
+        "properties": {
+          "curriculum_course_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Curriculum Course Id"
+          },
+          "minimum_credits": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Credits"
+          },
+          "minimum_grade_points": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Grade Points"
+          },
+          "comparison_grade_scale": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison Grade Scale"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "curriculum_course_id"
+        ],
+        "title": "RequiredCourse"
+      },
       "Role": {
         "type": "string",
         "enum": [
@@ -26912,6 +28230,58 @@
           "expected_version"
         ],
         "title": "RoleChange"
+      },
+      "RuleCalculation": {
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Rule Id"
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          },
+          "condition": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CreditCondition-Input"
+              },
+              {
+                "$ref": "#/components/schemas/CourseCondition-Input"
+              },
+              {
+                "$ref": "#/components/schemas/VolunteerCondition-Input"
+              },
+              {
+                "$ref": "#/components/schemas/CertificateCondition"
+              },
+              {
+                "$ref": "#/components/schemas/ThesisCondition"
+              }
+            ],
+            "title": "Condition",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "any_certificate": "#/components/schemas/CertificateCondition",
+                "minimum_credits": "#/components/schemas/CreditCondition-Input",
+                "minimum_volunteer_hours": "#/components/schemas/VolunteerCondition-Input",
+                "required_courses": "#/components/schemas/CourseCondition-Input",
+                "thesis": "#/components/schemas/ThesisCondition"
+              }
+            }
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rule_id",
+          "expected_version",
+          "condition"
+        ],
+        "title": "RuleCalculation"
       },
       "RuleCreate": {
         "properties": {
@@ -28220,6 +29590,41 @@
         ],
         "title": "SessionMode"
       },
+      "SourceVersion": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "course-records",
+              "activity-records",
+              "credential-records",
+              "achievement-records",
+              "personal-curricula",
+              "personal-curriculum-courses",
+              "personal-graduation-rules"
+            ],
+            "title": "Kind"
+          },
+          "record_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Record Id"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "record_id",
+          "version"
+        ],
+        "title": "SourceVersion"
+      },
       "StatusChange": {
         "properties": {
           "account_status": {
@@ -28238,6 +29643,88 @@
           "expected_version"
         ],
         "title": "StatusChange"
+      },
+      "ThesisCondition": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "thesis",
+            "title": "Kind"
+          },
+          "thesis_type": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Thesis Type"
+          },
+          "requires_approval": {
+            "type": "boolean",
+            "title": "Requires Approval",
+            "default": true
+          },
+          "accepted_grades": {
+            "items": {
+              "type": "string",
+              "maxLength": 128,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Accepted Grades"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/ThesisObservation"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Records"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "thesis_type",
+          "records"
+        ],
+        "title": "ThesisCondition"
+      },
+      "ThesisObservation": {
+        "properties": {
+          "achievement_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Achievement Id"
+          },
+          "completion": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "in_progress",
+              "unknown"
+            ],
+            "title": "Completion",
+            "default": "unknown"
+          },
+          "approval": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "pending",
+              "rejected",
+              "needs_review"
+            ],
+            "title": "Approval",
+            "default": "needs_review"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "achievement_id"
+        ],
+        "title": "ThesisObservation"
       },
       "UserAccessChange": {
         "properties": {
@@ -28334,6 +29821,77 @@
           "created_at"
         ],
         "title": "UserView"
+      },
+      "VolunteerCondition-Input": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "minimum_volunteer_hours",
+            "title": "Kind"
+          },
+          "minimum": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+              }
+            ],
+            "title": "Minimum"
+          },
+          "activity_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Activity Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "minimum",
+          "activity_ids"
+        ],
+        "title": "VolunteerCondition"
+      },
+      "VolunteerCondition-Output": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "minimum_volunteer_hours",
+            "title": "Kind"
+          },
+          "minimum": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)",
+            "title": "Minimum"
+          },
+          "activity_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Activity Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "minimum",
+          "activity_ids"
+        ],
+        "title": "VolunteerCondition"
       }
     },
     "securitySchemes": {

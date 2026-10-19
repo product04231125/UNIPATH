@@ -199,8 +199,15 @@ class ThesisRule(RuleBase):
     accepted_grades: tuple[Name, ...] = ()
 
 
+class ReviewRule(RuleBase):
+    """A known requirement without executable criteria must remain unresolved."""
+
+    kind: Literal["manual_review"] = "manual_review"
+    reason: Name = "explicit_condition_required"
+
+
 Rule = Annotated[
-    CreditRule | CourseRule | VolunteerRule | CertificateRule | ThesisRule,
+    CreditRule | CourseRule | VolunteerRule | CertificateRule | ThesisRule | ReviewRule,
     Field(discriminator="kind"),
 ]
 

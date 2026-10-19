@@ -8,6 +8,7 @@ from app.models.academic import (
     RuleSet,
 )
 from app.models.base import Base
+from app.models.evaluations import PersonalEvaluation
 from app.models.identity import (
     AdminScope,
     AuthSession,
@@ -64,4 +65,5 @@ __all__ = [
     "PlanningProfile",
     "PortfolioComposition",
     "PortfolioSource",
+    "PersonalEvaluation",
 ]

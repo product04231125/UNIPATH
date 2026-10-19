@@ -171,8 +171,8 @@ uv run --frozen python -m app.operations.db_backups backup --environment local
 uv run --frozen python -m app.operations.db_backups verify ../backups/시각-식별자
 ```
 
-코어는 공식 규칙 계산과 개인 기준 계산을 구분하지만 공개 졸업감사 API·DB는 연결하지
-않았다. 실제 학교 기준을 내장하거나 RAG/LLM이 판정을 대신하지 않는다.
+코어는 공식 규칙 계산과 개인 기준 계산을 구분한다. 개인 자료 DB와 개인 계산 API·이력은
+연결했고 공식 졸업감사 API·DB는 후속이다. 실제 학교 기준을 내장하거나 RAG/LLM이 판정을 대신하지 않는다.
 [판정 코어 계약](../docs/rule-engine.md)과 [DB 백업·복구 검증](../docs/database-backups.md)을
 따른다. 백업 파일은 비공개 `backups/`에 보관하며 Git·Docker 컨텍스트에서 제외한다.
 
@@ -231,7 +231,8 @@ Psycopg 연결 문자열은 `postgresql+psycopg://`로 시작해야 한다.
 ## 학생 개인 자료·카탈로그 API
 
 `0004_personal_records`는 개인 프로필·11개 개인 컬렉션·순서 있는 초안 참조·생성 재시도 영수증의
-15개 테이블을 추가한다. 현재 물리 테이블은 총 28개다(Alembic 테이블 제외).
+15개 테이블을 추가한다. `0005_personal_evaluations`는 개인 계산 이력을 추가해
+현재 물리 테이블은 총 29개다(Alembic 테이블 제외).
 `/api/v1/me/*`는 세션 소유자만 읽고 변경하며 관리자 역할로 다른 학생 기록을 조회하지 못한다.
 `/api/v1/catalog/*`는 로그인한 학생에게 적용본과 등록된 학교·과정·과목 메타데이터만 조회한다.
 [개인 자료 계약](../docs/api/personal.md), [학생 카탈로그](../docs/api/student-catalog.md)를 따른다.
@@ -244,3 +245,13 @@ uv run --frozen python ../scripts/export_student_contracts.py
 # 저장소 루트에서 실행
 dart format frontend/lib/features/api/student_api_models.dart
 ```
+
+## 개인 기준 계산 API
+
+`POST /api/v1/me/personal-evaluations`는 본인 개인 교육과정의 활성 규칙과 저장된 개인
+기록을 명시적인 다섯 종류 조건으로 계산한다. 조건 설명/직접 적은 현재 값을 실행하지 않으며
+누락 조건은 확인 필요로 유지한다. 결과는 항상 개인 기준 표시를 포함한다.
+결과·조건·최소 입력 snapshot을 불변 이력으로 저장하고 목록/상세/본인 삭제를 제공한다.
+소유권·버전·재시도를 검증하고 원본이 바뀌어도 과거 결과는 유지한다.
+[계산 계약](../docs/api/personal-evaluations.md)을 따른다. Flutter typed 전송 adapter는
+`personal_evaluation_api.dart`이며 현재 개인 화면은 로컬 저장·계산 API 미연결이다.
