@@ -160,6 +160,8 @@ flowchart LR
 flowchart LR
     Login[Flutter 로그인·가입] --> AuthAPI[Auth API]
     AuthAPI --> Passwords[Argon2id 검증]
+    AccountSecurity[공통 계정 보안 화면] --> BoundSecurity[본인·로그인 세대에 묶인 작업]
+    BoundSecurity --> AuthAPI
     AuthAPI --> Sessions[서버 세션 발급·폐기]
     Sessions --> IdentityDB[(PostgreSQL 사용자·세션)]
     AdminAPI[관리자 API] --> Guard[현재 계정·역할·학교 범위]

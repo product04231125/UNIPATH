@@ -112,3 +112,5 @@
 - personal_records_test의 concurrent personal writes로 서로 다른 객체의 동시 추가·이전 객체 삭제·빈 저장 재읽기를 검증한다. 서버 동기화나 다른 OS 프로세스 사이의 잠금은 제공하지 않는다.
 
 - 작업 큐는 완료 전에 공유 슬롯을 해제한다. 완료 Future를 계속 보관하지 않아 종료된 비동기 실행 영역을 다음 화면/검사로 가져오지 않는다. 최종 전체 275개 및 저장 관련 42개 회귀 통과.
+
+실제 세 역할의 공통 제목표시줄은 [계정 보안](../api/account-security-integration.md)을 제공한다. `AuthApi.securityForOwner`는 소유자·로그인 세대에 묶인 변경/세션 확인 capability이며 확인된 종료만 본인의 메모리 세션을 지운다. 클라이언트가 이미 관찰한 새 세션을 오래된 응답으로 지우지 않는다.

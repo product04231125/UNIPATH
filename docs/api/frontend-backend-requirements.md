@@ -5,7 +5,7 @@
 이 문서는 백엔드 계약 요청 명세다. **2026-10-18 인증·역할·계정 상태·학교 전체 범위 API를 구현했다.**
 정확한 구현/DTO는 [인증 API](authentication.md)와 [OpenAPI](openapi.json)를 따른다.
 관리자 학사 CRUD·검토 버전·감사·역할/범위 UI 연결은 [학사 API](academic.md)로 구현했다.
-개인 자료 서버 API·학생용 카탈로그·비밀번호 변경과 전송 DTO/adapter도 구현했다. 정확한 계약은
+개인 자료 서버 API·학생용 카탈로그·비밀번호 변경과 전송 DTO/adapter도 구현했다. 실제 세 역할의 공통 제목표시줄에 [계정 보안 화면](account-security-integration.md)도 연결했다. 정확한 계약은
 [개인 자료](personal.md), [학생용 카탈로그](student-catalog.md)를 따른다. 학업 프로필·일정은 [화면 연결/동의 이전](planning-integration.md), 나머지 개인 기록·구성·문서는 [서버 작업 공간](personal-workspace-integration.md)을 연결했다.
 개인 자료와 명시적 조건의 [개인 계산/불변 이력 API](personal-evaluations.md)도 구현했으며
 화면의 다섯 명시 조건·계산·이력 조회/삭제도 연결했다. [학교 본문 검토·DB 검색](school-knowledge.md)은 별도 관리자
@@ -79,9 +79,11 @@ Swagger는 `/api/v1/docs`, 계약 원본은 `/api/v1/openapi.json`이다. `/heal
 | `POST /auth/login` | 이메일·비밀번호 | 세션 성립 및 사용자 ID/역할/계정 상태. 관리자 범위는 아래 me 조회와 함께 확보 |
 | `GET /auth/me` | 인증된 세션 | 사용자 ID/표시 이름/역할/계정 상태/활성 관리 범위/권한 기준 버전 |
 | `POST /auth/logout` | 현재 세션 | 서버 세션 무효화. 프런트 로컬 로그아웃만으로 대신하지 않음 |
+| `POST /auth/logout-all` | 본인 세션 | 모든 기기 로그아웃 확인 후 종료·로그인 안내 |
+| `POST /auth/change-password` | 현재·새 비밀번호 | 세 역할의 본인 계정 보안 화면, 성공 후 모든 세션 종료 |
 | `POST /auth/refresh` | 선택한 갱신 방식의 증거 | 갱신 실패/만료 구분. 갱신 방식 채택 시에만 필요한 후보 |
 
-- Web은 HttpOnly 세션 쿠키, Windows는 메모리 Bearer 토큰을 사용한다. Origin 검증·CORS·12시간 절대 만료·현재/전체 세션 로그아웃은 [인증 API](authentication.md)에 구현 정책을 명시했다. 비밀번호 확인은 UI에서만 검사하며 원문을 저장/로그하지 않는다. 자동 갱신과 학교 SSO는 후속이다.
+- Web은 HttpOnly 세션 쿠키, Windows는 메모리 Bearer 토큰을 사용한다. Origin 검증·CORS·12시간 절대 만료·현재/전체 세션 로그아웃은 [인증 API](authentication.md)에 구현 정책을 명시했다. 새 비밀번호 재입력 일치는 UI에서 검사하고 현재 비밀번호 검증·변경·세션 종료는 서버가 수행한다. 원문은 저장/로그하지 않는다. 자동 갱신과 학교 SSO는 후속이다.
 - 구현한 역할은 `user`, `school_admin`, `super_admin`; 계정 상태 후보는 `active`, `suspended`. 현 OpenAPI/DB 계약이며 하위 관리 범위는 후속이다.
 - 범위는 학교 필수, `institution/department/curriculum` 수준에 맞는 하위 ID·상태. 학과/교육과정의 학교 소속을 서버가 검증한다. 학교관리자에게 학교 생성·권한 부여·학생 개인 기록 접근을 자동으로 허용하지 않는다.
 - 정지/범위 회수/세션 만료 후 다음 API 호출에서 즉시 또는 합의한 최대 지연 안에 차단한다. 오래된 화면/토큰을 믿고 계속 쓰게 하지 않는다.

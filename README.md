@@ -53,6 +53,7 @@ PR과 `main`/`develop`의 백엔드 변경을 검증합니다. 앱 다운로드 
 - 통합·빌드·릴리스 담당: 이어진
 
 develop의 로그인·가입·세션·역할/학교 범위는 실제 API/DB로 구현했습니다.
+모든 실제 역할은 공통 제목표시줄의 [계정 보안](docs/api/account-security-integration.md)에서 비밀번호 변경·모든 기기 로그아웃을 사용합니다.
 학업 프로필·일정은 [서버 저장과 동의 이전 화면](docs/api/planning-integration.md)을 연결했습니다. [다른 개인 기록·구성·지원 문서 화면](docs/api/personal-workspace-integration.md)도 서버 저장과 동의 이전을 연결했습니다. 기기 원본은 보존합니다.
 [개인 기준 계산 API](docs/api/personal-evaluations.md)와 불변 결과 이력도 구현했습니다.
 [개인 자료 일괄 이전 API](docs/api/personal-imports.md)는 본인 확인·동의한 자료와 관계를
@@ -446,7 +447,7 @@ python3 backend/scripts/smoke_api.py
 ### Flutter 프론트엔드 설치 및 실행 (Windows)
 
 `frontend/`는 Flutter Web과 Windows 화면을 함께 제공합니다. 학교 질의는 실제 API와
-연결하고 인증은 실제 계정 API를 사용합니다. 학업 프로필·일정·개인 기록·구성·지원 문서는 서버 저장이며 졸업 판정은 미연결입니다. Flutter SDK를 내려받아
+연결하고 인증은 실제 계정 API를 사용합니다. 학업 프로필·일정·개인 기록·구성·지원 문서는 서버 저장이며 공식 졸업 판정은 미연결입니다. Flutter SDK를 내려받아
 예를 들어 `C:\develop\flutter`에 압축을 풀고, `C:\develop\flutter\bin`을 사용자
 `Path`에 추가합니다. Windows 앱도 빌드하려면 Visual Studio의 **Desktop development
 with C++** 워크로드가 필요합니다. 자세한 설치 절차는 [Flutter 수동 설치 안내](https://docs.flutter.dev/install/manual)와 [Windows 개발 환경 안내](https://docs.flutter.dev/platform-integration/windows/setup)를 따른다.

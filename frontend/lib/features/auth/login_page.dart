@@ -13,9 +13,11 @@ class LoginPage extends StatefulWidget {
     required this.onSignedIn,
     this.onSampleSignedIn,
     this.authenticate,
+    this.notice,
   });
 
   final VoidCallback onSignedIn;
+  final String? notice;
   final ValueChanged<AppRole>? onSampleSignedIn;
   final Future<void> Function({
     required String email,
@@ -146,6 +148,10 @@ class _LoginPageState extends State<LoginPage> {
                       onSelected: _selectMode,
                     ),
                     const SizedBox(height: 28),
+                    if (_isLogin && widget.notice != null) ...[
+                      Semantics(liveRegion: true, child: Text(widget.notice!)),
+                      const SizedBox(height: 16),
+                    ],
                     if (_isLogin) ..._loginFields() else ..._signupFields(),
                     const SizedBox(height: 24),
                     if (_error != null) ...[
