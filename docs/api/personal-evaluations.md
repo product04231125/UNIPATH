@@ -91,8 +91,8 @@
 ## 프론트엔드와 보관
 
 `frontend/lib/features/api/personal_evaluation_api.dart`에 조건/결과 모델과 공통 AuthApi를
-사용하는 전송 adapter가 있다. 다른 소유자·공식 표시 결과를 거부한다. 현재 개인 화면과
-계산 버튼은 아직 이 API에 연결하지 않았다. 로컬 자료를 자동 업로드하지 않으며
+사용하는 전송 adapter가 있다. 다른 소유자·공식 표시 결과를 거부한다. 실제 계정의
+[조건 입력·계산·이력 화면](personal-calculation-integration.md)을 이 API에 연결했다. 로컬 자료를 자동 업로드하지 않으며
 자료 이전은 [개인 자료 API](personal.md)의 동의·ID 치환·날짜/시간 변환 계약을 따른다.
 
 `0005_personal_evaluations`는 `personal_evaluations` 하나를 추가한다. 전체 계산 결과와

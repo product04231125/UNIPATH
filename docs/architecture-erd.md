@@ -172,7 +172,7 @@ flowchart LR
 [개인 자료 API](api/personal.md)와 [학생용 학사 조회](api/student-catalog.md)는 구현했고,
 프론트의 실제 일반 계정 프로필·일정·개인 기록·구성·지원 문서는 서버 저장이며 기기 원본/debug는 사용자 UUID별 로컬 저장이다. 공통 AuthApi의 사용자 UUID·로그인 세대에 묶인 전송 adapter와 Pydantic DTO를 사용한다. 서버는 선택 X-Unipath-Owner 헤더를 실제 신원과 비교해 탭 간 계정 전환 중 저장을 차단한다. 프로필·일정의 동의 이전은 기기 journal로 같은 요청을 재개하며 원본을 보존한다. 다른 개인 자료 10종은 전체 참조/순서를 변환해 별도 동의 이전을 제공한다. 실제 관리자 전송도 같은 소유자 조건을 사용한다.
 [개인 계산 API](api/personal-evaluations.md)는 별도 typed 전송 adapter를 제공하며
-현재 개인 화면의 계산 버튼에는 연결하지 않았다. RAG/LLM은 이 계산에 참여하지 않는다.
+실제 일반 계정의 개인 계산 화면은 다섯 명시 조건·선택 자료 버전·계산/불변 이력 조회/삭제를 연결했다. 전송한 요청은 작업 공간에서 고정해 같은 client UUID로 재시도한다. RAG/LLM은 이 계산에 참여하지 않는다.
 
 ```mermaid
 flowchart LR
@@ -197,6 +197,7 @@ flowchart LR
     Journal --> Import[원자적 개인 이전 API]
     Import --> Personal
     Records[8종 개인 기록·구성·지원 문서 화면] --> Bound
+    CalculationUI[개인 명시 조건·계산·이력 화면] --> Bound
     Originals[보존한 기기 원본·debug 샘플] --> Local[계정별 기기 로컬 자료]
 ```
 

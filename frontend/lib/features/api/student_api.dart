@@ -1,8 +1,8 @@
 import '../auth/auth_api.dart';
 import 'student_api_models.dart';
 
-/// Typed personal contract adapter. Live planning uses an owner-bound gateway;
-/// other personal screens retain their local repositories until connected.
+/// Typed personal contract adapter. Live planning, records and calculation
+/// screens share a gateway bound to the authenticated workspace's owner.
 class StudentResource<T extends StudentPayload> {
   const StudentResource(this.path, this.decode);
   final String path;

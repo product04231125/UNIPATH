@@ -13,6 +13,7 @@ import 'features/assistant/shared_school_context.dart';
 import 'features/assistant/conversation_bridge.dart';
 import 'chat_window.dart' as native;
 import 'features/graduation/graduation_page.dart';
+import 'features/graduation/personal_calculation_controller.dart';
 import 'features/home/home_page.dart';
 import 'features/planning/planning_repository.dart';
 import 'features/planning/remote_planning_repository.dart';
@@ -108,6 +109,13 @@ class _WorkspaceState extends State<Workspace> {
       ? PlanningRepository()
       : RemotePlanningRepository(widget.studentApi!);
   late final StudentApi? _personalApi = widget.studentApi;
+  late final PersonalCalculationController? _personalCalculations =
+      _personalApi == null
+      ? null
+      : PersonalCalculationController(
+          _personalApi,
+          ensureOpen: _ensurePersonalOpen,
+        );
   late final PersonalWorkspaceImporter? _personalImporter = _personalApi == null
       ? null
       : PersonalWorkspaceImporter(
@@ -237,6 +245,7 @@ class _WorkspaceState extends State<Workspace> {
   void dispose() {
     _personalClosed = true;
     _personalImporter?.dispose();
+    _personalCalculations?.dispose();
     unawaited(_releaseSession().catchError((Object _) {}));
     _assistantButtonFocus.dispose();
     _detachedChatSubscription?.cancel();
@@ -320,6 +329,7 @@ class _WorkspaceState extends State<Workspace> {
         ? shell
         : PersonalRepositoryScope(
             importer: _personalImporter,
+            calculations: _personalCalculations,
             records: (kind) => RemotePersonalRecordRepository(
               _personalApi,
               kind,
