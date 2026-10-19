@@ -235,7 +235,8 @@ Psycopg 연결 문자열은 `postgresql+psycopg://`로 시작해야 한다.
 15개 테이블을 추가한다. `0005_personal_evaluations`는 개인 계산 이력을 추가해
 당시 물리 테이블은 총 29개다. `0006_school_knowledge`가 검토 문서/청크 2개를 추가해
 31개다. `0007_official_rule_programs`가 전역 자격증/기관 마스터와 공식 실행 규칙·근거·
-과목/자격증 참조 7개를 추가해 현재 총 38개다(Alembic 테이블 제외).
+과목/자격증 참조 7개를 추가했다. `0008_personal_imports`는 개인 자료 일괄 이전의 최소
+영수증 하나를 추가해 현재 총 39개다(Alembic 테이블 제외).
 `/api/v1/me/*`는 세션 소유자만 읽고 변경하며 관리자 역할로 다른 학생 기록을 조회하지 못한다.
 `/api/v1/catalog/*`는 로그인한 학생에게 적용본과 등록된 학교·과정·과목 메타데이터만 조회한다.
 [개인 자료 계약](../docs/api/personal.md), [학생 카탈로그](../docs/api/student-catalog.md)를 따른다.
@@ -269,6 +270,15 @@ dart format frontend/lib/features/api/student_api_models.dart
 먼저 `--dry-run`으로 원본 hash·페이지·분할을 확인하고 서버 초안으로 전송한다.
 실제 PDF·파일 플래그를 자동 승인하지 않으며 실제 LLM/임베딩과 검토 UI는 후속이다.
 [상세 계약](../docs/api/school-knowledge.md)을 따른다.
+
+## 개인 자료 일괄 이전
+
+`POST /me/personal-imports`는 동의한 현재 계정의 타입 자료와 로컬 참조를 한 트랜잭션으로
+추가한다. 기존 프로필/자료를 덮어쓰지 않으며 중간 실패는 전체 취소한다. 이전 ID별 지문·
+최소 UUID 대응표를 보존해 중복 전송·삭제 후 재시도에 안전하게 응답한다.
+`GET /me/personal-imports/{id}`는 본인의 이전 당시 영수증만 조회한다.
+[이전 계약](../docs/api/personal-imports.md)과 생성된 Dart 타입/전송 코드를 제공한다.
+실제 원본을 읽는 동의/시간대 확인·화면 전환은 후속이다.
 
 ## 공식 실행 규칙과 자격증 기준
 

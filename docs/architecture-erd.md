@@ -55,6 +55,26 @@ flowchart LR
     PersonalResult --> History[(본인 불변 결과·최소 입력 snapshot)]
 ```
 
+### 개인 자료 일괄 이전
+
+```mermaid
+flowchart LR
+    Client[현재 계정의 검토한 자료·동의·확인한 시간대] --> Graph[타입·로컬 ID·전체 참조 검증]
+    Graph --> Guard[현재 세션·source owner 확인·신원 잠금]
+    Guard --> Replay[이전 ID·정상화 지문 확인]
+    Replay -->|기존 커밋| History[이전 당시 최소 ID 대응표]
+    Replay -->|새 요청| Translate[의존 순서로 서버 ID 변환]
+    Translate --> Common[공통 개인 자료·프로필 검증과 저장]
+    Common --> Transaction[(한 트랜잭션: 자료·순서 참조·생성 및 이전 영수증)]
+    Transaction --> History
+    Common -->|중간 실패| Rollback[전체 취소·원본 보존]
+```
+
+개별 CRUD와 같은 서비스 검증을 사용하되 커밋은 묶음 전체 마지막에 한 번만 한다.
+이전은 기존 프로필을 덮어쓰지 않고 개인 자료를 학교 확정 기록으로 바꾸지 않는다.
+프론트 타입/전송 adapter와 [이전 API](api/personal-imports.md)를 제공하며 실제 원본을
+읽는 동의·시간대 확인과 저장소 전환 화면은 후속이다.
+
 ### 실제 관리자 저장 경로
 
 ```mermaid

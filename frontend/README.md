@@ -10,6 +10,9 @@ Flutter Web/Windows 팀 작업에 학교 질의 API 연동을 추가했다. 기�
 공식 실행 규칙·자격증 마스터의 타입과 전송 adapter는 `rule_program_models.dart`·
 `rule_program_api.dart`에 있다. 조건은 닫힌 타입으로 구분하며 규칙 선택을 졸업 판정으로
 표시하지 않는다. [실행 규칙 계약](../docs/api/rule-programs.md)의 화면 연결은 후속이다.
+`personal_import_api.dart`·`personal_import_models.dart`는 본인 동의 후 자료/관계를
+원자적으로 이전하는 타입 전송과 이력 조회를 제공한다. [이전 계약](../docs/api/personal-imports.md)을
+따르며 실제 로컬 자료를 읽는 동의·시간대 확인·저장소 전환 화면은 후속이다.
 
 ## 로컬 실행
 

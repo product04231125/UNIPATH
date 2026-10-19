@@ -57,6 +57,7 @@ def application_schema_backup(directory: Path):
             "official_program_evidence",
             "official_program_course_refs",
             "official_program_certificate_refs",
+            "personal_import_receipts",
         } <= tables
     print("Application migration backup restored with all constraints and indexes intact.")
 
