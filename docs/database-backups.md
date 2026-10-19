@@ -54,6 +54,8 @@ uv run --frozen python -m app.operations.db_backups verify ../backups/시각-식
 세션의 검색 경로·시간대·날짜 표현을 통일해 같은 값이 다르게 비교되지 않게 한다.
 PostgreSQL 복원 시 달라질 수 있는 varchar 문자열 리터럴 배열의 text 형변환 표기만
 동등하게 정규화한다. 허용 값·연산자·다른 타입, 나머지 스키마와 데이터 지문은 그대로 비교한다.
+nullable 열의 `IS NULL OR ...` 검사는 같은 열을 확인하는 완전한 enum 제약일 때만 처리한다.
+인용한 문자열 안의 SQL 모양 내용은 변환하지 않으며, 다른 조건·NULL 분기·문자열 변경은 차이로 남긴다.
 검증이 성공한 경우에만 report를 쓰고, 실패해도 자신이 생성한 컨테이너·임시 볼륨은 제거한다.
 원본·Staging·Production DB에 덮어쓰기 복원을 하지 않는다.
 

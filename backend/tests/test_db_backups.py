@@ -143,3 +143,28 @@ def test_restore_check_accepts_only_equivalent_literal_array_casts():
     )
     unrelated = state("CHECK (note = '" + restored.replace("'", "''") + "')")
     assert backups.comparable_inventory(unrelated) == unrelated
+
+
+def test_nullable_enum_restore_preserves_null_branch_and_literal_contents():
+    def check(value, *, distributed=False, nullable_column="approval"):
+        literal = "'" + value.replace("'", "''") + "'::character varying"
+        array = f"(ARRAY[({literal})::text])" if distributed else f"((ARRAY[{literal}])::text[])"
+        return {
+            "constraints": [
+                [
+                    "public",
+                    "records",
+                    "state",
+                    (f"CHECK ((({nullable_column} IS NULL) OR ((approval)::text = ANY {array})))"),
+                ]
+            ]
+        }
+
+    nested = "literal ((ARRAY['nested'::character varying])::text[])"
+    original = check(nested)
+    restored = check(nested, distributed=True)
+    assert backups.comparable_inventory(original) == backups.comparable_inventory(restored)
+    changed_data = check("literal (ARRAY[('nested'::character varying)::text])", distributed=True)
+    assert backups.comparable_inventory(original) != backups.comparable_inventory(changed_data)
+    wrong_column = check(nested, distributed=True, nullable_column="other")
+    assert backups.comparable_inventory(original) != backups.comparable_inventory(wrong_column)
