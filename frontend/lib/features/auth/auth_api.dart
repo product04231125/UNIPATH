@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'app_role.dart';
+import 'account_security_gateway.dart';
 import 'auth_http_stub.dart' if (dart.library.js_interop) 'auth_http_web.dart';
 
 class AuthFailure implements Exception {
@@ -85,6 +86,80 @@ class AuthApi implements AuthGateway, ApiGateway {
   ApiGateway forOwner(String ownerId) {
     if (_ownerId != ownerId) throw const AuthFailure('다시 로그인해 주세요.');
     return _OwnerGateway(this, ownerId, _sessionEpoch);
+  }
+
+  AccountSecurityGateway securityForOwner(String ownerId) {
+    if (_ownerId != ownerId) throw const AuthFailure('다시 로그인해 주세요.');
+    return _OwnedAccountSecurity(this, ownerId, _sessionEpoch);
+  }
+
+  bool _ownsSession(String ownerId, int epoch) =>
+      _ownerId == ownerId && _sessionEpoch == epoch;
+  void _forgetExpectedSession(String ownerId, int epoch) {
+    if (!_ownsSession(ownerId, epoch)) return;
+    _token = null;
+    _sessionEpoch++;
+    _setOwner(null);
+  }
+
+  Future<void> _endOwnedSessions(
+    String ownerId,
+    int epoch,
+    String path,
+    Map<String, Object?>? body,
+  ) async {
+    if (!_ownsSession(ownerId, epoch)) {
+      throw const AuthFailure('계정이 변경되었습니다. 로그인 상태를 다시 확인해 주세요.', status: 403);
+    }
+    try {
+      // A successful operation revokes this very session. Unlike ordinary
+      // requests, a concurrent me() observing that revocation is expected.
+      final result = await _request('POST', path, body, ownerId);
+      if (result != null) throw const AuthFailure('요청 완료 응답을 확인하지 못했습니다.');
+      if (!_ownsSession(ownerId, epoch) && _ownerId != null) {
+        throw const AuthFailure('계정이 변경되었습니다. 새 계정의 세션은 유지합니다.', status: 403);
+      }
+      _forgetExpectedSession(ownerId, epoch);
+    } on AuthFailure catch (error) {
+      if (!_ownsSession(ownerId, epoch) && _ownerId != null) {
+        throw const AuthFailure('계정이 변경되었습니다. 새 계정의 세션은 유지합니다.', status: 403);
+      }
+      if (error.status == 401) _forgetExpectedSession(ownerId, epoch);
+      rethrow;
+    }
+  }
+
+  Future<AccountSessionStatus> _checkOwnedSession(
+    String ownerId,
+    int epoch,
+  ) async {
+    if (!_ownsSession(ownerId, epoch)) {
+      return _ownerId == null
+          ? AccountSessionStatus.expired
+          : AccountSessionStatus.changed;
+    }
+    try {
+      final value = AuthIdentity.fromJson(
+        (await _request('GET', 'auth/me', null, ownerId))!,
+      );
+      if (!_ownsSession(ownerId, epoch)) {
+        return _ownerId == null
+            ? AccountSessionStatus.expired
+            : AccountSessionStatus.changed;
+      }
+      if (value.id != ownerId) return AccountSessionStatus.changed;
+      return AccountSessionStatus.active;
+    } on AuthFailure catch (error) {
+      if (!_ownsSession(ownerId, epoch) && _ownerId != null) {
+        return AccountSessionStatus.changed;
+      }
+      if (error.status == 401) {
+        _forgetExpectedSession(ownerId, epoch);
+        return AccountSessionStatus.expired;
+      }
+      if (error.status == 403) return AccountSessionStatus.changed;
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>?> _ownedRequest(
@@ -296,4 +371,25 @@ class _OwnerGateway implements ApiGateway {
     String path, [
     Map<String, Object?>? body,
   ]) => auth._ownedRequest(ownerId, epoch, method, path, body);
+}
+
+class _OwnedAccountSecurity implements AccountSecurityGateway {
+  const _OwnedAccountSecurity(this.auth, this.ownerId, this.epoch);
+  final AuthApi auth;
+  final String ownerId;
+  final int epoch;
+  @override
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) => auth._endOwnedSessions(ownerId, epoch, 'auth/change-password', {
+    'old_password': oldPassword,
+    'new_password': newPassword,
+  });
+  @override
+  Future<void> logoutAll() =>
+      auth._endOwnedSessions(ownerId, epoch, 'auth/logout-all', null);
+  @override
+  Future<AccountSessionStatus> checkSession() =>
+      auth._checkOwnedSession(ownerId, epoch);
 }
