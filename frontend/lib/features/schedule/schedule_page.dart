@@ -117,8 +117,9 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Widget _header({List<Widget> actions = const []}) => PageHeader(
     title: '일정',
-    description:
-        '개인 계획 · ${widget.repository.storageLabel}. 학교 공식 일정·알림·반복 일정은 아직 연결되지 않았습니다.',
+    description: widget.repository.isServerBacked
+        ? '개인 계획 · ${widget.repository.storageLabel}. 학교 공식 일정·알림·반복 일정은 아직 연결되지 않았습니다.'
+        : '개인 계획을 이 기기에 저장합니다. 학교 공식 일정·알림·반복 일정은 아직 연결되지 않았습니다.',
     actions: actions,
   );
 

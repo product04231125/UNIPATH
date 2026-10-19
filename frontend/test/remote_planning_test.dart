@@ -381,6 +381,11 @@ void main() {
       await tester.pumpAndSettle();
       final confirm = find.widgetWithText(FilledButton, '동의하고 이전');
       expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+      await Scrollable.ensureVisible(
+        tester.element(find.byType(Checkbox)),
+        alignment: 0.5,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(Checkbox));
       await tester.pumpAndSettle();
       await tester.tap(confirm);
