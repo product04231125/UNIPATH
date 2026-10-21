@@ -132,6 +132,8 @@ HTTPS 도메인으로 설정했다. 워크플로 기본값도 동일하다. 실�
 | `POSTGRES_PORT` | `5434` | `5435` |
 | `POSTGRES_DB` | `unipath_staging` | `unipath_product` |
 | `POSTGRES_USER` | `unipath_staging` | `unipath_product` |
+| `API_IMAGE` | 검증한 개발 백엔드의 로컬 이미지 ID | 검증한 운영 백엔드의 로컬 이미지 ID |
+| `WEB_IMAGE` | 검증한 개발 웹의 로컬 이미지 ID | 검증한 운영 웹의 로컬 이미지 ID |
 
 `CORS_ORIGINS`에는 해당 HTTPS 도메인을 넣는다. 원격 API의 Strict 세션 쿠키는
 localhost에서의 로그인을 허용하지 않는다. localhost Origin을 추가하는 것만으로
@@ -140,11 +142,43 @@ localhost에서의 로그인을 허용하지 않는다. localhost Origin을 추�
 `APP_ENV=local` 전용이므로 이 두 환경에서는 `compose.rag.yaml`을 함께 사용하지 않는다.
 현재 공식 승인 코퍼스가 없으므로 학교 질의의 근거 부족 안내가 정상이다.
 
-두 채널 Web 빌드 후 다음 명령으로 분리된 프로젝트·볼륨에서 실행한다.
+서버에서는 빌드와 실행을 나눈다. 앱 릴리스의 소스 커밋과 채널을 확인한 뒤 같은
+커밋의 백엔드와 해당 채널의 Web 이미지를 먼저 빌드·검증한다. 다음은 개발용 예시다.
+Web 빌드 산출물의 `build-info.json`에서 소스 커밋·채널·API 주소도 확인한다.
 
 ```bash
-docker compose -p unipath-staging --env-file .env.staging -f compose.yaml -f compose.server.yaml up --build --wait
-docker compose -p unipath-product --env-file .env.production -f compose.yaml -f compose.server.yaml up --build --wait
+git rev-parse HEAD
+docker build -f backend/Dockerfile -t unipath-backend:develop-candidate .
+docker build -f deploy/preview/Dockerfile --build-arg APP_CHANNEL=develop -t unipath-web:develop-candidate .
+docker image inspect --format '{{.Id}}' unipath-backend:develop-candidate
+docker image inspect --format '{{.Id}}' unipath-web:develop-candidate
+```
+
+검증한 두 출력(`sha256:`으로 시작하는 전체 이미지 ID)을 각각 `.env.staging`의
+`API_IMAGE`, `WEB_IMAGE`에 기록한다. 후보 태그나 공용 `unipath-backend:local`을 넣지
+않는다. API와 마이그레이션은 동일한 `API_IMAGE`를 사용하며 서버 Compose는 상속된
+빌드 설정을 제거하고 이미지 자동 pull을 끈다. 태그를 다른 빌드로 바꿔도 고정한 ID는
+변하지 않는다. 로컬 개발용 `compose.yaml`의 빌드 동작은 유지한다.
+[Compose의 `!reset`](https://docs.docker.com/reference/compose-file/merge/#reset-value)을
+지원하는 Docker Compose 플러그인이 필요하다.
+
+기존 서버 설정을 처음 전환할 때는 **현재 실행 중인** 각 프로젝트의 API·Web 컨테이너를
+`docker inspect --format '{{.Image}}' 컨테이너이름`으로 조회해 해당 환경 파일에 기록한다.
+Staging 이미지를 Production에 복사하지 않는다. 환경 파일은 변경 전 비공개로 백업하고,
+DB 백업·복구와 후보 이미지 검증을 마친 뒤 분리된 프로젝트·볼륨에서 실행한다.
+
+```bash
+docker compose -p unipath-staging --env-file .env.staging -f compose.yaml -f compose.server.yaml config --quiet
+docker compose -p unipath-staging --env-file .env.staging -f compose.yaml -f compose.server.yaml up --no-build --pull never --wait
+```
+
+운영은 별도로 승인한 `main` 커밋의 product Web·백엔드를 검증하고 `.env.production`의
+ID를 갱신한 뒤에만 다음 명령을 사용한다. Staging 갱신 시 운영 명령을 실행하지 않는다.
+이 작업에서 기존 운영 컨테이너나 DB를 자동으로 승격하지 않는다.
+
+```bash
+docker compose -p unipath-product --env-file .env.production -f compose.yaml -f compose.server.yaml config --quiet
+docker compose -p unipath-product --env-file .env.production -f compose.yaml -f compose.server.yaml up --no-build --pull never --wait
 ```
 
 현재 공통 게이트웨이는 `default.conf`를 파일 단위로 bind mount한다. 기존 내용에
