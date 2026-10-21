@@ -37,6 +37,7 @@ from app.models.personal import (
     PortfolioSource,
 )
 from app.models.personal_imports import PersonalImportReceipt
+from app.models.record_sources import OfficialRecordSource, OfficialRecordSourceEvent
 from app.models.rule_programs import (
     ProgramCertificateRef,
     ProgramCourseRef,
@@ -86,4 +87,6 @@ __all__ = [
     "ProgramCourseRef",
     "ProgramCertificateRef",
     "PersonalImportReceipt",
+    "OfficialRecordSource",
+    "OfficialRecordSourceEvent",
 ]

@@ -15,11 +15,30 @@ rule_sets·graduation_rules·official_documents를 추가했다. `0004_personal_
 `0005_personal_evaluations`는 개인 계산 이력 하나를 추가한다. `0006_school_knowledge`는
 학교 문서 추출/검토와 청크 2개를 추가한다. `0007_official_rule_programs`는 자격증/발급기관
 마스터와 실행 규칙·근거·마스터 참조 7개를 추가한다. `0008_personal_imports`는 개인 자료
-일괄 이전의 최소 영수증 하나를 추가해 **총 39개 테이블**을 물리 구현한다.
+일괄 이전의 최소 영수증 하나를 추가한다. `0009_official_record_sources`는 학교 발급 자료의
+비공개 원본과 검토 이벤트 2개를 추가해 **총 41개 테이블**을 물리 구현한다.
 학교 메타데이터/버전/삭제 표시와 범위 회수 사유도 추가한다.
 아래 전체 논리 ERD/단계 표 중 학생 공식 기록·공식 판정·벡터 임베딩은 도입 계획이다.
 현재 users에는 학교/학과/교육과정 FK가 없으며 자유 입력 프로필을 공식 학적으로 승격하지 않는다.
 임베딩 모델/차원은 미정이며 pgvector 검사는 합성 임시 테이블을 사용한다.
+
+학교 발급 자료는 [원본 제출·검토 계약](api/official-record-sources.md)으로 본인이 검토를
+허용한 학교 범위에만 공유한다. `official_record_sources`는 소유자·학교/학과/교육과정 복합
+FK, 본인/client_id UNIQUE, 파일 SHA-256·크기 CHECK와 BYTEA 원본을 보관한다.
+`official_record_source_events`는 원본 FK와 원본/버전 UNIQUE로 수행자·상태 전이·비공개
+사유를 보관한다. 원본은 불변이며 이벤트는 추가만 한다. 철회는 관리자 열람을 종료하며
+파일을 자동 삭제하지 않는다. 이 두 테이블은 정규화된 학생 공식 성적/봉사/자격 테이블이나
+공식 졸업감사를 대신하지 않는다.
+
+```mermaid
+erDiagram
+    USERS ||--o{ OFFICIAL_RECORD_SOURCES : submits
+    INSTITUTIONS ||--o{ OFFICIAL_RECORD_SOURCES : reviews
+    DEPARTMENTS o|--o{ OFFICIAL_RECORD_SOURCES : scopes
+    CURRICULA o|--o{ OFFICIAL_RECORD_SOURCES : scopes
+    OFFICIAL_RECORD_SOURCES ||--|{ OFFICIAL_RECORD_SOURCE_EVENTS : records
+    USERS o|--o{ OFFICIAL_RECORD_SOURCE_EVENTS : performs
+```
 
 ```mermaid
 erDiagram

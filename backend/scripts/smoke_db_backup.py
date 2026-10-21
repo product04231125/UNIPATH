@@ -58,6 +58,8 @@ def application_schema_backup(directory: Path):
             "official_program_course_refs",
             "official_program_certificate_refs",
             "personal_import_receipts",
+            "official_record_sources",
+            "official_record_source_events",
         } <= tables
     print("Application migration backup restored with all constraints and indexes intact.")
 
@@ -83,6 +85,13 @@ def main():
                 connection.execute('CREATE TABLE "합성 기록" ("값" text, meta jsonb)')
                 connection.execute("""INSERT INTO "합성 기록" VALUES
                     ('synthetic', '{"nested":[1,2],"approved":true}')""")
+                connection.execute(
+                    "CREATE TABLE private_source_files (id integer PRIMARY KEY, original bytea)"
+                )
+                connection.execute(
+                    "INSERT INTO private_source_files VALUES (1, %s)",
+                    (b"%PDF-1.7\n% SYNTHETIC BINARY SOURCE\x00\xff\n%%EOF\n",),
+                )
             original_run = db_backups._run
 
             def write_after_snapshot_export(args, **kwargs):
@@ -104,6 +113,7 @@ def main():
             assert tables["students"]["count"] == 1
             assert tables["courses"]["count"] == 2
             assert tables["합성 기록"]["count"] == 1
+            assert tables["private_source_files"]["count"] == 1
             assert ["vector", "0.8.6"] in manifest.inventory["extensions"]
             assert manifest.inventory["constraints"]
             assert manifest.inventory["indexes"]

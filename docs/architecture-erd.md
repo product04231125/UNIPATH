@@ -24,6 +24,23 @@ Web은 HttpOnly 쿠키, Windows는 메모리 bearer 토큰을 사용한다. 보�
 기본 실행은 빈 인덱스이며 선택적 `compose.rag.yaml`은 PDF 추출 후 API에 읽기 전용
 JSONL을 연결한다. 파일 코퍼스는 로컬 환경에서만 사용한다.
 현재 PDF는 미승인이고 실제 생성기는 없으므로 공식 답변은 생성하지 않는다.
+학생의 학교 발급 PDF는 공용 규정 RAG와 다른 [원본 제출·검토](api/official-record-sources.md)
+경로로 처리한다. 본인이 선택한 학교의 원본 검토에 동의하면 제한된 PDF 스트림을 검사하고
+PostgreSQL BYTEA에 보관한다. 해당 학교 관리자가 발급기관·대상 신원을 검토하며 변경은
+현재 신원·학교 범위를 잠금 안에서 재확인한다. 원본 해시와 검토 이벤트는 DB 백업에 포함된다.
+이 경로는 성적 정규화·공식 학적 확정·졸업 판정·외부 LLM 전송을 수행하지 않는다.
+
+```mermaid
+flowchart LR
+    Owner[로그인한 본인·학교 검토 동의] --> Upload[PDF 스트림·크기·형식 검사]
+    Upload --> PrivateDB[(비공개 원본 BYTEA·해시·검토 이벤트)]
+    Reviewer[해당 학교 관리자] --> Guard[현재 신원·학교 범위·원본 버전 확인]
+    Guard --> PrivateDB
+    PrivateDB --> Review[발급기관·대상 신원 검토]
+    Review --> Events[확인·반려·회수 이력]
+    Events --> PrivateDB
+    PrivateDB --> Backup[DB 백업·격리 복원 검증]
+```
 별도 인증 경로 `/me/school-searches`, `/me/school-queries`는 등록 UUID와 입학연도·이수경로를
 검증하고 DB의 승인 문서만 조회한다. 기존 이름 기반 `/assistant/queries`와 자동으로 섞지 않는다.
 졸업 판정 요청은 `rule_engine_required`로 안내하며 HTTP 졸업감사 호출은 후속 구현이다.
