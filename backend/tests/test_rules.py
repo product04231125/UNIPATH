@@ -13,6 +13,29 @@ from app.rules.engine import evaluate_official, evaluate_personal, evaluate_pers
 TODAY = date(2026, 10, 12)
 
 
+@pytest.mark.parametrize(
+    "complete,unresolved,status",
+    [
+        (False, False, Status.NOT_APPLICABLE),
+        (True, False, Status.NOT_APPLICABLE),
+        (False, True, Status.NEEDS_REVIEW),
+        (True, True, Status.NEEDS_REVIEW),
+    ],
+)
+def test_known_unresolved_catalogue_is_not_confused_with_no_metadata(complete, unresolved, status):
+    result = evaluate_official(
+        (),
+        Snapshot(),
+        AcademicContext(),
+        as_of=TODAY,
+        catalog_complete=complete,
+        unresolved_catalog=unresolved,
+    )
+    assert result.status == status
+    if unresolved:
+        assert result.reason == "catalog_completeness_unconfirmed"
+
+
 def uid(n):
     return str(UUID(int=n))
 

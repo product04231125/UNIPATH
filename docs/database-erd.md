@@ -17,10 +17,13 @@ rule_sets·graduation_rules·official_documents를 추가했다. `0004_personal_
 마스터와 실행 규칙·근거·마스터 참조 7개를 추가한다. `0008_personal_imports`는 개인 자료
 일괄 이전의 최소 영수증 하나를 추가한다. `0009_official_record_sources`는 학교 발급 자료의
 비공개 원본과 검토 이벤트 2개를 추가한다. `0010_official_student_records`는
-학교 검토 기록 묶음·이벤트·과목/자격 참조 4개를 추가해 **총 45개 테이블**을 물리 구현한다.
+학교 검토 기록 묶음·이벤트·과목/자격 참조 4개를 추가한다.
+`0011_official_graduation_audits`는 전체 규정 검토·이벤트·본인 감사 3개를 추가해
+**총 48개 테이블**을 물리 구현한다.
 학교 메타데이터/버전/삭제 표시와 범위 회수 사유도 추가한다.
 아래 전체 논리 ERD/단계 표의 개별 학생 기록 엔터티는 학교 검토 묶음으로 우선 구현한다.
-공식 감사 저장·HTTP 판정·벡터 임베딩은 도입 계획이다.
+공식 감사는 최소 입력·조건·결과를 JSONB 스냅샷으로 구현하고 별도 결과 행 테이블은 만들지 않는다.
+벡터 임베딩과 전체 진로/채용 확장은 도입 계획이다.
 현재 users에는 학교/학과/교육과정 FK가 없으며 자유 입력 프로필을 공식 학적으로 승격하지 않는다.
 임베딩 모델/차원은 미정이며 pgvector 검사는 합성 임시 테이블을 사용한다.
 
@@ -63,6 +66,29 @@ erDiagram
     OFFICIAL_RECORD_BATCHES ||--o{ OFFICIAL_RECORD_CERTIFICATE_REFS : snapshots
     CERTIFICATES ||--o{ OFFICIAL_RECORD_CERTIFICATE_REFS : protects
     CERTIFICATE_PROVIDERS ||--o{ OFFICIAL_RECORD_CERTIFICATE_REFS : protects
+```
+
+공식 감사의 물리 관계는 다음과 같다. `graduation_catalog_reviews`는 문맥 5개·기준일별
+단일 승인 UNIQUE와 불변 전체 규정/지문을 갖는다. 새 검토는 이전 버전을 명시해 교체하고
+`graduation_catalog_review_events`에 추가한다. `graduation_audits`는 본인/client_id UNIQUE,
+고정 버전·공식 결과/상태 일치 CHECK, 문맥 FK, 검토 FK와 최소 입력·조건·결과·원본 페이지
+대응의 JSONB/지문을 저장한다. 아래 논리 `GraduationAuditResult`는 이 JSONB 결과 배열에
+대응하며 아직 별도 물리 테이블이 아니다. 원본/규칙 회수 후에도 과거 결과를 변경하지 않고
+조회 시 현재 근거 사용 가능 여부를 따로 확인한다. 관리자에게 타 학생 감사 열람권을 부여하지 않는다.
+
+```mermaid
+erDiagram
+    INSTITUTIONS ||--o{ GRADUATION_CATALOG_REVIEWS : scopes
+    DEPARTMENTS ||--o{ GRADUATION_CATALOG_REVIEWS : scopes
+    CURRICULA ||--o{ GRADUATION_CATALOG_REVIEWS : scopes
+    USERS o|--o{ GRADUATION_CATALOG_REVIEWS : attests
+    GRADUATION_CATALOG_REVIEWS ||--|{ GRADUATION_CATALOG_REVIEW_EVENTS : records
+    USERS o|--o{ GRADUATION_CATALOG_REVIEW_EVENTS : performs
+    USERS ||--o{ GRADUATION_AUDITS : owns
+    GRADUATION_CATALOG_REVIEWS o|--o{ GRADUATION_AUDITS : historical_basis
+    INSTITUTIONS ||--o{ GRADUATION_AUDITS : scopes
+    DEPARTMENTS ||--o{ GRADUATION_AUDITS : scopes
+    CURRICULA ||--o{ GRADUATION_AUDITS : scopes
 ```
 
 ```mermaid
@@ -202,7 +228,8 @@ erDiagram
 내부의 `RuleSet`·`Snapshot`·`Evaluation` 계약을 사용한다. 이 계약은 SQLAlchemy 모델이나
 공개 API 스키마가 아니며 아래 논리 엔터티를 생성하지 않는다. 승인 실행본을 코어로 전달하는
 내부 어댑터와 본인 학교 검토 기록의 내부 Snapshot 어댑터를 제공한다.
-문자 성적 환산·재수강 합산 정책은 추정하지 않으며 공식 감사 저장·HTTP 판정은 후속 단계다.
+문자 성적 환산·재수강 합산 정책은 추정하지 않는다. 공식 감사 저장·HTTP는
+[졸업요건 감사 계약](api/graduation-audits.md)을 따른다.
 개인 DB 어댑터는 별도 DTO로 본인 자료·명시적 조건을 검증하고
 `personal_evaluations`에 불변 결과·조건·최소 계산 입력·버전을 보관한다.
 과정/자료 ID는 삭제 후에도 과거 결과가 유지되는 역사적 참조이며 live FK가 아니다.

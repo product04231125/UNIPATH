@@ -46,7 +46,14 @@ flowchart LR
     Records --> Approval[원본 해시·마스터 버전·검토 확인]
     Approval --> RecordDB[(불변 승인 기록·참조 스냅샷·검토 이력)]
     RecordDB --> Snapshot[본인·문맥·기준일·완전성 확인 후 내부 Snapshot]
-    Snapshot --> RuleCore[독립 Rule Engine 코어 · 공식 HTTP 판정은 후속]
+    Snapshot --> RuleCore[독립 Rule Engine 코어]
+    Criteria[승인 실행 규칙·공식 출처] --> CatalogReview[관리자 전체 적용 요건·계층 검토]
+    CatalogReview --> Reviewed[(문맥·기준일별 불변 목록과 지문)]
+    Reviewed --> Audit[본인 명시적 감사 요청·현재 신원 잠금]
+    RecordDB --> Audit
+    Audit --> RuleCore
+    RuleCore --> AuditHistory[(본인 결과·최소 입력·조건·원본 페이지 대응)]
+    AuditHistory --> Validity[당시 결과 보존·현재 근거 사용 가능 여부 별도 확인]
     Events --> Invalidate[철회·회수 시 연결 기록 사용 종료]
     Invalidate --> RecordDB
     PrivateDB --> Backup[DB 백업·격리 복원 검증]
@@ -54,10 +61,16 @@ flowchart LR
 ```
 별도 인증 경로 `/me/school-searches`, `/me/school-queries`는 등록 UUID와 입학연도·이수경로를
 검증하고 DB의 승인 문서만 조회한다. 기존 이름 기반 `/assistant/queries`와 자동으로 섞지 않는다.
-졸업 판정 요청은 `rule_engine_required`로 안내하며 HTTP 졸업감사 호출은 후속 구현이다.
+학교 질의의 졸업 판정 요청은 계속 `rule_engine_required`로 안내한다. 별도 명시적
+[졸업요건 감사 API](api/graduation-audits.md)는 학교·학과·교육과정·입학연도·이수경로와
+기준일을 받아 전체 규정 검토 및 본인 학교 승인 기록만 코어에 전달한다. 질문 텍스트나
+개인 프로필로 학적·기준일을 자동 확정하지 않는다.
 `app/rules/`의 결정론적인 계산 코어는 DB·HTTP·LLM과 분리해 구현했다. 내부의 공식 규칙
 계산과 개인 기준 계산을 구분한다. 개인 계산 API는 본인 DB 자료와 명시적 조건을 코어에
-전달하며 불변 결과/입력 snapshot을 저장한다. 공식 졸업감사 HTTP API는 후속이다.
+전달하며 불변 결과/입력 snapshot을 저장한다. 공식 자료 감사는 별도 DB 이력에
+최소 입력·조건·결과·지문을 보존하고 재현 검증한다. 원본/규칙 회수 후에도 과거 값을
+바꾸지 않고 상세 조회에서 현재 근거 사용 가능 여부를 확인한다. 관리자에게 타 학생의
+감사 열람권을 주지 않으며 기존 개인 계산 API와 결과를 섞지 않는다.
 `app/operations/db_backups.py`는 호스트에서 실행하는 읽기 전용 DB 백업·임시 DB 복구 검증
 도구이며 애플리케이션 요청 경로에 포함하지 않는다.
 현재 구현 흐름은 아래와 같다. 상세 API 계약은
@@ -158,12 +171,16 @@ flowchart LR
     Selection --> Result[실행본·누락 요건·수동 확인 요건]
     Published --> Adapter[내부 코어 규칙 어댑터]
     Adapter --> Core[결정론적 Rule Engine]
-    Future[미정인 학교 확정 기록 연동] -.-> Core
+    Records[본인 학교 발급 승인 기록] --> Audit[명시적 본인 감사 요청]
+    Reviewed[문맥·기준일별 전체 규정 검토] --> Audit
+    Audit --> Core
+    Core --> History[(본인 불변 결과·근거·현재 사용 여부)]
 ```
 
 등록된 실행본 선택의 `catalog_complete`는 항상 false다. 학교가 확정한 기록 공급자와
-전체 규정 완전성 확인 없이 공식 졸업 판정으로 표시하지 않는다. 실제 판정 HTTP·공식 감사
-저장·검토 화면 연결은 후속이다. [실행 규칙 API](api/rule-programs.md)를 따른다.
+전체 규정 완전성 확인 없이 공식 졸업요건 충족으로 표시하지 않는다.
+[졸업요건 감사 API](api/graduation-audits.md)는 전체 목록·계층의 별도 검토와 본인 기록을
+확인하고 불변 결과를 저장한다. 검토/감사 화면은 후속이다. [실행 규칙 API](api/rule-programs.md)와 구분한다.
 
 ### 학교 질의와 독립 AI 대화창
 

@@ -593,9 +593,12 @@ def events(db, batch):
     }
 
 
-def owned_snapshot(db, identity, academic_context, records_as_of):
+def owned_snapshot(db, identity, academic_context, records_as_of, *, kinds=None):
     """Internal input for a future audit; no personal-profile fallback or verdict."""
     values = {kind: None for kind in ("academics", "volunteers", "certificates", "theses")}
+    kinds = set(values) if kinds is None else set(kinds)
+    if not kinds <= values.keys():
+        raise ValueError("Unknown school record kind")
     batches, issues = [], []
     if any(
         getattr(academic_context, key) is None
@@ -608,6 +611,7 @@ def owned_snapshot(db, identity, academic_context, records_as_of):
             .where(
                 Batch.owner_id == identity.user.id,
                 Batch.status == "approved",
+                Batch.kind.in_(kinds),
                 *(getattr(Batch, key) == getattr(academic_context, key) for key in CONTEXT_FIELDS),
             )
             .order_by(Batch.kind)
@@ -618,6 +622,8 @@ def owned_snapshot(db, identity, academic_context, records_as_of):
         return core.Snapshot(), (), ((None, "ambiguous_records"),)
     cache = {}
     for kind in values:
+        if kind not in kinds:
+            continue
         batch = by_kind.get(kind)
         if batch is None:
             issues.append((kind, "records_unavailable"))

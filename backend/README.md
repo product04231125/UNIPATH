@@ -74,7 +74,7 @@ uv run --frozen uvicorn app.main:app --host 127.0.0.1 --port 8011 --reload --no-
 Flutter Web은 예를 들어 `flutter run -d chrome --web-port 3000`으로 고정 포트를
 사용한다. 다른 포트를 쓰면 `.env`의 `CORS_ORIGINS` JSON 배열도 갱신한다.
 프론트엔드 학교 질의는 `POST /api/v1/assistant/queries`와 연결한다.
-인증·학업 프로필·일정·개인 기록·구성·지원 문서는 실제 서버와 연결했고 공식 졸업 판정은 미연결이다. Web 실행 주소는
+인증·학업 프로필·일정·개인 기록·구성·지원 문서는 실제 서버와 연결했고 공식 감사는 타입/전송 API까지 제공하고 해당 화면은 후속이다. Web 실행 주소는
 `http://localhost:3000`, 빌드 설정 `API_BASE_URL`은 실제 API 주소에 맞춘다.
 
 ## RAG 팀 모듈과 학교 질의 API
@@ -120,7 +120,8 @@ preview 옵션이 없어 이 자료로 답변이나 인용을 만들지 않는�
 
 동기 RAG 함수는 FastAPI 작업 스레드에서 실행하며 질문·답변·후보를 저장하거나 로그에
 기록하지 않는다. 졸업 가능 여부 질문은 `rule_engine_required`와 `graduation_audit`
-추가 정보 요구를 반환한다. 실제 졸업감사 API는 아직 없다.
+추가 정보 요구를 반환한다. 명시적 [졸업요건 감사 API](../docs/api/graduation-audits.md)는
+별도 인증 경로로 제공하며 질문·프로필의 문자열을 학적/기준일로 자동 승격하지 않는다.
 
 ## 검증과 마이그레이션
 
@@ -139,7 +140,9 @@ uv run --frozen alembic check
 새 모델은 `app/models/`에 두고 `app/models/__init__.py`에서 import해 Alembic의
 metadata에 포함한다. 생성된 마이그레이션은 직접 검토하며 공유된 파일을 수정하지 않는다.
 첫 마이그레이션은 vector 확장, `0002_identity_sessions`는 계정·세션·역할·학교 범위 관련
-6개 테이블을 생성한다. 임베딩 차원과 공식 학사/졸업 규칙 물리 스키마는 후속이다.
+6개 테이블을 생성한다. 학사 메타데이터·개인 자료·학교 지식·실행 규칙·발급 기록을
+순차적으로 추가했으며 `0011_official_graduation_audits`까지 총 48개 도메인 테이블을
+구현했다. 임베딩 모델·차원은 미정이다. [물리 범위와 논리 ERD](../docs/database-erd.md)를 따른다.
 준비 상태 API는 현재 migration head까지 적용되어야 200을 반환한다.
 첫 마이그레이션의 downgrade는 다른 벡터 테이블을 보호하기 위해 확장을 유지한다.
 
@@ -172,7 +175,7 @@ uv run --frozen python -m app.operations.db_backups verify ../backups/시각-식
 ```
 
 코어는 공식 규칙 계산과 개인 기준 계산을 구분한다. 개인 자료 DB와 개인 계산 API·이력은
-연결했고 공식 졸업감사 API·DB는 후속이다. 실제 학교 기준을 내장하거나 RAG/LLM이 판정을 대신하지 않는다.
+연결했고 학교 검토 자료의 공식 졸업요건 감사 API·DB도 별도로 제공한다. 실제 학교 기준을 내장하거나 RAG/LLM이 판정을 대신하지 않는다.
 [판정 코어 계약](../docs/rule-engine.md)과 [DB 백업·복구 검증](../docs/database-backups.md)을
 따른다. 백업 파일은 비공개 `backups/`에 보관하며 Git·Docker 컨텍스트에서 제외한다.
 
@@ -189,7 +192,7 @@ uv run --frozen python -m app.operations.db_backups verify ../backups/시각-식
 - `migrations/`: Alembic 마이그레이션
 - `tests/`: API·설정·PostgreSQL/pgvector 검증
 
-인증·역할·학교 전체 범위와 졸업 판정 코어는 구현했다. 학사 CRUD·개인 자료 API/DB와 학생용 카탈로그를 구현했고 공식 졸업감사 API는 후속이다. 학교 RAG는 팀의
+인증·역할·학교 전체 범위와 졸업 판정 코어는 구현했다. 학사 CRUD·개인 자료 API/DB와 학생용 카탈로그를 구현했고 공식 졸업요건 감사 API와 본인 학교 승인 기록도 연결했다. 학교 RAG는 팀의
 오프라인 모듈과 HTTP 어댑터를 연결했다. 별도 [문서 검토·DB 검색](../docs/api/school-knowledge.md)은
 관리자의 추출 초안·승인·회수와 UUID 문맥 검색을 제공하며 실제 생성기는 후속이다.
 신규 패키지는 용도에 맞춰 최소한으로 추가한다.
@@ -227,7 +230,7 @@ Psycopg 연결 문자열은 `postgresql+psycopg://`로 시작해야 한다.
 `0003_academic_catalog`가 학사 메타데이터 7개 테이블을 추가한다. 당시 총 13개 테이블이며
 학교·학과·교육과정·과목·연결, 검토 기준/문서 버전·관리 이력을 실제 관리자 화면과 연결한다.
 조건 설명은 실행 가능한 Rule Engine 규칙이 아니며 문서 적용은 RAG 원문 승인이 아니다.
-[학사 계약](../docs/api/academic.md)을 따른다. 학생 개인 자료 API는 아래와 같으며 공식 졸업감사는 후속이다.
+[학사 계약](../docs/api/academic.md)을 따른다. 학생 개인 자료 API는 아래와 같으며 공식 자료 감사와 입력을 구분한다.
 
 ## 학생 개인 자료·카탈로그 API
 
@@ -258,7 +261,7 @@ dart format frontend/lib/features/api/student_api_models.dart
 결과·조건·최소 입력 snapshot을 불변 이력으로 저장하고 목록/상세/본인 삭제를 제공한다.
 소유권·버전·재시도를 검증하고 원본이 바뀌어도 과거 결과는 유지한다.
 [계산 계약](../docs/api/personal-evaluations.md)을 따른다. Flutter typed 전송 adapter는
-`personal_evaluation_api.dart`이며 현재 개인 계산 화면은 개인 자료를 사용하며 계산 버튼 API는 미연결이다.
+`personal_evaluation_api.dart`이며 현재 개인 계산 화면은 개인 자료와 서버의 조건·계산·결과 이력 API를 사용한다.
 
 ## 학교 문서 검토·DB 검색
 
@@ -285,7 +288,19 @@ dart format frontend/lib/features/api/student_api_models.dart
 `/admin/rule-programs`는 적용된 규칙 메타데이터의 명시적 실행 조건·근거·적용 범위를
 별도 초안으로 등록하고 검토·승인·회수한다. `/catalog/rule-programs`는 로그인 사용자의
 등록 UUID·입학연도·이수경로로 현재 실행본을 선택한다. 누락·수동 확인 요건을 유지하고
-`catalog_complete`는 항상 false다. 학교 확정 기록 연동·공식 졸업감사 HTTP는 후속이다.
+`catalog_complete`는 항상 false다. 전체 목록 검토와 학교 발급 승인 기록의 공식 감사는
+별도 [졸업요건 감사 계약](../docs/api/graduation-audits.md)을 따른다.
 전역 `/admin/certificate-providers`, `/admin/certificates`는 슈퍼관리자만 변경하며
 로그인 사용자는 `/catalog/*`에서 활성 마스터를 읽는다. 학생 보유 여부와 구별한다.
 [실행 규칙](../docs/api/rule-programs.md), [자격증 마스터](../docs/api/certificates.md)를 따른다.
+
+
+## 전체 규정 검토와 본인 졸업요건 감사
+
+`/admin/graduation-catalog-reviews`는 등록된 전체 적용 요건의 미리보기·지문 확인과
+사람의 완전성 확인을 보관한다. `/me/graduation-audits`는 본인·전체 문맥·같은 기준일의
+승인 기록을 결정론적 코어에 연결하고 결과·최소 입력·조건·원본 페이지 대응을 저장한다.
+기록/규칙 회수 후에는 당시 결과를 보존하고 `current_usable`로 현재 사용 여부를 구분한다.
+학생은 학점·조건·다른 소유자를 요청에 지정할 수 없으며 관리자도 타 학생 감사는 읽지 못한다.
+공식 API는 학교의 최종 학위 수여 승인을 대체하지 않는다. 실제 규정·발급 자료 등록과
+제출·검토·감사 화면은 후속이며 [계약](../docs/api/graduation-audits.md)을 따른다.

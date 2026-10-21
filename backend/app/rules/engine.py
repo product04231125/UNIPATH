@@ -330,6 +330,7 @@ def evaluate_official(
     *,
     as_of: date,
     catalog_complete: bool = False,
+    unresolved_catalog: bool = False,
 ) -> Evaluation:
     """Internal only: a future authorized DB adapter supplies approved, complete rules."""
     selected, missing = [], set()
@@ -389,7 +390,7 @@ def evaluate_official(
         else "academic_scope_required"
         if missing
         else "catalog_completeness_unconfirmed"
-        if selected and catalog_complete is not True
+        if unresolved_catalog is not False or selected and catalog_complete is not True
         else None
     )
     if forced == "ambiguous_rule_identifiers":
