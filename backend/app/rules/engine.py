@@ -186,6 +186,9 @@ def _thesis(rule: ThesisRule, snapshot: Snapshot) -> dict:
     for record in snapshot.theses or ():
         if record.thesis_type != rule.thesis_type:
             continue
+        if record.is_completed is None:
+            unknown |= not rule.requires_approval or record.approval_status != Approval.REJECTED
+            continue
         if not record.is_completed:
             unknown |= record.approval_status in (Approval.APPROVED, Approval.NEEDS_REVIEW)
             continue

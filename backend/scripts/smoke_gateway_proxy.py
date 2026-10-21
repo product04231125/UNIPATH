@@ -109,9 +109,16 @@ def verify_chain(base):
         assert status == 401, (size, status)
         assert int(headers["X-Synthetic-Body-Bytes"]) == expected_size
         assert json.loads(body)["error"]["code"] == "UNAUTHENTICATED"
-    for path in ["/api/v1/admin/knowledge-revisions", "/api/v1/admin/rule-programs"]:
+    for path in [
+        "/api/v1/admin/knowledge-revisions",
+        "/api/v1/admin/rule-programs",
+        "/api/v1/admin/official-record-batches",
+    ]:
         status, headers, _, expected_size = request(base, path, 128 * 1024)
         assert status == 401 and int(headers["X-Synthetic-Body-Bytes"]) == expected_size
+    status, headers, body, _ = request(base, "/api/v1/admin/official-record-batches", 256 * 1024)
+    assert status == 413 and "X-Synthetic-Body-Bytes" not in headers
+    common_size_error(headers, body)
     for path, size in [("/api/v1/auth/login", 17 * 1024), ("/api/v1/me/events", 300 * 1024)]:
         status, headers, body, _ = request(base, path, size)
         assert status == 413 and "X-Synthetic-Body-Bytes" not in headers
@@ -144,7 +151,12 @@ def verify_source_files(base):
         assert (
             headers["X-Synthetic-Metadata-SHA256"] == hashlib.sha256(metadata.encode()).hexdigest()
         )
-    return marker, metadata
+    batch_marker = "SYNTHETIC_BATCH_REFERENCE_NOT_FOR_LOGS"
+    status, _, _, _ = request(
+        base, "/api/v1/admin/official-record-batches?source_id=" + batch_marker, 128
+    )
+    assert status == 401
+    return marker, metadata, batch_marker
 
 
 def verify_rate_limit(base):

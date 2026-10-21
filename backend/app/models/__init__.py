@@ -19,6 +19,12 @@ from app.models.identity import (
     User,
 )
 from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
+from app.models.official_records import (
+    OfficialRecordBatch,
+    OfficialRecordBatchEvent,
+    OfficialRecordCertificateRef,
+    OfficialRecordCourseRef,
+)
 from app.models.personal import (
     AchievementRecord,
     ActivityRecord,
@@ -89,4 +95,8 @@ __all__ = [
     "PersonalImportReceipt",
     "OfficialRecordSource",
     "OfficialRecordSourceEvent",
+    "OfficialRecordBatch",
+    "OfficialRecordBatchEvent",
+    "OfficialRecordCourseRef",
+    "OfficialRecordCertificateRef",
 ]

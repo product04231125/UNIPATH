@@ -51,6 +51,53 @@ def evaluate(rule_set, **snapshot):
     return evaluate_personal((rule_set,), Snapshot.model_validate(snapshot), as_of=TODAY)
 
 
+@pytest.mark.parametrize(
+    "requires_approval,approval,status",
+    [
+        (True, "approved", Status.NEEDS_REVIEW),
+        (True, "pending", Status.NEEDS_REVIEW),
+        (True, "rejected", Status.NOT_SATISFIED),
+        (False, "rejected", Status.NEEDS_REVIEW),
+    ],
+)
+def test_unknown_thesis_completion_is_not_assumed_incomplete(requires_approval, approval, status):
+    rule = personal("thesis", thesis_type="capstone", requires_approval=requires_approval)
+    result = evaluate(
+        rule,
+        theses=[
+            {
+                "id": uid(20),
+                "thesis_type": "capstone",
+                "approval_status": approval,
+                "is_completed": None,
+            }
+        ],
+    )
+    assert result.status == status
+    if status == Status.NEEDS_REVIEW:
+        assert result.results[0].deficit is None
+
+
+def test_confirmed_completed_thesis_still_satisfies_with_another_unknown_record():
+    rule = personal("thesis", thesis_type="capstone")
+    unknown = {
+        "id": uid(20),
+        "thesis_type": "capstone",
+        "approval_status": "pending",
+        "is_completed": None,
+    }
+    known = {
+        "id": uid(21),
+        "thesis_type": "capstone",
+        "approval_status": "approved",
+        "is_completed": True,
+    }
+    for records in ([unknown, known], [known, unknown]):
+        result = evaluate(rule, theses=records)
+        assert result.status == Status.SATISFIED
+        assert result.results[0].evidence_record_ids == (UUID(uid(21)),)
+
+
 def another_personal(rule_set, identifier=200):
     data = rule_set.model_dump(mode="json")
     data["id"] = uid(identifier)

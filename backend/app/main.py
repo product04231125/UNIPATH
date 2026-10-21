@@ -18,6 +18,8 @@ from app.api.evaluations import router as evaluations_router
 from app.api.health import health, router
 from app.api.knowledge import router as knowledge_router
 from app.api.knowledge import student_router as knowledge_student_router
+from app.api.official_records import owner_router as official_records_owner_router
+from app.api.official_records import router as official_records_router
 from app.api.personal import router as personal_router
 from app.api.personal_imports import router as personal_imports_router
 from app.api.record_sources import admin_router as record_sources_admin_router
@@ -86,6 +88,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(academic_router, prefix="/api/v1")
     application.include_router(personal_router, prefix="/api/v1")
     application.include_router(personal_imports_router, prefix="/api/v1")
+    application.include_router(official_records_router, prefix="/api/v1")
+    application.include_router(official_records_owner_router, prefix="/api/v1")
     application.include_router(record_sources_router, prefix="/api/v1")
     application.include_router(record_sources_admin_router, prefix="/api/v1")
     application.include_router(catalog_router, prefix="/api/v1")

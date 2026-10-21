@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from app.core.auth_errors import AuthError, conflict, forbidden
 from app.models.certificates import Certificate, CertificateProvider
 from app.models.identity import AdminScope, Role
+from app.models.official_records import OfficialRecordCertificateRef
 from app.models.rule_programs import ProgramCertificateRef, ProgramRule, RuleProgram
 from app.schemas.common import ErrorCode
 from app.services import access
@@ -147,6 +148,9 @@ def references(db, identity, model, identifier):
     get(db, model, identifier, identity=identity)
     statement = reference_statement(model, identifier)
     result = []
+    key = "provider_id" if model is CertificateProvider else "certificate_id"
+    if db.scalar(select(exists().where(getattr(OfficialRecordCertificateRef, key) == identifier))):
+        result.append({"id": identifier, "kind": "protected_reference", "name": "보호된 연결 참조"})
     for program in db.scalars(statement.order_by(RuleProgram.id)):
         if identity.user.role == Role.SUPER_ADMIN or db.scalar(
             select(
