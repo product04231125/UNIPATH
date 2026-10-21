@@ -28,7 +28,10 @@ JSONL을 연결한다. 파일 코퍼스는 로컬 환경에서만 사용한다.
 경로로 처리한다. 본인이 선택한 학교의 원본 검토에 동의하면 제한된 PDF 스트림을 검사하고
 PostgreSQL BYTEA에 보관한다. 해당 학교 관리자가 발급기관·대상 신원을 검토하며 변경은
 현재 신원·학교 범위를 잠금 안에서 재확인한다. 원본 해시와 검토 이벤트는 DB 백업에 포함된다.
-이 경로는 성적 정규화·공식 학적 확정·졸업 판정·외부 LLM 전송을 수행하지 않는다.
+확인된 원본에는 별도 [학교 검토 기록 API](api/official-student-records.md)로 관리자가
+페이지별 기록과 학적 문맥·검토 범위를 입력한다. 승인 후에는 내용을 고치지 않고 새 기록의
+명시적 교체로 이력을 보존한다. 원본 철회·회수는 연결 초안·승인도 같은 트랜잭션에서 종료한다.
+개인 입력 프로필을 공식 문맥으로 자동 승격하거나 외부 LLM으로 전송하지 않는다.
 
 ```mermaid
 flowchart LR
@@ -39,7 +42,15 @@ flowchart LR
     PrivateDB --> Review[발급기관·대상 신원 검토]
     Review --> Events[확인·반려·회수 이력]
     Events --> PrivateDB
+    PrivateDB --> Records[관리자 페이지별 기록·문맥·검토 범위 입력]
+    Records --> Approval[원본 해시·마스터 버전·검토 확인]
+    Approval --> RecordDB[(불변 승인 기록·참조 스냅샷·검토 이력)]
+    RecordDB --> Snapshot[본인·문맥·기준일·완전성 확인 후 내부 Snapshot]
+    Snapshot --> RuleCore[독립 Rule Engine 코어 · 공식 HTTP 판정은 후속]
+    Events --> Invalidate[철회·회수 시 연결 기록 사용 종료]
+    Invalidate --> RecordDB
     PrivateDB --> Backup[DB 백업·격리 복원 검증]
+    RecordDB --> Backup
 ```
 별도 인증 경로 `/me/school-searches`, `/me/school-queries`는 등록 UUID와 입학연도·이수경로를
 검증하고 DB의 승인 문서만 조회한다. 기존 이름 기반 `/assistant/queries`와 자동으로 섞지 않는다.

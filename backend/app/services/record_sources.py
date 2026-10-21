@@ -176,6 +176,10 @@ def transition(db, request, source_id, payload, action):
     item.version += 1
     item.updated_at = datetime.now(UTC)
     event(db, request, identity, item, action, getattr(payload, "reason", ""))
+    if action in ("revoked", "withdrawn"):
+        from app.services.official_records import invalidate_source
+
+        invalidate_source(db, request, identity, item, action)
     db.commit()
     db.refresh(item)
     return item

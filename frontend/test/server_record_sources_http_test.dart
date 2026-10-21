@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:university_path_frontend/features/api/official_records_api.dart';
 import 'package:university_path_frontend/features/api/record_source_api.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
 
@@ -61,6 +62,66 @@ void main() {
       );
       expect(verified.status, RecordSourceStatus.verified);
       expect(verified.graduationEligible, isFalse);
+      final department = (await rootApi.request('POST', 'admin/departments', {
+        'name': '합성 검토 학과',
+        'code': 'REVIEW',
+        'institution_id': institution['id'],
+      }))!;
+      final course = (await rootApi.request('POST', 'admin/courses', {
+        'name': '합성 검토 과목',
+        'code': 'SOURCE1',
+        'credits': '3.5',
+        'institution_id': institution['id'],
+      }))!;
+      final records = OfficialRecordsApi.forOwner(root, actor.id, admin: true);
+      final ownRecords = OfficialRecordsApi.forOwner(student, owner.id);
+      final draftRequest = SchoolRecordBatchCreate(
+        sourceId: verified.id,
+        expectedSourceVersion: verified.version,
+        clientId: '00000000-0000-4000-8000-000000000002',
+        data: SchoolRecordAcademicData(
+          kind: 'academics',
+          pageCount: 1,
+          recordsAsOf: '2026-01-01',
+          coverage: 'complete',
+          context: SchoolRecordContext(
+            departmentId: department['id'] as String,
+            admissionYear: 2026,
+            track: 'single_major',
+          ),
+          records: [
+            SchoolRecordAcademicRecord(
+              clientId: '00000000-0000-4000-8000-000000000003',
+              sourcePage: 1,
+              courseId: course['id'] as String,
+              expectedCourseVersion: course['version'] as int,
+              completionStatus: 'completed',
+              earnedCredits: '3.5',
+              originalGrade: 'A+',
+            ),
+          ],
+        ),
+      );
+      final draft = await records.create(draftRequest);
+      expect((await records.create(draftRequest)).id, draft.id);
+      expect((await ownRecords.list()).items, isEmpty);
+      final approved = await records.approve(
+        draft.id,
+        SchoolRecordBatchApprove(
+          expectedVersion: draft.version,
+          expectedSourceSha256: verified.sha256,
+          recordsReviewed: true,
+          contextReviewed: true,
+          coverageReviewed: true,
+        ),
+      );
+      expect(approved.usableForAudit, true);
+      final viewed = await ownRecords.get(approved.id);
+      final academic = viewed.data as SchoolRecordAcademicData;
+      expect(academic.records.single.earnedCredits, '3.5');
+      expect(academic.records.single.originalGrade, 'A+');
+      expect(academic.records.single.gradePoints, isNull);
+      expect(viewed.graduationEligible, false);
       final other = await peer.authenticate(
         email: 'source-peer-$suffix@example.invalid',
         password: 'synthetic source peer password 2026',
@@ -70,11 +131,26 @@ void main() {
         RecordSourceApi.forOwner(peer, other.id).get(source.id),
         throwsA(isA<AuthFailure>().having((e) => e.status, 'status', 404)),
       );
+      await expectLater(
+        OfficialRecordsApi.forOwner(peer, other.id).get(approved.id),
+        throwsA(isA<AuthFailure>().having((e) => e.status, 'status', 404)),
+      );
       final withdrawn = await api.withdraw(
         source.id,
         expectedVersion: verified.version,
       );
       expect(withdrawn.status, RecordSourceStatus.withdrawn);
+      final ended = await ownRecords.get(approved.id);
+      expect(ended.status, 'revoked');
+      expect(ended.usableForAudit, false);
+      expect(
+        (await ownRecords.events(approved.id)).items.last.action,
+        'source_withdrawn',
+      );
+      await expectLater(
+        records.get(approved.id),
+        throwsA(isA<AuthFailure>().having((e) => e.status, 'status', 404)),
+      );
       await expectLater(
         reviewer.download(source.id),
         throwsA(isA<AuthFailure>().having((e) => e.status, 'status', 404)),

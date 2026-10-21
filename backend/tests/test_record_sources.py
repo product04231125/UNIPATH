@@ -422,3 +422,71 @@ def test_binary_original_at_proxy_and_api_boundaries_round_trips(auth_client, au
     assert source["byte_count"] == size and source["sha256"] == hashlib.sha256(data).hexdigest()
     assert c.get(ME + "/" + source["id"] + "/file", headers=headers).content == data
     assert verify(c, root, source)["status"] == "verified"
+
+
+@integration
+@pytest.mark.parametrize("withdrawn", [False, True])
+def test_private_source_catalog_links_are_redacted_and_do_not_reveal_counts(
+    auth_client, auth_db, withdrawn
+):
+    c = auth_client
+    root, institution, student, headers, metadata = setup(c, auth_db)
+    dep = department(c, root, institution)
+    cur = post(
+        c,
+        root,
+        "curricula",
+        {
+            "name": "합성 보호 과정",
+            "institution_id": institution["id"],
+            "department_id": dep["id"],
+            "year": 2026,
+        },
+    )
+    assert (
+        c.get("/api/v1/admin/curricula/" + cur["id"] + "/references", headers=root).json()["items"]
+        == []
+    )
+    for _ in range(2):
+        source = upload(
+            c,
+            headers,
+            {
+                **metadata,
+                "client_id": str(uuid4()),
+                "department_id": dep["id"],
+                "curriculum_id": cur["id"],
+            },
+        )
+        if withdrawn:
+            assert (
+                c.post(
+                    ME + "/" + source["id"] + "/withdraw",
+                    headers=headers,
+                    json={"expected_version": 1},
+                ).status_code
+                == 200
+            )
+        for collection, parent in [("departments", dep), ("curricula", cur)]:
+            response = c.get(
+                "/api/v1/admin/" + collection + "/" + parent["id"] + "/references", headers=root
+            )
+            private = [r for r in response.json()["items"] if r["kind"] == "protected_reference"]
+            assert private == [
+                {"id": parent["id"], "kind": "protected_reference", "name": "보호된 연결 참조"}
+            ]
+            for secret in [
+                student["user"]["id"],
+                student["user"]["email"],
+                metadata["filename"],
+                source["id"],
+                source["sha256"],
+            ]:
+                assert secret not in response.text
+    assert (
+        c.delete(
+            "/api/v1/admin/curricula/" + cur["id"] + "?expected_version=1", headers=root
+        ).status_code
+        == 409
+    )
+    assert c.get(ME + "/" + source["id"] + "/file", headers=headers).content == PDF

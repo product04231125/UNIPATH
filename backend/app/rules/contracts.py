@@ -121,7 +121,7 @@ class ThesisRecord(Contract):
     id: UUID
     thesis_type: Name
     approval_status: Approval
-    is_completed: bool = Field(strict=True)
+    is_completed: bool | None = Field(strict=True)
     grade: Name | None = None
 
 

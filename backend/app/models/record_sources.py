@@ -40,6 +40,9 @@ class OfficialRecordSource(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     __table_args__ = (
         UniqueConstraint("owner_id", "client_id"),
+        UniqueConstraint(
+            "id", "owner_id", "institution_id", name="uq_official_record_sources_owner_scope"
+        ),
         CheckConstraint("version >= 1", name="version"),
         CheckConstraint("sha256 ~ '^[0-9a-f]{64}$'", name="sha256"),
         CheckConstraint(

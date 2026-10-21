@@ -16,9 +16,11 @@ rule_sets·graduation_rules·official_documents를 추가했다. `0004_personal_
 학교 문서 추출/검토와 청크 2개를 추가한다. `0007_official_rule_programs`는 자격증/발급기관
 마스터와 실행 규칙·근거·마스터 참조 7개를 추가한다. `0008_personal_imports`는 개인 자료
 일괄 이전의 최소 영수증 하나를 추가한다. `0009_official_record_sources`는 학교 발급 자료의
-비공개 원본과 검토 이벤트 2개를 추가해 **총 41개 테이블**을 물리 구현한다.
+비공개 원본과 검토 이벤트 2개를 추가한다. `0010_official_student_records`는
+학교 검토 기록 묶음·이벤트·과목/자격 참조 4개를 추가해 **총 45개 테이블**을 물리 구현한다.
 학교 메타데이터/버전/삭제 표시와 범위 회수 사유도 추가한다.
-아래 전체 논리 ERD/단계 표 중 학생 공식 기록·공식 판정·벡터 임베딩은 도입 계획이다.
+아래 전체 논리 ERD/단계 표의 개별 학생 기록 엔터티는 학교 검토 묶음으로 우선 구현한다.
+공식 감사 저장·HTTP 판정·벡터 임베딩은 도입 계획이다.
 현재 users에는 학교/학과/교육과정 FK가 없으며 자유 입력 프로필을 공식 학적으로 승격하지 않는다.
 임베딩 모델/차원은 미정이며 pgvector 검사는 합성 임시 테이블을 사용한다.
 
@@ -38,6 +40,29 @@ erDiagram
     CURRICULA o|--o{ OFFICIAL_RECORD_SOURCES : scopes
     OFFICIAL_RECORD_SOURCES ||--|{ OFFICIAL_RECORD_SOURCE_EVENTS : records
     USERS o|--o{ OFFICIAL_RECORD_SOURCE_EVENTS : performs
+```
+
+[학교 검토 기록 계약](api/official-student-records.md)의 `official_record_batches`는 확인한
+원본/소유자/학교 복합 FK, 적용 문맥, 기준일·완전성·종류, 지문을 갖는 JSONB 기록을 저장한다.
+승인본은 불변이며 이벤트는 묶음/버전 UNIQUE다. 과목/자격 참조는 같은 학교의 과목과
+전역 자격·발급처의 검토 당시 버전·이름을 보존하고 삭제를 막는다. 소유자·전체 문맥·종류의
+현재 승인 UNIQUE는 교육과정 null도 동일값으로 취급한다. 원본 종료 시 같은 트랜잭션에서
+초안/승인을 종료한다. 보호 참조 조회는 학생·문서 ID·수량을 공개하지 않는다.
+
+```mermaid
+erDiagram
+    OFFICIAL_RECORD_SOURCES ||--o{ OFFICIAL_RECORD_BATCHES : supports
+    USERS ||--o{ OFFICIAL_RECORD_BATCHES : owns
+    INSTITUTIONS ||--o{ OFFICIAL_RECORD_BATCHES : scopes
+    DEPARTMENTS o|--o{ OFFICIAL_RECORD_BATCHES : scopes
+    CURRICULA o|--o{ OFFICIAL_RECORD_BATCHES : scopes
+    OFFICIAL_RECORD_BATCHES ||--|{ OFFICIAL_RECORD_BATCH_EVENTS : records
+    USERS o|--o{ OFFICIAL_RECORD_BATCH_EVENTS : reviews
+    OFFICIAL_RECORD_BATCHES ||--o{ OFFICIAL_RECORD_COURSE_REFS : snapshots
+    COURSES ||--o{ OFFICIAL_RECORD_COURSE_REFS : protects
+    OFFICIAL_RECORD_BATCHES ||--o{ OFFICIAL_RECORD_CERTIFICATE_REFS : snapshots
+    CERTIFICATES ||--o{ OFFICIAL_RECORD_CERTIFICATE_REFS : protects
+    CERTIFICATE_PROVIDERS ||--o{ OFFICIAL_RECORD_CERTIFICATE_REFS : protects
 ```
 
 ```mermaid
@@ -176,8 +201,8 @@ erDiagram
 공식 규칙의 계층·입학연도·이수경로·유효기간·버전 선택과 개인 기준 계산을 구분하며
 내부의 `RuleSet`·`Snapshot`·`Evaluation` 계약을 사용한다. 이 계약은 SQLAlchemy 모델이나
 공개 API 스키마가 아니며 아래 논리 엔터티를 생성하지 않는다. 승인 실행본을 코어로 전달하는
-내부 어댑터를 제공한다. 학교 확정 기록·소유권·학교별 성적/재수강 정책을 확인하는
-공식 기록 DB 어댑터와 공식 감사 저장은 후속 단계다.
+내부 어댑터와 본인 학교 검토 기록의 내부 Snapshot 어댑터를 제공한다.
+문자 성적 환산·재수강 합산 정책은 추정하지 않으며 공식 감사 저장·HTTP 판정은 후속 단계다.
 개인 DB 어댑터는 별도 DTO로 본인 자료·명시적 조건을 검증하고
 `personal_evaluations`에 불변 결과·조건·최소 계산 입력·버전을 보관한다.
 과정/자료 ID는 삭제 후에도 과거 결과가 유지되는 역사적 참조이며 live FK가 아니다.
