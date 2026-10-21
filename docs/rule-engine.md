@@ -3,8 +3,9 @@
 `backend/app/rules/`는 DB·HTTP·LLM과 독립적인 계산 모듈이다. 인증 방식이나 임베딩
 공급자 없이 단위 테스트와 로컬 실행이 가능하다. 개인 기록 DB는
 [개인 계산 API](api/personal-evaluations.md)로 연결했다. [공식 실행 규칙 API](api/rule-programs.md)는
-승인 실행본의 등록·선택과 내부 코어 어댑터를 제공한다. 학교 확정 기록 어댑터·공식 졸업감사
-API는 후속이며 학교 질의 API의 `rule_engine_required` 안내도 유지한다.
+승인 실행본의 등록·선택과 내부 코어 어댑터를 제공한다. 학교 승인 기록 어댑터와
+[졸업요건 감사 API](api/graduation-audits.md)를 연결했으며 학교 질의 API의
+`rule_engine_required` 안내는 명시적 감사 요청과 구분해 유지한다.
 
 ## 구현 범위
 
@@ -59,10 +60,11 @@ DB 모델이나 공개 API 스키마와는 별개다. UUID 식별자·snake_case
 거부한다. 개인 DB 어댑터는 먼저 소유권·버전을 검증하고 결과·조건·계산 입력을 불변 이력으로
 저장한다. 개인 규칙은 공식 규칙·공용 RAG 문서를 변경하지 않는다.
 
-`evaluate_official()`은 앞으로 승인된 DB 어댑터가 호출할 내부 함수다. 이 함수가 관리자
+`evaluate_official()`은 승인된 DB 어댑터가 호출하는 내부 함수다. 이 함수가 관리자
 신원·공식 URL·승인 권한을 검증하는 것은 아니다. 호출자가 검증된 공식 규칙과 기록을
-제공해야 한다. 승인 실행 규칙의 DB 어댑터는 구현했으나 학교 확정 기록 공급자와
-공식 판정 공개 HTTP 경로는 아직 없다. 실행본 선택 API의 `catalog_complete`는 항상 false다.
+제공해야 한다. 공식 감사 API는 동일한 문맥·기준일에 관리자가 전체 적용 목록을
+명시적으로 검토하고 현재 지문이 일치한 경우에만 `catalog_complete=true`로 호출한다.
+기존 실행본 선택 API의 `catalog_complete`는 항상 false로 유지한다.
 학교 검토 기록의 내부 DB 어댑터는 본인·전체 적용 문맥·동일 기준일의 완전한 승인 자료만
 Snapshot으로 전달한다. 원본 철회·회수·무결성/마스터 변경·부분 자료는 미확인 입력이다.
 [학교 검토 기록 계약](api/official-student-records.md)을 따르며 이 어댑터는 개인 입력을
@@ -78,7 +80,9 @@ Snapshot으로 전달한다. 원본 철회·회수·무결성/마스터 변경·
   최신 버전을 임의 선택하지 않고 `ambiguous_rule_set_versions`로 확인을 요구한다.
 - 사용한 규칙 묶음 ID·버전·계층·문서 근거를 결과에 보존한다.
 - 적용 가능한 공식 규칙이 없으면 `not_applicable`; 규칙 목록의 완전성이 확인되지 않으면
-  전체 `needs_review`다. `catalog_complete`는 기본 `false`이고 신뢰할 DB 어댑터만 설정한다.
+  전체 `needs_review`다. 등록된 요건의 실행본이 모두 없어도 `unresolved_catalog`로
+  검토 필요를 유지한다. 실제 등록 메타데이터가 전혀 없는 경우와 구별한다.
+  `catalog_complete`는 기본 `false`이고 신뢰할 DB 어댑터만 설정한다.
 
 `official=true`는 내부 계산의 입력 계층을 표시한다. 현재 서비스에 실제 학교의 공식
 졸업 판정이 개통되었다는 의미는 아니다. RAG/LLM은 이 계산에 참여하지 않는다.
@@ -100,6 +104,6 @@ uv run --frozen pytest tests/test_rules.py -q
 uv run --frozen python -m app.rules --input /비공개/개인기준.json
 ```
 
-공식 규칙 DB 조회·승인·권한, 원본 성적의 학교별 환산, 재수강 정규화, 감사 저장과
-프론트엔드 화면 연결은 별도 구현 단계다. 개인 이력의 물리 DB 스키마는
+공식 규칙·승인·범위·학교 발급 기록과 감사 저장은 별도 HTTP/DB 어댑터에서 구현한다.
+원본 성적의 학교별 환산·재수강 정책 자동 해석과 프론트엔드 화면 연결은 후속이다. 개인 이력의 물리 DB 스키마는
 `0005_personal_evaluations`와 [개인 계산 계약](api/personal-evaluations.md)을 따른다.

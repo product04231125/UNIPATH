@@ -10,6 +10,11 @@ from app.models.academic import (
 from app.models.base import Base
 from app.models.certificates import Certificate, CertificateProvider
 from app.models.evaluations import PersonalEvaluation
+from app.models.graduation import (
+    GraduationAudit,
+    GraduationCatalogReview,
+    GraduationCatalogReviewEvent,
+)
 from app.models.identity import (
     AdminScope,
     AuthSession,
@@ -83,6 +88,9 @@ __all__ = [
     "PortfolioComposition",
     "PortfolioSource",
     "PersonalEvaluation",
+    "GraduationAudit",
+    "GraduationCatalogReview",
+    "GraduationCatalogReviewEvent",
     "KnowledgeDocument",
     "KnowledgeChunk",
     "Certificate",

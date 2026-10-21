@@ -1,5 +1,6 @@
 """Translate reviewed source metadata and explicit criteria into immutable programs."""
 
+import hashlib
 from datetime import UTC, datetime
 from uuid import uuid4, uuid5
 
@@ -428,7 +429,7 @@ def remove(db, request, identifier, version):
     academic.commit(db)
 
 
-def _dependencies_valid(db, item, on):
+def _dependencies_valid(db, item, on, *, strict_references=False):
     if (
         item.status != "approved"
         or item.effective_from
@@ -473,6 +474,11 @@ def _dependencies_valid(db, item, on):
                     or document.status != "approved"
                     or document.version != ref.knowledge_version
                     or chunk.content_hash != ref.content_hash
+                    or hashlib.sha256(chunk.content.encode()).hexdigest() != ref.content_hash
+                    or chunk.warnings
+                    or not set(range(item.admission_year_from, item.admission_year_to + 1))
+                    <= set(chunk.admission_years or [])
+                    or not set(item.tracks) <= set(chunk.tracks or [])
                     or document.source_document_version != meta.version
                     or not _scope_covers(meta, item)
                 ):
@@ -500,6 +506,15 @@ def _dependencies_valid(db, item, on):
                     (c.course_id, c.expected_version) for c in condition.courses
                 }:
                     return False
+                for ref in references if strict_references else ():
+                    course = db.get(Course, ref.course_id)
+                    if course is None or (
+                        course.institution_id,
+                        course.version,
+                        course.code,
+                        course.name,
+                    ) != (item.institution_id, ref.catalog_version, ref.code, ref.name):
+                        return False
             if isinstance(condition, dto.CertificateCriterion):
                 references = list(
                     db.scalars(
@@ -513,7 +528,20 @@ def _dependencies_valid(db, item, on):
                 }:
                     return False
                 for ref in references:
-                    certificates.active_certificate(db, ref.certificate_id)
+                    certificate = certificates.active_certificate(db, ref.certificate_id)
+                    provider = db.get(CertificateProvider, certificate.provider_id)
+                    if strict_references and (
+                        certificate.version,
+                        certificate.code,
+                        certificate.name,
+                        provider.name,
+                    ) != (
+                        ref.catalog_version,
+                        ref.code,
+                        ref.name,
+                        ref.provider_name,
+                    ):
+                        return False
         return True
     except (AuthError, ValidationError, ValueError, KeyError):
         return False
@@ -617,7 +645,7 @@ def public_detail(db, identifier, on):
     )
 
 
-def selection(db, context, on):
+def selection(db, context, on, *, strict_references=False):
     catalog.context(db, context.institution_id, context.department_id, context.curriculum_id)
     targets = []
     for model, kind in [(RuleSet, "rule_set"), (GraduationRule, "rule")]:
@@ -685,7 +713,7 @@ def selection(db, context, on):
             reason = "execution_program_required"
         elif len(matches) > 1:
             reason = "ambiguous_rule_programs"
-        elif not _dependencies_valid(db, matches[0], on):
+        elif not _dependencies_valid(db, matches[0], on, strict_references=strict_references):
             reason = "program_dependency_unavailable"
         else:
             item = matches[0]
@@ -705,9 +733,11 @@ def selection(db, context, on):
     )
 
 
-def as_core(db, item, track, on):
+def as_core(db, item, track, on, *, strict_references=False):
     """Internal rule adapter only; no trusted student record provider is implied."""
-    if track not in item.tracks or not _dependencies_valid(db, item, on):
+    if track not in item.tracks or not _dependencies_valid(
+        db, item, on, strict_references=strict_references
+    ):
         raise conflict()
     parent, _ = source(db, item.rule_set_id, item.rule_id)
     public = rule_views(db, item)

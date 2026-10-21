@@ -119,7 +119,12 @@ def verify_chain(base):
     status, headers, body, _ = request(base, "/api/v1/admin/official-record-batches", 256 * 1024)
     assert status == 413 and "X-Synthetic-Body-Bytes" not in headers
     common_size_error(headers, body)
-    for path, size in [("/api/v1/auth/login", 17 * 1024), ("/api/v1/me/events", 300 * 1024)]:
+    for path, size in [
+        ("/api/v1/auth/login", 17 * 1024),
+        ("/api/v1/me/events", 300 * 1024),
+        ("/api/v1/me/graduation-audits", 17 * 1024),
+        ("/api/v1/admin/graduation-catalog-reviews", 17 * 1024),
+    ]:
         status, headers, body, _ = request(base, path, size)
         assert status == 413 and "X-Synthetic-Body-Bytes" not in headers
         common_size_error(headers, body)
@@ -156,7 +161,12 @@ def verify_source_files(base):
         base, "/api/v1/admin/official-record-batches?source_id=" + batch_marker, 128
     )
     assert status == 401
-    return marker, metadata, batch_marker
+    audit_marker = "SYNTHETIC_GRADUATION_CONTEXT_NOT_FOR_LOGS"
+    status, _, _, _ = request(
+        base, "/api/v1/admin/graduation-catalog-reviews/preview?institution_id=" + audit_marker, 128
+    )
+    assert status == 401
+    return marker, metadata, batch_marker, audit_marker
 
 
 def verify_rate_limit(base):

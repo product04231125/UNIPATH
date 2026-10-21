@@ -15,6 +15,8 @@ from app.api.certificates import (
     router as certificates_router,
 )
 from app.api.evaluations import router as evaluations_router
+from app.api.graduation import owner_router as graduation_audits_router
+from app.api.graduation import router as graduation_catalog_router
 from app.api.health import health, router
 from app.api.knowledge import router as knowledge_router
 from app.api.knowledge import student_router as knowledge_student_router
@@ -94,6 +96,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(record_sources_admin_router, prefix="/api/v1")
     application.include_router(catalog_router, prefix="/api/v1")
     application.include_router(evaluations_router, prefix="/api/v1")
+    application.include_router(graduation_catalog_router, prefix="/api/v1")
+    application.include_router(graduation_audits_router, prefix="/api/v1")
     application.include_router(knowledge_router, prefix="/api/v1")
     application.include_router(knowledge_student_router, prefix="/api/v1")
     application.include_router(certificates_router, prefix="/api/v1")

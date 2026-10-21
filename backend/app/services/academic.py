@@ -16,6 +16,7 @@ from app.models.academic import (
     OfficialDocument,
     RuleSet,
 )
+from app.models.graduation import GraduationAudit, GraduationCatalogReview
 from app.models.identity import AdminScope, IdentityAudit, Institution, Role
 from app.models.official_records import OfficialRecordBatch, OfficialRecordCourseRef
 from app.models.personal import PlanningProfile
@@ -224,7 +225,13 @@ def references(db, identity, model, record_id):
     profile_key = {Department: "department_id", Curriculum: "curriculum_id"}.get(model)
     if profile_key and any(
         db.scalar(select(exists().where(getattr(protected_model, profile_key) == record_id)))
-        for protected_model in (PlanningProfile, OfficialRecordSource, OfficialRecordBatch)
+        for protected_model in (
+            PlanningProfile,
+            OfficialRecordSource,
+            OfficialRecordBatch,
+            GraduationAudit,
+            GraduationCatalogReview,
+        )
     ):
         # A profile FK must prevent catalog deletion without exposing a student's
         # identity, profile/source values, or the number of private references.
