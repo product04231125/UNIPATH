@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'app_role.dart';
 import 'account_security_gateway.dart';
 import 'auth_http_stub.dart' if (dart.library.js_interop) 'auth_http_web.dart';
+import 'record_files_gateway.dart';
 
 class AuthFailure implements Exception {
   const AuthFailure(this.message, {this.status, this.fields = const []});
@@ -91,6 +92,90 @@ class AuthApi implements AuthGateway, ApiGateway {
   AccountSecurityGateway securityForOwner(String ownerId) {
     if (_ownerId != ownerId) throw const AuthFailure('다시 로그인해 주세요.');
     return _OwnedAccountSecurity(this, ownerId, _sessionEpoch);
+  }
+
+  RecordFilesGateway recordFilesForOwner(String ownerId) {
+    if (_ownerId != ownerId) throw const AuthFailure('다시 로그인해 주세요.');
+    return _OwnedRecordFiles(this, ownerId, _sessionEpoch);
+  }
+
+  Future<http.Response> _recordFileRequest(
+    String ownerId,
+    int epoch,
+    String method,
+    String path, [
+    Uint8List? bytes,
+    Map<String, Object?>? metadata,
+  ]) async {
+    void checkOwner() {
+      if (!_ownsSession(ownerId, epoch)) {
+        throw const AuthFailure('계정이 변경되었습니다. 다시 로그인해 주세요.', status: 403);
+      }
+    }
+
+    checkOwner();
+    final uri = Uri.parse(path);
+    final allowed = method == 'POST'
+        ? uri.path == 'me/official-record-sources'
+        : RegExp(r'^(me|admin)/official-record-sources/[0-9a-fA-F-]{36}/file$')
+              .hasMatch(uri.path);
+    if (uri.hasScheme ||
+        uri.hasAuthority ||
+        uri.hasFragment ||
+        uri.hasQuery ||
+        !allowed) {
+      throw const AuthFailure('올바른 자료 경로를 확인해 주세요.');
+    }
+    if (bytes != null && bytes.length > 2 * 1024 * 1024) {
+      throw const AuthFailure('PDF는 최대 2 MiB까지 제출할 수 있습니다.', status: 413);
+    }
+    try {
+      final request = http.Request(method, _base.resolve('/api/v1/$path'));
+      request.headers['X-Unipath-Owner'] = ownerId;
+      if (_token != null) request.headers['Authorization'] = 'Bearer $_token';
+      if (bytes != null) {
+        if (metadata == null) throw const AuthFailure('자료 정보를 확인해 주세요.');
+        final encoded = base64Url.encode(utf8.encode(jsonEncode(metadata)));
+        if (encoded.length > 4096) {
+          throw const AuthFailure('자료 정보가 너무 큽니다.', status: 422);
+        }
+        request.headers['X-Unipath-Source-Metadata'] = encoded;
+        request.headers['Content-Type'] = 'application/pdf';
+        request.bodyBytes = Uint8List.fromList(bytes);
+      }
+      final response = await _client
+          .send(request)
+          .then(http.Response.fromStream)
+          .timeout(const Duration(seconds: 20));
+      checkOwner();
+      if (response.statusCode != (method == 'POST' ? 201 : 200)) {
+        throw AuthFailure(switch (response.statusCode) {
+          401 => '다시 로그인해 주세요.',
+          403 => '이 자료에 접근할 권한이 없습니다.',
+          404 => '제출 자료를 찾을 수 없습니다.',
+          409 => '다른 변경이 있습니다. 제출 자료를 다시 확인해 주세요.',
+          413 => 'PDF는 최대 2 MiB까지 제출할 수 있습니다.',
+          415 => 'PDF 원본 파일을 선택해 주세요.',
+          422 => '파일과 제출 정보를 확인해 주세요.',
+          429 => '시도 횟수가 많습니다. 잠시 후 다시 시도해 주세요.',
+          _ => '자료 응답을 확인하지 못했습니다. 다시 확인해 주세요.',
+        }, status: response.statusCode);
+      }
+      final type = response.headers['content-type']?.split(';').first;
+      if (type !=
+              (method == 'POST'
+                  ? 'application/json'
+                  : 'application/octet-stream') ||
+          response.bodyBytes.length > 2 * 1024 * 1024) {
+        throw const AuthFailure('자료 응답 형식을 확인하지 못했습니다.');
+      }
+      return response;
+    } on AuthFailure {
+      rethrow;
+    } catch (_) {
+      checkOwner();
+      throw const AuthFailure('자료 전송 결과를 확인하지 못했습니다. 제출 목록을 확인해 주세요.');
+    }
   }
 
   bool _ownsSession(String ownerId, int epoch) =>
@@ -371,6 +456,41 @@ class _OwnerGateway implements ApiGateway {
     String path, [
     Map<String, Object?>? body,
   ]) => auth._ownedRequest(ownerId, epoch, method, path, body);
+}
+
+class _OwnedRecordFiles implements RecordFilesGateway {
+  const _OwnedRecordFiles(this.auth, this.ownerId, this.epoch);
+  final AuthApi auth;
+  final String ownerId;
+  final int epoch;
+  @override
+  Future<Map<String, dynamic>> upload(
+    String path,
+    Uint8List bytes, {
+    required Map<String, Object?> metadata,
+  }) async {
+    try {
+      final response = await auth._recordFileRequest(
+        ownerId,
+        epoch,
+        'POST',
+        path,
+        bytes,
+        metadata,
+      );
+      return Map<String, dynamic>.from(
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map,
+      );
+    } on AuthFailure {
+      rethrow;
+    } catch (_) {
+      throw const AuthFailure('자료 등록 응답을 확인하지 못했습니다. 제출 목록을 확인해 주세요.');
+    }
+  }
+
+  @override
+  Future<Uint8List> download(String path) async =>
+      (await auth._recordFileRequest(ownerId, epoch, 'GET', path)).bodyBytes;
 }
 
 class _OwnedAccountSecurity implements AccountSecurityGateway {

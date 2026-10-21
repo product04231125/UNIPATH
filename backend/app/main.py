@@ -20,6 +20,8 @@ from app.api.knowledge import router as knowledge_router
 from app.api.knowledge import student_router as knowledge_student_router
 from app.api.personal import router as personal_router
 from app.api.personal_imports import router as personal_imports_router
+from app.api.record_sources import admin_router as record_sources_admin_router
+from app.api.record_sources import router as record_sources_router
 from app.api.rule_programs import public_router as program_catalog_router
 from app.api.rule_programs import router as program_router
 from app.core.config import Settings, get_settings
@@ -68,7 +70,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_origins=config.cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Unipath-Owner"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "X-Request-ID",
+            "X-Unipath-Owner",
+            "X-Unipath-Source-Metadata",
+        ],
         expose_headers=["X-Request-ID"],
     )
     application.include_router(router, prefix="/api/v1")
@@ -78,6 +86,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(academic_router, prefix="/api/v1")
     application.include_router(personal_router, prefix="/api/v1")
     application.include_router(personal_imports_router, prefix="/api/v1")
+    application.include_router(record_sources_router, prefix="/api/v1")
+    application.include_router(record_sources_admin_router, prefix="/api/v1")
     application.include_router(catalog_router, prefix="/api/v1")
     application.include_router(evaluations_router, prefix="/api/v1")
     application.include_router(knowledge_router, prefix="/api/v1")

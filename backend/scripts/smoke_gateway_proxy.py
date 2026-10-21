@@ -1,6 +1,8 @@
 """Exercise both real Nginx layers with an isolated, synthetic HTTP upstream."""
 
 import argparse
+import base64
+import hashlib
 import http.client
 import json
 import subprocess
@@ -16,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 NGINX_IMAGE = "nginx:1.29-alpine"
 UPSTREAM = """
 from http.server import BaseHTTPRequestHandler, HTTPServer
-import json
+import hashlib, json
 from uuid import uuid4
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args): pass
@@ -29,6 +31,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Content-Type','application/json')
         self.send_header('X-Request-ID',request_id)
         self.send_header('X-Synthetic-Body-Bytes',str(len(body)))
+        self.send_header('X-Synthetic-Body-SHA256',hashlib.sha256(body).hexdigest())
+        self.send_header('X-Synthetic-Metadata-SHA256',hashlib.sha256(
+            self.headers.get('X-Unipath-Source-Metadata','').encode()).hexdigest())
         self.end_headers()
         self.wfile.write(json.dumps({'error':{'code':'UNAUTHENTICATED',
             'message':'synthetic upstream only','field_errors':[],
@@ -59,9 +64,9 @@ def fixture_config(template):
     )
 
 
-def request(base, path, size, *, headers_only=False):
+def request(base, path, size, *, headers_only=False, raw_payload=None, extra_headers=None):
     # Pure synthetic bytes, never credentials, application records or real users.
-    payload = b'{"synthetic":"' + b"x" * size + b'"}'
+    payload = raw_payload if raw_payload is not None else b'{"synthetic":"' + b"x" * size + b'"}'
     if headers_only:
         # The edge rejects excessive Content-Length before reading a body.
         # Waiting for that response avoids a client-side broken pipe masking it.
@@ -71,12 +76,18 @@ def request(base, path, size, *, headers_only=False):
             connection.putrequest("POST", path)
             connection.putheader("Content-Type", "application/json")
             connection.putheader("Content-Length", str(len(payload)))
+            for key, value in (extra_headers or {}).items():
+                connection.putheader(key, value)
             connection.endheaders()
             response = connection.getresponse()
             return response.status, response.headers, response.read(), len(payload)
         finally:
             connection.close()
-    req = Request(base + path, data=payload, headers={"Content-Type": "application/json"})
+    req = Request(
+        base + path,
+        data=payload,
+        headers={"Content-Type": "application/json", **(extra_headers or {})},
+    )
     try:
         response = urlopen(req, timeout=15)
     except HTTPError as error:
@@ -110,6 +121,30 @@ def verify_chain(base):
     )
     assert status == 413 and "X-Synthetic-Body-Bytes" not in headers
     common_size_error(headers, body)
+
+
+def verify_source_files(base):
+    marker = "SYNTHETIC_SOURCE_FILENAME_NOT_FOR_LOGS.pdf"
+    metadata = base64.urlsafe_b64encode(json.dumps({"filename": marker}).encode()).decode()
+    for size in [300 * 1024, 2 * 1024 * 1024]:
+        payload = b"%PDF-1.7\n" + b"x" * (size - 15) + b"%%EOF\n"
+        assert len(payload) == size
+        status, headers, _, expected_size = request(
+            base,
+            "/api/v1/me/official-record-sources",
+            0,
+            raw_payload=payload,
+            extra_headers={
+                "Content-Type": "application/pdf",
+                "X-Unipath-Source-Metadata": metadata,
+            },
+        )
+        assert status == 401 and int(headers["X-Synthetic-Body-Bytes"]) == expected_size
+        assert headers["X-Synthetic-Body-SHA256"] == hashlib.sha256(payload).hexdigest()
+        assert (
+            headers["X-Synthetic-Metadata-SHA256"] == hashlib.sha256(metadata.encode()).hexdigest()
+        )
+    return marker, metadata
 
 
 def verify_rate_limit(base):
@@ -201,6 +236,12 @@ def main():
                         time.sleep(0.2)
                 run("exec", outer, "nginx", "-t")
                 verify_chain(base)
+                markers = verify_source_files(base)
+                for container in [outer, prefix + "-inner"]:
+                    logs = run("logs", container)
+                    assert all(marker not in logs for marker in markers), (
+                        "Private metadata leaked into proxy logs"
+                    )
                 print(
                     "PASS: two real proxy layers:",
                     template,
