@@ -17,23 +17,52 @@ class AdminEditor extends StatefulWidget {
     required this.schoolId,
     this.record,
     this.revoke = false,
+    this.inline = false,
   });
   final AdminRepository repository;
   final String actorId, schoolId;
   final AdminKind kind;
   final AdminRecord? record;
   final bool revoke;
+  final bool inline;
   @override
-  State<AdminEditor> createState() => _AdminEditorState();
+  State<AdminEditor> createState() => AdminEditorState();
 }
 
-class _AdminEditorState extends State<AdminEditor> {
+class AdminEditorState extends State<AdminEditor> {
   final _form = GlobalKey<FormState>();
   late final List<AdminField> _fields;
   late final Map<String, TextEditingController> _controllers;
   late final Map<String, String> _initial;
   bool _saving = false;
-  String? _error;
+  String? _error, _message;
+  bool get saving => _saving;
+  bool get dirty =>
+      _fields.any((f) => _value(f.key) != (_initial[f.key] ?? ''));
+  Future<bool> allowLeave() async {
+    if (_saving) return false;
+    return !dirty || await confirmInputDiscard(context);
+  }
+
+  void _reset() {
+    for (final f in _fields) {
+      _controllers[f.key]!.text = _initial[f.key] ?? '';
+    }
+    _form.currentState?.reset();
+    setState(() {
+      _saving = false;
+      _error = null;
+    });
+  }
+
+  Future<void> _cancel() async {
+    if (widget.inline) {
+      if (await allowLeave() && mounted) _reset();
+    } else {
+      if (mounted) await InputDialog.cancel<void>(context);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -100,6 +129,7 @@ class _AdminEditorState extends State<AdminEditor> {
     setState(() {
       _saving = true;
       _error = null;
+      _message = null;
     });
     try {
       if (widget.revoke) {
@@ -127,7 +157,14 @@ class _AdminEditorState extends State<AdminEditor> {
               ),
         );
       }
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        if (widget.inline) {
+          _reset();
+          setState(() => _message = '등록했습니다. 다음 내용을 입력할 수 있습니다.');
+        } else {
+          Navigator.pop(context);
+        }
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -141,7 +178,7 @@ class _AdminEditorState extends State<AdminEditor> {
   }
 
   @override
-  Widget build(BuildContext context) => InputDialog(
+  Widget build(BuildContext context) => _shell(
     changes: Listenable.merge(_controllers.values.toList()),
     editing: widget.record != null,
     saving: _saving,
@@ -276,6 +313,8 @@ class _AdminEditorState extends State<AdminEditor> {
                       ),
               ),
           ],
+          if (_message != null)
+            Semantics(liveRegion: true, child: Text(_message!)),
           if (_error != null)
             Text(
               _error!,
@@ -285,10 +324,7 @@ class _AdminEditorState extends State<AdminEditor> {
       ),
     ),
     actions: [
-      TextButton(
-        onPressed: _saving ? null : () => InputDialog.cancel<void>(context),
-        child: const Text('취소'),
-      ),
+      TextButton(onPressed: _saving ? null : _cancel, child: const Text('취소')),
       FilledButton(
         onPressed: _saving ? null : _save,
         child: Text(
@@ -296,9 +332,59 @@ class _AdminEditorState extends State<AdminEditor> {
               ? '저장 중…'
               : widget.revoke
               ? '범위 회수'
+              : widget.inline
+              ? '등록'
               : '저장',
         ),
       ),
     ],
   );
+  Widget _shell({
+    required Listenable changes,
+    required bool editing,
+    required bool saving,
+    required bool Function() hasContent,
+    required bool Function() hasUnsavedChanges,
+    required Widget title,
+    required Widget content,
+    required List<Widget> actions,
+  }) {
+    if (!widget.inline) {
+      return InputDialog(
+        changes: changes,
+        editing: editing,
+        saving: saving,
+        hasContent: hasContent,
+        hasUnsavedChanges: hasUnsavedChanges,
+        title: title,
+        content: content,
+        actions: actions,
+      );
+    }
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Semantics(
+              header: true,
+              child: DefaultTextStyle(
+                style: Theme.of(context).textTheme.titleMedium!,
+                child: title,
+              ),
+            ),
+            content,
+            const SizedBox(height: 16),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
+              children: actions,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

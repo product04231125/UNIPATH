@@ -20,7 +20,10 @@ Widget host(Widget child, {double scale = 1}) => MaterialApp(
 );
 
 Future<void> setField(WidgetTester tester, String key, String value) async {
-  final finder = find.byKey(ValueKey('admin-field-$key'));
+  final all = find.byKey(ValueKey('admin-field-$key'));
+  final finder = find.byType(Dialog).evaluate().isNotEmpty
+      ? find.descendant(of: find.byType(Dialog).last, matching: all)
+      : all;
   await tester.ensureVisible(finder);
   if (tester.widget(finder) is AnchoredSelectField<String>) {
     tester.widget<AnchoredSelectField<String>>(finder).onChanged(value);
@@ -96,47 +99,118 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
-  testWidgets('all paired admin sections use two columns and stack', (
-    tester,
-  ) async {
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final repo = FakeAdminRepository();
-    addTearDown(repo.dispose);
-    for (final item in [
-      ('/admin/schools', 'institution', 'department'),
-      ('/admin/curricula', 'curriculum', 'course'),
-      ('/admin/rules', 'ruleSet', 'rule'),
-      ('/admin/accounts', 'account', 'scope'),
-    ]) {
+  testWidgets(
+    'admin list and permanent registration use two columns and stack',
+    (tester) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repo = FakeAdminRepository();
+      addTearDown(repo.dispose);
+      for (final item in [
+        ('/admin/schools', 'institution', 'department'),
+        ('/admin/curricula', 'curriculum', 'course'),
+        ('/admin/rules', 'ruleSet', 'rule'),
+        ('/admin/accounts', 'scope', 'scope'),
+      ]) {
+        await tester.binding.setSurfaceSize(const Size(1440, 900));
+        await tester.pumpWidget(
+          host(
+            AdminWorkspace(
+              repository: repo,
+              role: AppRole.superAdmin,
+              path: item.$1,
+              onNavigate: (_) {},
+              onSignedOut: () {},
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final first = find.byKey(ValueKey('admin-section-${item.$2}'));
+        final second = find.descendant(
+          of: find.byKey(ValueKey('admin-registration-${item.$2}-school-a')),
+          matching: find.byType(AdminEditor),
+        );
+        expect(tester.getTopLeft(first).dy, tester.getTopLeft(second).dy);
+        expect(
+          tester.getTopLeft(first).dx,
+          lessThan(tester.getTopLeft(second).dx),
+        );
+        await tester.binding.setSurfaceSize(const Size(480, 520));
+        await tester.pumpAndSettle();
+        expect(
+          tester.getTopLeft(second).dy,
+          greaterThan(tester.getTopLeft(first).dy),
+        );
+        expect(tester.takeException(), isNull);
+      }
+    },
+  );
+  testWidgets(
+    'inline registration preserves failures, clears success and guards navigation',
+    (tester) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.binding.setSurfaceSize(const Size(1440, 900));
+      var fail = true;
+      final repo = FakeAdminRepository(
+        beforeOperation: (operation) async {
+          if (operation == 'save' && fail) throw StateError('다시 시도하세요.');
+        },
+      );
+      addTearDown(repo.dispose);
+      String? destination;
       await tester.pumpWidget(
         host(
           AdminWorkspace(
             repository: repo,
             role: AppRole.superAdmin,
-            path: item.$1,
-            onNavigate: (_) {},
+            path: '/admin/schools',
+            onNavigate: (v) => destination = v,
             onSignedOut: () {},
           ),
         ),
       );
       await tester.pumpAndSettle();
-      final first = find.byKey(ValueKey('admin-section-${item.$2}'));
-      final second = find.byKey(ValueKey('admin-section-${item.$3}'));
-      expect(tester.getTopLeft(first).dy, tester.getTopLeft(second).dy);
-      expect(
-        tester.getTopLeft(first).dx,
-        lessThan(tester.getTopLeft(second).dx),
+      final form = find.descendant(
+        of: find.byKey(
+          const ValueKey('admin-registration-institution-school-a'),
+        ),
+        matching: find.byType(AdminEditor),
       );
+      final name = find.descendant(
+        of: form,
+        matching: find.byKey(const ValueKey('admin-field-name')),
+      );
+      await tester.ensureVisible(name);
+      await tester.enterText(name, '내 학교');
+      final save = find.descendant(
+        of: form,
+        matching: find.widgetWithText(FilledButton, '등록'),
+      );
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(find.text('다시 시도하세요.'), findsOneWidget);
+      expect(tester.widget<TextFormField>(name).controller!.text, '내 학교');
+      await tester.tap(
+        find.byKey(const ValueKey('admin-menu-/admin/curricula')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
+      await tester.tap(find.text('계속 작성'));
+      await tester.pumpAndSettle();
+      expect(destination, isNull);
       await tester.binding.setSurfaceSize(const Size(480, 520));
       await tester.pumpAndSettle();
-      expect(
-        tester.getTopLeft(second).dy,
-        greaterThan(tester.getTopLeft(first).dy),
-      );
+      expect(tester.widget<TextFormField>(name).controller!.text, '내 학교');
+      fail = false;
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(repo.records.any((r) => r.name == '내 학교'), isTrue);
+      expect(tester.widget<TextFormField>(name).controller!.text, isEmpty);
+      expect(find.byType(Dialog), findsNothing);
       expect(tester.takeException(), isNull);
-    }
-  });
+    },
+  );
   testWidgets('admin labels stay above their controls', (tester) async {
     final repo = FakeAdminRepository();
     await openEditor(tester, repo, AdminKind.department);
@@ -400,17 +474,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(register);
     await tester.pumpAndSettle();
-    expect(find.byType(AdminEditor), findsOneWidget);
-    expect(
-      tester
-          .widget<AnchoredSelectField<String>>(
-            find.byKey(const ValueKey('admin-field-institutionId')),
-          )
-          .value,
-      'school-b',
-    );
-    await tester.tap(find.text('취소'));
-    await tester.pumpAndSettle();
+    expect(target, '/admin/documents');
+    expect(find.byType(Dialog), findsNothing);
     expect(tester.takeException(), isNull);
   });
   for (final compact in [false, true]) {
@@ -501,7 +566,7 @@ void main() {
       await tester.pumpAndSettle();
       AnchoredSelectField<String> selector() =>
           tester.widget<AnchoredSelectField<String>>(
-            find.byType(AnchoredSelectField<String>),
+            find.byKey(const ValueKey('admin-school-selector')),
           );
       expect(selector().value, 'school-b');
       selector().onChanged('school-a');

@@ -7,6 +7,8 @@ class PersonalRecordCodec {
   const PersonalRecordCodec(this.kind);
   final PersonalRecordKind kind;
   StudentResource<StudentPayload> get resource => switch (kind) {
+    PersonalRecordKind.personalSchool || PersonalRecordKind.personalDepartment =>
+      throw UnsupportedError('Personal schools and departments are device-local'),
     PersonalRecordKind.course => StudentResources.courseRecords,
     PersonalRecordKind.activity => StudentResources.activityRecords,
     PersonalRecordKind.experience => StudentResources.experienceRecords,
@@ -23,6 +25,7 @@ class PersonalRecordCodec {
     'title': 'title',
     'detail': 'detail',
     ...switch (kind) {
+      PersonalRecordKind.personalSchool || PersonalRecordKind.personalDepartment => <String, String>{},
       PersonalRecordKind.course => {
         'term': 'term',
         'category': 'category',

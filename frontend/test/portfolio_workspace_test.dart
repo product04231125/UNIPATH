@@ -82,7 +82,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('포트폴리오·성과'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('3. 지원 문서'));
+      await tester.tap(find.text('기존 지원 문서'));
       await tester.pumpAndSettle();
       expect(find.textContaining('합성 경험'), findsOneWidget);
       final experiences = PersonalRecordRepository(
@@ -323,7 +323,7 @@ void main() {
       await seedRecords();
       await tester.pumpWidget(portfolioPage());
       await tester.pumpAndSettle();
-      await tester.tap(find.text('2. 포트폴리오 구성'));
+      await tester.tap(find.text('기존 구성'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('포트폴리오 구성 추가'));
       await tester.pumpAndSettle();
@@ -362,7 +362,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.pumpWidget(portfolioPage());
       await tester.pumpAndSettle();
-      await tester.tap(find.text('2. 포트폴리오 구성'));
+      await tester.tap(find.text('기존 구성'));
       await tester.pumpAndSettle();
       expect(find.text('합성 포트폴리오'), findsOneWidget);
       await tester.tap(find.text('수정'));
@@ -389,7 +389,7 @@ void main() {
       await tester.tap(find.text('삭제').last);
       await tester.pumpAndSettle();
       expect(find.text('수정된 포트폴리오'), findsNothing);
-      await tester.tap(find.text('1. 성과 기록'));
+      await tester.tap(find.text('성과 기록'));
       await tester.pumpAndSettle();
       expect(find.text('합성 성과 work-1'), findsOneWidget);
       expect(find.text('합성 성과 work-2'), findsOneWidget);
@@ -421,7 +421,7 @@ void main() {
       );
       await tester.pumpWidget(portfolioPage());
       await tester.pumpAndSettle();
-      await tester.tap(find.text('3. 지원 문서'));
+      await tester.tap(find.text('기존 지원 문서'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('지원 문서 초안 추가'));
       await tester.pumpAndSettle();
@@ -458,9 +458,9 @@ void main() {
       expect(body, isNot(contains('work-2')));
       await tester.tap(find.text('초안 저장'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('2. 포트폴리오 구성'));
+      await tester.tap(find.text('기존 구성'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('3. 지원 문서'));
+      await tester.tap(find.text('기존 지원 문서'));
       await tester.pumpAndSettle();
       expect(find.text('합성 지원 문서'), findsOneWidget);
       await tester.tap(find.text('수정'));
@@ -525,7 +525,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  for (final stage in ['2. 포트폴리오 구성', '3. 지원 문서']) {
+  for (final stage in ['기존 구성', '기존 지원 문서']) {
     testWidgets('$stage remains usable at 480x520 with 200 percent text', (
       tester,
     ) async {
@@ -545,9 +545,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text(stage));
       await tester.pumpAndSettle();
-      final add = find.text(
-        stage.startsWith('2') ? '포트폴리오 구성 추가' : '지원 문서 초안 추가',
-      );
+      final add = find.text(stage == '기존 구성' ? '포트폴리오 구성 추가' : '지원 문서 초안 추가');
       await tester.ensureVisible(add);
       await tester.tap(add);
       await tester.pumpAndSettle();

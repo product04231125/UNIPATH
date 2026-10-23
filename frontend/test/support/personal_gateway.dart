@@ -46,7 +46,7 @@ class PersonalGateway implements ApiGateway {
     if (method != 'GET' && failWrites) {
       throw const AuthFailure('다른 변경이 있습니다. 다시 읽어주세요.', status: 409);
     }
-    for (final kind in PersonalRecordKind.values) {
+    for (final kind in PersonalRecordKind.values.where((kind) => kind.hasServerContract)) {
       final codec = PersonalRecordCodec(kind);
       if (Uri.parse(path).path == 'me/${codec.resource.path}') {
         final row = {

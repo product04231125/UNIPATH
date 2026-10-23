@@ -93,7 +93,7 @@ Map<String, String> fixtureValues(PersonalRecordKind kind) => {
   },
 };
 Future<void> seedLocalWorkspace(String ownerId) async {
-  for (final kind in PersonalRecordKind.values) {
+  for (final kind in PersonalRecordKind.values.where((kind) => kind.hasServerContract)) {
     final repo = PersonalRecordRepository(kind, owner: LocalDataOwner(ownerId));
     await repo.load();
     await repo.save(

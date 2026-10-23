@@ -12,6 +12,7 @@ class PersonalRecordField {
     this.options = const [],
     this.optionLabels = const {},
     this.multiline = false,
+    this.mirrorKey,
   });
   final String key;
   final String label;
@@ -20,6 +21,7 @@ class PersonalRecordField {
   final List<String> options;
   final Map<String, String> optionLabels;
   final bool multiline;
+  final String? mirrorKey;
 
   String? validate(String? raw) {
     final value = raw?.trim() ?? '';
@@ -59,6 +61,16 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
   const PersonalRecordField('title', '이름', required: true),
   const PersonalRecordField('detail', '설명 · 메모', multiline: true),
   ...switch (kind) {
+    PersonalRecordKind.personalSchool => const [
+      PersonalRecordField(
+        'evidenceUrl',
+        '학교 참고 링크',
+        type: PersonalFieldType.url,
+      ),
+    ],
+    PersonalRecordKind.personalDepartment => const [
+      PersonalRecordField('code', '개인 학과 코드'),
+    ],
     PersonalRecordKind.personalCurriculum => const [
       PersonalRecordField('school', '개인 학교명', required: true),
       PersonalRecordField('department', '개인 학과명', required: true),

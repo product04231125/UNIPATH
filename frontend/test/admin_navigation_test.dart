@@ -80,13 +80,25 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('학교·학과'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('학교 등록'));
-      await tester.pumpAndSettle();
-      await tester.enterText(
-        find.byKey(const ValueKey('admin-field-name')),
-        '합성 보존 대학',
+      final form = find.byKey(
+        const ValueKey('admin-registration-institution-school-a'),
       );
-      await tester.tap(find.text('저장'));
+      final name = find.descendant(
+        of: form,
+        matching: find.byKey(const ValueKey('admin-field-name')),
+      );
+      await tester.ensureVisible(name);
+      await tester.pumpAndSettle();
+      await tester.enterText(name, '합성 보존 대학');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      final save = find.descendant(
+        of: form,
+        matching: find.widgetWithText(FilledButton, '등록'),
+      );
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
       await tester.pumpAndSettle();
       await tester.tap(find.text('관리 현황'));
       await tester.pumpAndSettle();

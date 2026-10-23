@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -277,14 +278,14 @@ class _WorkspaceState extends State<Workspace> {
       selectedPage: _page,
       navigationItems: navigationItems,
       onPageSelected: _selectPage,
-      minimumContentWidth: switch (_page) {
-        0 => WeeklySchedule.minimumWidth + 16,
-        3 =>
-          _showMockData && _graduationMinimumWidth > 0
-              ? _graduationMinimumWidth + 16
-              : 0,
-        _ => 0,
-      },
+      // Navigation shares the home baseline so changing destinations cannot
+      // expand a compact startup sidebar just because that page is narrower.
+      minimumContentWidth: math.max(
+        WeeklySchedule.minimumWidth + 16,
+        _page == 3 && _showMockData && _graduationMinimumWidth > 0
+            ? _graduationMinimumWidth + 16
+            : 0,
+      ),
       showMockData: _showMockData,
       onMockDataChanged: (value) => setState(() => _showMockData = value),
       onSignedOut: _signOut,
@@ -389,6 +390,7 @@ class _WorkspaceState extends State<Workspace> {
         ),
         2 => CoursePage(showMockData: _showMockData),
         3 => GraduationPage(
+          planning: _planningRepository,
           key: _graduationPageKey,
           showMockData: _showMockData,
           onMinimumWidthChanged: (width) => setState(() {

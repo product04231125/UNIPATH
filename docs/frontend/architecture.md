@@ -94,7 +94,7 @@
 - `features/records/personal_record_repository.dart`는 debug/기기 원본의 로컬 저장소다. 실제 계정의 `PersonalRepositoryScope`는 `RemotePersonalRecordRepository`와 `RemotePortfolioWorkspaceRepository`를 선택하며 선택기·원본 참조도 같은 계정을 사용한다. [서버 화면 연결/10종 동의 이전](../api/personal-workspace-integration.md)을 따른다.
   `personal_record_fields.dart`는 메뉴별 로컬 입력 스키마·검증이며 서버 DTO가 아니다.
   `RecordMenuPage`는 해당 메뉴 저장소를 읽고 구조화 입력·수정·삭제를 제공한다.
-- 개인 졸업 작업 공간도 같은 저장소의 세 종류를 사용한다. `personal_graduation_fields.dart`는
+- 개인 졸업 작업 공간도 같은 저장소의 학교·학과·교육과정·과목·규칙 다섯 종류를 사용한다. `personal_graduation_fields.dart`는
   저장된 개인 교육과정·과목·기록의 선택 목록과 관계 검증을 소유하며 규칙을 실행하지 않는다.
 - `목업용` 스위치는 예시 행만 표시·숨김 처리한다. 개인 기록은 메뉴 전환·재시작 뒤에도 유지한다.
 - `portfolio_workspace_repository.dart`는 debug/기기 원본을 별도 v1 키에 저장한다. 실제 계정은 서버 구성·지원 문서·성과/경험 UUID를 사용하며 소유자와 버전·참조를 서버에서 확인한다. `portfolio_editor_dialog.dart`는 입력·선택·정렬,
@@ -105,7 +105,7 @@
 ## 문서 갱신
 
 기능별 사용자 동작·fixture·후속 API 요구는 `features/`의 해당 문서에, 공통 UX는
-`docs/product-ux.md`에 기록한다. 기능 구조·상태 소유권을 바꿀 때만 이 문서를 갱신한다.
+`docs/frontend/product-ux.md`에 기록한다. 기능 구조·상태 소유권을 바꿀 때만 이 문서를 갱신한다.
 
 ### 개인 기록 저장 직렬화 (2026-10-15)
 - PersonalRecordRepository는 같은 기기/메인 isolate에서 종류별 작업 큐를 공유한다. 저장/삭제 직전 최신 저장 상태를 읽어 다른 객체의 변경을 덮어쓰지 않는다. 저장 키가 없어졌다면 재읽기의 메모리 목록도 비운다. 실패한 읽기 뒤 쓰기는 차단하며 실패가 후속 큐를 막지 않는다.
@@ -114,3 +114,9 @@
 - 작업 큐는 완료 전에 공유 슬롯을 해제한다. 완료 Future를 계속 보관하지 않아 종료된 비동기 실행 영역을 다음 화면/검사로 가져오지 않는다. 최종 전체 275개 및 저장 관련 42개 회귀 통과.
 
 실제 세 역할의 공통 제목표시줄은 [계정 보안](../api/account-security-integration.md)을 제공한다. `AuthApi.securityForOwner`는 소유자·로그인 세대에 묶인 변경/세션 확인 capability이며 확인된 종료만 본인의 메모리 세션을 지운다. 클라이언트가 이미 관찰한 새 세션을 오래된 응답으로 지우지 않는다.
+
+### 개인 학업 본문·기기 자료 통합
+
+- `LocalRecordWorkbench`는 본문 등록 폼을 제공한다. 실제 계정의 교육과정·과목·규칙은 주입한 서버 저장소와 버전·참조 검사를 유지한다. 개인 계산·이력 탭도 유지한다.
+- 개인 학교·학과는 서버 계약이 없는 기기 자료이며 debug/로컬 작업 공간에서만 제공한다. 서버 일괄 이전 대상에 포함하지 않는다.
+- `MaterialsPage`의 설명·PDF는 Web IndexedDB/Windows 앱 지원 디렉터리에 계정별로 구분해 보관한다. 원본을 서버나 AI로 자동 전송하지 않는다.

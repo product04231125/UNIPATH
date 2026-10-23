@@ -377,11 +377,12 @@ university-path/
 │  ├─ initial-plan-comparison.md
 │  ├─ specialized-ai-and-supporting-tools-proposal.md
 │  ├─ job-matching-decision-layer-proposal.md
-│  ├─ product-ux.md
 │  └─ frontend/
 │     ├─ README.md
+│     ├─ product-ux.md
 │     ├─ architecture.md
 │     ├─ platform-differences.md
+│     ├─ verification/
 │     └─ features/
 ├─ compose.yaml
 ├─ .env.example

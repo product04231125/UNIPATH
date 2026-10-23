@@ -243,6 +243,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(OutlinedButton, '성과 기록'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('공개 가능한 링크 · 외부 열기'));
       await tester.pumpAndSettle();
       expect(find.text('https://example.com/synthetic-work'), findsOneWidget);

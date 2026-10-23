@@ -82,6 +82,8 @@ void main() {
 
         await tester.pumpWidget(page());
         await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(OutlinedButton, '성과 기록'));
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('성과 직접 기록'));
         await tester.tap(find.text('성과 직접 기록'));
         await tester.pumpAndSettle();
@@ -117,6 +119,8 @@ void main() {
         await tester.pumpWidget(const SizedBox());
         await tester.pumpAndSettle();
         await tester.pumpWidget(page());
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(OutlinedButton, '성과 기록'));
         await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('수정'));
         await tester.tap(find.text('수정'));

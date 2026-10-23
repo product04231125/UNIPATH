@@ -7,7 +7,7 @@ import 'support/auth_fixture.dart';
 import 'support/personal_workspace_fixture.dart';
 
 void main() {
-  for (final kind in PersonalRecordKind.values) {
+  for (final kind in PersonalRecordKind.values.where((kind) => kind.hasServerContract)) {
     test(
       'personal ${kind.name} maps all UI fields and preserves personal metadata',
       () {

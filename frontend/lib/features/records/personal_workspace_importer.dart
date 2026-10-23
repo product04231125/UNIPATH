@@ -98,7 +98,7 @@ class PersonalWorkspaceImporter extends ChangeNotifier {
         completed = journal['completed'] as bool;
       } else {
         final records = <PersonalRecordKind, List<PersonalRecord>>{};
-        for (final kind in PersonalRecordKind.values) {
+        for (final kind in PersonalRecordKind.values.where((kind) => kind.hasServerContract)) {
           final repository = PersonalRecordRepository(
             kind,
             owner: LocalDataOwner(api.ownerId),
