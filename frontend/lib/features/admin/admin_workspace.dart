@@ -56,6 +56,31 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   String? _loadError, _error;
   String _schoolId = '';
   bool _busy = false;
+  final _editorKeys = <AdminKind, GlobalKey<AdminEditorState>>{};
+  Future<bool> _allowLeave() async {
+    for (final key in _editorKeys.values) {
+      if (key.currentState != null && !await key.currentState!.allowLeave()) {
+        return false;
+      }
+    }
+    return mounted;
+  }
+
+  Future<void> _navigate(String path) async {
+    if (path == widget.path) return;
+    if (await _allowLeave()) widget.onNavigate(path);
+  }
+
+  String _pathFor(AdminKind kind) => switch (kind) {
+    AdminKind.institution || AdminKind.department => '/admin/schools',
+    AdminKind.curriculum ||
+    AdminKind.course ||
+    AdminKind.curriculumCourse => '/admin/curricula',
+    AdminKind.ruleSet || AdminKind.rule => '/admin/rules',
+    AdminKind.document => '/admin/documents',
+    _ => '/admin/accounts',
+  };
+
   final _queries = <AdminKind, String>{};
   final _statuses = <AdminKind, String>{};
   String get _actor =>
@@ -96,6 +121,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
 
   Future<void> _signOut() async {
     if (_busy) return;
+    if (!await _allowLeave() || !mounted) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -144,6 +170,20 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     AdminRecord? record,
     bool revoke = false,
   ]) async {
+    if (record == null && !revoke) {
+      final path = _pathFor(kind);
+      if (_section != path || _detailId != null) await _navigate(path);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final target = _editorKeys[kind]?.currentContext;
+        if (target != null) {
+          Scrollable.ensureVisible(
+            target,
+            duration: const Duration(milliseconds: 200),
+          );
+        }
+      });
+      return;
+    }
     await showInputDialog<void>(
       context: context,
       builder: (_) => AdminEditor(
@@ -315,7 +355,25 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         ((_statuses[kind] ?? '').isEmpty || _status(r) == _statuses[kind]);
   });
 
-  Widget _records(AdminKind kind) => Column(
+  Widget _records(AdminKind kind) => ResponsiveColumns(
+    key: ValueKey('admin-registration-${kind.name}-$_schoolId'),
+    enabled: true,
+    first: _recordList(kind),
+    second: _canCreate(kind)
+        ? AdminEditor(
+            key: _editorKeys.putIfAbsent(
+              kind,
+              () => GlobalKey<AdminEditorState>(),
+            ),
+            repository: _repo,
+            actorId: _actor,
+            kind: kind,
+            schoolId: _schoolId,
+            inline: true,
+          )
+        : const SizedBox.shrink(),
+  );
+  Widget _recordList(AdminKind kind) => Column(
     key: ValueKey('admin-section-${kind.name}'),
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
@@ -377,7 +435,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),
           child: Text(
-            '${kind.label} 데이터가 없습니다.${_canCreate(kind) ? ' 등록 버튼으로 시작하세요.' : '권한과 관리 범위를 확인하세요.'}',
+            '${kind.label} 데이터가 없습니다.${_canCreate(kind) ? ' 옆의 등록 영역에서 시작하세요.' : '권한과 관리 범위를 확인하세요.'}',
           ),
         ),
       ResponsivePanels(
@@ -434,7 +492,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     children: [
       if (!detail)
         OutlinedButton.icon(
-          onPressed: () => widget.onNavigate('$_section/${r.id}'),
+          onPressed: () => _navigate('$_section/${r.id}'),
           icon: const Icon(Icons.arrow_forward, size: 18),
           label: const Text('상세'),
         ),
@@ -507,7 +565,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       TextButton(
-        onPressed: () => widget.onNavigate(_section),
+        onPressed: () => _navigate(_section),
         child: const Text('목록으로'),
       ),
       Text(r.name, style: Theme.of(context).textTheme.titleLarge),
@@ -678,9 +736,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: OutlinedButton.icon(
-                    onPressed: _busy
-                        ? null
-                        : () => widget.onNavigate('/admin/rules'),
+                    onPressed: _busy ? null : () => _navigate('/admin/rules'),
                     icon: const Icon(Icons.arrow_forward, size: 18),
                     label: const Text('졸업요건 확인'),
                   ),
@@ -691,7 +747,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                   child: OutlinedButton.icon(
                     onPressed: _busy
                         ? null
-                        : () => widget.onNavigate('/admin/documents'),
+                        : () => _navigate('/admin/documents'),
                     icon: const Icon(Icons.arrow_forward, size: 18),
                     label: const Text('공식 문서 확인'),
                   ),
@@ -724,7 +780,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                       OutlinedButton.icon(
                         onPressed: _busy
                             ? null
-                            : () => widget.onNavigate('/admin/accounts'),
+                            : () => _navigate('/admin/accounts'),
                         icon: const Icon(Icons.arrow_forward, size: 18),
                         label: const Text('관리자 범위 관리'),
                       ),
@@ -746,14 +802,12 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                           ? _find(entry.targetId)!.name
                           : '삭제되었거나 볼 수 없는 항목',
                     ),
-                    onTap: () => widget.onNavigate('/admin/history'),
+                    onTap: () => _navigate('/admin/history'),
                   ),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: OutlinedButton.icon(
-                    onPressed: _busy
-                        ? null
-                        : () => widget.onNavigate('/admin/history'),
+                    onPressed: _busy ? null : () => _navigate('/admin/history'),
                     icon: const Icon(Icons.arrow_forward, size: 18),
                     label: const Text('관리 이력 보기'),
                   ),
@@ -867,7 +921,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       },
       section: _section,
       busy: _busy,
-      onNavigate: widget.onNavigate,
+      onNavigate: _navigate,
       onSignedOut: _signOut,
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -905,10 +959,11 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                             for (final school in _schools)
                               SelectOption(school.id, school.name),
                           ],
-                          onChanged: (v) {
-                            if (v == _schoolId) return;
+                          onChanged: (v) async {
+                            if (v == _schoolId || !await _allowLeave()) return;
                             setState(() {
                               _schoolId = v;
+                              _editorKeys.clear();
                               _error = null;
                               _queries.clear();
                               _statuses.clear();
@@ -949,7 +1004,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                   ] else if (!allowed) ...[
                     const Text('현재 계정 상태·역할·관리 범위로 이 화면에 접근할 수 없습니다.'),
                     TextButton(
-                      onPressed: () => widget.onNavigate('/admin/overview'),
+                      onPressed: () => _navigate('/admin/overview'),
                       child: const Text('관리 현황으로'),
                     ),
                   ] else if (_detailId != null)
@@ -963,34 +1018,11 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                         ),
                       ),
                     if (_section == '/admin/overview') _overview(),
-                    if (_section == '/admin/schools')
-                      ResponsiveColumns(
-                        enabled: true,
-                        first: _records(AdminKind.institution),
-                        second: _records(AdminKind.department),
-                      ),
-                    if (_section == '/admin/curricula')
-                      ResponsivePanels(
-                        children: [
-                          _records(AdminKind.curriculum),
-                          _records(AdminKind.course),
-                          _records(AdminKind.curriculumCourse),
-                        ],
-                      ),
-                    if (_section == '/admin/rules')
-                      ResponsiveColumns(
-                        enabled: true,
-                        first: _records(AdminKind.ruleSet),
-                        second: _records(AdminKind.rule),
-                      ),
-                    if (_section == '/admin/documents')
-                      _records(AdminKind.document),
-                    if (_section == '/admin/accounts')
-                      ResponsiveColumns(
-                        enabled: true,
-                        first: _records(AdminKind.account),
-                        second: _records(AdminKind.scope),
-                      ),
+                    for (final kind
+                        in sectionKinds[_section] ?? <AdminKind>[]) ...[
+                      _records(kind),
+                      const SizedBox(height: 24),
+                    ],
                     if (_section == '/admin/history') _history(),
                     if (_section == '/admin/settings')
                       const Align(

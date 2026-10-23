@@ -311,6 +311,10 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text(item.$1).first);
         await tester.pumpAndSettle();
+        if (item.$1 == '포트폴리오·성과') {
+          await tester.tap(find.widgetWithText(OutlinedButton, '성과 기록'));
+          await tester.pumpAndSettle();
+        }
         await tester.tap(find.text(item.$2));
         await tester.pumpAndSettle();
         for (final field in item.$3.entries) {

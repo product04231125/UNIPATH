@@ -212,10 +212,16 @@ flowchart LR
     AdminAPI[관리자 API] --> Guard[현재 계정·역할·학교 범위]
     Guard --> IdentityDB
     Guard --> AccessDB[(학교·관리 범위·변경 이력)]
+    Applicant[로그인 계정의 학교관리자 신청] --> Pending[(신청 대기·반려·취소 이력)]
+    Pending --> ManualReview[슈퍼관리자 신원·학교 담당 확인]
+    ManualReview --> AtomicGrant[신청 승인·역할·학교 범위 원자적 부여]
+    AtomicGrant --> Guard
+    AtomicGrant --> AccessDB
 ```
 
 아래 전체 도메인/외부 서비스 관계는 목표 구조다. 인증·운영자 초기화는
-[인증 API](api/authentication.md)를 따른다. 이메일/학교 담당자 신원 확인은 후속이다.
+[인증 API](api/authentication.md)를 따른다. [학교관리자 신청·검토 API](api/school-admin-applications.md)는
+슈퍼관리자의 명시적 수동 확인을 기록한다. 이메일·학교 담당자 자동 신원 확인·SSO는 후속이다.
 [개인 자료 API](api/personal.md)와 [학생용 학사 조회](api/student-catalog.md)는 구현했고,
 프론트의 실제 일반 계정 프로필·일정·개인 기록·구성·지원 문서는 서버 저장이며 기기 원본/debug는 사용자 UUID별 로컬 저장이다. 공통 AuthApi의 사용자 UUID·로그인 세대에 묶인 전송 adapter와 Pydantic DTO를 사용한다. 서버는 선택 X-Unipath-Owner 헤더를 실제 신원과 비교해 탭 간 계정 전환 중 저장을 차단한다. 프로필·일정의 동의 이전은 기기 journal로 같은 요청을 재개하며 원본을 보존한다. 다른 개인 자료 10종은 전체 참조/순서를 변환해 별도 동의 이전을 제공한다. 실제 관리자 전송도 같은 소유자 조건을 사용한다.
 [개인 계산 API](api/personal-evaluations.md)는 별도 typed 전송 adapter를 제공하며

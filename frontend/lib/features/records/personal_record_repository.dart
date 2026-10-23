@@ -12,9 +12,14 @@ enum PersonalRecordKind {
   experience,
   credential,
   portfolio,
+  personalSchool,
+  personalDepartment,
   personalCurriculum,
   personalCurriculumCourse,
-  personalGraduationRule,
+  personalGraduationRule;
+
+  bool get hasServerContract =>
+      this != personalSchool && this != personalDepartment;
 }
 
 /// Personal UI model, never a transport DTO or official school record.

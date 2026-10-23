@@ -333,12 +333,22 @@ void main() {
         await tester.ensureVisible(find.widgetWithText(FilledButton, '학교 등록'));
         await tester.tap(find.widgetWithText(FilledButton, '학교 등록'));
         await tester.pumpAndSettle();
+        final schoolForm = find.byKey(
+          const ValueKey('admin-registration-institution-$schoolId'),
+        );
         await tester.enterText(
-          find.byKey(const ValueKey('admin-field-name')),
+          find.descendant(
+            of: schoolForm,
+            matching: find.byKey(const ValueKey('admin-field-name')),
+          ),
           '등록할 학교',
         );
-        await tester.ensureVisible(find.widgetWithText(FilledButton, '저장'));
-        await tester.tap(find.widgetWithText(FilledButton, '저장'));
+        final save = find.descendant(
+          of: schoolForm,
+          matching: find.widgetWithText(FilledButton, '등록'),
+        );
+        await tester.ensureVisible(save);
+        await tester.tap(save);
         await tester.pumpAndSettle();
         expect(
           server.data['institutions']!.any((row) => row['name'] == '등록할 학교'),

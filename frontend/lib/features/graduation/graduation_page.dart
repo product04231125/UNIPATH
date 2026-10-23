@@ -10,14 +10,17 @@ import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/horizontal_scroll_area.dart';
 import 'graduation_mock_fixture.dart';
 import 'personal_graduation_workspace.dart';
+import '../planning/planning_repository.dart';
 
 class GraduationPage extends StatefulWidget {
   const GraduationPage({
     super.key,
     this.showMockData = true,
     this.onMinimumWidthChanged,
+    this.planning,
   });
   final bool showMockData;
+  final PlanningRepository? planning;
   final ValueChanged<double>? onMinimumWidthChanged;
   @override
   State<GraduationPage> createState() => _GraduationPageState();
@@ -37,6 +40,7 @@ class _GraduationPageState extends State<GraduationPage> {
   Widget build(BuildContext context) {
     if (_personal) {
       return PersonalGraduationWorkspace(
+        planning: widget.planning,
         onBack: () {
           setState(() => _personal = false);
           _reportMinimumWidth();

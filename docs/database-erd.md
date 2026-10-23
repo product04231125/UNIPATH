@@ -19,7 +19,10 @@ rule_sets·graduation_rules·official_documents를 추가했다. `0004_personal_
 비공개 원본과 검토 이벤트 2개를 추가한다. `0010_official_student_records`는
 학교 검토 기록 묶음·이벤트·과목/자격 참조 4개를 추가한다.
 `0011_official_graduation_audits`는 전체 규정 검토·이벤트·본인 감사 3개를 추가해
-**총 48개 테이블**을 물리 구현한다.
+48개 테이블을 물리 구현한다. `0012_school_admin_applications`는 학교관리자 신청 하나를
+추가해 **총 49개 도메인 테이블**을 구현한다(Alembic 버전 테이블 별도).
+`0013_admin_decision_roundtrip`은 결정 CHECK의 동등한 OR 표현으로 백업·복원 지문을
+안정화하며 테이블이나 허용 상태를 추가하지 않는다.
 학교 메타데이터/버전/삭제 표시와 범위 회수 사유도 추가한다.
 아래 전체 논리 ERD/단계 표의 개별 학생 기록 엔터티는 학교 검토 묶음으로 우선 구현한다.
 공식 감사는 최소 입력·조건·결과를 JSONB 스냅샷으로 구현하고 별도 결과 행 테이블은 만들지 않는다.
@@ -95,6 +98,10 @@ erDiagram
 erDiagram
     USERS ||--o{ AUTH_SESSIONS : owns
     USERS ||--o{ ADMIN_SCOPES : receives
+    USERS ||--o{ SCHOOL_ADMIN_APPLICATIONS : applies
+    USERS o|--o{ SCHOOL_ADMIN_APPLICATIONS : reviews
+    INSTITUTIONS ||--o{ SCHOOL_ADMIN_APPLICATIONS : requested_school
+    ADMIN_SCOPES o|--o{ SCHOOL_ADMIN_APPLICATIONS : granted_scope
     INSTITUTIONS ||--o{ ADMIN_SCOPES : scopes
     USERS o|--o{ IDENTITY_AUDITS : performs
     INSTITUTIONS o|--o{ IDENTITY_AUDITS : concerns
@@ -109,6 +116,16 @@ erDiagram
     GRADUATION_RULES o|--o{ OFFICIAL_DOCUMENTS : references
     USERS {
         uuid id PK
+    }
+    SCHOOL_ADMIN_APPLICATIONS {
+        uuid id PK
+        uuid applicant_id FK
+        uuid institution_id FK
+        uuid client_id
+        string status
+        int version
+        uuid reviewed_by FK
+        uuid granted_scope_id FK
     }
     AUTH_SESSIONS {
         string token_hash PK

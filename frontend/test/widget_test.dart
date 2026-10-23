@@ -277,7 +277,7 @@ void main() {
       ('활동', '등록한 활동'),
       ('경험', '경험 타임라인'),
       ('자격', '등록한 자격'),
-      ('포트폴리오·성과', '포트폴리오 초안'),
+      ('포트폴리오·성과', '내 자료'),
       ('설정', '학업과 계획'),
     ]) {
       await tester.tap(find.text(menu.$1));
@@ -312,7 +312,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('내 학교·학과 기준 설정'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('교육과정 추가'));
     await tester.pumpAndSettle();
     for (final entry in {
       'title': '개인 교육과정 A',
@@ -325,6 +324,10 @@ void main() {
       await tester.ensureVisible(field);
       await tester.enterText(field, entry.value);
     }
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('내 기록에 저장'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('내 기록에 저장'));
     await tester.pumpAndSettle();
 

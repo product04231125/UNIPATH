@@ -7,6 +7,7 @@ from app.models.academic import (
     OfficialDocument,
     RuleSet,
 )
+from app.models.admin_applications import SchoolAdminApplication
 from app.models.base import Base
 from app.models.certificates import Certificate, CertificateProvider
 from app.models.evaluations import PersonalEvaluation
@@ -58,6 +59,7 @@ from app.models.rule_programs import (
 )
 
 __all__ = [
+    "SchoolAdminApplication",
     "Base",
     "User",
     "AuthSession",

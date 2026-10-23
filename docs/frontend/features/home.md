@@ -99,4 +99,4 @@
 - 실제 글꼴을 로드한 위젯 렌더링에서 480×520·200%의 제목·본문 줄바꿈과 입력 행동을 확인했다.
   이 캡처는 본문 글꼴 검토용이며 전체 Windows 실기/DPI·스크린리더 검증을 대신하지 않는다.
 - 공통 테마 전체 회귀 229개, 정적 분석 통과. Web/Windows 빌드 및 배포 글꼴·라이선스 확인은
-  `docs/frontend/ux-ui-verification.md`의 2026-10-14 디자인 개편 기록을 따른다.
+  `docs/frontend/verification/ux-ui-verification.md`의 2026-10-14 디자인 개편 기록을 따른다.
