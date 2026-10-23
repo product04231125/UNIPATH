@@ -63,4 +63,6 @@ prefix는 `/api/v1/admin/school-admin-applications`다. 학교관리자는 이 �
 
 `0012_school_admin_applications`는 신청 테이블 하나를 추가한다. 상태/결정 필드 CHECK,
 본인/client_id UNIQUE, 본인/학교의 대기 신청 부분 UNIQUE와 FK를 적용한다.
+`0013_admin_decision_roundtrip`은 같은 허용 상태를 유지하면서 결정 CHECK의 복원 시
+캐스트 표현 차이를 제거한다. 기존 마이그레이션과 백업의 엄격한 비교는 유지한다.
 삭제·자동 보관 정리·첨부 증빙·메일 알림·하위 학과 권한은 이 계약의 범위 밖이다.

@@ -28,7 +28,7 @@ class SchoolAdminApplication(Base):
             "(status = 'pending' AND reviewed_at IS NULL AND reviewed_by IS NULL "
             "AND granted_scope_id IS NULL AND NOT identity_verified "
             "AND NOT affiliation_verified) OR "
-            "(status IN ('rejected','cancelled') AND reviewed_at IS NOT NULL "
+            "((status = 'rejected' OR status = 'cancelled') AND reviewed_at IS NOT NULL "
             "AND reviewed_by IS NOT NULL AND granted_scope_id IS NULL "
             "AND NOT identity_verified AND NOT affiliation_verified) OR "
             "(status = 'approved' AND reviewed_at IS NOT NULL AND reviewed_by IS NOT NULL "
