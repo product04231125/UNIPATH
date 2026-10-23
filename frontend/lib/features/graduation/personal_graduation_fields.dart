@@ -9,7 +9,10 @@ Future<List<PersonalRecordField>> personalGraduationFields(
 }) async {
   final fields = personalRecordFields(kind);
   final create = repositoryFactory ?? PersonalRecordRepository.new;
-  if (repositoryFactory != null && kind == PersonalRecordKind.personalCurriculum) return fields;
+  if (repositoryFactory != null &&
+      kind == PersonalRecordKind.personalCurriculum) {
+    return fields;
+  }
   if (kind == PersonalRecordKind.personalSchool) return fields;
   if (kind == PersonalRecordKind.personalDepartment ||
       kind == PersonalRecordKind.personalCurriculum) {

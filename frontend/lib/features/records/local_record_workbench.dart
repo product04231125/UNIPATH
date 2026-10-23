@@ -116,7 +116,10 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
       );
       if (mounted) {
         _reset();
-        setState(() => _message = '개인 자료를 ${_repo.isServerBacked ? '계정 서버' : '기기'}에 저장했습니다.');
+        setState(
+          () => _message =
+              '개인 자료를 ${_repo.isServerBacked ? '계정 서버' : '기기'}에 저장했습니다.',
+        );
       }
     } catch (e) {
       if (mounted) {

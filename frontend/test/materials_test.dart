@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sembast/sembast_memory.dart' hide Finder;
 import 'package:university_path_frontend/features/records/portfolio/material_repository.dart';
 import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
+import 'package:university_path_frontend/features/auth/local_data_owner.dart';
 
 class MemoryMaterials extends MaterialRepository {
   final records = <String, PersonalMaterial>{};
@@ -35,6 +36,47 @@ class MemoryMaterials extends MaterialRepository {
 }
 
 void main() {
+  test(
+    'material repositories retain their original owner across account changes',
+    () async {
+      final db = await databaseFactoryMemory.openDatabase(
+        'materials-owner-isolation',
+      );
+      addTearDown(db.close);
+      final first = MaterialRepository(
+        open: () async => db,
+        owner: const LocalDataOwner('first'),
+      );
+      final second = MaterialRepository(
+        open: () async => db,
+        owner: const LocalDataOwner('second'),
+      );
+      final anonymous = MaterialRepository(
+        open: () async => db,
+        owner: const LocalDataOwner(null),
+      );
+      await first.save(
+        PersonalMaterial(
+          id: 'same',
+          title: '첫 계정',
+          type: '',
+          description: '개인 자료',
+        ),
+      );
+      expect(await second.load(), isEmpty);
+      expect(await anonymous.load(), isEmpty);
+      await second.save(
+        PersonalMaterial(
+          id: 'same',
+          title: '둘째 계정',
+          type: '',
+          description: '다른 자료',
+        ),
+      );
+      await second.delete('same');
+      expect((await first.load()).single.title, '첫 계정');
+    },
+  );
   final pdf = Uint8List.fromList('%PDF-1.4\nsynthetic test\n%%EOF'.codeUnits);
   test('PDF and metadata survive another repository, failed validation and deletion', () async {
     final db = await databaseFactoryMemory.openDatabase('materials-repository');

@@ -3,13 +3,15 @@ import 'package:university_path_frontend/features/records/personal_record_reposi
 import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
 
 String fixtureId(PersonalRecordKind kind) =>
-    '10000000-0000-4000-8000-00000000000${kind.index + 1}';
+    '10000000-0000-4000-8000-${(kind.index + 1).toString().padLeft(12, '0')}';
 const compositionId = '20000000-0000-4000-8000-000000000001';
 const documentId = '20000000-0000-4000-8000-000000000002';
 Map<String, String> fixtureValues(PersonalRecordKind kind) => {
   'title': '합성 ${kind.name}',
   'detail': '합성 메모',
   ...switch (kind) {
+    PersonalRecordKind.personalSchool ||
+    PersonalRecordKind.personalDepartment => <String, String>{},
     PersonalRecordKind.course => {
       'term': '2026-2',
       'category': '전공',
@@ -93,7 +95,9 @@ Map<String, String> fixtureValues(PersonalRecordKind kind) => {
   },
 };
 Future<void> seedLocalWorkspace(String ownerId) async {
-  for (final kind in PersonalRecordKind.values.where((kind) => kind.hasServerContract)) {
+  for (final kind in PersonalRecordKind.values.where(
+    (kind) => kind.hasServerContract,
+  )) {
     final repo = PersonalRecordRepository(kind, owner: LocalDataOwner(ownerId));
     await repo.load();
     await repo.save(

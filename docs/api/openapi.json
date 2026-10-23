@@ -34147,6 +34147,1182 @@
           }
         }
       }
+    },
+    "/api/v1/me/school-admin-applications": {
+      "post": {
+        "tags": [
+          "own administrator applications"
+        ],
+        "summary": "Submit",
+        "operationId": "submit_api_v1_me_school_admin_applications_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchoolAdminApplicationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolAdminApplicationView"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "own administrator applications"
+        ],
+        "summary": "Own List",
+        "operationId": "own_list_api_v1_me_school_admin_applications_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "approved",
+                    "rejected",
+                    "cancelled"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "institution_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Institution Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 30,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolAdminApplicationList"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/school-admin-applications/{application_id}": {
+      "get": {
+        "tags": [
+          "own administrator applications"
+        ],
+        "summary": "Own Detail",
+        "operationId": "own_detail_api_v1_me_school_admin_applications__application_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Application Id"
+            }
+          },
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolAdminApplicationView"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/school-admin-applications/{application_id}/cancel": {
+      "post": {
+        "tags": [
+          "own administrator applications"
+        ],
+        "summary": "Cancel",
+        "operationId": "cancel_api_v1_me_school_admin_applications__application_id__cancel_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Application Id"
+            }
+          },
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchoolAdminApplicationCancel"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolAdminApplicationView"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/school-admin-applications": {
+      "get": {
+        "tags": [
+          "administrator application review"
+        ],
+        "summary": "Review List",
+        "operationId": "review_list_api_v1_admin_school_admin_applications_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "approved",
+                    "rejected",
+                    "cancelled"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "institution_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Institution Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 30,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolAdminApplicationReviewList"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/school-admin-applications/{application_id}": {
+      "get": {
+        "tags": [
+          "administrator application review"
+        ],
+        "summary": "Review Detail",
+        "operationId": "review_detail_api_v1_admin_school_admin_applications__application_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Application Id"
+            }
+          },
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolAdminApplicationReviewView"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/school-admin-applications/{application_id}/approve": {
+      "post": {
+        "tags": [
+          "administrator application review"
+        ],
+        "summary": "Approve",
+        "operationId": "approve_api_v1_admin_school_admin_applications__application_id__approve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Application Id"
+            }
+          },
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchoolAdminApplicationApprove"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolAdminApplicationReviewView"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/school-admin-applications/{application_id}/reject": {
+      "post": {
+        "tags": [
+          "administrator application review"
+        ],
+        "summary": "Reject",
+        "operationId": "reject_api_v1_admin_school_admin_applications__application_id__reject_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Application Id"
+            }
+          },
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchoolAdminApplicationReject"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolAdminApplicationReviewView"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -50650,6 +51826,501 @@
         ],
         "title": "GraduationContext",
         "description": "Full registered school, department, curriculum, cohort and track are required."
+      },
+      "SchoolAdminApplicant": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "school_admin",
+              "super_admin"
+            ],
+            "title": "Role"
+          },
+          "account_status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended"
+            ],
+            "title": "Account Status"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "display_name",
+          "role",
+          "account_status",
+          "version"
+        ],
+        "title": "SchoolAdminApplicant"
+      },
+      "SchoolAdminApplicationApprove": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          },
+          "review_note": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Review Note"
+          },
+          "expected_user_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected User Version"
+          },
+          "identity_verified": {
+            "type": "boolean",
+            "title": "Identity Verified"
+          },
+          "affiliation_verified": {
+            "type": "boolean",
+            "title": "Affiliation Verified"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_version",
+          "review_note",
+          "expected_user_version",
+          "identity_verified",
+          "affiliation_verified"
+        ],
+        "title": "SchoolAdminApplicationApprove"
+      },
+      "SchoolAdminApplicationCancel": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_version"
+        ],
+        "title": "SchoolAdminApplicationCancel"
+      },
+      "SchoolAdminApplicationCreate": {
+        "properties": {
+          "institution_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Institution Id"
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "position": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Position"
+          },
+          "contact_email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Contact Email"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "institution_id",
+          "client_id",
+          "position",
+          "contact_email",
+          "reason"
+        ],
+        "title": "SchoolAdminApplicationCreate"
+      },
+      "SchoolAdminApplicationList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SchoolAdminApplicationView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "SchoolAdminApplicationList"
+      },
+      "SchoolAdminApplicationReject": {
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          },
+          "review_note": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Review Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_version",
+          "review_note"
+        ],
+        "title": "SchoolAdminApplicationReject"
+      },
+      "SchoolAdminApplicationReviewList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SchoolAdminApplicationReviewView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "SchoolAdminApplicationReviewList"
+      },
+      "SchoolAdminApplicationReviewView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "applicant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Applicant Id"
+          },
+          "institution_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Institution Id"
+          },
+          "institution_name": {
+            "type": "string",
+            "title": "Institution Name"
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "contact_email": {
+            "type": "string",
+            "title": "Contact Email"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "review_note": {
+            "type": "string",
+            "title": "Review Note"
+          },
+          "identity_verified": {
+            "type": "boolean",
+            "title": "Identity Verified"
+          },
+          "affiliation_verified": {
+            "type": "boolean",
+            "title": "Affiliation Verified"
+          },
+          "granted_scope_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Granted Scope Id"
+          },
+          "applicant": {
+            "$ref": "#/components/schemas/SchoolAdminApplicant"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "applicant_id",
+          "institution_id",
+          "institution_name",
+          "client_id",
+          "position",
+          "contact_email",
+          "reason",
+          "status",
+          "version",
+          "created_at",
+          "updated_at",
+          "reviewed_by",
+          "reviewed_at",
+          "review_note",
+          "identity_verified",
+          "affiliation_verified",
+          "granted_scope_id",
+          "applicant"
+        ],
+        "title": "SchoolAdminApplicationReviewView"
+      },
+      "SchoolAdminApplicationView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "applicant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Applicant Id"
+          },
+          "institution_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Institution Id"
+          },
+          "institution_name": {
+            "type": "string",
+            "title": "Institution Name"
+          },
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "contact_email": {
+            "type": "string",
+            "title": "Contact Email"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "review_note": {
+            "type": "string",
+            "title": "Review Note"
+          },
+          "identity_verified": {
+            "type": "boolean",
+            "title": "Identity Verified"
+          },
+          "affiliation_verified": {
+            "type": "boolean",
+            "title": "Affiliation Verified"
+          },
+          "granted_scope_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Granted Scope Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "applicant_id",
+          "institution_id",
+          "institution_name",
+          "client_id",
+          "position",
+          "contact_email",
+          "reason",
+          "status",
+          "version",
+          "created_at",
+          "updated_at",
+          "reviewed_by",
+          "reviewed_at",
+          "review_note",
+          "identity_verified",
+          "affiliation_verified",
+          "granted_scope_id"
+        ],
+        "title": "SchoolAdminApplicationView"
       }
     },
     "securitySchemes": {

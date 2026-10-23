@@ -241,7 +241,9 @@ void main() {
     expect(flaky.imports[0]['events'], isEmpty);
     final ids = <PersonalRecordKind, String>{};
     final repositories = <PersonalRecordKind, RemotePersonalRecordRepository>{};
-    for (final kind in PersonalRecordKind.values.where((kind) => kind.hasServerContract)) {
+    for (final kind in PersonalRecordKind.values.where(
+      (kind) => kind.hasServerContract,
+    )) {
       final repository = RemotePersonalRecordRepository(
         api,
         kind,
