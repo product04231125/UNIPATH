@@ -157,6 +157,6 @@ Git 밖에 두고 Unix 권한은 0600으로 제한한다. HTTPS 또는 개발용
 않는다. 가져오기는 승인 API를 호출하지 않는다. 관리자의 별도 검토·승인 단계가 필수다.
 
 Flutter에는 Pydantic 생성 `school_knowledge_models.dart`와 공통 AuthApi를 사용하는
-`school_knowledge_api.dart`가 있다. 관리자 본문 검토 UI와 학생의 UUID 문맥 선택/검색 화면은
-아직 연결하지 않았다. 재생성은 backend에서 `uv run --frozen python ../scripts/export_knowledge_contracts.py`
+`school_knowledge_api.dart`가 있다. 등록 문맥 선택/검색은 [학교 문서 검색 화면](../frontend/features/school-document-search.md)에 연결했다.
+관리자 본문 검토 UI는 아직 연결하지 않았다. 재생성은 backend에서 `uv run --frozen python ../scripts/export_knowledge_contracts.py`
 후 저장소 루트에서 `dart format frontend/lib/features/api/school_knowledge_models.dart`다.

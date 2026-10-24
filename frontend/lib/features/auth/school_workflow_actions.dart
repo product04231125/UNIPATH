@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../records/official_sources_dialog.dart';
 import '../records/official_records_dialog.dart';
+import '../graduation/school_document_search_dialog.dart';
 import 'app_role.dart';
 import 'school_workflow_session.dart';
 
@@ -17,6 +18,17 @@ class SchoolWorkflowActions extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
+        OutlinedButton.icon(
+          icon: const Icon(Icons.manage_search),
+          label: const Text('학교 문서 검색·근거'),
+          onPressed: () => showInputDialog<void>(
+            context: context,
+            builder: (_) => SchoolDocumentSearchDialog(
+              auth: session.auth,
+              ownerId: session.identity.id,
+            ),
+          ),
+        ),
         OutlinedButton.icon(
           icon: const Icon(Icons.picture_as_pdf_outlined),
           label: Text(admin ? '학교 발급 원본 검토' : '학교 발급 PDF 제출·이력'),
