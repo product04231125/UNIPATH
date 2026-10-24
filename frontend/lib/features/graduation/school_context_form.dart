@@ -13,9 +13,14 @@ class SchoolContextForm extends StatefulWidget {
     super.key,
     required this.api,
     this.disabled = false,
+    this.showStudy = true,
+    this.showDate = true,
+    this.onChanged,
   });
   final ApiGateway api;
   final bool disabled;
+  final bool showStudy, showDate;
+  final VoidCallback? onChanged;
   @override
   State<SchoolContextForm> createState() => SchoolContextFormState();
 }
@@ -31,6 +36,11 @@ class SchoolContextFormState extends State<SchoolContextForm> {
   List<StudentCurriculumPublicView> _curricula = [];
   String? _school, _department, _curriculum, _error;
   bool _loading = true;
+  String? get institutionId => _loading || _error != null ? null : _school;
+  String? get departmentId => _department;
+  String? get curriculumId => _curriculum;
+  bool get hasSelection =>
+      _school != null || _department != null || _curriculum != null;
   List<String> _fields = [];
   void showErrors(List<String> fields) => setState(() => _fields = fields);
   String? _fieldError(String name) =>
@@ -172,6 +182,7 @@ class SchoolContextFormState extends State<SchoolContextForm> {
             _departments = [];
             _curricula = [];
           });
+          widget.onChanged?.call();
           _load();
         },
       ),
@@ -191,6 +202,7 @@ class SchoolContextFormState extends State<SchoolContextForm> {
             _curriculum = null;
             _curricula = [];
           });
+          widget.onChanged?.call();
           _load();
         },
       ),
@@ -204,39 +216,45 @@ class SchoolContextFormState extends State<SchoolContextForm> {
           ..._curricula.map((s) => SelectOption(s.id, '${s.name} (${s.year})')),
         ],
         onChanged: (v) {
-          if (!_loading && !widget.disabled) setState(() => _curriculum = v);
+          if (!_loading && !widget.disabled) {
+            setState(() => _curriculum = v);
+            widget.onChanged?.call();
+          }
         },
       ),
       const SizedBox(height: 12),
-      TextField(
-        controller: year,
-        enabled: !widget.disabled,
-        keyboardType: TextInputType.number,
-        maxLength: 4,
-        decoration: InputDecoration(
-          labelText: '입학연도',
-          errorText: _fieldError('admission_year'),
+      if (widget.showStudy)
+        TextField(
+          controller: year,
+          enabled: !widget.disabled,
+          keyboardType: TextInputType.number,
+          maxLength: 4,
+          decoration: InputDecoration(
+            labelText: '입학연도',
+            errorText: _fieldError('admission_year'),
+          ),
         ),
-      ),
-      TextField(
-        controller: track,
-        enabled: !widget.disabled,
-        maxLength: 64,
-        decoration: InputDecoration(
-          labelText: '이수 경로',
-          errorText: _fieldError('track'),
-          helperText: '학교에서 등록한 이수 경로를 입력하세요.',
+      if (widget.showStudy)
+        TextField(
+          controller: track,
+          enabled: !widget.disabled,
+          maxLength: 64,
+          decoration: InputDecoration(
+            labelText: '이수 경로',
+            errorText: _fieldError('track'),
+            helperText: '학교에서 등록한 이수 경로를 입력하세요.',
+          ),
         ),
-      ),
-      TextField(
-        controller: date,
-        enabled: !widget.disabled,
-        decoration: InputDecoration(
-          labelText: '기준일 (YYYY-MM-DD)',
-          errorText: _fieldError('as_of'),
-          helperText: '미래 날짜는 사용할 수 없습니다.',
+      if (widget.showDate)
+        TextField(
+          controller: date,
+          enabled: !widget.disabled,
+          decoration: InputDecoration(
+            labelText: '기준일 (YYYY-MM-DD)',
+            errorText: _fieldError('as_of'),
+            helperText: '미래 날짜는 사용할 수 없습니다.',
+          ),
         ),
-      ),
       if (!_loading && _error == null && _schools.isEmpty)
         const Text('등록된 학교가 없습니다. 학교 기준 등록 후 이용할 수 있습니다.'),
     ],

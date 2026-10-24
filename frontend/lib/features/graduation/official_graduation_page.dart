@@ -7,6 +7,7 @@ import 'school_context_form.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/external_link_button.dart';
 import '../../shared/widgets/page_header.dart';
+import '../auth/school_workflow_actions.dart';
 
 String auditStatus(String value) => switch (value) {
   'satisfied' => '충족',
@@ -166,6 +167,8 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
             ),
           ],
         ),
+        const SchoolWorkflowActions(),
+        const SizedBox(height: 12),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),

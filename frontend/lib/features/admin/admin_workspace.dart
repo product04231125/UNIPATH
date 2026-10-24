@@ -6,6 +6,7 @@ import '../settings/appearance_settings_section.dart';
 import 'package:flutter/material.dart';
 
 import '../auth/app_role.dart';
+import '../auth/school_workflow_actions.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/input_dialog.dart';
@@ -698,6 +699,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('관리 가능한 학교 ${_schools.length}개'),
+        const SchoolWorkflowActions(),
         if (_schoolId.isEmpty) ...[
           const SizedBox(height: 12),
           const Text('관리 가능한 학교가 없습니다. 학교 등록 또는 범위 부여가 필요합니다.'),
