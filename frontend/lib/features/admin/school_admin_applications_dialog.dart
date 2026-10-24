@@ -8,6 +8,7 @@ import '../auth/app_role.dart';
 import '../records/personal_record_repository.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/anchored_select_field.dart';
+import 'unregistered_school_application_form.dart';
 
 String applicationStatus(String status) => switch (status) {
   'pending' => '승인 대기',
@@ -57,13 +58,20 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
   final _position = TextEditingController(),
       _email = TextEditingController(),
       _reason = TextEditingController();
-  late final _changes = Listenable.merge([_position, _email, _reason]);
+  final _unregisteredDraft = UnregisteredSchoolApplicationDraft();
+  late final _changes = Listenable.merge([
+    _position,
+    _email,
+    _reason,
+    _unregisteredDraft,
+  ]);
   List<StudentInstitutionView> _schools = [];
   List<SchoolAdminApplicationView> _items = [];
   List<SchoolAdminApplicationReviewView> _reviewItems = [];
   String? _school, _cursor, _error, _notice, _requestFingerprint;
   String _filter = '', _clientId = PersonalRecord.newId();
   bool _loading = true, _busy = false, _uncertain = false;
+  bool _unregistered = false;
   List<String> _fieldErrors = [];
   String? _fieldError(String key) =>
       _fieldErrors.any((f) => f.split('.').last == key)
@@ -72,6 +80,7 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
   bool get _review => widget.identity.role == AppRole.superAdmin;
   bool get _dirty =>
       _school != null ||
+      _unregisteredDraft.hasContent ||
       [_position, _email, _reason].any((c) => c.text.isNotEmpty);
 
   @override
@@ -85,6 +94,7 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
     for (final c in [_position, _email, _reason]) {
       c.dispose();
     }
+    _unregisteredDraft.dispose();
     super.dispose();
   }
 
@@ -139,7 +149,7 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
   }
 
   Future<void> _submit() async {
-    if (_busy) return;
+    if (_busy || _unregistered) return;
     _fieldErrors = [];
     if (!_form.currentState!.validate()) return;
     final fingerprint = [
@@ -296,8 +306,9 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
               ? '신청자의 신원과 학교 담당자 자격을 별도로 확인한 뒤 심사하세요.'
               : '일반 계정으로 학교 관리 권한을 신청합니다. 승인 결과와 사유는 아래 이력에서 확인할 수 있습니다.',
         ),
-        if (_notice != null) Semantics(liveRegion: true, child: Text(_notice!)),
-        if (_error != null) ...[
+        if (_notice != null && !_unregistered)
+          Semantics(liveRegion: true, child: Text(_notice!)),
+        if (_error != null && !_unregistered) ...[
           Semantics(liveRegion: true, child: Text(_error!)),
           TextButton(
             onPressed: _busy || _loading ? null : _load,
@@ -305,14 +316,47 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
           ),
         ],
         if (_loading) const LinearProgressIndicator(),
-        if (!_review && _schools.isNotEmpty)
+        if (!_review) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('등록된 학교'),
+                selected: !_unregistered,
+                onSelected: _busy
+                    ? null
+                    : (_) => setState(() => _unregistered = false),
+              ),
+              ChoiceChip(
+                label: const Text('미등록 학교'),
+                selected: _unregistered,
+                onSelected: _busy
+                    ? null
+                    : (_) => setState(() => _unregistered = true),
+              ),
+            ],
+          ),
+        ],
+        if (!_review && _unregistered)
+          UnregisteredSchoolApplicationForm(
+            draft: _unregisteredDraft,
+            applicantName: widget.identity.displayName,
+            enabled: !_busy,
+          ),
+        if (!_review && !_unregistered) ...[
+          TextButton(
+            onPressed: _busy || _loading ? null : _load,
+            child: const Text('학교 목록 다시 읽기'),
+          ),
           Form(
             key: _form,
             child: Column(
               children: [
                 const SizedBox(height: 16),
                 AnchoredSelectField<String?>(
-                  value: _school,
+                  value: _schools.any((s) => s.id == _school) ? _school : null,
                   label: '신청 학교',
                   searchable: true,
                   options: [
@@ -320,7 +364,7 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
                     ..._schools.map((s) => SelectOption(s.id, s.name)),
                   ],
                   onChanged: (v) {
-                    if (!_busy) setState(() => _school = v);
+                    if (!_busy && !_loading) setState(() => _school = v);
                   },
                 ),
                 ...[
@@ -352,10 +396,11 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
                   ),
                 ),
                 FilledButton(
-                  onPressed: _busy || _loading
+                  onPressed: _busy || _loading || _schools.isEmpty
                       ? null
                       : () {
-                          if (_school == null) {
+                          if (_school == null ||
+                              !_schools.any((s) => s.id == _school)) {
                             setState(() => _error = '신청 학교를 선택하세요.');
                             return;
                           }
@@ -366,13 +411,20 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
               ],
             ),
           ),
-        if (!_review && !_loading && _schools.isEmpty && _error == null)
-          const Text('신청 가능한 학교가 없습니다.'),
+        ],
+        if (!_review &&
+            !_unregistered &&
+            !_loading &&
+            _schools.isEmpty &&
+            _error == null)
+          const Text('신청 가능한 학교가 없습니다. 미등록 학교 유형에서 정보를 작성할 수 있습니다.'),
         const SizedBox(height: 20),
         Text(
           _review ? '접수 목록' : '내 신청 이력',
           style: Theme.of(context).textTheme.titleMedium,
         ),
+        if (!_review)
+          const Text('서버에 접수된 신청만 표시합니다. 미등록 학교 작성 내용은 이력에 포함되지 않습니다.'),
         if (_review)
           AnchoredSelectField(
             value: _filter,
