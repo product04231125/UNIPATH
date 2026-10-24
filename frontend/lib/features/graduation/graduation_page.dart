@@ -11,6 +11,8 @@ import '../../shared/widgets/horizontal_scroll_area.dart';
 import 'graduation_mock_fixture.dart';
 import 'personal_graduation_workspace.dart';
 import '../planning/planning_repository.dart';
+import '../auth/school_workflow_session.dart';
+import 'official_graduation_page.dart';
 
 class GraduationPage extends StatefulWidget {
   const GraduationPage({
@@ -43,6 +45,17 @@ class _GraduationPageState extends State<GraduationPage> {
         planning: widget.planning,
         onBack: () {
           setState(() => _personal = false);
+          _reportMinimumWidth();
+        },
+      );
+    }
+    final session = SchoolWorkflowSession.maybeOf(context);
+    if (session != null) {
+      return OfficialGraduationPage(
+        auth: session.auth,
+        ownerId: session.identity.id,
+        onPersonal: () {
+          setState(() => _personal = true);
           _reportMinimumWidth();
         },
       );

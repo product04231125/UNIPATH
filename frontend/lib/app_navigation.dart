@@ -19,6 +19,7 @@ import 'features/auth/account_security_gateway.dart';
 import 'features/auth/account_security_dialog.dart';
 import 'shared/widgets/input_dialog.dart';
 import 'features/admin/school_admin_applications_dialog.dart';
+import 'features/auth/school_workflow_session.dart';
 
 class AppLocation {
   const AppLocation(this.path);
@@ -547,7 +548,15 @@ class AppNavigation extends RouterDelegate<AppLocation>
                 Expanded(
                   child: FocusTraversalOrder(
                     order: const NumericFocusOrder(0),
-                    child: TaskFocusGroup(child: page),
+                    child: TaskFocusGroup(
+                      child: _identity != null && _auth is AuthApi
+                          ? SchoolWorkflowSession(
+                              auth: _auth,
+                              identity: _identity!,
+                              child: page,
+                            )
+                          : page,
+                    ),
                   ),
                 ),
               ],
