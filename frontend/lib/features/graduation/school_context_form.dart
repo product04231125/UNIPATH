@@ -16,11 +16,23 @@ class SchoolContextForm extends StatefulWidget {
     this.showStudy = true,
     this.showDate = true,
     this.onChanged,
+    this.initialInstitutionId,
+    this.initialDepartmentId,
+    this.initialCurriculumId,
+    this.initialAdmissionYear,
+    this.initialTrack,
+    this.lockInstitution = false,
   });
   final ApiGateway api;
   final bool disabled;
   final bool showStudy, showDate;
   final VoidCallback? onChanged;
+  final String? initialInstitutionId,
+      initialDepartmentId,
+      initialCurriculumId,
+      initialTrack;
+  final int? initialAdmissionYear;
+  final bool lockInstitution;
   @override
   State<SchoolContextForm> createState() => SchoolContextFormState();
 }
@@ -85,8 +97,18 @@ class SchoolContextFormState extends State<SchoolContextForm> {
   @override
   void initState() {
     super.initState();
+    _school = widget.initialInstitutionId;
+    _department = widget.initialDepartmentId;
+    _curriculum = widget.initialCurriculumId;
+    year.text = widget.initialAdmissionYear?.toString() ?? '';
+    track.text = widget.initialTrack ?? '';
+    year.addListener(_notifyChanged);
+    track.addListener(_notifyChanged);
+    date.addListener(_notifyChanged);
     _load();
   }
+
+  void _notifyChanged() => widget.onChanged?.call();
 
   @override
   void dispose() {
@@ -165,30 +187,37 @@ class SchoolContextFormState extends State<SchoolContextForm> {
           child: const Text('학교 기준 다시 읽기'),
         ),
       ],
-      AnchoredSelectField<String?>(
-        value: _school,
-        label: '학교',
-        searchable: true,
-        options: [
-          const SelectOption(null, '학교 선택'),
-          ..._schools.map((s) => SelectOption(s.id, s.name)),
-        ],
-        onChanged: (v) {
-          if (_loading || widget.disabled) return;
-          setState(() {
-            _school = v;
-            _department = null;
-            _curriculum = null;
-            _departments = [];
-            _curricula = [];
-          });
-          widget.onChanged?.call();
-          _load();
-        },
-      ),
+      if (widget.lockInstitution)
+        Text(
+          '검토 학교: ${_schools.where((s) => s.id == _school).firstOrNull?.name ?? '학교 기준 확인 중'}',
+        )
+      else
+        AnchoredSelectField<String?>(
+          value: _schools.any((s) => s.id == _school) ? _school : null,
+          label: '학교',
+          searchable: true,
+          options: [
+            const SelectOption(null, '학교 선택'),
+            ..._schools.map((s) => SelectOption(s.id, s.name)),
+          ],
+          onChanged: (v) {
+            if (_loading || widget.disabled || widget.lockInstitution) return;
+            setState(() {
+              _school = v;
+              _department = null;
+              _curriculum = null;
+              _departments = [];
+              _curricula = [];
+            });
+            widget.onChanged?.call();
+            _load();
+          },
+        ),
       const SizedBox(height: 12),
       AnchoredSelectField<String?>(
-        value: _department,
+        value: _departments.any((s) => s.id == _department)
+            ? _department
+            : null,
         label: '학과',
         searchable: true,
         options: [
@@ -208,7 +237,7 @@ class SchoolContextFormState extends State<SchoolContextForm> {
       ),
       const SizedBox(height: 12),
       AnchoredSelectField<String?>(
-        value: _curriculum,
+        value: _curricula.any((s) => s.id == _curriculum) ? _curriculum : null,
         label: '교육과정',
         searchable: true,
         options: [

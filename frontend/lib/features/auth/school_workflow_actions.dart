@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../shared/widgets/input_dialog.dart';
 import '../records/official_sources_dialog.dart';
+import '../records/official_records_dialog.dart';
 import 'app_role.dart';
 import 'school_workflow_session.dart';
 
@@ -22,6 +23,18 @@ class SchoolWorkflowActions extends StatelessWidget {
           onPressed: () => showInputDialog<void>(
             context: context,
             builder: (_) => OfficialSourcesDialog(
+              auth: session.auth,
+              ownerId: session.identity.id,
+              admin: admin,
+            ),
+          ),
+        ),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.fact_check_outlined),
+          label: Text(admin ? '학교 확인 학생 기록 검토' : '학교 확인 학생 기록'),
+          onPressed: () => showInputDialog<void>(
+            context: context,
+            builder: (_) => OfficialRecordsDialog(
               auth: session.auth,
               ownerId: session.identity.id,
               admin: admin,
