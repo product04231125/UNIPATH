@@ -62,7 +62,7 @@ class _RecordsState extends State<OfficialRecordsDialog> {
       if (mounted) {
         setState(() {
           _error = sourceError(e);
-          if (e is AuthFailure && (e.status == 401 || e.status == 403)) {
+          if (sourceAccessLost(e)) {
             _rows = [];
           }
         });
@@ -85,12 +85,20 @@ class _RecordsState extends State<OfficialRecordsDialog> {
             ownerId: widget.ownerId,
             admin: widget.admin,
             batch: detail,
+            onAccessLost: () {
+              if (mounted) setState(() => _rows = []);
+            },
           ),
         );
       }
       if (mounted) await _load();
     } catch (e) {
-      if (mounted) setState(() => _error = sourceError(e));
+      if (mounted) {
+        setState(() {
+          _error = sourceError(e);
+          if (sourceAccessLost(e)) _rows = [];
+        });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -107,7 +115,12 @@ class _RecordsState extends State<OfficialRecordsDialog> {
       );
       if (mounted) await _load();
     } catch (e) {
-      if (mounted) setState(() => _error = sourceError(e));
+      if (mounted) {
+        setState(() {
+          _error = sourceError(e);
+          if (sourceAccessLost(e)) _rows = [];
+        });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -285,11 +298,13 @@ class OfficialRecordReviewDialog extends StatefulWidget {
     required this.ownerId,
     required this.admin,
     required this.batch,
+    this.onAccessLost,
   });
   final AuthApi auth;
   final String ownerId;
   final bool admin;
   final SchoolRecordBatchView batch;
+  final VoidCallback? onAccessLost;
   @override
   State<OfficialRecordReviewDialog> createState() => _ReviewState();
 }
@@ -314,7 +329,8 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
       _coverage = false,
       _busy = false,
       _loading = true,
-      _stale = false;
+      _stale = false,
+      _denied = false;
   String? _error;
   String _departmentLabel = '확인 중', _curriculumLabel = '확인 중';
   @override
@@ -356,6 +372,7 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
           _events = events.items;
           _records = _context = _coverage = false;
           _stale = false;
+          _denied = false;
           _error = null;
         });
       }
@@ -364,6 +381,10 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
         setState(() {
           _error = sourceError(e);
           _stale = true;
+          if (sourceAccessLost(e)) {
+            _denied = true;
+            widget.onAccessLost?.call();
+          }
         });
       }
     } finally {
@@ -399,6 +420,10 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
         setState(() {
           _error = sourceError(e);
           _stale = true;
+          if (sourceAccessLost(e)) {
+            _denied = true;
+            widget.onAccessLost?.call();
+          }
         });
       }
     } finally {
@@ -470,6 +495,10 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
         setState(() {
           _error = sourceError(e);
           _stale = true;
+          if (sourceAccessLost(e)) {
+            _denied = true;
+            widget.onAccessLost?.call();
+          }
         });
       }
     } finally {
@@ -488,98 +517,110 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
       saving: _busy,
       hasContent: () =>
           _reason.text.isNotEmpty || _records || _context || _coverage,
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            '${recordLabel(b.kind)} · ${recordLabel(b.status)} · 판 ${b.version}',
-          ),
-          Text(
-            '기록 기준일 ${b.recordsAsOf} · 원본 ${b.pageCount}쪽 · ${recordLabel(b.coverage)}',
-          ),
-          Text(
-            '입학연도 ${b.context.admissionYear?.toString() ?? '미확인'} · 이수 경로 ${b.context.track ?? '미확인'}',
-          ),
-          Text('학과 $_departmentLabel\n교육과정 $_curriculumLabel'),
-          Text(
-            b.usableForAudit
-                ? '현재 졸업감사 입력으로 사용할 수 있는 기록입니다.'
-                : '현재 졸업감사 입력으로 사용할 수 없습니다.',
-          ),
-          const Text('학생 기록 승인은 졸업요건 충족 판정이 아닙니다.'),
-          if (b.issues.isNotEmpty)
-            const Text('원본·기록·문맥·검토 범위 또는 참조 기준을 다시 확인하세요.'),
-          if (_loading) const LinearProgressIndicator(),
-          if (_error != null) Text(_error!),
-          TextButton(
-            onPressed: _busy || _loading ? null : _reload,
-            child: const Text('기록·이력 다시 읽기'),
-          ),
-          TextButton(
-            onPressed: enabled ? () => _source() : null,
-            child: const Text('대조할 원본 상세·PDF 확인'),
-          ),
-          for (final row in recordRows(b.data))
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(recordSummary(row, b.references)),
-              ),
+      content: _denied
+          ? recordAccessNotice(_busy || _loading ? null : _reload, _error)
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '${recordLabel(b.kind)} · ${recordLabel(b.status)} · 판 ${b.version}',
+                ),
+                Text(
+                  '기록 기준일 ${b.recordsAsOf} · 원본 ${b.pageCount}쪽 · ${recordLabel(b.coverage)}',
+                ),
+                Text(
+                  '입학연도 ${b.context.admissionYear?.toString() ?? '미확인'} · 이수 경로 ${b.context.track ?? '미확인'}',
+                ),
+                Text('학과 $_departmentLabel\n교육과정 $_curriculumLabel'),
+                Text(
+                  b.usableForAudit
+                      ? '현재 졸업감사 입력으로 사용할 수 있는 기록입니다.'
+                      : '현재 졸업감사 입력으로 사용할 수 없습니다.',
+                ),
+                const Text('학생 기록 승인은 졸업요건 충족 판정이 아닙니다.'),
+                for (final issue in b.issues) Text(recordIssueLabel(issue)),
+                if (_loading) const LinearProgressIndicator(),
+                if (_error != null) Text(_error!),
+                TextButton(
+                  onPressed: _busy || _loading ? null : _reload,
+                  child: const Text('기록·이력 다시 읽기'),
+                ),
+                TextButton(
+                  onPressed: enabled ? () => _source() : null,
+                  child: const Text('대조할 원본 상세·PDF 확인'),
+                ),
+                for (final row in recordRows(b.data))
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(recordSummary(row, b.references)),
+                    ),
+                  ),
+                if (recordRows(b.data).isEmpty)
+                  const Text('기록 0건. 전체/일부 검토 범위의 의미를 확인하세요.'),
+                if (reviewer && b.status == 'draft') ...[
+                  TextButton(
+                    onPressed: enabled ? () => _source(edit: true) : null,
+                    child: const Text('검토 초안 수정'),
+                  ),
+                  for (final entry in [
+                    (
+                      '원본의 기록과 각 페이지 대응을 대조했습니다.',
+                      _records,
+                      (bool v) => _records = v,
+                    ),
+                    (
+                      '학과·교육과정·입학연도·이수 경로를 확인했습니다.',
+                      _context,
+                      (bool v) => _context = v,
+                    ),
+                    (
+                      '전체/일부 검토 범위를 확인했습니다.',
+                      _coverage,
+                      (bool v) => _coverage = v,
+                    ),
+                  ])
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(entry.$1),
+                      value: entry.$2,
+                      onChanged: enabled
+                          ? (v) => setState(() => entry.$3(v ?? false))
+                          : null,
+                    ),
+                  FilledButton(
+                    onPressed: enabled && _records && _context && _coverage
+                        ? () => _act('approve')
+                        : null,
+                    child: const Text('학생 기록 승인'),
+                  ),
+                ],
+                if (reviewer &&
+                    (b.status == 'draft' || b.status == 'approved')) ...[
+                  TextField(
+                    controller: _reason,
+                    enabled: enabled,
+                    maxLength: 500,
+                    decoration: const InputDecoration(labelText: '회수·폐기 사유'),
+                  ),
+                  TextButton(
+                    onPressed: enabled
+                        ? () => _act(b.status == 'draft' ? 'discard' : 'revoke')
+                        : null,
+                    child: Text(
+                      b.status == 'draft' ? '검토 초안 폐기' : '학생 기록 승인 회수',
+                    ),
+                  ),
+                ],
+                if (widget.admin && !reviewer)
+                  const Text('본인의 학생 기록을 직접 승인할 수 없습니다.'),
+                const Text('검토 이력'),
+                for (final e in _events)
+                  Text(
+                    '${e.occurredAt.toLocal()} · ${recordLabel(e.action)}${e.reason.isEmpty ? '' : '\n${e.reason}'}',
+                  ),
+              ],
             ),
-          if (recordRows(b.data).isEmpty)
-            const Text('기록 0건. 전체/일부 검토 범위의 의미를 확인하세요.'),
-          if (reviewer && b.status == 'draft') ...[
-            TextButton(
-              onPressed: enabled ? () => _source(edit: true) : null,
-              child: const Text('검토 초안 수정'),
-            ),
-            for (final entry in [
-              ('원본의 기록과 각 페이지 대응을 대조했습니다.', _records, (bool v) => _records = v),
-              (
-                '학과·교육과정·입학연도·이수 경로를 확인했습니다.',
-                _context,
-                (bool v) => _context = v,
-              ),
-              ('전체/일부 검토 범위를 확인했습니다.', _coverage, (bool v) => _coverage = v),
-            ])
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(entry.$1),
-                value: entry.$2,
-                onChanged: enabled
-                    ? (v) => setState(() => entry.$3(v ?? false))
-                    : null,
-              ),
-            FilledButton(
-              onPressed: enabled && _records && _context && _coverage
-                  ? () => _act('approve')
-                  : null,
-              child: const Text('학생 기록 승인'),
-            ),
-          ],
-          if (reviewer && (b.status == 'draft' || b.status == 'approved')) ...[
-            TextField(
-              controller: _reason,
-              enabled: enabled,
-              maxLength: 500,
-              decoration: const InputDecoration(labelText: '회수·폐기 사유'),
-            ),
-            TextButton(
-              onPressed: enabled
-                  ? () => _act(b.status == 'draft' ? 'discard' : 'revoke')
-                  : null,
-              child: Text(b.status == 'draft' ? '검토 초안 폐기' : '학생 기록 승인 회수'),
-            ),
-          ],
-          if (widget.admin && !reviewer)
-            const Text('본인의 학생 기록을 직접 승인할 수 없습니다.'),
-          const Text('검토 이력'),
-          for (final e in _events)
-            Text(
-              '${e.occurredAt.toLocal()} · ${recordLabel(e.action)}${e.reason.isEmpty ? '' : '\n${e.reason}'}',
-            ),
-        ],
-      ),
       actions: [
         TextButton(
           onPressed: _busy ? null : () => InputDialog.cancel<void>(context),

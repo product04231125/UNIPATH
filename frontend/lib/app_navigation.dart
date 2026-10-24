@@ -549,7 +549,8 @@ class AppNavigation extends RouterDelegate<AppLocation>
                   child: FocusTraversalOrder(
                     order: const NumericFocusOrder(0),
                     child: TaskFocusGroup(
-                      child: _identity != null && _auth is AuthApi
+                      child:
+                          authenticated && _identity != null && _auth is AuthApi
                           ? SchoolWorkflowSession(
                               auth: _auth,
                               identity: _identity!,

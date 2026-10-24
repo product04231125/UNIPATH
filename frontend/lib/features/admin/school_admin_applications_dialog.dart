@@ -124,7 +124,15 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _error = _failure(e));
+      if (mounted) {
+        setState(() {
+          _error = _failure(e);
+          if (e is AuthFailure && {401, 403, 404}.contains(e.status)) {
+            _items = [];
+            _reviewItems = [];
+          }
+        });
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -219,7 +227,15 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
       await _own.cancel(item.id, item.version);
       if (mounted) await _load();
     } catch (e) {
-      if (mounted) setState(() => _error = _failure(e));
+      if (mounted) {
+        setState(() {
+          _error = _failure(e);
+          if (e is AuthFailure && {401, 403, 404}.contains(e.status)) {
+            _items = [];
+            _reviewItems = [];
+          }
+        });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -240,11 +256,27 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
           api: _reviews,
           application: current,
           reviewer: widget.identity.id,
+          onAccessLost: () {
+            if (mounted) {
+              setState(() {
+                _items = [];
+                _reviewItems = [];
+              });
+            }
+          },
         ),
       );
       if (mounted) await _load();
     } catch (e) {
-      if (mounted) setState(() => _error = _failure(e));
+      if (mounted) {
+        setState(() {
+          _error = _failure(e);
+          if (e is AuthFailure && {401, 403, 404}.contains(e.status)) {
+            _items = [];
+            _reviewItems = [];
+          }
+        });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -421,10 +453,12 @@ class _ApplicationReviewDialog extends StatefulWidget {
     required this.api,
     required this.application,
     required this.reviewer,
+    required this.onAccessLost,
   });
   final SchoolAdminApplicationReviewsApi api;
   final SchoolAdminApplicationReviewView application;
   final String reviewer;
+  final VoidCallback onAccessLost;
   @override
   State<_ApplicationReviewDialog> createState() => _ReviewState();
 }
@@ -432,7 +466,11 @@ class _ApplicationReviewDialog extends StatefulWidget {
 class _ReviewState extends State<_ApplicationReviewDialog> {
   final _note = TextEditingController();
   final _changes = ChangeNotifier();
-  bool _identity = false, _affiliation = false, _busy = false;
+  bool _identity = false,
+      _affiliation = false,
+      _busy = false,
+      _denied = false,
+      _stale = false;
   String? _error;
   @override
   void dispose() {
@@ -476,9 +514,12 @@ class _ReviewState extends State<_ApplicationReviewDialog> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        setState(
-          () => _error = '${_failure(e)}\n버전 충돌이면 닫고 목록을 다시 읽어 최신 상태를 확인하세요.',
-        );
+        setState(() {
+          _error = '${_failure(e)}\n닫고 목록을 다시 읽어 최신 상태를 확인하세요.';
+          _denied = e is AuthFailure && {401, 403, 404}.contains(e.status);
+          _stale = e is! AuthFailure || e.status != 422;
+          if (_denied) widget.onAccessLost();
+        });
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -488,46 +529,63 @@ class _ReviewState extends State<_ApplicationReviewDialog> {
   @override
   Widget build(BuildContext context) {
     final r = widget.application;
-    final canReview = r.status == 'pending' && r.applicantId != widget.reviewer;
+    final canReview =
+        !_denied &&
+        !_stale &&
+        r.status == 'pending' &&
+        r.applicantId != widget.reviewer;
     return InputDialog(
       title: const Text('학교관리자 신청 검토'),
       changes: Listenable.merge([_note, _changes]),
       hasContent: () => _note.text.isNotEmpty || _identity || _affiliation,
       saving: _busy,
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('${r.institutionName} · ${applicationStatus(r.status)}'),
-          Text(
-            '${r.applicant.displayName}\n${r.applicant.email}\n${r.position}\n${r.contactEmail}\n${r.reason}',
-          ),
-          if (r.reviewNote.isNotEmpty) Text('검토 사유: ${r.reviewNote}'),
-          if (canReview) ...[
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('신청자 신원을 별도로 확인했습니다'),
-              value: _identity,
-              onChanged: _busy ? null : (v) => setState(() => _identity = v!),
+      content: _denied
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('현재 권한으로 이 신청을 검토할 수 없습니다. 닫고 접수 목록을 다시 확인하세요.'),
+                if (_error != null) Text(_error!),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('${r.institutionName} · ${applicationStatus(r.status)}'),
+                Text(
+                  '${r.applicant.displayName}\n${r.applicant.email}\n${r.position}\n${r.contactEmail}\n${r.reason}',
+                ),
+                if (r.reviewNote.isNotEmpty) Text('검토 사유: ${r.reviewNote}'),
+                if (canReview) ...[
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('신청자 신원을 별도로 확인했습니다'),
+                    value: _identity,
+                    onChanged: _busy
+                        ? null
+                        : (v) => setState(() => _identity = v!),
+                  ),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('해당 학교 담당자 자격을 확인했습니다'),
+                    value: _affiliation,
+                    onChanged: _busy
+                        ? null
+                        : (v) => setState(() => _affiliation = v!),
+                  ),
+                  TextField(
+                    controller: _note,
+                    enabled: !_busy,
+                    maxLength: 500,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: '검토 사유 (신청자에게 표시)',
+                    ),
+                  ),
+                ],
+                if (_error != null)
+                  Semantics(liveRegion: true, child: Text(_error!)),
+              ],
             ),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('해당 학교 담당자 자격을 확인했습니다'),
-              value: _affiliation,
-              onChanged: _busy
-                  ? null
-                  : (v) => setState(() => _affiliation = v!),
-            ),
-            TextField(
-              controller: _note,
-              enabled: !_busy,
-              maxLength: 500,
-              maxLines: 3,
-              decoration: const InputDecoration(labelText: '검토 사유 (신청자에게 표시)'),
-            ),
-          ],
-          if (_error != null) Semantics(liveRegion: true, child: Text(_error!)),
-        ],
-      ),
       actions: [
         TextButton(
           onPressed: _busy ? null : () => InputDialog.cancel<void>(context),

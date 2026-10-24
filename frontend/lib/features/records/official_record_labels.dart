@@ -1,5 +1,17 @@
 import '../api/official_record_models.dart';
 
+String recordIssueLabel(String reason) =>
+    const {
+      'source_unavailable': '원본을 확인할 수 없습니다.',
+      'source_changed': '원본이 변경됐습니다.',
+      'reference_changed': '등록 과목·자격 기준이 변경됐습니다.',
+      'context_incomplete': '학적 문맥 확인이 부족합니다.',
+      'partial_records': '일부 기록만 검토됐습니다.',
+      'not_approved': '학교 기록 승인이 필요합니다.',
+      'snapshot_date_mismatch': '기록 기준일이 일치하지 않습니다.',
+    }[reason] ??
+    '학교 담당자의 확인이 필요합니다.';
+
 String recordLabel(String value) =>
     const {
       'academics': '성적',

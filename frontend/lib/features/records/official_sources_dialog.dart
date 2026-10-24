@@ -27,6 +27,17 @@ String sourceKind(RecordSourceKind s) => switch (s) {
 };
 String sourceError(Object e) =>
     e is AuthFailure ? e.message : '처리 결과를 확인하지 못했습니다. 다시 읽기로 현재 상태를 확인하세요.';
+bool sourceAccessLost(Object e) =>
+    e is AuthFailure && {401, 403, 404}.contains(e.status);
+Widget recordAccessNotice(VoidCallback? retry, String? error) => Column(
+  crossAxisAlignment: CrossAxisAlignment.stretch,
+  children: [
+    const Text('현재 계정이나 학교 범위로 이 자료를 확인할 수 없습니다.'),
+    if (error != null) Text(error),
+    if (retry == null) const LinearProgressIndicator(),
+    TextButton(onPressed: retry, child: const Text('접근 상태 다시 확인')),
+  ],
+);
 
 Future<void> saveSourcePdf(String name, Uint8List bytes) async {
   final safeName = name.replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1f]'), '_');
@@ -105,7 +116,7 @@ class _SourcesState extends State<OfficialSourcesDialog> {
       if (mounted) {
         setState(() {
           _error = sourceError(e);
-          if (e is AuthFailure && (e.status == 401 || e.status == 403)) {
+          if (sourceAccessLost(e)) {
             _rows = [];
           }
         });
@@ -129,11 +140,19 @@ class _SourcesState extends State<OfficialSourcesDialog> {
           actorId: widget.ownerId,
           admin: widget.admin,
           exportPdf: widget.exportPdf,
+          onAccessLost: () {
+            if (mounted) setState(() => _rows = []);
+          },
         ),
       );
       if (mounted) await _load();
     } catch (e) {
-      if (mounted) setState(() => _error = sourceError(e));
+      if (mounted) {
+        setState(() {
+          _error = sourceError(e);
+          if (sourceAccessLost(e)) _rows = [];
+        });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -334,6 +353,7 @@ class _UploadState extends State<_SourceUploadDialog> {
           _uncertain =
               e is! AuthFailure || e.status == null || e.status! >= 500;
           _fields = e is AuthFailure ? e.fields : [];
+          _context.currentState?.showErrors(_fields);
           _error = '${sourceError(e)}\n선택한 PDF와 입력을 유지했습니다.';
         });
       }
@@ -420,12 +440,14 @@ class SourceReviewDialog extends StatefulWidget {
     required this.actorId,
     required this.admin,
     this.exportPdf,
+    this.onAccessLost,
   });
   final RecordSourceApi api;
   final RecordSource source;
   final String actorId;
   final bool admin;
   final Future<void> Function(String, Uint8List)? exportPdf;
+  final VoidCallback? onAccessLost;
   @override
   State<SourceReviewDialog> createState() => _SourceReviewState();
 }
@@ -440,7 +462,8 @@ class _SourceReviewState extends State<SourceReviewDialog> {
       _downloaded = false,
       _busy = false,
       _loading = true,
-      _stale = false;
+      _stale = false,
+      _denied = false;
   String? _error;
   @override
   void initState() {
@@ -465,6 +488,7 @@ class _SourceReviewState extends State<SourceReviewDialog> {
           _source = source;
           _events = events;
           _stale = false;
+          _denied = false;
           _error = null;
           _issuer = false;
           _subject = false;
@@ -476,6 +500,10 @@ class _SourceReviewState extends State<SourceReviewDialog> {
         setState(() {
           _error = sourceError(e);
           _stale = true;
+          if (sourceAccessLost(e)) {
+            _denied = true;
+            widget.onAccessLost?.call();
+          }
         });
       }
     } finally {
@@ -490,7 +518,16 @@ class _SourceReviewState extends State<SourceReviewDialog> {
       await (widget.exportPdf ?? saveSourcePdf)(_source.filename, bytes);
       if (mounted) setState(() => _downloaded = true);
     } catch (e) {
-      if (mounted) setState(() => _error = sourceError(e));
+      if (mounted) {
+        setState(() {
+          _error = sourceError(e);
+          if (sourceAccessLost(e)) {
+            _denied = true;
+            widget.onAccessLost?.call();
+            _stale = true;
+          }
+        });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -558,6 +595,10 @@ class _SourceReviewState extends State<SourceReviewDialog> {
         setState(() {
           _error = sourceError(e);
           _stale = true;
+          if (sourceAccessLost(e)) {
+            _denied = true;
+            widget.onAccessLost?.call();
+          }
         });
       }
     } finally {
@@ -574,88 +615,93 @@ class _SourceReviewState extends State<SourceReviewDialog> {
       changes: Listenable.merge([_changes, _reason]),
       saving: _busy,
       hasContent: () => _reason.text.isNotEmpty || _issuer || _subject,
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            '${_source.filename}\n${sourceKind(_source.documentKind)} · ${_source.issuedOn} · ${sourceStatus(_source.status)}',
-          ),
-          Text('원본 판 ${_source.version} · ${_source.byteCount}바이트'),
-          const Text('원본 확인은 학교 확인 학생 기록 승인과 별개이며 졸업요건 충족을 뜻하지 않습니다.'),
-          TextButton(
-            onPressed: editable ? _download : null,
-            child: const Text('원본 PDF 내려받기'),
-          ),
-          TextButton(
-            onPressed: _busy || _loading ? null : _reload,
-            child: const Text('상세·검토 이력 다시 읽기'),
-          ),
-          if (_busy || _loading) const LinearProgressIndicator(),
-          if (_error != null) Text(_error!),
-          if (reviewer && _source.status == RecordSourceStatus.submitted) ...[
-            const Text('원본을 확인한 뒤 학교가 발급했는지, 제출자와 대상자가 일치하는지 별도로 검증하세요.'),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              value: _issuer,
-              onChanged: editable
-                  ? (v) => setState(() => _issuer = v ?? false)
-                  : null,
-              title: const Text('학교 발급 원본임을 확인했습니다.'),
-            ),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              value: _subject,
-              onChanged: editable
-                  ? (v) => setState(() => _subject = v ?? false)
-                  : null,
-              title: const Text('제출자와 원본 대상자의 신원을 확인했습니다.'),
-            ),
-            FilledButton(
-              onPressed: editable && _downloaded && _issuer && _subject
-                  ? () => _act('verify')
-                  : null,
-              child: const Text('원본 확인 승인'),
-            ),
-          ],
-          if (reviewer &&
-              {_source.status}.intersection({
-                RecordSourceStatus.submitted,
-                RecordSourceStatus.verified,
-              }).isNotEmpty) ...[
-            TextField(
-              controller: _reason,
-              enabled: editable,
-              maxLength: 500,
-              decoration: const InputDecoration(labelText: '처리 사유'),
-            ),
-            TextButton(
-              onPressed: editable
-                  ? () => _act(
+      content: _denied
+          ? recordAccessNotice(_busy || _loading ? null : _reload, _error)
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '${_source.filename}\n${sourceKind(_source.documentKind)} · ${_source.issuedOn} · ${sourceStatus(_source.status)}',
+                ),
+                Text('원본 판 ${_source.version} · ${_source.byteCount}바이트'),
+                const Text('원본 확인은 학교 확인 학생 기록 승인과 별개이며 졸업요건 충족을 뜻하지 않습니다.'),
+                TextButton(
+                  onPressed: editable ? _download : null,
+                  child: const Text('원본 PDF 내려받기'),
+                ),
+                TextButton(
+                  onPressed: _busy || _loading ? null : _reload,
+                  child: const Text('상세·검토 이력 다시 읽기'),
+                ),
+                if (_busy || _loading) const LinearProgressIndicator(),
+                if (_error != null) Text(_error!),
+                if (reviewer &&
+                    _source.status == RecordSourceStatus.submitted) ...[
+                  const Text('원본을 확인한 뒤 학교가 발급했는지, 제출자와 대상자가 일치하는지 별도로 검증하세요.'),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _issuer,
+                    onChanged: editable
+                        ? (v) => setState(() => _issuer = v ?? false)
+                        : null,
+                    title: const Text('학교 발급 원본임을 확인했습니다.'),
+                  ),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _subject,
+                    onChanged: editable
+                        ? (v) => setState(() => _subject = v ?? false)
+                        : null,
+                    title: const Text('제출자와 원본 대상자의 신원을 확인했습니다.'),
+                  ),
+                  FilledButton(
+                    onPressed: editable && _downloaded && _issuer && _subject
+                        ? () => _act('verify')
+                        : null,
+                    child: const Text('원본 확인 승인'),
+                  ),
+                ],
+                if (reviewer &&
+                    {_source.status}.intersection({
+                      RecordSourceStatus.submitted,
+                      RecordSourceStatus.verified,
+                    }).isNotEmpty) ...[
+                  TextField(
+                    controller: _reason,
+                    enabled: editable,
+                    maxLength: 500,
+                    decoration: const InputDecoration(labelText: '처리 사유'),
+                  ),
+                  TextButton(
+                    onPressed: editable
+                        ? () => _act(
+                            _source.status == RecordSourceStatus.submitted
+                                ? 'reject'
+                                : 'revoke',
+                          )
+                        : null,
+                    child: Text(
                       _source.status == RecordSourceStatus.submitted
-                          ? 'reject'
-                          : 'revoke',
-                    )
-                  : null,
-              child: Text(
-                _source.status == RecordSourceStatus.submitted
-                    ? '원본 반려'
-                    : '원본 확인 회수',
-              ),
+                          ? '원본 반려'
+                          : '원본 확인 회수',
+                    ),
+                  ),
+                ],
+                if (!widget.admin &&
+                    _source.status != RecordSourceStatus.withdrawn)
+                  TextButton(
+                    onPressed: editable ? () => _act('withdraw') : null,
+                    child: const Text('학교 검토 허용 철회'),
+                  ),
+                if (widget.admin && !reviewer)
+                  const Text('본인의 원본을 직접 승인할 수 없습니다.'),
+                const Text('검토 이력'),
+                for (final e in _events)
+                  Text(
+                    '${e.occurredAt.toLocal()} · ${sourceStatus(e.action)}${e.reason.isEmpty ? '' : '\n${e.reason}'}',
+                  ),
+              ],
             ),
-          ],
-          if (!widget.admin && _source.status != RecordSourceStatus.withdrawn)
-            TextButton(
-              onPressed: editable ? () => _act('withdraw') : null,
-              child: const Text('학교 검토 허용 철회'),
-            ),
-          if (widget.admin && !reviewer) const Text('본인의 원본을 직접 승인할 수 없습니다.'),
-          const Text('검토 이력'),
-          for (final e in _events)
-            Text(
-              '${e.occurredAt.toLocal()} · ${sourceStatus(e.action)}${e.reason.isEmpty ? '' : '\n${e.reason}'}',
-            ),
-        ],
-      ),
       actions: [
         TextButton(
           onPressed: _busy ? null : () => InputDialog.cancel<void>(context),

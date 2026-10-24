@@ -48,6 +48,8 @@ class SchoolContextFormState extends State<SchoolContextForm> {
   List<StudentCurriculumPublicView> _curricula = [];
   String? _school, _department, _curriculum, _error;
   bool _loading = true;
+  String _initialDate = '';
+  bool get hasEditedDate => date.text != _initialDate;
   String? get institutionId => _loading || _error != null ? null : _school;
   String? get departmentId => _department;
   String? get curriculumId => _curriculum;
@@ -62,6 +64,7 @@ class SchoolContextFormState extends State<SchoolContextForm> {
   GraduationContext? get value {
     final y = int.tryParse(year.text);
     if (_loading ||
+        _error != null ||
         _school == null ||
         _department == null ||
         _curriculum == null ||
@@ -102,6 +105,7 @@ class SchoolContextFormState extends State<SchoolContextForm> {
     _curriculum = widget.initialCurriculumId;
     year.text = widget.initialAdmissionYear?.toString() ?? '';
     track.text = widget.initialTrack ?? '';
+    _initialDate = date.text;
     year.addListener(_notifyChanged);
     track.addListener(_notifyChanged);
     date.addListener(_notifyChanged);
@@ -213,6 +217,7 @@ class SchoolContextFormState extends State<SchoolContextForm> {
             _load();
           },
         ),
+      if (_fieldError('institution_id') != null) const Text('학교 입력을 확인하세요.'),
       const SizedBox(height: 12),
       AnchoredSelectField<String?>(
         value: _departments.any((s) => s.id == _department)
@@ -235,6 +240,7 @@ class SchoolContextFormState extends State<SchoolContextForm> {
           _load();
         },
       ),
+      if (_fieldError('department_id') != null) const Text('학과 입력을 확인하세요.'),
       const SizedBox(height: 12),
       AnchoredSelectField<String?>(
         value: _curricula.any((s) => s.id == _curriculum) ? _curriculum : null,
@@ -251,6 +257,7 @@ class SchoolContextFormState extends State<SchoolContextForm> {
           }
         },
       ),
+      if (_fieldError('curriculum_id') != null) const Text('교육과정 입력을 확인하세요.'),
       const SizedBox(height: 12),
       if (widget.showStudy)
         TextField(

@@ -8,6 +8,7 @@ import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/external_link_button.dart';
 import '../../shared/widgets/page_header.dart';
 import '../auth/school_workflow_actions.dart';
+import '../../shared/widgets/input_dialog.dart';
 
 String auditStatus(String value) => switch (value) {
   'satisfied' => '충족',
@@ -16,6 +17,16 @@ String auditStatus(String value) => switch (value) {
   'not_applicable' => '적용 기준 없음',
   _ => '상태 확인 필요',
 };
+String auditIssueLabel(AuditIssue issue) =>
+    const {
+      'catalog_review_required': '전체 적용 규정의 검토가 필요합니다.',
+      'catalog_review_unavailable': '검토된 전체 적용 규정을 확인할 수 없습니다.',
+      'catalog_integrity_unavailable': '규정 근거의 무결성을 확인할 수 없습니다.',
+      'approved_records_changed': '승인된 학생 기록이 변경됐습니다.',
+      'record_integrity_unavailable': '학생 기록 근거의 무결성을 확인할 수 없습니다.',
+      'manual_requirement': '학교 담당자의 수동 확인이 필요한 요건입니다.',
+    }[issue.reason] ??
+    '${const {'catalog': '적용 규정', 'records': '승인 기록', 'academics': '성적', 'volunteers': '봉사', 'certificates': '자격', 'theses': '논문'}[issue.kind] ?? '근거'} 검토가 필요합니다.';
 
 class OfficialGraduationPage extends StatefulWidget {
   const OfficialGraduationPage({
@@ -40,6 +51,19 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
   String? _cursor, _error, _fingerprint;
   String _clientId = PersonalRecord.newId();
   bool _busy = false, _loading = true, _uncertain = false;
+  Future<void> _personal() async {
+    if (_busy) return;
+    final form = _context.currentState;
+    final hasDraft =
+        form != null &&
+        (form.hasSelection ||
+            form.year.text.isNotEmpty ||
+            form.track.text.isNotEmpty ||
+            form.hasEditedDate);
+    if (hasDraft && !await confirmInputDiscard(context)) return;
+    if (mounted) widget.onPersonal();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -61,11 +85,15 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
       }
     } catch (e) {
       if (mounted) {
-        setState(
-          () => _error = e is AuthFailure
+        setState(() {
+          _error = e is AuthFailure
               ? e.message
-              : '감사 이력을 읽지 못했습니다. 다시 읽기를 눌러 확인하세요.',
-        );
+              : '감사 이력을 읽지 못했습니다. 다시 읽기를 눌러 확인하세요.';
+          if (e is AuthFailure && {401, 403, 404}.contains(e.status)) {
+            _history = [];
+            _result = null;
+          }
+        });
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -162,7 +190,7 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
           description: '학교가 검토한 규정과 승인 기록을 비교합니다. 학교의 최종 학위 수여 승인을 대신하지 않습니다.',
           actions: [
             TextButton(
-              onPressed: _busy ? null : widget.onPersonal,
+              onPressed: _busy ? null : _personal,
               child: const Text('내 학교·학과 기준 설정'),
             ),
           ],
@@ -210,8 +238,10 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
                 ? '현재 사용할 수 있는 근거입니다.'
                 : '현재 사용할 수 없는 근거입니다. 재검토 후 새 감사를 실행하세요.',
           ),
-          if (r.issues.isNotEmpty || r.currentIssues.isNotEmpty)
-            const Text('규정 또는 승인 기록의 검토가 필요합니다. 학교 담당자에게 확인하세요.'),
+          if (r.issues.isNotEmpty) const Text('감사 당시 확인 필요 사항'),
+          for (final issue in r.issues) Text(auditIssueLabel(issue)),
+          if (r.currentIssues.isNotEmpty) const Text('현재 재검토 사유'),
+          for (final issue in r.currentIssues) Text(auditIssueLabel(issue)),
           for (final row in r.results)
             Card(
               child: Padding(

@@ -352,6 +352,8 @@ class _EditorState extends State<OfficialRecordEditor> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(recordSummary(row, widget.batch?.references ?? [])),
+                  if (_fields.any((f) => f.contains('records.$index.')))
+                    Text('${index + 1}번째 기록의 입력을 확인하세요.'),
                   Wrap(
                     children: [
                       TextButton(
