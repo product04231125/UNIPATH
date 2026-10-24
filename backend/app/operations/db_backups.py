@@ -392,35 +392,44 @@ def verify_backup(directory: Path) -> Manifest:
 
 
 def comparable_inventory(state: dict) -> dict:
-    """Normalize only PostgreSQL's equivalent varchar-literal array text casts.
+    """Normalize equivalent literal array casts in complete enum-like CHECKs.
 
-    pg_dump/restoration can distribute an array's varchar->text cast across
-    its literal elements. Keep all other schema and row comparisons exact,
-    and accept existing manifests without rewriting their signed-off contents.
+    pg_dump may distribute an array's varchar->text cast across its elements.
+    Support the nullable-column wrapper while keeping predicates, literal
+    contents, all other schema and row fingerprints exact. Never rewrite SQL
+    embedded inside a string value.
     """
     literal = r"'(?:[^']|'')*'::character varying"
     literals = literal + r"(?:, " + literal + r")*"
     element = r"\(" + literal + r"\)::text"
-    # Match the entire generated enum-like CHECK, never SQL inside a string
-    # literal or an unrelated expression with different cast semantics.
     enum_check = re.compile(
-        r"CHECK \(\(\([a-z_][a-z0-9_]*\)::text = ANY "
-        + r"(?:\(\(ARRAY\["
+        r"CHECK \(\(\((?P<column>[a-z_][a-z0-9_]*)\)::text = ANY "
+        + r"(?:\(\(ARRAY\[(?P<values>"
         + literals
-        + r"\]\)::text\[\]\)|\(ARRAY\["
+        + r")\]\)::text\[\]\)|\(ARRAY\[(?P<elements>"
         + element
         + r"(?:, "
         + element
-        + r")*\]\))\)\)"
+        + r")*)\]\))\)\)"
     )
-    array_cast = re.compile(r"\(\(ARRAY\[(" + literal + r"(?:, " + literal + r")*)\]\)::text\[\]\)")
-    element_cast = re.compile(r"\((" + literal + r")\)::text")
 
     def canonical(definition: str) -> str:
-        if not enum_check.fullmatch(definition):
+        nullable = re.fullmatch(
+            r"CHECK \(\(\(([a-z_][a-z0-9_]*) IS NULL\) OR (.*)\)\)",
+            definition,
+            flags=re.DOTALL,
+        )
+        candidate = "CHECK (" + nullable[2] + ")" if nullable else definition
+        match = enum_check.fullmatch(candidate)
+        if match is None or (nullable and nullable[1] != match["column"]):
             return definition
-        definition = array_cast.sub(lambda match: "(ARRAY[" + match[1] + "])", definition)
-        return element_cast.sub(lambda match: match[1], definition)
+        # Each match consumes a complete quoted literal. A nested SQL-looking
+        # string stays data, not another expression to rewrite.
+        values = re.findall(literal, match["values"] or match["elements"])
+        # A non-SQL marker cannot collide with an unrecognized CHECK string.
+        return "literal_text_array_check:" + json.dumps(
+            [match["column"], bool(nullable), values], ensure_ascii=False
+        )
 
     return {
         **state,

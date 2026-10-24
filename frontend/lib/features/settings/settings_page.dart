@@ -1,6 +1,12 @@
 import '../../shared/widgets/responsive_columns.dart';
 
 import 'package:flutter/material.dart';
+
+import '../auth/auth_api.dart';
+import '../planning/planning_import_section.dart';
+import '../records/personal_repository_scope.dart';
+import '../records/personal_workspace_import_section.dart';
+
 import 'package:university_path_frontend/shared/app_typography.dart';
 
 import '../planning/planning_repository.dart';
@@ -118,13 +124,18 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '이 정보와 개인 일정은 현재 기기에만 저장됩니다. 학교 공식 학적이나 졸업 판정을 변경하지 않습니다.',
+                      '이 정보와 개인 일정은 ${widget.repository.isServerBacked ? '본인 계정 서버에' : '현재 기기에만'} 저장됩니다. 학교 공식 학적이나 졸업 판정을 변경하지 않습니다.',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                         height: 1.45,
                       ),
                     ),
                     const SizedBox(height: 18),
+                    if (widget.repository.isServerBacked)
+                      PlanningImportSection(repository: widget.repository),
+                    if (PersonalRepositoryScope.read(context)?.importer
+                        case final importer?)
+                      PersonalWorkspaceImportSection(importer: importer),
                     IgnorePointer(
                       ignoring: _saving,
                       child: _settingsCard(
@@ -293,7 +304,13 @@ class _SettingsPageState extends State<SettingsPage> {
                       children: [
                         FilledButton(
                           onPressed: _saving ? null : _save,
-                          child: Text(_saving ? '저장 중…' : '기기에 저장'),
+                          child: Text(
+                            _saving
+                                ? '저장 중…'
+                                : widget.repository.isServerBacked
+                                ? '서버에 저장'
+                                : '기기에 저장',
+                          ),
                         ),
                         if (_saved) ...[
                           const SizedBox(width: 12),
@@ -357,6 +374,7 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       await widget.repository.saveProfile(
         PlanningProfile(
+          version: _displayedProfile?.version,
           school: _school.text.trim(),
           department: _department.text.trim(),
           admissionYear: int.tryParse(_admissionYear.text.trim()),
@@ -372,9 +390,13 @@ class _SettingsPageState extends State<SettingsPage> {
           _displayedProfile = widget.repository.profile;
         });
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        setState(() => _error = '기기에 저장하지 못했습니다. 입력을 유지했으니 다시 시도하세요.');
+        setState(
+          () => _error = error is AuthFailure
+              ? '${error.message} 입력은 유지됩니다.'
+              : '${widget.repository.isServerBacked ? '서버' : '기기'}에 저장하지 못했습니다. 입력을 유지했으니 다시 시도하세요.',
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);

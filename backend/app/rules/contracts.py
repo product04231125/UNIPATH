@@ -121,7 +121,7 @@ class ThesisRecord(Contract):
     id: UUID
     thesis_type: Name
     approval_status: Approval
-    is_completed: bool = Field(strict=True)
+    is_completed: bool | None = Field(strict=True)
     grade: Name | None = None
 
 
@@ -199,8 +199,15 @@ class ThesisRule(RuleBase):
     accepted_grades: tuple[Name, ...] = ()
 
 
+class ReviewRule(RuleBase):
+    """A known requirement without executable criteria must remain unresolved."""
+
+    kind: Literal["manual_review"] = "manual_review"
+    reason: Name = "explicit_condition_required"
+
+
 Rule = Annotated[
-    CreditRule | CourseRule | VolunteerRule | CertificateRule | ThesisRule,
+    CreditRule | CourseRule | VolunteerRule | CertificateRule | ThesisRule | ReviewRule,
     Field(discriminator="kind"),
 ]
 

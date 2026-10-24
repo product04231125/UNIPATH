@@ -10,16 +10,98 @@
 `0001_enable_pgvector`는 vector 확장을 활성화하고 `0002_identity_sessions`는 실제
 users·auth_sessions·auth_throttles·institutions·admin_scopes·identity_audits 6개 테이블을
 생성한다. `0003_academic_catalog`는 departments·curricula·courses·curriculum_courses·
-rule_sets·graduation_rules·official_documents를 추가해 **13개 테이블**을 물리 구현한다.
+rule_sets·graduation_rules·official_documents를 추가했다. `0004_personal_records`는
+개인 프로필·개인 자료 11종·순서 참조 2종·재시도 영수증 15개를 추가했다.
+`0005_personal_evaluations`는 개인 계산 이력 하나를 추가한다. `0006_school_knowledge`는
+학교 문서 추출/검토와 청크 2개를 추가한다. `0007_official_rule_programs`는 자격증/발급기관
+마스터와 실행 규칙·근거·마스터 참조 7개를 추가한다. `0008_personal_imports`는 개인 자료
+일괄 이전의 최소 영수증 하나를 추가한다. `0009_official_record_sources`는 학교 발급 자료의
+비공개 원본과 검토 이벤트 2개를 추가한다. `0010_official_student_records`는
+학교 검토 기록 묶음·이벤트·과목/자격 참조 4개를 추가한다.
+`0011_official_graduation_audits`는 전체 규정 검토·이벤트·본인 감사 3개를 추가해
+48개 테이블을 물리 구현한다. `0012_school_admin_applications`는 학교관리자 신청 하나를
+추가해 **총 49개 도메인 테이블**을 구현한다(Alembic 버전 테이블 별도).
+`0013_admin_decision_roundtrip`은 결정 CHECK의 동등한 OR 표현으로 백업·복원 지문을
+안정화하며 테이블이나 허용 상태를 추가하지 않는다.
 학교 메타데이터/버전/삭제 표시와 범위 회수 사유도 추가한다.
-아래 전체 논리 ERD/단계 표 중 학생 공식 기록·판정·RAG 청크는 도입 계획이다.
+아래 전체 논리 ERD/단계 표의 개별 학생 기록 엔터티는 학교 검토 묶음으로 우선 구현한다.
+공식 감사는 최소 입력·조건·결과를 JSONB 스냅샷으로 구현하고 별도 결과 행 테이블은 만들지 않는다.
+벡터 임베딩과 전체 진로/채용 확장은 도입 계획이다.
 현재 users에는 학교/학과/교육과정 FK가 없으며 자유 입력 프로필을 공식 학적으로 승격하지 않는다.
 임베딩 모델/차원은 미정이며 pgvector 검사는 합성 임시 테이블을 사용한다.
+
+학교 발급 자료는 [원본 제출·검토 계약](api/official-record-sources.md)으로 본인이 검토를
+허용한 학교 범위에만 공유한다. `official_record_sources`는 소유자·학교/학과/교육과정 복합
+FK, 본인/client_id UNIQUE, 파일 SHA-256·크기 CHECK와 BYTEA 원본을 보관한다.
+`official_record_source_events`는 원본 FK와 원본/버전 UNIQUE로 수행자·상태 전이·비공개
+사유를 보관한다. 원본은 불변이며 이벤트는 추가만 한다. 철회는 관리자 열람을 종료하며
+파일을 자동 삭제하지 않는다. 이 두 테이블은 정규화된 학생 공식 성적/봉사/자격 테이블이나
+공식 졸업감사를 대신하지 않는다.
+
+```mermaid
+erDiagram
+    USERS ||--o{ OFFICIAL_RECORD_SOURCES : submits
+    INSTITUTIONS ||--o{ OFFICIAL_RECORD_SOURCES : reviews
+    DEPARTMENTS o|--o{ OFFICIAL_RECORD_SOURCES : scopes
+    CURRICULA o|--o{ OFFICIAL_RECORD_SOURCES : scopes
+    OFFICIAL_RECORD_SOURCES ||--|{ OFFICIAL_RECORD_SOURCE_EVENTS : records
+    USERS o|--o{ OFFICIAL_RECORD_SOURCE_EVENTS : performs
+```
+
+[학교 검토 기록 계약](api/official-student-records.md)의 `official_record_batches`는 확인한
+원본/소유자/학교 복합 FK, 적용 문맥, 기준일·완전성·종류, 지문을 갖는 JSONB 기록을 저장한다.
+승인본은 불변이며 이벤트는 묶음/버전 UNIQUE다. 과목/자격 참조는 같은 학교의 과목과
+전역 자격·발급처의 검토 당시 버전·이름을 보존하고 삭제를 막는다. 소유자·전체 문맥·종류의
+현재 승인 UNIQUE는 교육과정 null도 동일값으로 취급한다. 원본 종료 시 같은 트랜잭션에서
+초안/승인을 종료한다. 보호 참조 조회는 학생·문서 ID·수량을 공개하지 않는다.
+
+```mermaid
+erDiagram
+    OFFICIAL_RECORD_SOURCES ||--o{ OFFICIAL_RECORD_BATCHES : supports
+    USERS ||--o{ OFFICIAL_RECORD_BATCHES : owns
+    INSTITUTIONS ||--o{ OFFICIAL_RECORD_BATCHES : scopes
+    DEPARTMENTS o|--o{ OFFICIAL_RECORD_BATCHES : scopes
+    CURRICULA o|--o{ OFFICIAL_RECORD_BATCHES : scopes
+    OFFICIAL_RECORD_BATCHES ||--|{ OFFICIAL_RECORD_BATCH_EVENTS : records
+    USERS o|--o{ OFFICIAL_RECORD_BATCH_EVENTS : reviews
+    OFFICIAL_RECORD_BATCHES ||--o{ OFFICIAL_RECORD_COURSE_REFS : snapshots
+    COURSES ||--o{ OFFICIAL_RECORD_COURSE_REFS : protects
+    OFFICIAL_RECORD_BATCHES ||--o{ OFFICIAL_RECORD_CERTIFICATE_REFS : snapshots
+    CERTIFICATES ||--o{ OFFICIAL_RECORD_CERTIFICATE_REFS : protects
+    CERTIFICATE_PROVIDERS ||--o{ OFFICIAL_RECORD_CERTIFICATE_REFS : protects
+```
+
+공식 감사의 물리 관계는 다음과 같다. `graduation_catalog_reviews`는 문맥 5개·기준일별
+단일 승인 UNIQUE와 불변 전체 규정/지문을 갖는다. 새 검토는 이전 버전을 명시해 교체하고
+`graduation_catalog_review_events`에 추가한다. `graduation_audits`는 본인/client_id UNIQUE,
+고정 버전·공식 결과/상태 일치 CHECK, 문맥 FK, 검토 FK와 최소 입력·조건·결과·원본 페이지
+대응의 JSONB/지문을 저장한다. 아래 논리 `GraduationAuditResult`는 이 JSONB 결과 배열에
+대응하며 아직 별도 물리 테이블이 아니다. 원본/규칙 회수 후에도 과거 결과를 변경하지 않고
+조회 시 현재 근거 사용 가능 여부를 따로 확인한다. 관리자에게 타 학생 감사 열람권을 부여하지 않는다.
+
+```mermaid
+erDiagram
+    INSTITUTIONS ||--o{ GRADUATION_CATALOG_REVIEWS : scopes
+    DEPARTMENTS ||--o{ GRADUATION_CATALOG_REVIEWS : scopes
+    CURRICULA ||--o{ GRADUATION_CATALOG_REVIEWS : scopes
+    USERS o|--o{ GRADUATION_CATALOG_REVIEWS : attests
+    GRADUATION_CATALOG_REVIEWS ||--|{ GRADUATION_CATALOG_REVIEW_EVENTS : records
+    USERS o|--o{ GRADUATION_CATALOG_REVIEW_EVENTS : performs
+    USERS ||--o{ GRADUATION_AUDITS : owns
+    GRADUATION_CATALOG_REVIEWS o|--o{ GRADUATION_AUDITS : historical_basis
+    INSTITUTIONS ||--o{ GRADUATION_AUDITS : scopes
+    DEPARTMENTS ||--o{ GRADUATION_AUDITS : scopes
+    CURRICULA ||--o{ GRADUATION_AUDITS : scopes
+```
 
 ```mermaid
 erDiagram
     USERS ||--o{ AUTH_SESSIONS : owns
     USERS ||--o{ ADMIN_SCOPES : receives
+    USERS ||--o{ SCHOOL_ADMIN_APPLICATIONS : applies
+    USERS o|--o{ SCHOOL_ADMIN_APPLICATIONS : reviews
+    INSTITUTIONS ||--o{ SCHOOL_ADMIN_APPLICATIONS : requested_school
+    ADMIN_SCOPES o|--o{ SCHOOL_ADMIN_APPLICATIONS : granted_scope
     INSTITUTIONS ||--o{ ADMIN_SCOPES : scopes
     USERS o|--o{ IDENTITY_AUDITS : performs
     INSTITUTIONS o|--o{ IDENTITY_AUDITS : concerns
@@ -34,6 +116,16 @@ erDiagram
     GRADUATION_RULES o|--o{ OFFICIAL_DOCUMENTS : references
     USERS {
         uuid id PK
+    }
+    SCHOOL_ADMIN_APPLICATIONS {
+        uuid id PK
+        uuid applicant_id FK
+        uuid institution_id FK
+        uuid client_id
+        string status
+        int version
+        uuid reviewed_by FK
+        uuid granted_scope_id FK
     }
     AUTH_SESSIONS {
         string token_hash PK
@@ -52,23 +144,153 @@ erDiagram
     }
 ```
 
+개인 자료의 물리 관계는 아래와 같다. 모든 개인 항목은 owner_id로 제한하며 자원 간 참조는
+(id, owner_id) 복합 FK를 사용한다. 개인 과목·규칙의 교육과정도 같은 소유자/과정으로 검사한다.
+생성 영수증은 삭제된 자료를 재시도로 되살리지 않도록 원문 없이 식별자·지문만 보존한다.
+공식 학적·성적 테이블과 구별하며 [개인 자료 계약](api/personal.md)을 따른다.
+
+```mermaid
+erDiagram
+    USERS ||--o| PLANNING_PROFILES : plans
+    USERS ||--o{ PERSONAL_EVENTS : schedules
+    USERS ||--o{ PERSONAL_COURSE_RECORDS : owns
+    USERS ||--o{ PERSONAL_ACTIVITY_RECORDS : owns
+    USERS ||--o{ PERSONAL_EXPERIENCE_RECORDS : owns
+    USERS ||--o{ PERSONAL_CREDENTIAL_RECORDS : owns
+    USERS ||--o{ PERSONAL_ACHIEVEMENT_RECORDS : owns
+    USERS ||--o{ PERSONAL_CURRICULA : owns
+    USERS ||--o{ PERSONAL_CURRICULUM_COURSES : owns
+    USERS ||--o{ PERSONAL_GRADUATION_RULES : owns
+    USERS ||--o{ PORTFOLIO_COMPOSITIONS : owns
+    USERS ||--o{ APPLICATION_DOCUMENTS : owns
+    USERS ||--o{ PERSONAL_CREATION_RECEIPTS : retries
+    USERS ||--o{ PERSONAL_IMPORT_RECEIPTS : imports
+    USERS ||--o{ PERSONAL_EVALUATIONS : retains
+    PERSONAL_EVALUATIONS {
+        uuid id PK
+        uuid owner_id FK
+        uuid curriculum_id "historical identity, no live FK"
+        int curriculum_version
+        date evaluated_on
+        jsonb result_json
+        jsonb input_snapshot_json
+    }
+    PERSONAL_IMPORT_RECEIPTS {
+        uuid owner_id PK,FK
+        uuid import_id PK
+        string digest
+        int record_count
+        int profile_version "historical version"
+        jsonb mappings_json "historical UUIDs and versions, no live FK"
+        datetime committed_at
+    }
+    PERSONAL_CURRICULA ||--o{ PERSONAL_CURRICULUM_COURSES : includes
+    PERSONAL_CURRICULA ||--o{ PERSONAL_GRADUATION_RULES : defines
+    PERSONAL_COURSE_RECORDS o|--o{ PERSONAL_CURRICULUM_COURSES : links
+    PERSONAL_CURRICULUM_COURSES o|--o{ PERSONAL_GRADUATION_RULES : references
+    PERSONAL_COURSE_RECORDS o|--o{ PERSONAL_GRADUATION_RULES : relates
+    PERSONAL_ACTIVITY_RECORDS o|--o{ PERSONAL_GRADUATION_RULES : relates
+    PERSONAL_EXPERIENCE_RECORDS o|--o{ PERSONAL_GRADUATION_RULES : relates
+    PERSONAL_CREDENTIAL_RECORDS o|--o{ PERSONAL_GRADUATION_RULES : relates
+    PERSONAL_ACHIEVEMENT_RECORDS o|--o{ PERSONAL_GRADUATION_RULES : relates
+    PORTFOLIO_COMPOSITIONS ||--o{ PORTFOLIO_SOURCES : orders
+    PERSONAL_ACHIEVEMENT_RECORDS ||--o{ PORTFOLIO_SOURCES : sources
+    APPLICATION_DOCUMENTS ||--o{ APPLICATION_DOCUMENT_SOURCES : orders
+    PERSONAL_ACHIEVEMENT_RECORDS o|--o{ APPLICATION_DOCUMENT_SOURCES : sources
+    PERSONAL_EXPERIENCE_RECORDS o|--o{ APPLICATION_DOCUMENT_SOURCES : sources
+    INSTITUTIONS o|--o{ PLANNING_PROFILES : selected
+    DEPARTMENTS o|--o{ PLANNING_PROFILES : selected
+    CURRICULA o|--o{ PLANNING_PROFILES : selected
+```
+
 인증 필드·운영자 생성·원자성과 후속 경계는 [인증 API](api/authentication.md)를 따른다.
+개인 일괄 이전은 자료·관계·생성 영수증과 최소 이전 영수증을 한 트랜잭션에 저장한다.
+대응표의 자료 ID/버전은 이력이며 삭제 후에도 재생성하지 않도록 live FK로 연결하지 않는다.
+원문을 영수증에 중복 저장하지 않는다. [이전 API](api/personal-imports.md)를 따른다.
 범위는 학교 전체만 지원하며 하위 학과/교육과정 범위는 미구현이다. 모델과 물리 스키마를
 `alembic check`로 대조한다.
 
-현재 학교 질의 API는 로컬 JSONL 청크와 메모리 BM25 인덱스를 사용한다.
-`DOCUMENT`·`DOCUMENT_CHUNK` 테이블이나 pgvector 검색은 아직 연결하지 않았으며,
-질문·답변·대화 이력을 DB에 저장하지 않는다. 파일 메타데이터는 운영 승인 DB를
-대체하지 않는다. 공식 문서 메타데이터의 적용은 RAG 원문 승인·청크 저장을 의미하지 않는다. 학사 관리의
+기존 학교 질의 API는 로컬 JSONL 청크와 메모리 BM25 인덱스를 사용한다.
+새 UUID 문맥 검색은 `school_knowledge_documents`·`school_knowledge_chunks`에 관리자 범위로
+추출본·검토/회수 이력·최소 본문/범위를 저장하고 승인본의 BM25 인덱스를 재사용한다.
+pgvector 임베딩은 미연결이며 질문·답변·대화 이력도 DB에 저장하지 않는다.
+파일 플래그와 공식 문서 메타데이터 적용은 이 별도 RAG 승인 절차를 대신하지 않는다. 학사 관리의
 버전·소속 복합 FK·삭제 보관 정책은 [학사 API](api/academic.md)를 따른다.
+
+공식 실행 규칙의 물리 관계는 다음과 같다. 실행본은 적용된 집합 또는 독립 요건 하나를
+참조한다. 하위 실행 조건·근거·과목 참조는 학교 복합 FK로 다른 학교 자료 연결을 차단한다.
+`school_knowledge_chunks(id, institution_id)` 고유 키도 새 마이그레이션에서 추가한다.
+초안 삭제 시 하위 조건/근거/참조만 cascade하며 원본·과목·문서·자격증은 삭제하지 않는다.
+승인본·회수본은 이력으로 보존한다. 세부 계약은 [실행 규칙](api/rule-programs.md)과
+[자격증 마스터](api/certificates.md)를 따른다.
+
+```mermaid
+erDiagram
+    CERTIFICATE_PROVIDERS ||--o{ CERTIFICATES : issues
+    RULE_SETS o|--o{ OFFICIAL_RULE_PROGRAMS : anchors
+    GRADUATION_RULES o|--o{ OFFICIAL_RULE_PROGRAMS : anchors_standalone
+    INSTITUTIONS ||--o{ OFFICIAL_RULE_PROGRAMS : scopes
+    OFFICIAL_RULE_PROGRAMS ||--o{ OFFICIAL_PROGRAM_RULES : defines
+    GRADUATION_RULES ||--o{ OFFICIAL_PROGRAM_RULES : describes
+    OFFICIAL_PROGRAM_RULES ||--o{ OFFICIAL_PROGRAM_EVIDENCE : cites
+    SCHOOL_KNOWLEDGE_CHUNKS ||--o{ OFFICIAL_PROGRAM_EVIDENCE : supports
+    OFFICIAL_PROGRAM_RULES ||--o{ OFFICIAL_PROGRAM_COURSE_REFS : requires
+    COURSES ||--o{ OFFICIAL_PROGRAM_COURSE_REFS : snapshots
+    OFFICIAL_PROGRAM_RULES ||--o{ OFFICIAL_PROGRAM_CERTIFICATE_REFS : accepts
+    CERTIFICATES ||--o{ OFFICIAL_PROGRAM_CERTIFICATE_REFS : snapshots
+```
 
 `app/rules/`에는 학점·필수과목·봉사·자격증·논문 요건의 독립 계산 코어를 구현했다.
 공식 규칙의 계층·입학연도·이수경로·유효기간·버전 선택과 개인 기준 계산을 구분하며
 내부의 `RuleSet`·`Snapshot`·`Evaluation` 계약을 사용한다. 이 계약은 SQLAlchemy 모델이나
-공개 API 스키마가 아니며 아래 논리 엔터티를 생성하지 않는다. 공식 승인·소유권·학교별
-성적/재수강 정책을 확인하는 DB 어댑터와 감사 저장은 후속 단계다.
+공개 API 스키마가 아니며 아래 논리 엔터티를 생성하지 않는다. 승인 실행본을 코어로 전달하는
+내부 어댑터와 본인 학교 검토 기록의 내부 Snapshot 어댑터를 제공한다.
+문자 성적 환산·재수강 합산 정책은 추정하지 않는다. 공식 감사 저장·HTTP는
+[졸업요건 감사 계약](api/graduation-audits.md)을 따른다.
+개인 DB 어댑터는 별도 DTO로 본인 자료·명시적 조건을 검증하고
+`personal_evaluations`에 불변 결과·조건·최소 계산 입력·버전을 보관한다.
+과정/자료 ID는 삭제 후에도 과거 결과가 유지되는 역사적 참조이며 live FK가 아니다.
+소유자 FK·개인 표시/상태 CHECK·소유자/재시도 키 UNIQUE와 목록 인덱스를 적용한다.
+소유자는 결과/snapshot을 삭제할 수 있고 생성 영수증은 삭제 결과의 재생성을 막는다.
+[개인 계산 계약](api/personal-evaluations.md)을 따르며 아래 공식 GraduationAudit와 구별한다.
 계산 경로·누락 정보 처리·범위/버전 충돌은 [Rule Engine 문서](rule-engine.md)를 따른다.
 현재 DB의 백업·격리 복구 검증은 [백업 문서](database-backups.md)를 따른다.
+
+학교 지식의 물리 관계는 다음과 같다. 학사 문서 UUID별 추출본은 하나이며 새 원본은 학사 문서의
+새 적용 판본을 사용한다. 소속은 원본에서 결정하고 학교 복합 FK로 보호한다. 승인/회수본은
+불변이며 초안 삭제만 청크를 함께 지운다. chunk 행의 is_blank는 검토자가 확인한 빈 페이지이고
+검색 본문·인용에는 포함하지 않는다. 원본 hash는 검토자 제공 값이며 파일 자동 검증을 뜻하지 않는다.
+
+```mermaid
+erDiagram
+    OFFICIAL_DOCUMENTS ||--o| SCHOOL_KNOWLEDGE_DOCUMENTS : extracts
+    INSTITUTIONS ||--o{ SCHOOL_KNOWLEDGE_DOCUMENTS : scopes
+    DEPARTMENTS o|--o{ SCHOOL_KNOWLEDGE_DOCUMENTS : scopes
+    CURRICULA o|--o{ SCHOOL_KNOWLEDGE_DOCUMENTS : scopes
+    USERS ||--o{ SCHOOL_KNOWLEDGE_DOCUMENTS : reviews
+    SCHOOL_KNOWLEDGE_DOCUMENTS ||--o{ SCHOOL_KNOWLEDGE_CHUNKS : contains
+    SCHOOL_KNOWLEDGE_DOCUMENTS {
+        uuid id PK
+        uuid source_document_id FK "unique"
+        uuid institution_id FK
+        string document_hash
+        string status "draft / approved / revoked"
+        int version
+    }
+    SCHOOL_KNOWLEDGE_CHUNKS {
+        uuid id PK
+        uuid knowledge_document_id FK
+        int page
+        int part_index
+        bool is_blank
+        string content_hash
+        jsonb admission_years
+        jsonb tracks
+    }
+```
+
+업로드·검토·기간/판본/캐시 경계는 [학교 지식 API](api/school-knowledge.md)를 따른다.
+아래 논리 Document/DocumentChunk/DocumentScope는 임베딩·다른 지식 종류까지 포함한 목표 모델이다.
 
 ## 1. 학사 및 사용자 코어
 
@@ -671,7 +893,7 @@ erDiagram
 
 ## 단계별 도입 계획과 현재 구현
 
-현재 물리 구현은 위 인증/학교 범위·학사 메타데이터 13개 테이블이다. 아래 표는 각 단계의 전체 목표이며
+현재 물리 구현은 인증/학교 범위·학사 메타데이터·개인 자료/참조/생성 및 이전 영수증·개인 계산·학교 지식·실행 규칙/자격증 39개 테이블이다. 아래 표는 각 단계의 전체 목표이며
 나머지 학사·문서·판정 엔터티가 이미 생성됐다는 뜻이 아니다.
 
 | 단계 | 목표 | 실제 생성·구현 대상 |

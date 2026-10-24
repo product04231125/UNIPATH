@@ -1,12 +1,19 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Header, Request, Response
 from fastapi.security import APIKeyCookie, HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_session
 from app.core.config import Environment
-from app.schemas.auth import LoginRequest, LoginResponse, MeResponse, RegisterRequest, SessionMode
+from app.schemas.auth import (
+    LoginRequest,
+    LoginResponse,
+    MeResponse,
+    PasswordChangeRequest,
+    RegisterRequest,
+    SessionMode,
+)
 from app.services import auth
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -23,6 +30,13 @@ def get_identity(
     local_cookie: Annotated[
         str | None, Depends(APIKeyCookie(name="unipath_session", auto_error=False))
     ],
+    expected_owner: Annotated[
+        str | None,
+        Header(
+            alias="X-Unipath-Owner",
+            description="Optional workspace account UUID precondition; never a credential",
+        ),
+    ] = None,
 ):
     return auth.current_identity(request, db)
 
@@ -88,3 +102,21 @@ def logout_all(request: Request, response: Response, db: Database, identity: Cur
         samesite="strict",
     )
     response.headers["Cache-Control"] = "no-store"
+
+
+@router.post("/change-password", status_code=204)
+def change_password(
+    payload: PasswordChangeRequest,
+    request: Request,
+    response: Response,
+    db: Database,
+    identity: CurrentIdentity,
+):
+    auth.change_password(db, request, payload)
+    response.delete_cookie(
+        auth.cookie_name(request.app.state.settings),
+        path="/",
+        secure=request.app.state.settings.app_env != Environment.LOCAL,
+        httponly=True,
+        samesite="strict",
+    )

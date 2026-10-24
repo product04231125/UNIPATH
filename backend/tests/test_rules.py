@@ -8,9 +8,32 @@ from pydantic import ValidationError
 
 from app.rules.__main__ import PersonalInput, demo, main
 from app.rules.contracts import AcademicContext, RuleSet, Snapshot, Status
-from app.rules.engine import evaluate_official, evaluate_personal
+from app.rules.engine import evaluate_official, evaluate_personal, evaluate_personal_sources
 
 TODAY = date(2026, 10, 12)
+
+
+@pytest.mark.parametrize(
+    "complete,unresolved,status",
+    [
+        (False, False, Status.NOT_APPLICABLE),
+        (True, False, Status.NOT_APPLICABLE),
+        (False, True, Status.NEEDS_REVIEW),
+        (True, True, Status.NEEDS_REVIEW),
+    ],
+)
+def test_known_unresolved_catalogue_is_not_confused_with_no_metadata(complete, unresolved, status):
+    result = evaluate_official(
+        (),
+        Snapshot(),
+        AcademicContext(),
+        as_of=TODAY,
+        catalog_complete=complete,
+        unresolved_catalog=unresolved,
+    )
+    assert result.status == status
+    if unresolved:
+        assert result.reason == "catalog_completeness_unconfirmed"
 
 
 def uid(n):
@@ -49,6 +72,112 @@ def academic(n=1, **values):
 
 def evaluate(rule_set, **snapshot):
     return evaluate_personal((rule_set,), Snapshot.model_validate(snapshot), as_of=TODAY)
+
+
+@pytest.mark.parametrize(
+    "requires_approval,approval,status",
+    [
+        (True, "approved", Status.NEEDS_REVIEW),
+        (True, "pending", Status.NEEDS_REVIEW),
+        (True, "rejected", Status.NOT_SATISFIED),
+        (False, "rejected", Status.NEEDS_REVIEW),
+    ],
+)
+def test_unknown_thesis_completion_is_not_assumed_incomplete(requires_approval, approval, status):
+    rule = personal("thesis", thesis_type="capstone", requires_approval=requires_approval)
+    result = evaluate(
+        rule,
+        theses=[
+            {
+                "id": uid(20),
+                "thesis_type": "capstone",
+                "approval_status": approval,
+                "is_completed": None,
+            }
+        ],
+    )
+    assert result.status == status
+    if status == Status.NEEDS_REVIEW:
+        assert result.results[0].deficit is None
+
+
+def test_confirmed_completed_thesis_still_satisfies_with_another_unknown_record():
+    rule = personal("thesis", thesis_type="capstone")
+    unknown = {
+        "id": uid(20),
+        "thesis_type": "capstone",
+        "approval_status": "pending",
+        "is_completed": None,
+    }
+    known = {
+        "id": uid(21),
+        "thesis_type": "capstone",
+        "approval_status": "approved",
+        "is_completed": True,
+    }
+    for records in ([unknown, known], [known, unknown]):
+        result = evaluate(rule, theses=records)
+        assert result.status == Status.SATISFIED
+        assert result.results[0].evidence_record_ids == (UUID(uid(21)),)
+
+
+def another_personal(rule_set, identifier=200):
+    data = rule_set.model_dump(mode="json")
+    data["id"] = uid(identifier)
+    for index, rule in enumerate(data["rules"]):
+        rule["id"] = uid(identifier + index + 1)
+    return RuleSet.model_validate(data)
+
+
+def test_personal_cases_use_their_own_selected_sources():
+    first = personal(minimum="3")
+    second = another_personal(personal(minimum="5"))
+    result = evaluate_personal_sources(
+        (
+            (first, Snapshot.model_validate({"academics": [academic(earned_credits="3")]})),
+            (second, Snapshot.model_validate({"academics": [academic(earned_credits="4")]})),
+        ),
+        as_of=TODAY,
+    )
+    assert result.status == Status.NOT_SATISFIED and result.official is False
+    assert [r.current for r in result.results] == [Decimal(3), Decimal(4)]
+    assert [r.status for r in result.results] == [Status.SATISFIED, Status.NOT_SATISFIED]
+
+
+def test_missing_personal_criteria_remain_review_items_instead_of_disappearing():
+    known = personal(minimum="3")
+    missing = another_personal(personal(kind="manual_review"))
+    result = evaluate_personal_sources(
+        (
+            (known, Snapshot.model_validate({"academics": [academic()]})),
+            (missing, Snapshot()),
+        ),
+        as_of=TODAY,
+    )
+    assert result.status == Status.NEEDS_REVIEW
+    assert result.results[1].reason == "explicit_condition_required"
+    assert result.results[1].current is None and result.results[1].deficit is None
+
+
+def test_personal_source_cases_reject_ambiguous_rule_ids():
+    rule = personal(minimum="3")
+    result = evaluate_personal_sources(((rule, Snapshot()), (rule, Snapshot())), as_of=TODAY)
+    assert result.status == Status.NEEDS_REVIEW
+    assert result.reason == "ambiguous_rule_identifiers" and result.results == ()
+
+
+def test_personal_source_cases_skip_future_rules_and_report_no_rules():
+    rule = personal(minimum="3").model_copy(update={"effective_from": TODAY + timedelta(days=1)})
+    result = evaluate_personal_sources(((rule, Snapshot()),), as_of=TODAY)
+    assert result.status == Status.NOT_APPLICABLE and result.results == ()
+
+
+def test_personal_source_cases_never_accept_official_rules():
+    data = personal(minimum="3").model_dump(mode="json")
+    data.update(origin="official", scope={"scope_type": "institution", "institution_id": uid(9)})
+    rule = RuleSet.model_validate(data)
+    with pytest.raises(ValueError, match="official"):
+        evaluate_personal_sources(((rule, Snapshot()),), as_of=TODAY)
 
 
 @pytest.mark.parametrize(

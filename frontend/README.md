@@ -1,8 +1,18 @@
 # UniversityPath 프론트엔드
 
 Flutter Web/Windows 팀 작업에 학교 질의 API 연동을 추가했다. 기능 경계와 실행 상태는
-[프론트엔드 문서](../docs/frontend/README.md)를 따른다. 인증·개인 기록·졸업 판정은 아직
-서버와 연결하지 않았으며 채팅은 질문과 확인한 학교 문맥만 전송한다.
+[프론트엔드 문서](../docs/frontend/README.md)를 따른다. 인증·관리자 학사 화면은 실제 서버와
+연결했다. 실제 일반 계정의 학업 프로필·일정·개인 기록·구성·지원 문서는 서버 저장이다. 채팅은 질문과 확인한 학교 문맥만 전송한다.
+개인 자료·카탈로그·[개인 계산](../docs/api/personal-evaluations.md)의 typed 전송 adapter는
+준비됐으며 학업 프로필·일정은 서버 저장에 연결했다. [다른 개인 작업 공간](../docs/api/personal-workspace-integration.md)도 서버 저장에 연결했으며 개인 계산 버튼은 후속이다. 공식 졸업감사는 미연결이다.
+학교 문서 검토·UUID 문맥 검색에도 Pydantic 생성 DTO와 `school_knowledge_api.dart`를
+제공한다. [계약](../docs/api/school-knowledge.md)을 따르며 새 검토/검색 화면 연결은 후속이다.
+공식 실행 규칙·자격증 마스터의 타입과 전송 adapter는 `rule_program_models.dart`·
+`rule_program_api.dart`에 있다. 조건은 닫힌 타입으로 구분하며 규칙 선택을 졸업 판정으로
+표시하지 않는다. [실행 규칙 계약](../docs/api/rule-programs.md)의 화면 연결은 후속이다.
+`personal_import_api.dart`·`personal_import_models.dart`는 본인 동의 후 자료/관계를
+원자적으로 이전하는 타입 전송과 이력 조회를 제공한다. [이전 계약](../docs/api/personal-imports.md)을
+따르며 [학업 프로필·일정](../docs/api/planning-integration.md)의 동의·시간대 확인·저장소 전환을 연결했다. 다른 개인 자료 10종도 별도 동의 이전을 연결했다.
 
 ## 로컬 실행
 

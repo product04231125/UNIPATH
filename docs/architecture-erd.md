@@ -14,6 +14,7 @@ DB 준비 → 마이그레이션 성공 → API 시작 순서이며 도메인을
 `backend/app/`에는 API·스키마·DB·서비스·Rule Engine·RAG 경계를 마련했다.
 아래 다이어그램의 도메인 기능과 외부 어댑터는 목표 구조이며 현재 기능 구현이 아니다.
 현재 API는 상태/DB 준비 확인, `/auth/*` 계정·세션, `/admin/*` 계정·학교 범위 관리와
+`/me/*` 개인 자료, `/catalog/*` 학생 학사 조회와
 `POST /api/v1/assistant/queries`를 제공한다. 사용자·역할·세션은 PostgreSQL에 저장하고
 Web은 HttpOnly 쿠키, Windows는 메모리 bearer 토큰을 사용한다. 보호 API는 DB의 현재
 상태·역할·활성 학교 범위를 확인한다. 실제 관리자 로그인은 RemoteAdminRepository를 통해
@@ -23,9 +24,53 @@ Web은 HttpOnly 쿠키, Windows는 메모리 bearer 토큰을 사용한다. 보�
 기본 실행은 빈 인덱스이며 선택적 `compose.rag.yaml`은 PDF 추출 후 API에 읽기 전용
 JSONL을 연결한다. 파일 코퍼스는 로컬 환경에서만 사용한다.
 현재 PDF는 미승인이고 실제 생성기는 없으므로 공식 답변은 생성하지 않는다.
-졸업 판정 요청은 `rule_engine_required`로 안내하며 HTTP 졸업감사 호출은 후속 구현이다.
+학생의 학교 발급 PDF는 공용 규정 RAG와 다른 [원본 제출·검토](api/official-record-sources.md)
+경로로 처리한다. 본인이 선택한 학교의 원본 검토에 동의하면 제한된 PDF 스트림을 검사하고
+PostgreSQL BYTEA에 보관한다. 해당 학교 관리자가 발급기관·대상 신원을 검토하며 변경은
+현재 신원·학교 범위를 잠금 안에서 재확인한다. 원본 해시와 검토 이벤트는 DB 백업에 포함된다.
+확인된 원본에는 별도 [학교 검토 기록 API](api/official-student-records.md)로 관리자가
+페이지별 기록과 학적 문맥·검토 범위를 입력한다. 승인 후에는 내용을 고치지 않고 새 기록의
+명시적 교체로 이력을 보존한다. 원본 철회·회수는 연결 초안·승인도 같은 트랜잭션에서 종료한다.
+개인 입력 프로필을 공식 문맥으로 자동 승격하거나 외부 LLM으로 전송하지 않는다.
+
+```mermaid
+flowchart LR
+    Owner[로그인한 본인·학교 검토 동의] --> Upload[PDF 스트림·크기·형식 검사]
+    Upload --> PrivateDB[(비공개 원본 BYTEA·해시·검토 이벤트)]
+    Reviewer[해당 학교 관리자] --> Guard[현재 신원·학교 범위·원본 버전 확인]
+    Guard --> PrivateDB
+    PrivateDB --> Review[발급기관·대상 신원 검토]
+    Review --> Events[확인·반려·회수 이력]
+    Events --> PrivateDB
+    PrivateDB --> Records[관리자 페이지별 기록·문맥·검토 범위 입력]
+    Records --> Approval[원본 해시·마스터 버전·검토 확인]
+    Approval --> RecordDB[(불변 승인 기록·참조 스냅샷·검토 이력)]
+    RecordDB --> Snapshot[본인·문맥·기준일·완전성 확인 후 내부 Snapshot]
+    Snapshot --> RuleCore[독립 Rule Engine 코어]
+    Criteria[승인 실행 규칙·공식 출처] --> CatalogReview[관리자 전체 적용 요건·계층 검토]
+    CatalogReview --> Reviewed[(문맥·기준일별 불변 목록과 지문)]
+    Reviewed --> Audit[본인 명시적 감사 요청·현재 신원 잠금]
+    RecordDB --> Audit
+    Audit --> RuleCore
+    RuleCore --> AuditHistory[(본인 결과·최소 입력·조건·원본 페이지 대응)]
+    AuditHistory --> Validity[당시 결과 보존·현재 근거 사용 가능 여부 별도 확인]
+    Events --> Invalidate[철회·회수 시 연결 기록 사용 종료]
+    Invalidate --> RecordDB
+    PrivateDB --> Backup[DB 백업·격리 복원 검증]
+    RecordDB --> Backup
+```
+별도 인증 경로 `/me/school-searches`, `/me/school-queries`는 등록 UUID와 입학연도·이수경로를
+검증하고 DB의 승인 문서만 조회한다. 기존 이름 기반 `/assistant/queries`와 자동으로 섞지 않는다.
+학교 질의의 졸업 판정 요청은 계속 `rule_engine_required`로 안내한다. 별도 명시적
+[졸업요건 감사 API](api/graduation-audits.md)는 학교·학과·교육과정·입학연도·이수경로와
+기준일을 받아 전체 규정 검토 및 본인 학교 승인 기록만 코어에 전달한다. 질문 텍스트나
+개인 프로필로 학적·기준일을 자동 확정하지 않는다.
 `app/rules/`의 결정론적인 계산 코어는 DB·HTTP·LLM과 분리해 구현했다. 내부의 공식 규칙
-계산과 개인 기준 계산을 구분하고, 공개 API는 아직 이 코어를 호출하지 않는다.
+계산과 개인 기준 계산을 구분한다. 개인 계산 API는 본인 DB 자료와 명시적 조건을 코어에
+전달하며 불변 결과/입력 snapshot을 저장한다. 공식 자료 감사는 별도 DB 이력에
+최소 입력·조건·결과·지문을 보존하고 재현 검증한다. 원본/규칙 회수 후에도 과거 값을
+바꾸지 않고 상세 조회에서 현재 근거 사용 가능 여부를 확인한다. 관리자에게 타 학생의
+감사 열람권을 주지 않으며 기존 개인 계산 API와 결과를 섞지 않는다.
 `app/operations/db_backups.py`는 호스트에서 실행하는 읽기 전용 DB 백업·임시 DB 복구 검증
 도구이며 애플리케이션 요청 경로에 포함하지 않는다.
 현재 구현 흐름은 아래와 같다. 상세 API 계약은
@@ -45,8 +90,30 @@ flowchart LR
     Approval -->|승인 근거 없음| Missing[insufficient_evidence]
     Approval -->|승인 근거 있음 · 생성기 없음| Failed[failed]
     PrivateJson[비공개 개인 기준 JSON] --> RuleCore[독립적인 Rule Engine 코어]
+    PersonalAPI[인증한 개인 계산 API] --> Owned[본인 자료·명시 조건·버전 검증]
+    Owned --> RuleCore
     RuleCore --> PersonalResult[개인 기준 계산 · 공식 판정 아님]
+    PersonalResult --> History[(본인 불변 결과·최소 입력 snapshot)]
 ```
+
+### 개인 자료 일괄 이전
+
+```mermaid
+flowchart LR
+    Client[현재 계정의 검토한 자료·동의·확인한 시간대] --> Graph[타입·로컬 ID·전체 참조 검증]
+    Graph --> Guard[현재 세션·source owner 확인·신원 잠금]
+    Guard --> Replay[이전 ID·정상화 지문 확인]
+    Replay -->|기존 커밋| History[이전 당시 최소 ID 대응표]
+    Replay -->|새 요청| Translate[의존 순서로 서버 ID 변환]
+    Translate --> Common[공통 개인 자료·프로필 검증과 저장]
+    Common --> Transaction[(한 트랜잭션: 자료·순서 참조·생성 및 이전 영수증)]
+    Transaction --> History
+    Common -->|중간 실패| Rollback[전체 취소·원본 보존]
+```
+
+개별 CRUD와 같은 서비스 검증을 사용하되 커밋은 묶음 전체 마지막에 한 번만 한다.
+이전은 기존 프로필을 덮어쓰지 않고 개인 자료를 학교 확정 기록으로 바꾸지 않는다.
+프론트 타입/전송 adapter와 [이전 API](api/personal-imports.md)를 제공한다. [학업 프로필·일정 화면](api/planning-integration.md)은 동의·시간대 확인과 서버 저장소 전환을 연결했으며 [다른 개인 자료 10종](api/personal-workspace-integration.md)도 별도 서버 저장/동의 이전을 연결했다.
 
 ### 실제 관리자 저장 경로
 
@@ -65,14 +132,63 @@ flowchart LR
 문서 메타데이터 등록/적용은 RAG 승인·임베딩·졸업 판정과 분리한다.
 [학사 API](api/academic.md)에 입력·참조·버전 계약을 정의한다.
 
+### 학교 지식 검토와 DB 검색
+
+```mermaid
+flowchart LR
+    Extraction[RAG 팀 JSONL·원본 hash] --> Import[가져오기 도구 · 기존 초안 이어서 처리]
+    Import --> Guard[현재 관리자·허용 학교·원본 버전 확인]
+    Guard --> Draft[(DB 추출 초안·페이지·분할·범위·경고)]
+    Draft --> Review[관리자 출처·범위·추출·전체 원본 검토]
+    Review --> Published[(불변 승인본 · 회수 이력)]
+    Student[로그인한 학생의 등록 UUID·연도·이수경로] --> Selection[현재 학교 소속·기간·최신 적용본·승인 상태]
+    Published --> Selection
+    Selection --> Cache[질문을 저장하지 않는 제한된 본문 인덱스 캐시]
+    Cache --> BM25[RAG 팀 BM25·전체 조건 페이지 확인]
+    BM25 --> Sources[출처·발췌 검색 결과]
+    BM25 --> Generation[공통 생성 인터페이스 · 실제 생성기 미설정]
+    Sources --> Recheck[응답 전 세션·문서 버전 재확인]
+    Generation --> Recheck
+```
+
+동일 문서의 본문을 요청마다 읽고 재인덱싱하지 않으며 캐시 키에 선택 범위·문서/학교 버전·날짜를
+포함한다. 승인 회수·새 적용본이 나타나면 과거 근거와 진행 중 결과를 버린다. 검토한 빈 페이지는
+완전성에만 포함하고 본문·인용을 만들지 않는다. 전체 corpus 한도를 넘으면 부분 자료로
+생성하지 않는다. 원문 파일 다운로드·파일 자동 승인·실제 LLM/임베딩·대화 저장은 하지 않는다.
+[검토·검색 API](api/school-knowledge.md)를 따르며 새 검토/검색 화면 연결은 후속이다.
+
+### 실행 규칙 검토와 선택
+
+```mermaid
+flowchart LR
+    Metadata[적용된 규칙 메타데이터] --> Draft[명시적 조건·연도·이수경로 초안]
+    Knowledge[승인 학교 문서 청크] --> Draft
+    Masters[같은 학교 과목·전역 자격증 마스터] --> Draft
+    Draft --> Review[관리자 전체 조건·출처·범위·예외 검토]
+    Review --> Published[(불변 승인 실행본·근거·참조 snapshot)]
+    Context[등록 학교·학과·교육과정·입학연도·경로] --> Selection[최신 적용본·기간·출처 상태 재검증]
+    Published --> Selection
+    Selection --> Result[실행본·누락 요건·수동 확인 요건]
+    Published --> Adapter[내부 코어 규칙 어댑터]
+    Adapter --> Core[결정론적 Rule Engine]
+    Records[본인 학교 발급 승인 기록] --> Audit[명시적 본인 감사 요청]
+    Reviewed[문맥·기준일별 전체 규정 검토] --> Audit
+    Audit --> Core
+    Core --> History[(본인 불변 결과·근거·현재 사용 여부)]
+```
+
+등록된 실행본 선택의 `catalog_complete`는 항상 false다. 학교가 확정한 기록 공급자와
+전체 규정 완전성 확인 없이 공식 졸업요건 충족으로 표시하지 않는다.
+[졸업요건 감사 API](api/graduation-audits.md)는 전체 목록·계층의 별도 검토와 본인 기록을
+확인하고 불변 결과를 저장한다. 검토/감사 화면은 후속이다. [실행 규칙 API](api/rule-programs.md)와 구분한다.
+
 ### 학교 질의와 독립 AI 대화창
 
 - Windows에서는 우측 AI 패널을 별도 Flutter OS 창으로 분리할 수 있다. Web은 도킹 패널과
   좁은 폭 오버레이를 사용한다.
 - 도킹·분리 창은 같은 학교 질의 HTTP 어댑터와 응답 위젯을 사용한다. 질문과 사용자가 확인한
   학교 문맥만 전송한다. 학교 질의 API와 Flutter 연동 코드가 이 브랜치에 함께 포함된다.
-- 대화·질문·요청은 메인이 소유하고 IPC로 창 사이에 공유한다. 학교 질의 문맥은 계정별 기기 로컬의 저장된
-  프로필을 공유하고 Windows 분리 창은 메인 창에 IPC로 조회·저장을 요청한다. 서버 대화
+- 대화·질문·요청은 메인이 소유하고 IPC로 창 사이에 공유한다. 학교 질의 문맥은 저장된 개인 프로필(실제 일반 계정은 서버 저장)을 공유하고 Windows 분리 창은 메인 창에 IPC로 조회·저장을 요청한다. 서버 대화
   저장·동기화는 conversation_id 등의 별도 계약이 필요한 후속 구현이다.
 - 메인 창의 채팅 아이콘은 기존 독립 창이 있으면 새 창을 만들지 않고 해당 창을
   전면화한다. Windows 목업에서 메인 창을 닫으면 분리 AI 창을 먼저 명시적으로
@@ -89,16 +205,54 @@ flowchart LR
 flowchart LR
     Login[Flutter 로그인·가입] --> AuthAPI[Auth API]
     AuthAPI --> Passwords[Argon2id 검증]
+    AccountSecurity[공통 계정 보안 화면] --> BoundSecurity[본인·로그인 세대에 묶인 작업]
+    BoundSecurity --> AuthAPI
     AuthAPI --> Sessions[서버 세션 발급·폐기]
     Sessions --> IdentityDB[(PostgreSQL 사용자·세션)]
     AdminAPI[관리자 API] --> Guard[현재 계정·역할·학교 범위]
     Guard --> IdentityDB
     Guard --> AccessDB[(학교·관리 범위·변경 이력)]
+    Applicant[로그인 계정의 학교관리자 신청] --> Pending[(신청 대기·반려·취소 이력)]
+    Pending --> ManualReview[슈퍼관리자 신원·학교 담당 확인]
+    ManualReview --> AtomicGrant[신청 승인·역할·학교 범위 원자적 부여]
+    AtomicGrant --> Guard
+    AtomicGrant --> AccessDB
 ```
 
 아래 전체 도메인/외부 서비스 관계는 목표 구조다. 인증·운영자 초기화는
-[인증 API](api/authentication.md)를 따른다. 이메일/학교 담당자 신원 확인과 개인 자료
-서버 동기화는 후속이며 개인 로컬 자료는 사용자 UUID별로 분리한다.
+[인증 API](api/authentication.md)를 따른다. [학교관리자 신청·검토 API](api/school-admin-applications.md)는
+슈퍼관리자의 명시적 수동 확인을 기록한다. 이메일·학교 담당자 자동 신원 확인·SSO는 후속이다.
+[개인 자료 API](api/personal.md)와 [학생용 학사 조회](api/student-catalog.md)는 구현했고,
+프론트의 실제 일반 계정 프로필·일정·개인 기록·구성·지원 문서는 서버 저장이며 기기 원본/debug는 사용자 UUID별 로컬 저장이다. 공통 AuthApi의 사용자 UUID·로그인 세대에 묶인 전송 adapter와 Pydantic DTO를 사용한다. 서버는 선택 X-Unipath-Owner 헤더를 실제 신원과 비교해 탭 간 계정 전환 중 저장을 차단한다. 프로필·일정의 동의 이전은 기기 journal로 같은 요청을 재개하며 원본을 보존한다. 다른 개인 자료 10종은 전체 참조/순서를 변환해 별도 동의 이전을 제공한다. 실제 관리자 전송도 같은 소유자 조건을 사용한다.
+[개인 계산 API](api/personal-evaluations.md)는 별도 typed 전송 adapter를 제공하며
+실제 일반 계정의 개인 계산 화면은 다섯 명시 조건·선택 자료 버전·계산/불변 이력 조회/삭제를 연결했다. 전송한 요청은 작업 공간에서 고정해 같은 client UUID로 재시도한다. RAG/LLM은 이 계산에 참여하지 않는다.
+
+```mermaid
+flowchart LR
+    Client[학생용 전송 adapter] --> Auth[공통 AuthApi 세션]
+    Auth --> Me[개인 자료 API]
+    Me --> Owner[세션 소유자 및 버전·참조 검증]
+    Owner --> Personal[(개인 프로필·기록·초안·순서 참조)]
+    Owner --> Receipt[(생성 재시도 영수증)]
+    Auth --> Calculation[개인 계산 API]
+    Calculation --> PrivateGuard[본인 과정·자료·명시 조건·버전 확인]
+    Personal --> PrivateGuard
+    PrivateGuard --> Engine[결정론적 개인 계산]
+    Engine --> Snapshots[(본인 불변 계산 이력·최소 입력)]
+    Calculation --> Receipt
+    Auth --> Catalog[학생 카탈로그 API]
+    Catalog --> Published[삭제 학교 제외·기준일·최신 적용본 필터]
+    Published --> Academic[(학사 메타데이터)]
+    Planning[학업 프로필·일정 화면] --> Bound[계정 UUID·로그인 세대에 묶인 전송]
+    Bound --> Auth
+    Legacy[기기 원본] --> Consent[범위·시간대 확인과 이전 동의]
+    Consent --> Journal[계정별 재시도 journal]
+    Journal --> Import[원자적 개인 이전 API]
+    Import --> Personal
+    Records[8종 개인 기록·구성·지원 문서 화면] --> Bound
+    CalculationUI[개인 명시 조건·계산·이력 화면] --> Bound
+    Originals[보존한 기기 원본·debug 샘플] --> Local[계정별 기기 로컬 자료]
+```
 
 ```mermaid
 flowchart LR
@@ -391,8 +545,7 @@ flowchart TB
 `unipath-product` 프로젝트에 연결한다. 각 프로젝트의 API·DB 네트워크, DB 볼륨과
 비밀번호는 분리하고 동일한 FastAPI 이미지를 사용한다. 공개 게이트웨이에는 Web만
 연결하며 Web이 인증·관리자·학교 질의·readiness API를 내부 FastAPI로 프록시한다.
-다운로드 앱의 API도 해당 HTTPS 원점을 사용한다. develop은 실제 계정/역할과 계정별 로컬
-기록을 제공한다. main은 명시적 승격 전 이전 프리뷰를 유지한다. 운영 학사/공식 판정·LLM 완성과 구분한다.
+다운로드 앱의 API도 해당 HTTPS 원점을 사용한다. develop은 실제 계정/역할·학업 프로필/일정·개인 기록·구성·지원 문서의 서버 저장과 기기 원본 보존을 제공한다. main은 명시적 승격 전 이전 프리뷰를 유지한다. 운영 학사/공식 판정·LLM 완성과 구분한다.
 구체적인 설정·HTTPS 개통·GitHub 다운로드 절차는 [`releases.md`](releases.md)를 따른다.
 
 ```mermaid

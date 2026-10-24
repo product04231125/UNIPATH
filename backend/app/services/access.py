@@ -11,11 +11,18 @@ from app.core.auth_errors import AuthError, conflict, forbidden, unauthenticated
 from app.models.identity import AdminScope, AuthSession, IdentityAudit, Institution, Role, User
 from app.schemas.auth import RoleChange, ScopeCreate, StatusChange, UserAccessChange
 from app.schemas.common import ErrorCode
-from app.services.auth import Identity, require_institution
+from app.services.auth import Identity, current_identity, require_institution
 
 
 def lock_identity(db: Session):
     db.execute(text("SELECT pg_advisory_xact_lock(867420)"))
+
+
+def locked_identity(db: Session, request):
+    """Recheck the session after serializing with privilege changes."""
+    lock_identity(db)
+    db.expire_all()
+    return current_identity(request, db)
 
 
 def require_super(db: Session, identity: Identity, *, lock: bool = False):

@@ -11,11 +11,11 @@
 - `frontend/lib/features/records/experience/experience_page.dart`가 화면·입력 상태를 소유한다.
 - 예시 행은 `frontend/lib/features/records/fixtures/experience_fixture.dart`에 있다.
 - 종류·기관·기간·역할·결과/개인 기여·진행 상태를 분리 입력하며 개인 기록을 추가·수정·삭제한다.
-  메뉴 전환·재시작 뒤 기기 로컬에서 복원한다. [ERD 대조](../manual-input-boundaries.md)를 따른다.
+  실제 계정은 서버에서 재조회하며 debug/이전 원본은 기기에 남는다. [ERD 대조](../manual-input-boundaries.md)를 따른다.
 
 ## 목업 경계
 
-- 증빙 파일 업로드·임시저장·이탈 경고·서버 저장은 아직 구현하지 않았다.
+- 실제 계정의 서버 저장을 연결했다. 증빙 파일 업로드·별도 임시저장·이탈 경고는 후속이다.
 - AI는 후속 계약 전 경험 원본을 저장하거나 확정하지 않는다.
 
 ## 후속 계약·검증

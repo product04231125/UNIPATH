@@ -94,6 +94,104 @@ def register(client, email="student@example.test", mode="bearer"):
     )
 
 
+@pytest.mark.parametrize("mode", ["bearer", "cookie"])
+def test_workspace_owner_precondition_prevents_cross_account_writes(auth_client, mode):
+    first = register(auth_client, mode=mode).json()
+    second = register(auth_client, email="other@example.test", mode=mode).json()
+    headers = {"Origin": "http://localhost:3000"}
+    if mode == "bearer":
+        headers["Authorization"] = "Bearer " + second["access_token"]
+    path = "/api/v1/me/planning-profile"
+    # Both credentials are genuine; only the stale workspace account differs.
+    for stale in (first["user"]["id"], "not-a-uuid"):
+        denied = auth_client.patch(
+            path,
+            headers={**headers, "X-Unipath-Owner": stale},
+            json={"school": "Must not be saved", "expected_version": 0},
+        )
+        assert denied.status_code == 403
+        assert denied.json()["error"]["code"] == "FORBIDDEN"
+    unchanged = auth_client.get(path, headers=headers).json()
+    assert unchanged["version"] == 0 and unchanged["school"] == ""
+    own_headers = {**headers, "X-Unipath-Owner": second["user"]["id"]}
+    assert (
+        auth_client.patch(
+            path, headers=own_headers, json={"school": "Owned school", "expected_version": 0}
+        ).status_code
+        == 200
+    )
+    assert auth_client.get(path, headers=own_headers).json()["school"] == "Owned school"
+    # Omitting the optional precondition keeps older clients compatible.
+    assert auth_client.get(path, headers=headers).status_code == 200
+
+
+def test_workspace_owner_header_is_allowed_by_browser_preflight():
+    with TestClient(
+        create_app(Settings(_env_file=None, postgres_password="synthetic-test-password"))
+    ) as client:
+        response = client.options(
+            "/api/v1/me/planning-profile",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "PATCH",
+                "Access-Control-Request-Headers": "content-type,x-unipath-owner",
+            },
+        )
+    assert response.status_code == 200
+    assert "x-unipath-owner" in response.headers["access-control-allow-headers"].lower()
+
+
+@pytest.mark.integration
+def test_admin_cookie_switch_cannot_save_another_admins_open_form(auth_client, auth_db):
+    first_id, _ = super_admin(auth_client, auth_db)
+    origin = {"Origin": "http://localhost:3000"}
+    first = auth_client.post(
+        "/api/v1/auth/login",
+        headers=origin,
+        json={"email": "operator@example.test", "password": PASSWORD, "session_mode": "cookie"},
+    )
+    assert first.status_code == 200
+    second = register(auth_client, email="second-admin@example.test").json()
+    second_id = second["user"]["id"]
+    assert (
+        auth_client.patch(
+            f"/api/v1/admin/users/{second_id}/role",
+            headers=origin,
+            json={"role": "super_admin", "expected_version": 1},
+        ).status_code
+        == 200
+    )
+    assert (
+        auth_client.post(
+            "/api/v1/auth/login",
+            headers=origin,
+            json={
+                "email": "second-admin@example.test",
+                "password": PASSWORD,
+                "session_mode": "cookie",
+            },
+        ).status_code
+        == 200
+    )
+    denied = auth_client.post(
+        "/api/v1/admin/institutions",
+        headers={**origin, "X-Unipath-Owner": str(first_id)},
+        json={"name": "Must not be created"},
+    )
+    assert denied.status_code == 403
+    headers = {**origin, "X-Unipath-Owner": second_id}
+    assert auth_client.get("/api/v1/admin/institutions", headers=headers).json()["items"] == []
+    created = auth_client.post(
+        "/api/v1/admin/institutions", headers=headers, json={"name": "Owned synthetic school"}
+    )
+    assert created.status_code == 201
+    with auth_db() as db:
+        entry = db.scalar(
+            select(IdentityAudit).where(IdentityAudit.target_id == UUID(created.json()["id"]))
+        )
+        assert entry is not None and str(entry.actor_id) == second_id
+
+
 def login(client, email="student@example.test", password=PASSWORD):
     return client.post(
         "/api/v1/auth/login",

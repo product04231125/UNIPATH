@@ -19,8 +19,10 @@ class LocalRecordWorkbench extends StatefulWidget {
     required this.fieldsLoader,
     this.validateValues,
     this.onUse,
+    this.repository,
   });
   final PersonalRecordKind kind;
+  final PersonalRecordRepository? repository;
   final String title;
   final Future<List<PersonalRecordField>> Function() fieldsLoader;
   final Future<String?> Function(Map<String, String>)? validateValues;
@@ -30,7 +32,7 @@ class LocalRecordWorkbench extends StatefulWidget {
 }
 
 class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
-  late final _repo = PersonalRecordRepository(widget.kind);
+  late final _repo = widget.repository ?? PersonalRecordRepository(widget.kind);
   final _form = GlobalKey<FormState>();
   final _controllers = <String, TextEditingController>{};
   List<PersonalRecordField> _fields = [];
@@ -108,19 +110,23 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
       await _repo.save(
         PersonalRecord(
           id: _editing?.id ?? PersonalRecord.newId(),
+          version: _editing?.version,
           values: values,
         ),
       );
       if (mounted) {
         _reset();
-        setState(() => _message = '개인 자료를 기기에 저장했습니다.');
+        setState(
+          () => _message =
+              '개인 자료를 ${_repo.isServerBacked ? '계정 서버' : '기기'}에 저장했습니다.',
+        );
       }
     } catch (e) {
       if (mounted) {
         setState(
           () => _error = e is StateError
               ? e.message
-              : '기기에 저장하지 못했습니다. 입력을 유지했으니 다시 시도하세요.',
+              : '저장하지 못했습니다. 입력을 유지했으니 다시 시도하세요.',
         );
       }
     } finally {
@@ -134,8 +140,10 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('${record.value('title')} 삭제'),
-        content: const Text(
-          '이 개인 자료만 삭제합니다. 연결된 과목·규칙·다른 기록은 유지되며 연결 대상을 다시 확인해야 합니다.',
+        content: Text(
+          _repo.isServerBacked
+              ? '계정 서버의 이 자료를 삭제합니다. 다른 자료가 참조 중이면 연결을 먼저 해제해야 합니다.'
+              : '이 개인 자료만 삭제합니다. 연결된 과목·규칙·다른 기록은 유지되며 연결 대상을 다시 확인해야 합니다.',
         ),
         actions: [
           TextButton(
@@ -153,7 +161,7 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
     if (yes != true || !mounted) return;
     setState(() => _saving = true);
     try {
-      await _repo.delete(record.id);
+      await _repo.delete(record.id, expectedVersion: record.version);
       if (mounted) _reset();
     } catch (_) {
       if (mounted) setState(() => _error = '삭제하지 못했습니다. 자료를 유지했습니다. 다시 시도하세요.');

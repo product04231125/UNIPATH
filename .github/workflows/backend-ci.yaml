@@ -4,21 +4,27 @@ on:
   pull_request:
     paths:
       - 'backend/**'
+      - 'scripts/**'
       - 'docs/sources/**'
       - 'docs/api/**'
       - 'compose*.yaml'
       - '.env.example'
       - '.dockerignore'
+      - 'deploy/gateway/**'
+      - 'deploy/preview/**'
       - '.github/workflows/backend-ci.yaml'
   push:
     branches: [main, develop]
     paths:
       - 'backend/**'
+      - 'scripts/**'
       - 'docs/sources/**'
       - 'docs/api/**'
       - 'compose*.yaml'
       - '.env.example'
       - '.dockerignore'
+      - 'deploy/gateway/**'
+      - 'deploy/preview/**'
       - '.github/workflows/backend-ci.yaml'
 
 permissions:
@@ -43,13 +49,16 @@ jobs:
       - name: Lint and format
         working-directory: backend
         run: |
-          uv run --frozen ruff check .
-          uv run --frozen ruff format --check .
+          uv run --frozen ruff check . ../scripts
+          uv run --frozen ruff format --check . ../scripts
       - name: Unit tests
         working-directory: backend
         env:
           POSTGRES_PASSWORD: synthetic-ci-password
         run: uv run --frozen pytest -q -m 'not integration'
+      - name: Release script tests
+        working-directory: backend
+        run: uv run --frozen python -m unittest discover -s ../scripts/tests -v
       - name: RAG extraction and development evaluation
         working-directory: backend
         run: |
@@ -65,6 +74,8 @@ jobs:
         run: docker compose -f compose.yaml -f compose.rag.yaml run --rm --no-deps migrate alembic check
       - name: Smoke check
         run: python3 backend/scripts/smoke_api.py
+      - name: Verify staged requests through both gateway layers
+        run: python3 backend/scripts/smoke_gateway_proxy.py
       - name: Verify backup restoration with synthetic data
         working-directory: backend
         run: uv run --frozen python -m scripts.smoke_db_backup

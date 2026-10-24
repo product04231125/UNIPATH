@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sembast/sembast.dart';
 
 import '../personal_record_repository.dart';
+import '../../auth/local_data_owner.dart';
 import 'material_database.dart';
 
 class PersonalMaterial {
@@ -38,10 +39,12 @@ class PersonalMaterial {
 
 /// Private, device-local material store. No upload/indexing or AI request.
 class MaterialRepository {
-  MaterialRepository({Future<Database> Function()? open})
-    : _open = open ?? openMaterialDatabase;
+  MaterialRepository({Future<Database> Function()? open, LocalDataOwner? owner})
+    : _open = open ?? openMaterialDatabase,
+      _owner = owner ?? LocalDataOwner.current();
   final Future<Database> Function() _open;
-  final _store = stringMapStoreFactory.store('materials');
+  final LocalDataOwner _owner;
+  late final _store = stringMapStoreFactory.store(_owner.key('materials'));
   static const maxPdfBytes = 10 * 1024 * 1024;
   static const maxTotalBytes = 50 * 1024 * 1024;
   Future<List<PersonalMaterial>> load() async {

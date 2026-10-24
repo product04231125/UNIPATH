@@ -3,7 +3,7 @@
 `frontend/lib`은 Flutter Web과 Windows에서 같은 화면 코드를 사용한다. 학교 질의는
 `POST /api/v1/assistant/queries`를 호출한다. 다른 도메인의 fixture와 기기 로컬 상태는
 합성 학사 모델은 실제 서버 모델이 아니다. 인증·역할·학교 범위는 실제 API이며,
-기록 CRUD·공식 졸업 판정 API는 아직 연결하지 않았다. [인증 계약](../api/authentication.md)을 따른다.
+학업 프로필·일정 CRUD는 서버에 연결했으며 다른 개인 기록 CRUD도 연결했고 개인 명시 조건·계산·불변 이력 화면도 연결했다. 공식 졸업 판정 화면 API는 아직 연결하지 않았다. [인증 계약](../api/authentication.md)을 따른다.
 
 ## 진입과 공통 영역
 
@@ -57,14 +57,14 @@
 | `features/auth` | 로그인·회원가입 목업 |
 | `features/admin` | 공통 관리자 셸·입력 스키마·역할/범위·메모리 fake·변경 이력 |
 | `features/home` | 개인 계획 기반 이번 주 일정·준비 목록·우선 링크 |
-| `features/planning` | 기기 로컬 개인 계획 프로필·일정 repository |
+| `features/planning` | 실제 계정 서버 프로필·일정 repository와 원본 보존/동의 이전, debug 로컬 저장소 |
 | `features/schedule` | 월간 개인 일정과 선택 날짜 목록, 일정 CRUD |
-| `features/graduation` | 졸업요건 fixture, 개인 교육과정·과목·규칙 입력과 로컬 관계 검증 |
+| `features/graduation` | 졸업요건 fixture, 개인 교육과정·과목·규칙 서버 저장과 관계 검증 |
 | `features/records/course` | 수강 관리와 수강 직접 입력 상태 |
 | `features/records/activity` | 활동 입력 상태 |
 | `features/records/experience` | 경험 입력 상태 |
 | `features/records/credential` | 자격 입력 상태 |
-| `features/records/portfolio` | 성과 원본, 포트폴리오 구성·지원 문서의 독립 로컬 초안 |
+| `features/records/portfolio` | 성과 원본, 포트폴리오 구성·지원 문서의 본인 서버 초안 |
 | `features/assistant` | 학교 질의 HTTP 어댑터·응답 DTO, 메인 소유 대화 상태와 IPC 원격 상태, 공통 응답 UI |
 | `features/settings` | 설정 진입 화면 |
 
@@ -84,22 +84,20 @@
   입력을 보내지 않는다. 메인 창이 요청·대화를 계속 소유하고 분리 창은 `RemoteConversation`으로
   상태를 표시하며 입력·보내기·재시도를 IPC로 전달한다. 창 전환은 HTTP 클라이언트를 재생성하지 않는다.
 - `ConversationBridge`는 상태 revision과 명령 ID를 사용해 오래된 상태·중복 명령을 구분한다.
-  학교 문맥은 저장에 성공한 기기 프로필에서 공유하며 미저장 폼 값을 요청에 적용하지 않는다.
+  학교 문맥은 저장에 성공한 개인 프로필에서 공유하며 미저장 폼 값을 요청에 적용하지 않는다.
 
 - 기록 예시 행은 `features/records/fixtures/`, 졸업요건 표 행은
   `features/graduation/graduation_mock_fixture.dart`에 둔다.
-- `planning`의 프로필·일정은 `SharedPreferences`에 저장하는 기기 로컬 개인 계획이다. 학교 공식
-  학사정보·일정·졸업 판정 데이터가 아니며, API 계약이 정해지면 repository를 교체한다.
+- `planning`의 실제 일반 계정 프로필·일정은 `RemotePlanningRepository`가 서버에 저장한다. debug 샘플과 기기 원본은 `PlanningRepository`의 SharedPreferences에 보관한다. 어느 쪽도 학교 공식 학사정보·일정·졸업 판정 데이터가 아니다. [동의 이전·버전 충돌·계정 전환](../api/planning-integration.md)을 따른다.
 - `planning_repository.dart`는 읽기 성공 전 쓰기를 차단하고 저장 성공 뒤에만 메모리 상태를
   확정한다. `planning_storage_state.dart`는 홈·일정·설정의 읽기 오류·재시도 표현을 공유한다.
-- `features/records/personal_record_repository.dart`는 메뉴별 v1 키의 기기 로컬 개인 기록을 소유한다.
+- `features/records/personal_record_repository.dart`는 debug/기기 원본의 로컬 저장소다. 실제 계정의 `PersonalRepositoryScope`는 `RemotePersonalRecordRepository`와 `RemotePortfolioWorkspaceRepository`를 선택하며 선택기·원본 참조도 같은 계정을 사용한다. [서버 화면 연결/10종 동의 이전](../api/personal-workspace-integration.md)을 따른다.
   `personal_record_fields.dart`는 메뉴별 로컬 입력 스키마·검증이며 서버 DTO가 아니다.
   `RecordMenuPage`는 해당 메뉴 저장소를 읽고 구조화 입력·수정·삭제를 제공한다.
 - 개인 졸업 작업 공간도 같은 저장소의 학교·학과·교육과정·과목·규칙 다섯 종류를 사용한다. `personal_graduation_fields.dart`는
   저장된 개인 교육과정·과목·기록의 선택 목록과 관계 검증을 소유하며 규칙을 실행하지 않는다.
 - `목업용` 스위치는 예시 행만 표시·숨김 처리한다. 개인 기록은 메뉴 전환·재시작 뒤에도 유지한다.
-- `portfolio_workspace_repository.dart`는 구성·지원 문서를 별도 v1 키에 저장하고, 경험·성과
-  원본 저장소를 참조한다. `portfolio_editor_dialog.dart`는 입력·선택·정렬,
+- `portfolio_workspace_repository.dart`는 debug/기기 원본을 별도 v1 키에 저장한다. 실제 계정은 서버 구성·지원 문서·성과/경험 UUID를 사용하며 소유자와 버전·참조를 서버에서 확인한다. `portfolio_editor_dialog.dart`는 입력·선택·정렬,
   `portfolio_drafts_page.dart`는 읽기·실패·목록·미리보기·삭제 UI를 소유한다.
 - OpenAPI 계약이 확정되면 feature별 fixture와 로컬 상태를 repository/adapter로 교체한다.
   클라이언트는 OpenAPI에 없는 필드·상태·판정을 제품 계약으로 만들지 않는다.
@@ -115,11 +113,10 @@
 
 - 작업 큐는 완료 전에 공유 슬롯을 해제한다. 완료 Future를 계속 보관하지 않아 종료된 비동기 실행 영역을 다음 화면/검사로 가져오지 않는다. 최종 전체 275개 및 저장 관련 42개 회귀 통과.
 
-### 개인 학업 본문 관리 (2026-10-17)
-- `LocalRecordWorkbench`는 개인 로컬 기록의 목록·본문 입력·작성 보호·실패 상태를 소유한다. 학업 필드/관계는 `personal_graduation_fields.dart`, 학교/학과/교육과정 탭은 `PersonalGraduationWorkspace`가 조정한다.
-- 개인 학교/학과 종류는 기존 PersonalRecordRepository의 독립 키를 사용한다. 프로필 적용만 기존 메인 소유 PlanningRepository를 주입하며 관리자 모델/권한과 공유하지 않는다.
+실제 세 역할의 공통 제목표시줄은 [계정 보안](../api/account-security-integration.md)을 제공한다. `AuthApi.securityForOwner`는 소유자·로그인 세대에 묶인 변경/세션 확인 capability이며 확인된 종료만 본인의 메모리 세션을 지운다. 클라이언트가 이미 관찰한 새 세션을 오래된 응답으로 지우지 않는다.
 
-### 개인 자료 보관 (2026-10-17)
-- `MaterialsPage`는 등록 폼·선택 PDF·실패/수정/내보내기를, `MaterialRepository`는 자료 설명/바이너리의 원자적 보관과 한도 검증을 담당한다. 기존 성과/구성/지원 문서 저장소는 유지한다.
-- `MaterialDatabase`는 플랫폼 어댑터 경계다. Web은 IndexedDB(sembast_web), Windows는 앱 지원 디렉터리(sembast_io)이며 PDF를 SharedPreferences나 서버 DTO에 넣지 않는다. 테스트는 이 경계를 독립 메모리 DB로 주입한다.
-- 실제 자료 업로드·AI 요청·색인·삭제 전파는 아직 없다. 학교 질의 API에 개인 PDF/설명을 임의로 전송하지 않는다.
+### 개인 학업 본문·기기 자료 통합
+
+- `LocalRecordWorkbench`는 본문 등록 폼을 제공한다. 실제 계정의 교육과정·과목·규칙은 주입한 서버 저장소와 버전·참조 검사를 유지한다. 개인 계산·이력 탭도 유지한다.
+- 개인 학교·학과는 서버 계약이 없는 기기 자료이며 debug/로컬 작업 공간에서만 제공한다. 서버 일괄 이전 대상에 포함하지 않는다.
+- `MaterialsPage`의 설명·PDF는 Web IndexedDB/Windows 앱 지원 디렉터리에 계정별로 구분해 보관한다. 원본을 서버나 AI로 자동 전송하지 않는다.

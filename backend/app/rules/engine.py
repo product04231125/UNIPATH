@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 from datetime import date
 from decimal import Context, Decimal, localcontext
 from functools import wraps
+from uuid import UUID
 
 from app.rules.contracts import (
     AcademicContext,
@@ -16,6 +17,7 @@ from app.rules.contracts import (
     CreditRule,
     Evaluation,
     Origin,
+    ReviewRule,
     Rule,
     RuleResult,
     RuleSet,
@@ -184,6 +186,9 @@ def _thesis(rule: ThesisRule, snapshot: Snapshot) -> dict:
     for record in snapshot.theses or ():
         if record.thesis_type != rule.thesis_type:
             continue
+        if record.is_completed is None:
+            unknown |= not rule.requires_approval or record.approval_status != Approval.REJECTED
+            continue
         if not record.is_completed:
             unknown |= record.approval_status in (Approval.APPROVED, Approval.NEEDS_REVIEW)
             continue
@@ -213,6 +218,8 @@ def _evaluate_rule(rule: Rule, rule_set: RuleSet, snapshot: Snapshot, as_of: dat
             values = _certificates(rule, snapshot, as_of)
         case ThesisRule():
             values = _thesis(rule, snapshot)
+        case ReviewRule():
+            values = {"status": Status.NEEDS_REVIEW, "reason": rule.reason}
         case _:
             raise TypeError("Unsupported rule type")
     return RuleResult(
@@ -233,8 +240,13 @@ def _finish(
     official: bool,
     missing: tuple[str, ...] = (),
     forced_reason: str | None = None,
+    snapshots: dict[UUID, Snapshot] | None = None,
 ) -> Evaluation:
-    results = tuple(_evaluate_rule(r, s, snapshot, as_of) for s in selected for r in s.rules)
+    results = tuple(
+        _evaluate_rule(r, s, snapshots[s.id] if snapshots is not None else snapshot, as_of)
+        for s in selected
+        for r in s.rules
+    )
     if forced_reason:
         status, reason = Status.NEEDS_REVIEW, forced_reason
     elif not results:
@@ -289,6 +301,28 @@ def evaluate_personal(
 
 
 @_decimal_context
+def evaluate_personal_sources(
+    cases: tuple[tuple[RuleSet, Snapshot], ...],
+    *,
+    as_of: date,
+) -> Evaluation:
+    """Personal criteria may select different owned records for each requirement.
+
+    Authorization, ownership and source observations belong to the API adapter.
+    The same deterministic rules and aggregate status policy apply to every case.
+    """
+    if any(rule_set.origin != Origin.PERSONAL for rule_set, _ in cases):
+        raise ValueError("Personal evaluation cannot accept official rule sets")
+    selected = tuple(rule_set for rule_set, _ in cases if _active(rule_set, as_of))
+    if not _distinct(selected):
+        return _finish(
+            (), Snapshot(), as_of, official=False, forced_reason="ambiguous_rule_identifiers"
+        )
+    snapshots = {rule_set.id: snapshot for rule_set, snapshot in cases}
+    return _finish(selected, Snapshot(), as_of, official=False, snapshots=snapshots)
+
+
+@_decimal_context
 def evaluate_official(
     rule_sets: tuple[RuleSet, ...],
     snapshot: Snapshot,
@@ -296,6 +330,7 @@ def evaluate_official(
     *,
     as_of: date,
     catalog_complete: bool = False,
+    unresolved_catalog: bool = False,
 ) -> Evaluation:
     """Internal only: a future authorized DB adapter supplies approved, complete rules."""
     selected, missing = [], set()
@@ -355,7 +390,7 @@ def evaluate_official(
         else "academic_scope_required"
         if missing
         else "catalog_completeness_unconfirmed"
-        if selected and catalog_complete is not True
+        if unresolved_catalog is not False or selected and catalog_complete is not True
         else None
     )
     if forced == "ambiguous_rule_identifiers":

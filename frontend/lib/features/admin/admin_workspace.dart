@@ -120,7 +120,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   }
 
   Future<void> _signOut() async {
-    if (_busy || !await _allowLeave() || _busy) return;
+    if (_busy) return;
+    if (!await _allowLeave() || !mounted || _busy) return;
     setState(() {
       _busy = true;
       _error = null;

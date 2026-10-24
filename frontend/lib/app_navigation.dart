@@ -14,6 +14,10 @@ import 'shared/widgets/task_focus_group.dart';
 import 'features/auth/auth_api.dart';
 import 'features/auth/account_access_page.dart';
 import 'features/auth/local_data_owner.dart';
+import 'features/api/student_api.dart';
+import 'features/auth/account_security_gateway.dart';
+import 'features/auth/account_security_dialog.dart';
+import 'shared/widgets/input_dialog.dart';
 
 class AppLocation {
   const AppLocation(this.path);
@@ -73,6 +77,79 @@ class AppNavigation extends RouterDelegate<AppLocation>
   Timer? _sessionTimer;
   bool _closed = false;
   int _authEpoch = 0;
+  bool _accountDialogOpen = false;
+  String? _loginNotice;
+
+  Future<void> _openAccountSecurity(BuildContext context) async {
+    final identity = _identity;
+    final auth = _auth;
+    if (_accountDialogOpen ||
+        identity == null ||
+        !authenticated ||
+        auth is! AuthApi) {
+      return;
+    }
+    final epoch = _authEpoch;
+    final AccountSecurityGateway gateway;
+    try {
+      gateway = auth.securityForOwner(identity.id);
+    } on AuthFailure {
+      await _refreshSession();
+      return;
+    }
+    if (!context.mounted) return;
+    _accountDialogOpen = true;
+    try {
+      final outcome = await showInputDialog<AccountSecurityOutcome>(
+        context: context,
+        builder: (_) => AccountSecurityDialog(
+          identity: identity,
+          gateway: gateway,
+          onKnownEnd: (outcome) {
+            if (_closed ||
+                epoch != _authEpoch ||
+                (_identity != null && _identity!.id != identity.id)) {
+              return;
+            }
+            _loginNotice = switch (outcome) {
+              AccountSecurityOutcome.passwordChanged =>
+                '비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.',
+              AccountSecurityOutcome.allSessionsEnded =>
+                '모든 기기의 세션이 종료되었습니다. 다시 로그인하세요.',
+              AccountSecurityOutcome.expired =>
+                '현재 세션이 종료되었습니다. 앞선 요청의 완료 여부까지 확정된 것은 아닙니다. 다시 로그인하여 확인하세요.',
+              AccountSecurityOutcome.changed => null,
+            };
+            // Permissions can replace the page (and remove its dialog) while
+            // this request is in flight. Session termination belongs to the
+            // captured account, not to the lifetime of that old dialog route.
+            if (outcome != AccountSecurityOutcome.changed) {
+              final navigationContext = navigatorKey?.currentContext;
+              if (navigationContext != null && navigationContext.mounted) {
+                _signedOut(navigationContext);
+              } else if (_identity == null) {
+                notifyListeners();
+              }
+            }
+          },
+        ),
+      );
+      if (_closed ||
+          epoch != _authEpoch ||
+          (_identity != null && _identity!.id != identity.id)) {
+        return;
+      }
+      if (outcome == AccountSecurityOutcome.passwordChanged ||
+          outcome == AccountSecurityOutcome.allSessionsEnded ||
+          outcome == AccountSecurityOutcome.expired) {
+        if (context.mounted && _identity != null) _signedOut(context);
+      } else {
+        await _refreshSession();
+      }
+    } finally {
+      _accountDialogOpen = false;
+    }
+  }
 
   void _startSessionChecks() {
     _sessionTimer?.cancel();
@@ -115,6 +192,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
         final previousRole = _role;
         final accountChanged = _identity != null && _identity!.id != next.id;
         if (accountChanged) {
+          _loginNotice = null;
           _authEpoch++;
           _history.clear();
           _historyIndex = -1;
@@ -149,6 +227,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
     String? displayName,
   }) async {
     final epoch = ++_authEpoch;
+    _loginNotice = null;
     final next = await _auth.authenticate(
       email: email,
       password: password,
@@ -263,7 +342,9 @@ class AppNavigation extends RouterDelegate<AppLocation>
           _liveAdminRepository = RemoteAdminRepository(
             _identity!,
             auth: _auth,
-            api: _auth as ApiGateway,
+            api: _auth is AuthApi
+                ? (_auth).forOwner(_identity!.id)
+                : _auth as ApiGateway,
           );
         } else if (_liveAdminRepository!.permissionVersion !=
             _identity!.version) {
@@ -340,6 +421,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
     } else if (!authenticated || _location.path == '/login') {
       key = 'login';
       page = LoginPage(
+        notice: _loginNotice,
         authenticate: _authenticate,
         onSignedIn: () => _signedIn(context, _identity?.role ?? AppRole.user),
         onSampleSignedIn: (role) {
@@ -363,6 +445,12 @@ class AppNavigation extends RouterDelegate<AppLocation>
     } else {
       key = 'workspace';
       page = Workspace(
+        studentApi: _identity != null && _auth is AuthApi
+            ? StudentApi(
+                (_auth).forOwner(_identity!.id),
+                ownerId: _identity!.id,
+              )
+            : null,
         sidebarVisible: _sidebarVisible,
         integratedTitleBar: true,
         assistantFactory: assistantFactory,
@@ -385,24 +473,32 @@ class AppNavigation extends RouterDelegate<AppLocation>
                 FocusTraversalOrder(
                   order: const NumericFocusOrder(1),
                   child: TaskFocusGroup(
-                    child: WorkspaceTitleBar(
-                      title: _role == AppRole.user
-                          ? 'UniversityPath'
-                          : '${_role.label} · UniversityPath',
-                      sidebarVisible: _sidebarVisible,
-                      onToggleSidebar: authenticated
-                          ? () {
-                              _sidebarVisible = !_sidebarVisible;
-                              notifyListeners();
-                            }
-                          : null,
-                      onBack: authenticated && _historyIndex > 0
-                          ? () => _travel(context, -1)
-                          : null,
-                      onForward:
-                          authenticated && _historyIndex < _history.length - 1
-                          ? () => _travel(context, 1)
-                          : null,
+                    child: Builder(
+                      builder: (dialogContext) => WorkspaceTitleBar(
+                        onAccountSecurity:
+                            _identity != null &&
+                                authenticated &&
+                                _auth is AuthApi
+                            ? () => _openAccountSecurity(dialogContext)
+                            : null,
+                        title: _role == AppRole.user
+                            ? 'UniversityPath'
+                            : '${_role.label} · UniversityPath',
+                        sidebarVisible: _sidebarVisible,
+                        onToggleSidebar: authenticated
+                            ? () {
+                                _sidebarVisible = !_sidebarVisible;
+                                notifyListeners();
+                              }
+                            : null,
+                        onBack: authenticated && _historyIndex > 0
+                            ? () => _travel(context, -1)
+                            : null,
+                        onForward:
+                            authenticated && _historyIndex < _history.length - 1
+                            ? () => _travel(context, 1)
+                            : null,
+                      ),
                     ),
                   ),
                 ),

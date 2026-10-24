@@ -16,7 +16,12 @@ from app.models.academic import (
     OfficialDocument,
     RuleSet,
 )
+from app.models.graduation import GraduationAudit, GraduationCatalogReview
 from app.models.identity import AdminScope, IdentityAudit, Institution, Role
+from app.models.official_records import OfficialRecordBatch, OfficialRecordCourseRef
+from app.models.personal import PlanningProfile
+from app.models.record_sources import OfficialRecordSource
+from app.models.rule_programs import ProgramCourseRef, ProgramRule, RuleProgram
 from app.schemas.common import ErrorCode
 from app.services import access, auth
 
@@ -45,9 +50,7 @@ def failure(message, status=409):
 
 def lock_actor(db, request):
     # Shared with role/scope changes, avoiding a write authorized before revocation.
-    access.lock_identity(db)
-    db.expire_all()
-    return auth.current_identity(request, db)
+    return access.locked_identity(db, request)
 
 
 def school(db, identity, institution_id):
@@ -219,6 +222,34 @@ def references(db, identity, model, record_id):
             )
         ):
             result.append({"id": scope.id, "kind": "scope", "name": "활성 학교 관리 범위"})
+    profile_key = {Department: "department_id", Curriculum: "curriculum_id"}.get(model)
+    if profile_key and any(
+        db.scalar(select(exists().where(getattr(protected_model, profile_key) == record_id)))
+        for protected_model in (
+            PlanningProfile,
+            OfficialRecordSource,
+            OfficialRecordBatch,
+            GraduationAudit,
+            GraduationCatalogReview,
+        )
+    ):
+        # A profile FK must prevent catalog deletion without exposing a student's
+        # identity, profile/source values, or the number of private references.
+        result.append({"id": record_id, "kind": "protected_reference", "name": "보호된 연결 참조"})
+    if model is Course:
+        if db.scalar(select(exists().where(OfficialRecordCourseRef.course_id == record_id))):
+            result.append(
+                {"id": record_id, "kind": "protected_reference", "name": "보호된 연결 참조"}
+            )
+        for program in db.scalars(
+            select(RuleProgram)
+            .join(ProgramRule, ProgramRule.program_id == RuleProgram.id)
+            .join(ProgramCourseRef, ProgramCourseRef.program_rule_id == ProgramRule.id)
+            .where(ProgramCourseRef.course_id == record_id)
+            .distinct()
+            .order_by(RuleProgram.id)
+        ):
+            result.append({"id": program.id, "kind": "ruleProgram", "name": program.name})
     return result
 
 

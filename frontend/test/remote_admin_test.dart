@@ -356,6 +356,18 @@ void main() {
           isTrue,
         );
         expect(server.saved, isTrue);
+        final writes = server.requests.where(
+          (request) =>
+              request.url.path.startsWith('/api/v1/admin/') &&
+              request.method != 'GET',
+        );
+        expect(writes, isNotEmpty);
+        expect(
+          writes.every(
+            (request) => request.headers['X-Unipath-Owner'] == userId,
+          ),
+          isTrue,
+        );
         await tester.ensureVisible(nameField);
         await tester.enterText(nameField, '아직 저장하지 않은 학교');
         final guardedLogout = find.byTooltip('로그아웃');

@@ -5,7 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'app_role.dart';
+import 'account_security_gateway.dart';
 import 'auth_http_stub.dart' if (dart.library.js_interop) 'auth_http_web.dart';
+import 'record_files_gateway.dart';
 
 class AuthFailure implements Exception {
   const AuthFailure(this.message, {this.status, this.fields = const []});
@@ -77,6 +79,197 @@ class AuthApi implements AuthGateway, ApiGateway {
   final Uri _base;
   final bool _cookieMode;
   String? _token;
+  String? _ownerId;
+  int _sessionEpoch = 0;
+
+  /// Pin a workspace to this login. Server checks the owner as well, including
+  /// cookies changed by a different browser tab before our next session poll.
+  ApiGateway forOwner(String ownerId) {
+    if (_ownerId != ownerId) throw const AuthFailure('다시 로그인해 주세요.');
+    return _OwnerGateway(this, ownerId, _sessionEpoch);
+  }
+
+  AccountSecurityGateway securityForOwner(String ownerId) {
+    if (_ownerId != ownerId) throw const AuthFailure('다시 로그인해 주세요.');
+    return _OwnedAccountSecurity(this, ownerId, _sessionEpoch);
+  }
+
+  RecordFilesGateway recordFilesForOwner(String ownerId) {
+    if (_ownerId != ownerId) throw const AuthFailure('다시 로그인해 주세요.');
+    return _OwnedRecordFiles(this, ownerId, _sessionEpoch);
+  }
+
+  Future<http.Response> _recordFileRequest(
+    String ownerId,
+    int epoch,
+    String method,
+    String path, [
+    Uint8List? bytes,
+    Map<String, Object?>? metadata,
+  ]) async {
+    void checkOwner() {
+      if (!_ownsSession(ownerId, epoch)) {
+        throw const AuthFailure('계정이 변경되었습니다. 다시 로그인해 주세요.', status: 403);
+      }
+    }
+
+    checkOwner();
+    final uri = Uri.parse(path);
+    final allowed = method == 'POST'
+        ? uri.path == 'me/official-record-sources'
+        : RegExp(r'^(me|admin)/official-record-sources/[0-9a-fA-F-]{36}/file$')
+              .hasMatch(uri.path);
+    if (uri.hasScheme ||
+        uri.hasAuthority ||
+        uri.hasFragment ||
+        uri.hasQuery ||
+        !allowed) {
+      throw const AuthFailure('올바른 자료 경로를 확인해 주세요.');
+    }
+    if (bytes != null && bytes.length > 2 * 1024 * 1024) {
+      throw const AuthFailure('PDF는 최대 2 MiB까지 제출할 수 있습니다.', status: 413);
+    }
+    try {
+      final request = http.Request(method, _base.resolve('/api/v1/$path'));
+      request.headers['X-Unipath-Owner'] = ownerId;
+      if (_token != null) request.headers['Authorization'] = 'Bearer $_token';
+      if (bytes != null) {
+        if (metadata == null) throw const AuthFailure('자료 정보를 확인해 주세요.');
+        final encoded = base64Url.encode(utf8.encode(jsonEncode(metadata)));
+        if (encoded.length > 4096) {
+          throw const AuthFailure('자료 정보가 너무 큽니다.', status: 422);
+        }
+        request.headers['X-Unipath-Source-Metadata'] = encoded;
+        request.headers['Content-Type'] = 'application/pdf';
+        request.bodyBytes = Uint8List.fromList(bytes);
+      }
+      final response = await _client
+          .send(request)
+          .then(http.Response.fromStream)
+          .timeout(const Duration(seconds: 20));
+      checkOwner();
+      if (response.statusCode != (method == 'POST' ? 201 : 200)) {
+        throw AuthFailure(switch (response.statusCode) {
+          401 => '다시 로그인해 주세요.',
+          403 => '이 자료에 접근할 권한이 없습니다.',
+          404 => '제출 자료를 찾을 수 없습니다.',
+          409 => '다른 변경이 있습니다. 제출 자료를 다시 확인해 주세요.',
+          413 => 'PDF는 최대 2 MiB까지 제출할 수 있습니다.',
+          415 => 'PDF 원본 파일을 선택해 주세요.',
+          422 => '파일과 제출 정보를 확인해 주세요.',
+          429 => '시도 횟수가 많습니다. 잠시 후 다시 시도해 주세요.',
+          _ => '자료 응답을 확인하지 못했습니다. 다시 확인해 주세요.',
+        }, status: response.statusCode);
+      }
+      final type = response.headers['content-type']?.split(';').first;
+      if (type !=
+              (method == 'POST'
+                  ? 'application/json'
+                  : 'application/octet-stream') ||
+          response.bodyBytes.length > 2 * 1024 * 1024) {
+        throw const AuthFailure('자료 응답 형식을 확인하지 못했습니다.');
+      }
+      return response;
+    } on AuthFailure {
+      rethrow;
+    } catch (_) {
+      checkOwner();
+      throw const AuthFailure('자료 전송 결과를 확인하지 못했습니다. 제출 목록을 확인해 주세요.');
+    }
+  }
+
+  bool _ownsSession(String ownerId, int epoch) =>
+      _ownerId == ownerId && _sessionEpoch == epoch;
+  void _forgetExpectedSession(String ownerId, int epoch) {
+    if (!_ownsSession(ownerId, epoch)) return;
+    _token = null;
+    _sessionEpoch++;
+    _setOwner(null);
+  }
+
+  Future<void> _endOwnedSessions(
+    String ownerId,
+    int epoch,
+    String path,
+    Map<String, Object?>? body,
+  ) async {
+    if (!_ownsSession(ownerId, epoch)) {
+      throw const AuthFailure('계정이 변경되었습니다. 로그인 상태를 다시 확인해 주세요.', status: 403);
+    }
+    try {
+      // A successful operation revokes this very session. Unlike ordinary
+      // requests, a concurrent me() observing that revocation is expected.
+      final result = await _request('POST', path, body, ownerId);
+      if (result != null) throw const AuthFailure('요청 완료 응답을 확인하지 못했습니다.');
+      if (!_ownsSession(ownerId, epoch) && _ownerId != null) {
+        throw const AuthFailure('계정이 변경되었습니다. 새 계정의 세션은 유지합니다.', status: 403);
+      }
+      _forgetExpectedSession(ownerId, epoch);
+    } on AuthFailure catch (error) {
+      if (!_ownsSession(ownerId, epoch) && _ownerId != null) {
+        throw const AuthFailure('계정이 변경되었습니다. 새 계정의 세션은 유지합니다.', status: 403);
+      }
+      if (error.status == 401) _forgetExpectedSession(ownerId, epoch);
+      rethrow;
+    }
+  }
+
+  Future<AccountSessionStatus> _checkOwnedSession(
+    String ownerId,
+    int epoch,
+  ) async {
+    if (!_ownsSession(ownerId, epoch)) {
+      return _ownerId == null
+          ? AccountSessionStatus.expired
+          : AccountSessionStatus.changed;
+    }
+    try {
+      final value = AuthIdentity.fromJson(
+        (await _request('GET', 'auth/me', null, ownerId))!,
+      );
+      if (!_ownsSession(ownerId, epoch)) {
+        return _ownerId == null
+            ? AccountSessionStatus.expired
+            : AccountSessionStatus.changed;
+      }
+      if (value.id != ownerId) return AccountSessionStatus.changed;
+      return AccountSessionStatus.active;
+    } on AuthFailure catch (error) {
+      if (!_ownsSession(ownerId, epoch) && _ownerId != null) {
+        return AccountSessionStatus.changed;
+      }
+      if (error.status == 401) {
+        _forgetExpectedSession(ownerId, epoch);
+        return AccountSessionStatus.expired;
+      }
+      if (error.status == 403) return AccountSessionStatus.changed;
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>?> _ownedRequest(
+    String ownerId,
+    int epoch,
+    String method,
+    String path,
+    Map<String, Object?>? body,
+  ) async {
+    void check() {
+      if (_ownerId != ownerId || epoch != _sessionEpoch) {
+        throw const AuthFailure('계정이 변경되었습니다. 다시 로그인해 주세요.');
+      }
+    }
+
+    check();
+    final result = await _request(method, path, body, ownerId);
+    check();
+    return result;
+  }
+
+  void _setOwner(String? value) {
+    if (_ownerId != value) _sessionEpoch++;
+    _ownerId = value;
+  }
 
   @override
   Future<Map<String, dynamic>?> request(
@@ -89,10 +282,14 @@ class AuthApi implements AuthGateway, ApiGateway {
     String method,
     String path, [
     Map<String, Object?>? body,
+    String? expectedOwner,
   ]) async {
     try {
       final request = http.Request(method, _base.resolve('/api/v1/$path'));
       request.headers['Content-Type'] = 'application/json';
+      if (expectedOwner != null) {
+        request.headers['X-Unipath-Owner'] = expectedOwner;
+      }
       if (_token != null) request.headers['Authorization'] = 'Bearer $_token';
       if (body != null) request.body = jsonEncode(body);
       final response = await _client
@@ -163,6 +360,8 @@ class AuthApi implements AuthGateway, ApiGateway {
         }
         _token = token;
       }
+      _sessionEpoch++;
+      _setOwner(identity.id);
       return identity;
     } catch (_) {
       throw const AuthFailure('로그인 응답을 확인하지 못했습니다. 다시 시도해 주세요.');
@@ -172,12 +371,20 @@ class AuthApi implements AuthGateway, ApiGateway {
   @override
   Future<AuthIdentity?> me() async {
     final requestedToken = _token;
+    final epoch = _sessionEpoch;
     if (!_cookieMode && _token == null) return null;
     try {
-      return AuthIdentity.fromJson((await _request('GET', 'auth/me'))!);
+      final identity = AuthIdentity.fromJson(
+        (await _request('GET', 'auth/me'))!,
+      );
+      if (epoch == _sessionEpoch) _setOwner(identity.id);
+      return identity;
     } on AuthFailure catch (error) {
       if (error.status != 401) rethrow;
-      if (_token == requestedToken) _token = null;
+      if (_token == requestedToken && epoch == _sessionEpoch) {
+        _token = null;
+        _setOwner(null);
+      }
       return null;
     } catch (_) {
       throw const AuthFailure('계정 정보를 확인하지 못했습니다. 다시 시도해 주세요.');
@@ -186,12 +393,17 @@ class AuthApi implements AuthGateway, ApiGateway {
 
   @override
   Future<void> logout() async {
+    final epoch = _sessionEpoch;
     try {
       await _request('POST', 'auth/logout');
     } on AuthFailure catch (error) {
       if (error.status != 401) rethrow;
     }
-    _token = null;
+    if (epoch == _sessionEpoch) {
+      _token = null;
+      _sessionEpoch++;
+      _setOwner(null);
+    }
   }
 
   @override
@@ -227,6 +439,77 @@ class AuthApi implements AuthGateway, ApiGateway {
   @override
   void close() {
     _token = null;
+    _sessionEpoch++;
+    _setOwner(null);
     _client.close();
   }
+}
+
+class _OwnerGateway implements ApiGateway {
+  const _OwnerGateway(this.auth, this.ownerId, this.epoch);
+  final AuthApi auth;
+  final String ownerId;
+  final int epoch;
+  @override
+  Future<Map<String, dynamic>?> request(
+    String method,
+    String path, [
+    Map<String, Object?>? body,
+  ]) => auth._ownedRequest(ownerId, epoch, method, path, body);
+}
+
+class _OwnedRecordFiles implements RecordFilesGateway {
+  const _OwnedRecordFiles(this.auth, this.ownerId, this.epoch);
+  final AuthApi auth;
+  final String ownerId;
+  final int epoch;
+  @override
+  Future<Map<String, dynamic>> upload(
+    String path,
+    Uint8List bytes, {
+    required Map<String, Object?> metadata,
+  }) async {
+    try {
+      final response = await auth._recordFileRequest(
+        ownerId,
+        epoch,
+        'POST',
+        path,
+        bytes,
+        metadata,
+      );
+      return Map<String, dynamic>.from(
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map,
+      );
+    } on AuthFailure {
+      rethrow;
+    } catch (_) {
+      throw const AuthFailure('자료 등록 응답을 확인하지 못했습니다. 제출 목록을 확인해 주세요.');
+    }
+  }
+
+  @override
+  Future<Uint8List> download(String path) async =>
+      (await auth._recordFileRequest(ownerId, epoch, 'GET', path)).bodyBytes;
+}
+
+class _OwnedAccountSecurity implements AccountSecurityGateway {
+  const _OwnedAccountSecurity(this.auth, this.ownerId, this.epoch);
+  final AuthApi auth;
+  final String ownerId;
+  final int epoch;
+  @override
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) => auth._endOwnedSessions(ownerId, epoch, 'auth/change-password', {
+    'old_password': oldPassword,
+    'new_password': newPassword,
+  });
+  @override
+  Future<void> logoutAll() =>
+      auth._endOwnedSessions(ownerId, epoch, 'auth/logout-all', null);
+  @override
+  Future<AccountSessionStatus> checkSession() =>
+      auth._checkOwnedSession(ownerId, epoch);
 }

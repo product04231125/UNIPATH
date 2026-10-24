@@ -31,13 +31,21 @@
   허용된 localhost Origin을 함께 사용한다.
 - ZIP 내부의 `DOWNLOAD-README.txt`와 `build-info.json`에는 채널, API 주소,
   소스 커밋, SDK 및 버전이 기록된다. 첨부된 `.zip.sha256`으로 무결성을 확인한다.
+  GitHub 릴리스 설명의 기능 안내 링크는 해당 빌드의 소스 커밋에 고정한다. 채널마다
+  기능과 저장 범위가 다르므로 게시 스크립트에 별도 기능 설명을 중복 작성하지 않는다.
 
 두 채널은 동일한 코드와 잠금 의존성을 **Release 모드**로 빌드한다. 개발용은
 Debug 바이너리를 배포한다는 뜻이 아니다. 빌드별 API 주소와 채널·프리뷰 표시로 구분한다.
 
-develop의 인증·역할·학교 전체 범위는 실제 API/DB이며 개인 기록은 계정별 기기 로컬이다.
+develop의 인증·역할·학교 전체 범위·학업 프로필·일정은 실제 API/DB다. 개인 기록·구성·지원 문서도 실제 서버 저장이며 기기 원본은 범위를 확인하고 동의 후 별도로 이전한다.
+개인 계산 이력도 서버에 저장하며 동의 이전 후에도 기기 원본은 유지한다. 화면·채팅 창 설정은
+기기 저장이다. ZIP의 `DOWNLOAD-README.txt`도 이 저장 범위를 안내한다.
+개인 서버 저장이 연결된 일부 이전 개발 ZIP에는 기기 로컬 저장이라는 오래된 문구가 남아
+있었다. 해당 문구는 실제 서버 저장을 설명하지 못하므로 소스 커밋의 기능 문서와 릴리스의
+저장 안내 정정을 확인한다.
 main은 명시적 승격 전 이전 프리뷰를 유지한다. 실제 PDF는 검토 대기이며
-LLM 생성기와 공식 졸업감사는 미연결이다. 배포 채널과 HTTPS 제공이 운영 기능 완성을
+LLM 생성기는 미연결이다. 학교 검토 자료의 공식 졸업요건 감사는 API·타입까지 제공하며
+제출·검토·감사 화면과 실제 학교 자료 등록은 후속이다. 배포 채널과 HTTPS 제공이 운영 기능 완성을
 뜻하지 않으므로 초기 앱은 프리뷰로 발행한다. Staging과 Production DB는 분리한다.
 
 ## 이어진의 수동 빌드·릴리스
@@ -124,6 +132,8 @@ HTTPS 도메인으로 설정했다. 워크플로 기본값도 동일하다. 실�
 | `POSTGRES_PORT` | `5434` | `5435` |
 | `POSTGRES_DB` | `unipath_staging` | `unipath_product` |
 | `POSTGRES_USER` | `unipath_staging` | `unipath_product` |
+| `API_IMAGE` | 검증한 개발 백엔드의 로컬 이미지 ID | 검증한 운영 백엔드의 로컬 이미지 ID |
+| `WEB_IMAGE` | 검증한 개발 웹의 로컬 이미지 ID | 검증한 운영 웹의 로컬 이미지 ID |
 
 `CORS_ORIGINS`에는 해당 HTTPS 도메인을 넣는다. 원격 API의 Strict 세션 쿠키는
 localhost에서의 로그인을 허용하지 않는다. localhost Origin을 추가하는 것만으로
@@ -132,11 +142,43 @@ localhost에서의 로그인을 허용하지 않는다. localhost Origin을 추�
 `APP_ENV=local` 전용이므로 이 두 환경에서는 `compose.rag.yaml`을 함께 사용하지 않는다.
 현재 공식 승인 코퍼스가 없으므로 학교 질의의 근거 부족 안내가 정상이다.
 
-두 채널 Web 빌드 후 다음 명령으로 분리된 프로젝트·볼륨에서 실행한다.
+서버에서는 빌드와 실행을 나눈다. 앱 릴리스의 소스 커밋과 채널을 확인한 뒤 같은
+커밋의 백엔드와 해당 채널의 Web 이미지를 먼저 빌드·검증한다. 다음은 개발용 예시다.
+Web 빌드 산출물의 `build-info.json`에서 소스 커밋·채널·API 주소도 확인한다.
 
 ```bash
-docker compose -p unipath-staging --env-file .env.staging -f compose.yaml -f compose.server.yaml up --build --wait
-docker compose -p unipath-product --env-file .env.production -f compose.yaml -f compose.server.yaml up --build --wait
+git rev-parse HEAD
+docker build -f backend/Dockerfile -t unipath-backend:develop-candidate .
+docker build -f deploy/preview/Dockerfile --build-arg APP_CHANNEL=develop -t unipath-web:develop-candidate .
+docker image inspect --format '{{.Id}}' unipath-backend:develop-candidate
+docker image inspect --format '{{.Id}}' unipath-web:develop-candidate
+```
+
+검증한 두 출력(`sha256:`으로 시작하는 전체 이미지 ID)을 각각 `.env.staging`의
+`API_IMAGE`, `WEB_IMAGE`에 기록한다. 후보 태그나 공용 `unipath-backend:local`을 넣지
+않는다. API와 마이그레이션은 동일한 `API_IMAGE`를 사용하며 서버 Compose는 상속된
+빌드 설정을 제거하고 이미지 자동 pull을 끈다. 태그를 다른 빌드로 바꿔도 고정한 ID는
+변하지 않는다. 로컬 개발용 `compose.yaml`의 빌드 동작은 유지한다.
+[Compose의 `!reset`](https://docs.docker.com/reference/compose-file/merge/#reset-value)을
+지원하는 Docker Compose 플러그인이 필요하다.
+
+기존 서버 설정을 처음 전환할 때는 **현재 실행 중인** 각 프로젝트의 API·Web 컨테이너를
+`docker inspect --format '{{.Image}}' 컨테이너이름`으로 조회해 해당 환경 파일에 기록한다.
+Staging 이미지를 Production에 복사하지 않는다. 환경 파일은 변경 전 비공개로 백업하고,
+DB 백업·복구와 후보 이미지 검증을 마친 뒤 분리된 프로젝트·볼륨에서 실행한다.
+
+```bash
+docker compose -p unipath-staging --env-file .env.staging -f compose.yaml -f compose.server.yaml config --quiet
+docker compose -p unipath-staging --env-file .env.staging -f compose.yaml -f compose.server.yaml up --no-build --pull never --wait
+```
+
+운영은 별도로 승인한 `main` 커밋의 product Web·백엔드를 검증하고 `.env.production`의
+ID를 갱신한 뒤에만 다음 명령을 사용한다. Staging 갱신 시 운영 명령을 실행하지 않는다.
+이 작업에서 기존 운영 컨테이너나 DB를 자동으로 승격하지 않는다.
+
+```bash
+docker compose -p unipath-product --env-file .env.production -f compose.yaml -f compose.server.yaml config --quiet
+docker compose -p unipath-product --env-file .env.production -f compose.yaml -f compose.server.yaml up --no-build --pull never --wait
 ```
 
 현재 공통 게이트웨이는 `default.conf`를 파일 단위로 bind mount한다. 기존 내용에
@@ -160,3 +202,16 @@ docker run --rm \
 HTTPS 개통 완료로 간주하지 않는다. SPA 화면 경로와 API readiness·학교 질의를
 두 도메인에서 확인한다. 배포 실패 시 게이트웨이 설정의 작업 전 백업으로 되돌리며
 DB 볼륨은 삭제하지 않는다.
+
+스테이징 바깥 게이트웨이의 요청 한도는 2 MiB다. 앱 프록시는 로그인 16 KiB·일반 관리자
+64 KiB·개인 자료/문서/규칙 256 KiB·개인 일괄 이전 2 MiB처럼 경로별로 더 작게 제한한다.
+바깥 게이트웨이까지 이전의 16 KiB로 두면 큰 요청이 앱 검증에 도달하지 못한다. 스테이징
+게이트웨이 또는 앱 프록시의 크기 초과는 공통 JSON 413·request ID·no-store로 응답한다.
+프로덕션 템플릿은 별도
+승격 전까지 기존 한도/라우팅을 유지한다.
+
+`python3 backend/scripts/smoke_gateway_proxy.py`는 고유 라벨의 임시 네트워크와 합성 HTTP
+upstream·앱 Nginx·게이트웨이 Nginx를 생성해 두 단계 프록시를 검증한다. 실제 DB·사용자·
+기존 게이트웨이는 사용하지 않는다. TLS 템플릿은 같은 staging server 블록의 인증서/listen만
+로컬 HTTP로 바꿔 검사하며 실제 배포 후 HTTPS 검사도 필요하다. 이 검증은 Backend CI와
+앱 릴리스 공통 검증에 포함한다. 임시 자원은 소유 라벨 확인 후 종료 시 정리한다.

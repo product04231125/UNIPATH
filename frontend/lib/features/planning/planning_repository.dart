@@ -5,9 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../auth/local_data_owner.dart';
 
-/// Device-local personal planning data. It is deliberately separate from
-/// school records and will be replaced by an API adapter once that contract is
-/// available.
+/// Device-local planning for samples and preserved original data. Live accounts
+/// use RemotePlanningRepository; neither store represents official school records.
 class PlanningRepository extends ChangeNotifier {
   PlanningRepository({this.writer, LocalDataOwner? owner})
     : _storageKey = (owner ?? LocalDataOwner.current()).key(
@@ -53,6 +52,13 @@ class PlanningRepository extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   bool get loadFailed => _loadFailed;
+  bool get isServerBacked => false;
+  String get storageLabel => isServerBacked ? '계정 서버 저장' : '기기 로컬 저장';
+  bool get canImportLocalPlanning => false;
+  String? get localPlanningNotice => null;
+  List<String> get localPlanningPreview => const [];
+  Future<void> importLocalPlanning({required bool confirmed}) =>
+      Future.error(StateError('Server planning is unavailable'));
   PlanningProfile get profile => _profile;
   List<PlanningEvent> get events => List.unmodifiable(_events);
 
@@ -140,12 +146,13 @@ class PlanningRepository extends ChangeNotifier {
     _notify();
   });
 
-  Future<void> deleteEvent(String id) => _enqueue(() async {
-    final updated = _events.where((item) => item.id != id).toList();
-    await _save(_profile, updated);
-    _events = updated;
-    _notify();
-  });
+  Future<void> deleteEvent(String id, {int? expectedVersion}) =>
+      _enqueue(() async {
+        final updated = _events.where((item) => item.id != id).toList();
+        await _save(_profile, updated);
+        _events = updated;
+        _notify();
+      });
 
   Future<void> _save(
     PlanningProfile profile,
@@ -172,6 +179,7 @@ class PlanningProfile {
     this.track,
     this.academicYearOverride,
     this.weekStartsOn = WeekStartDay.sunday,
+    this.version,
   });
 
   final String school;
@@ -180,6 +188,9 @@ class PlanningProfile {
   final String? track;
   final int? academicYearOverride;
   final WeekStartDay weekStartsOn;
+
+  /// Server version captured when a form starts; absent for local data.
+  final int? version;
 
   bool get isConfigured =>
       school.trim().isNotEmpty &&
@@ -280,6 +291,7 @@ class PlanningEvent {
     required this.end,
     required this.category,
     this.memo = '',
+    this.version,
   });
 
   final String id;
@@ -288,6 +300,7 @@ class PlanningEvent {
   final DateTime end;
   final PlanningEventCategory category;
   final String memo;
+  final int? version;
 
   Map<String, dynamic> toJson() => {
     'id': id,

@@ -10,10 +10,11 @@ class WorkspaceTitleBar extends StatelessWidget {
     this.onBack,
     this.onForward,
     this.onToggleSidebar,
+    this.onAccountSecurity,
     this.sidebarVisible = true,
     this.title = 'UniversityPath',
   });
-  final VoidCallback? onBack, onForward, onToggleSidebar;
+  final VoidCallback? onBack, onForward, onToggleSidebar, onAccountSecurity;
   final bool sidebarVisible;
   final String title;
 
@@ -70,6 +71,12 @@ class WorkspaceTitleBar extends StatelessWidget {
               ),
             ),
           ),
+          if (onAccountSecurity != null)
+            IconButton(
+              tooltip: '계정 보안',
+              onPressed: onAccountSecurity,
+              icon: const Icon(Icons.manage_accounts_outlined),
+            ),
           if (native) ...[
             IconButton(
               tooltip: '최소화',

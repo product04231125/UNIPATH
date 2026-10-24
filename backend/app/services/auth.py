@@ -94,6 +94,16 @@ def current_identity(request: Request, db: Session) -> Identity:
     ).first()
     if row is None:
         raise unauthenticated()
+    # A browser cookie can change in another tab while a form remains open.
+    # This is an additional precondition, never an alternative credential.
+    expected_owner = request.headers.get("x-unipath-owner")
+    if expected_owner is not None:
+        try:
+            matches_owner = UUID(expected_owner) == row[0].id
+        except ValueError:
+            matches_owner = False
+        if not matches_owner:
+            raise forbidden()
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         check_origin(request, cookie=mode == SessionMode.COOKIE)
     return Identity(*row)
@@ -183,6 +193,34 @@ def logout(db: Session, identity: Identity, *, all_sessions: bool = False):
     if not all_sessions:
         query = query.where(AuthSession.token_hash == identity.session.token_hash)
     db.execute(query.values(revoked_at=datetime.now(UTC)))
+    db.commit()
+
+
+def change_password(db: Session, request: Request, payload):
+    from app.services.access import audit, locked_identity
+
+    identity = current_identity(request, db)
+    throttle(db, "password-change:" + str(identity.user.id), limit=5)
+    identity = locked_identity(db, request)
+    old = payload.old_password.get_secret_value()
+    new = payload.new_password.get_secret_value()
+    try:
+        valid = PASSWORDS.verify(identity.user.password_hash, old)
+    except VerificationError:
+        valid = False
+    if not valid:
+        raise AuthError(422, ErrorCode.VALIDATION_ERROR, "현재 비밀번호를 확인해 주세요.")
+    if old == new:
+        raise AuthError(422, ErrorCode.VALIDATION_ERROR, "새 비밀번호를 다르게 입력해 주세요.")
+    identity.user.password_hash = PASSWORDS.hash(new)
+    identity.user.version += 1
+    identity.user.updated_at = datetime.now(UTC)
+    db.execute(
+        update(AuthSession)
+        .where(AuthSession.user_id == identity.user.id)
+        .values(revoked_at=datetime.now(UTC))
+    )
+    audit(db, identity.user.id, "password_changed", identity.user.id, request.state.request_id)
     db.commit()
 
 
