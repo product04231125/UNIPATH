@@ -52,3 +52,26 @@ API 우회·신규 API나 서버 코드는 추가하지 않았다. 접수 목록
 `admin_workspace.dart`, `admin_shell.dart`, `app_navigation.dart`, `workspace_title_bar.dart`.
 테스트: `school_admin_signup_ui_test.dart`, `school_admin_application_inbox_test.dart`,
 `school_admin_applications_ui_test.dart`, 기존 미등록 폼·인증·관리자 회귀 테스트.
+
+## 요청 전체에 대한 완료 감사
+
+2026-10-25 후속 확인에서 `git fetch origin develop`을 수행했다. 최신 원격 추적 커밋은
+`535cd69`이며 현재 제품 커밋 `554b98f`와 백엔드/OpenAPI 차이는 없다. 원격에 새 최초 접수
+계약이 추가되어 있는 경우도 확인했으나 연결할 추가 계약은 없었다.
+
+| 사용자 요구 | 현재 근거 | 판정 |
+| --- | --- | --- |
+| 1. 회원가입에서 학생/학교관리자 선택 | LoginPage의 signup-student/signup-school-admin 및 실제 Web 표시, 유형 선택 회귀 테스트 | 구현·검증됨 |
+| 2. 학생 선택 시 일반 가입 | 같은 페이지의 기존 가입 필드/인증 callback, 학생 가입 유지 회귀 | 구현·검증됨 |
+| 3. 학교관리자 선택 시 계정+학교명/홈페이지/직책/연락처/사유 | SchoolAdminApplicationFields와 같은 Form 안의 계정 필드, 실제 Web 표시/입력 검증/유형 전환 회귀 | 입력 화면 구현·검증됨 |
+| 4. 같은 화면의 신청으로 서버 접수 후 승인 대기 | 학교관리자 제출 버튼 비활성, _submit에서도 해당 유형 차단. 새 학교 접수 DTO/라우트 없음 | 미완료 |
+| 슈퍼관리자에서 해당 최초 신청 수신·심사 | 기존 등록 학교 권한 신청은 메뉴/목록/심사 가능. 최초 신청은 서버 저장/반환 경로가 없음 | 기존 신청만 연결, 최초 신청 수신은 미완료 |
+| API 생성 금지 | backend와 OpenAPI 변경 없음. 신규 엔드포인트·DTO·임의 ID 없음 | 준수 |
+
+등록 학교 UUID 없이 기존 신청 서비스를 호출하면 학교를 찾을 수 없고, 학교를 대신 만드는
+기존 `/admin/institutions`는 `require_super`로 제한된다. 일반 가입 후 로그인시키는 우회는
+요청한 최초 신청 과정을 대체하지 못하며, 로컬 초안을 슈퍼관리자의 서버 접수로 표시할 수도 없다.
+
+전체 완료를 입증하려면 실제 신청 저장 응답의 식별자/승인 대기 상태, 별도 슈퍼관리자 세션에서
+같은 신청 조회, 검토 후 결과/권한 반영을 해당 API 계약에 따라 확인해야 한다. 현재 테스트의
+가짜 HTTP 응답이나 초안 화면만으로 이 조건을 충족했다고 판단하지 않는다.
