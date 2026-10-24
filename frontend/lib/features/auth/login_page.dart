@@ -14,9 +14,11 @@ class LoginPage extends StatefulWidget {
     this.onSampleSignedIn,
     this.authenticate,
     this.notice,
+    this.onAdminApplicationRequested,
   });
 
   final VoidCallback onSignedIn;
+  final VoidCallback? onAdminApplicationRequested;
   final String? notice;
   final ValueChanged<AppRole>? onSampleSignedIn;
   final Future<void> Function({
@@ -37,6 +39,7 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   final _passwordConfirmController = TextEditingController();
   bool _isLogin = true;
+  bool _adminIntent = false;
   bool _obscurePassword = true;
   bool _obscurePasswordConfirm = true;
   bool _submitting = false;
@@ -181,6 +184,22 @@ class _LoginPageState extends State<LoginPage> {
                         _submitting ? '처리 중…' : (_isLogin ? '로그인' : '회원가입'),
                       ),
                     ),
+                    if (!_isLogin &&
+                        widget.onAdminApplicationRequested != null) ...[
+                      TextButton(
+                        onPressed: _submitting
+                            ? null
+                            : () {
+                                widget.onAdminApplicationRequested!();
+                                setState(() => _adminIntent = true);
+                              },
+                        child: const Text('학교관리자 가입 신청'),
+                      ),
+                      if (_adminIntent)
+                        const Text(
+                          '일반 계정으로 가입 또는 로그인한 후 학교관리자 신청서를 작성합니다. 신청만으로 권한이 부여되지 않습니다.',
+                        ),
+                    ],
                     if (!kReleaseMode) ...[
                       const SizedBox(height: 28),
                       const Divider(),
