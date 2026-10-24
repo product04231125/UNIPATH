@@ -18,6 +18,8 @@ import 'features/api/student_api.dart';
 import 'features/auth/account_security_gateway.dart';
 import 'features/auth/account_security_dialog.dart';
 import 'shared/widgets/input_dialog.dart';
+import 'features/admin/school_admin_applications_dialog.dart';
+import 'features/auth/school_workflow_session.dart';
 
 class AppLocation {
   const AppLocation(this.path);
@@ -79,6 +81,27 @@ class AppNavigation extends RouterDelegate<AppLocation>
   int _authEpoch = 0;
   bool _accountDialogOpen = false;
   String? _loginNotice;
+  Future<void> _openApplications(BuildContext context) async {
+    final identity = _identity;
+    final auth = _auth;
+    if (_accountDialogOpen ||
+        identity == null ||
+        !authenticated ||
+        auth is! AuthApi) {
+      return;
+    }
+    _accountDialogOpen = true;
+    try {
+      await showInputDialog<void>(
+        context: context,
+        builder: (_) =>
+            SchoolAdminApplicationsDialog(auth: auth, identity: identity),
+      );
+      await _refreshSession();
+    } finally {
+      _accountDialogOpen = false;
+    }
+  }
 
   Future<void> _openAccountSecurity(BuildContext context) async {
     final identity = _identity;
@@ -423,7 +446,9 @@ class AppNavigation extends RouterDelegate<AppLocation>
       page = LoginPage(
         notice: _loginNotice,
         authenticate: _authenticate,
-        onSignedIn: () => _signedIn(context, _identity?.role ?? AppRole.user),
+        onSignedIn: () {
+          _signedIn(context, _identity?.role ?? AppRole.user);
+        },
         onSampleSignedIn: (role) {
           _authEpoch++;
           _identity = null;
@@ -475,6 +500,15 @@ class AppNavigation extends RouterDelegate<AppLocation>
                   child: TaskFocusGroup(
                     child: Builder(
                       builder: (dialogContext) => WorkspaceTitleBar(
+                        applicationLabel: _role == AppRole.superAdmin
+                            ? '학교관리자 신청 접수'
+                            : '학교 관리 권한·신청 이력',
+                        onApplications:
+                            _identity != null &&
+                                authenticated &&
+                                _auth is AuthApi
+                            ? () => _openApplications(dialogContext)
+                            : null,
                         onAccountSecurity:
                             _identity != null &&
                                 authenticated &&
@@ -505,7 +539,16 @@ class AppNavigation extends RouterDelegate<AppLocation>
                 Expanded(
                   child: FocusTraversalOrder(
                     order: const NumericFocusOrder(0),
-                    child: TaskFocusGroup(child: page),
+                    child: TaskFocusGroup(
+                      child:
+                          authenticated && _identity != null && _auth is AuthApi
+                          ? SchoolWorkflowSession(
+                              auth: _auth,
+                              identity: _identity!,
+                              child: page,
+                            )
+                          : page,
+                    ),
                   ),
                 ),
               ],

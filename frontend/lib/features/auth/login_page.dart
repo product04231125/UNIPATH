@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import 'app_role.dart';
 import 'auth_api.dart';
+import '../admin/unregistered_school_application_form.dart';
 
 import 'package:university_path_frontend/shared/app_typography.dart';
 
@@ -37,6 +38,8 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   final _passwordConfirmController = TextEditingController();
   bool _isLogin = true;
+  bool _schoolAdminSignup = false;
+  final _schoolDraft = UnregisteredSchoolApplicationDraft();
   bool _obscurePassword = true;
   bool _obscurePasswordConfirm = true;
   bool _submitting = false;
@@ -49,6 +52,7 @@ class _LoginPageState extends State<LoginPage> {
     _emailController.dispose();
     _passwordController.dispose();
     _passwordConfirmController.dispose();
+    _schoolDraft.dispose();
     super.dispose();
   }
 
@@ -56,14 +60,15 @@ class _LoginPageState extends State<LoginPage> {
     if (_isLogin == isLogin || _submitting) return;
     setState(() {
       _isLogin = isLogin;
-      _formKey.currentState?.reset();
       _error = null;
       _serverFields = const [];
     });
   }
 
   Future<void> _submit() async {
-    if (_submitting) return;
+    // There is no initial school-admin signup contract. Never create an
+    // ordinary account or report receipt for this unsupported submission.
+    if (_submitting || (!_isLogin && _schoolAdminSignup)) return;
     _serverFields = const [];
     if (_submitting || !(_formKey.currentState?.validate() ?? false)) return;
     setState(() {
@@ -152,7 +157,53 @@ class _LoginPageState extends State<LoginPage> {
                       Semantics(liveRegion: true, child: Text(widget.notice!)),
                       const SizedBox(height: 16),
                     ],
-                    if (_isLogin) ..._loginFields() else ..._signupFields(),
+                    if (_isLogin)
+                      ..._loginFields()
+                    else ...[
+                      const Text('가입 유형'),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final admin in [false, true])
+                            ChoiceChip(
+                              key: Key(
+                                admin
+                                    ? 'signup-school-admin'
+                                    : 'signup-student',
+                              ),
+                              label: Text(admin ? '학교관리자' : '학생'),
+                              selected: _schoolAdminSignup == admin,
+                              onSelected: _submitting
+                                  ? null
+                                  : (_) => setState(() {
+                                      _schoolAdminSignup = admin;
+                                      _error = null;
+                                      _serverFields = const [];
+                                    }),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      ..._signupFields(),
+                      if (_schoolAdminSignup) ...[
+                        const SizedBox(height: 24),
+                        Text(
+                          '학교 및 담당자 정보',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          '학교관리자 가입 신청은 아직 접수할 수 없습니다. 입력한 계정·학교 정보는 서버에 저장되지 않습니다.',
+                        ),
+                        const SizedBox(height: 12),
+                        SchoolAdminApplicationFields(
+                          draft: _schoolDraft,
+                          enabled: !_submitting,
+                        ),
+                      ],
+                    ],
                     const SizedBox(height: 24),
                     if (_error != null) ...[
                       Semantics(
@@ -176,9 +227,18 @@ class _LoginPageState extends State<LoginPage> {
                         minimumSize: const Size.fromHeight(52),
                         textStyle: TextStyle(fontWeight: FontWeight.w800),
                       ),
-                      onPressed: _submitting ? null : _submit,
+                      onPressed:
+                          _submitting || (!_isLogin && _schoolAdminSignup)
+                          ? null
+                          : _submit,
                       child: Text(
-                        _submitting ? '처리 중…' : (_isLogin ? '로그인' : '회원가입'),
+                        _submitting
+                            ? '처리 중…'
+                            : (_isLogin
+                                  ? '로그인'
+                                  : _schoolAdminSignup
+                                  ? '학교관리자 가입 신청 · 접수 준비 중'
+                                  : '회원가입'),
                       ),
                     ),
                     if (!kReleaseMode) ...[
