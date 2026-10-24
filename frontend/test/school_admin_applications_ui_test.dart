@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:university_path_frontend/features/admin/school_admin_applications_dialog.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
-import 'package:university_path_frontend/features/auth/login_page.dart';
 import 'package:university_path_frontend/shared/widgets/input_dialog.dart';
 
 import 'support/auth_fixture.dart';
@@ -65,26 +64,6 @@ Future<void> open(
 }
 
 void main() {
-  testWidgets('signup offers the authenticated application continuation', (
-    tester,
-  ) async {
-    var requested = false;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: LoginPage(
-          onSignedIn: () {},
-          onAdminApplicationRequested: () => requested = true,
-        ),
-      ),
-    );
-    await tester.tap(find.text('회원가입').first);
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('학교관리자 가입 신청'));
-    await tester.tap(find.text('학교관리자 가입 신청'));
-    await tester.pumpAndSettle();
-    expect(requested, isTrue);
-    expect(find.textContaining('일반 계정으로 가입 또는 로그인한 후'), findsOneWidget);
-  });
   testWidgets(
     'applicant can confirm cancellation and cannot see review controls',
     (tester) async {

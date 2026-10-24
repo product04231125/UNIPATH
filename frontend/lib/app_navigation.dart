@@ -81,7 +81,6 @@ class AppNavigation extends RouterDelegate<AppLocation>
   int _authEpoch = 0;
   bool _accountDialogOpen = false;
   String? _loginNotice;
-  bool _applicationsAfterLogin = false;
   Future<void> _openApplications(BuildContext context) async {
     final identity = _identity;
     final auth = _auth;
@@ -447,16 +446,8 @@ class AppNavigation extends RouterDelegate<AppLocation>
       page = LoginPage(
         notice: _loginNotice,
         authenticate: _authenticate,
-        onAdminApplicationRequested: () => _applicationsAfterLogin = true,
         onSignedIn: () {
           _signedIn(context, _identity?.role ?? AppRole.user);
-          if (_applicationsAfterLogin) {
-            _applicationsAfterLogin = false;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              final target = navigatorKey?.currentState?.overlay?.context;
-              if (target != null && target.mounted) _openApplications(target);
-            });
-          }
         },
         onSampleSignedIn: (role) {
           _authEpoch++;
@@ -511,7 +502,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
                       builder: (dialogContext) => WorkspaceTitleBar(
                         applicationLabel: _role == AppRole.superAdmin
                             ? '학교관리자 신청 접수'
-                            : '학교관리자 가입 신청',
+                            : '학교 관리 권한·신청 이력',
                         onApplications:
                             _identity != null &&
                                 authenticated &&

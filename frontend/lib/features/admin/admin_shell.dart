@@ -28,6 +28,7 @@ class AdminShell extends StatelessWidget {
     '/admin/documents' => Icons.description_outlined,
     '/admin/history' => Icons.history,
     '/admin/accounts' => Icons.manage_accounts_outlined,
+    '/admin/applications' => Icons.how_to_reg_outlined,
     '/admin/settings' => Icons.settings_outlined,
     _ => Icons.folder_outlined,
   };

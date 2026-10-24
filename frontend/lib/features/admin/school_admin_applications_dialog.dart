@@ -35,9 +35,11 @@ class SchoolAdminApplicationsDialog extends StatefulWidget {
     super.key,
     required this.auth,
     required this.identity,
+    this.inline = false,
   });
   final AuthApi auth;
   final AuthIdentity identity;
+  final bool inline;
   @override
   State<SchoolAdminApplicationsDialog> createState() => _ApplicationsState();
 }
@@ -293,12 +295,8 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => InputDialog(
-    title: Text(_review ? '학교관리자 신청 접수' : '학교관리자 가입 신청'),
-    hasContent: () => _dirty,
-    changes: _changes,
-    saving: _busy,
-    content: Column(
+  Widget build(BuildContext context) {
+    final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
@@ -316,6 +314,15 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
           ),
         ],
         if (_loading) const LinearProgressIndicator(),
+        if (_review)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _busy || _loading ? null : _load,
+              icon: const Icon(Icons.refresh),
+              label: const Text('접수 목록 새로고침'),
+            ),
+          ),
         if (!_review) ...[
           const SizedBox(height: 12),
           Wrap(
@@ -490,14 +497,22 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
             child: const Text('더 보기'),
           ),
       ],
-    ),
-    actions: [
-      TextButton(
-        onPressed: _busy ? null : () => InputDialog.cancel<void>(context),
-        child: const Text('닫기'),
-      ),
-    ],
-  );
+    );
+    if (widget.inline && _review) return content;
+    return InputDialog(
+      title: Text(_review ? '학교관리자 신청 접수' : '학교 관리 권한·신청 이력'),
+      hasContent: () => _dirty,
+      changes: _changes,
+      saving: _busy,
+      content: content,
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => InputDialog.cancel<void>(context),
+          child: const Text('닫기'),
+        ),
+      ],
+    );
+  }
 }
 
 class _ApplicationReviewDialog extends StatefulWidget {

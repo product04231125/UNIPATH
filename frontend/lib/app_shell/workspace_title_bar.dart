@@ -12,7 +12,7 @@ class WorkspaceTitleBar extends StatelessWidget {
     this.onToggleSidebar,
     this.onAccountSecurity,
     this.onApplications,
-    this.applicationLabel = '학교관리자 가입 신청',
+    this.applicationLabel = '학교 관리 권한·신청 이력',
     this.sidebarVisible = true,
     this.title = 'UniversityPath',
   });
