@@ -113,3 +113,5 @@ app/rag/.venv/bin/python -m app.rag.evals.answers \
 이수경로와 표의 숫자 관계를 확인해야 한다. 정규식은 신뢰 가능한 팀 작성 파일만 사용한다.
 
 합의할 항목과 담당자별 질문은 [TEAM_DECISIONS.md](../TEAM_DECISIONS.md)에 정리했다.
+
+독립 QA 작성·평가와 원문 검토 자료 생성: [QA_GUIDE.md](QA_GUIDE.md).
