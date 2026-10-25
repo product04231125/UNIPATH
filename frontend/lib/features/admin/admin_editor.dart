@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/widgets/input_dialog.dart';
+import '../../shared/widgets/responsive_columns.dart';
+import '../../shared/widgets/responsive_panels.dart';
 import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../records/personal_record_repository.dart';
@@ -18,6 +20,7 @@ class AdminEditor extends StatefulWidget {
     this.record,
     this.revoke = false,
     this.inline = false,
+    this.list,
   });
   final AdminRepository repository;
   final String actorId, schoolId;
@@ -25,6 +28,7 @@ class AdminEditor extends StatefulWidget {
   final AdminRecord? record;
   final bool revoke;
   final bool inline;
+  final Widget? list;
   @override
   State<AdminEditor> createState() => AdminEditorState();
 }
@@ -178,167 +182,261 @@ class AdminEditorState extends State<AdminEditor> {
   }
 
   @override
-  Widget build(BuildContext context) => _shell(
-    changes: Listenable.merge(_controllers.values.toList()),
-    editing: widget.record != null,
-    saving: _saving,
-    hasContent: () => _fields.any(
-      (f) =>
-          _value(f.key).trim() != (_initial[f.key] ?? '') &&
-          _value(f.key).trim().isNotEmpty,
+  Widget build(BuildContext context) {
+    if (widget.inline && widget.list != null) return _mixedLayout();
+    return _shell(
+      changes: Listenable.merge(_controllers.values.toList()),
+      editing: widget.record != null,
+      saving: _saving,
+      hasContent: () => _fields.any(
+        (f) =>
+            _value(f.key).trim() != (_initial[f.key] ?? '') &&
+            _value(f.key).trim().isNotEmpty,
+      ),
+      hasUnsavedChanges: () => _fields.any(
+        (f) => widget.record == null
+            ? _value(f.key).trim() != _initial[f.key]
+            : _value(f.key) != _initial[f.key],
+      ),
+      title: Text(
+        widget.revoke
+            ? '관리 범위 회수'
+            : '${widget.kind.label} ${widget.record == null ? '등록' : '수정'}',
+      ),
+      content: Form(
+        key: _form,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 16),
+            for (final group in adminFieldGroups(_fields).entries) ...[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12, top: 4),
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    group.key,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ),
+              for (final field in group.value) _field(field),
+            ],
+            if (_message != null)
+              Semantics(liveRegion: true, child: Text(_message!)),
+            if (_error != null)
+              Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : _cancel,
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: Text(
+            _saving
+                ? '저장 중…'
+                : widget.revoke
+                ? '범위 회수'
+                : widget.inline
+                ? '등록'
+                : '저장',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _field(AdminField field) => Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: field.relation == null && field.options.isEmpty
+        ? FieldLabel(
+            label: '${field.label}${field.required ? ' *' : ' (선택)'}',
+            child: Semantics(
+              label: field.label,
+              child: TextFormField(
+                key: ValueKey('admin-field-${field.key}'),
+                controller: _controllers[field.key],
+                enabled: !_saving,
+                maxLines: field.multiline ? 3 : 1,
+                decoration: const InputDecoration(),
+                validator: (v) =>
+                    field.required && (v == null || v.trim().isEmpty)
+                    ? '${field.label}을 입력하세요.'
+                    : null,
+              ),
+            ),
+          )
+        : FormField<String>(
+            initialValue: _value(field.key),
+            validator: (v) => field.required && _value(field.key).isEmpty
+                ? '${field.label}을 선택하세요.'
+                : null,
+            builder: (state) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                IgnorePointer(
+                  ignoring: _saving,
+                  child: AnchoredSelectField<String>(
+                    externalLabel: true,
+                    key: ValueKey('admin-field-${field.key}'),
+                    value: _value(field.key),
+                    label: '${field.label}${field.required ? ' *' : ' (선택)'}',
+                    options: [
+                      const SelectOption('', '미선택'),
+                      for (final entry in field.options.entries)
+                        SelectOption(entry.key, entry.value),
+                      for (final r in _choices(field))
+                        SelectOption(
+                          r.id,
+                          '${r.name}${r.kind.versioned ? ' · v${r.revision}' : ''}',
+                        ),
+                      if (_value(field.key).isNotEmpty &&
+                          !field.options.containsKey(_value(field.key)) &&
+                          !_choices(field)
+                              .any((r) => r.id == _value(field.key)))
+                        SelectOption(_value(field.key), '연결 대상 없음 · 다시 선택하세요'),
+                    ],
+                    onChanged: (v) {
+                      setState(() {
+                        _controllers[field.key]!.text = v;
+                        if (field.key == 'ruleSetId' && v.isNotEmpty) {
+                          final group = widget.repository.records.firstWhere(
+                            (r) => r.id == v,
+                          );
+                          for (final key in [
+                            'institutionId',
+                            'departmentId',
+                            'curriculumId',
+                            if (widget.repository.live) ...[
+                              'effectiveFrom',
+                              'effectiveTo',
+                            ],
+                          ]) {
+                            _controllers[key]!.text = group.value(key);
+                          }
+                        }
+                      });
+                      state.didChange(v);
+                    },
+                  ),
+                ),
+                if (state.hasError)
+                  Text(
+                    state.errorText!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+  );
+
+  Widget _panel(String title, Widget content, {Key? key}) => Card(
+    key: key,
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+          ),
+          const SizedBox(height: 16),
+          content,
+        ],
+      ),
     ),
-    hasUnsavedChanges: () => _fields.any(
-      (f) => widget.record == null
-          ? _value(f.key).trim() != _initial[f.key]
-          : _value(f.key) != _initial[f.key],
-    ),
-    title: Text(
-      widget.revoke
-          ? '관리 범위 회수'
-          : '${widget.kind.label} ${widget.record == null ? '등록' : '수정'}',
-    ),
-    content: Form(
+  );
+
+  Widget _mixedLayout() {
+    final basic = _fields
+        .where((f) => f.key == 'name' || f.key == 'institutionId')
+        .toList();
+    final remaining = _fields.where((f) => !basic.contains(f)).toList();
+    return Form(
       key: _form,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          ResponsiveColumns(
+            enabled: true,
+            // Keep search/filter fields outside the registration FormState.
+            first: Form(child: widget.list!),
+            second: _panel(
+              '${widget.kind.label} 등록',
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [for (final field in basic) _field(field)],
+              ),
+              key: ValueKey('admin-basic-${widget.kind.name}'),
+            ),
+          ),
           const SizedBox(height: 16),
-          for (final group in adminFieldGroups(_fields).entries) ...[
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12, top: 4),
-              child: Semantics(
-                header: true,
-                child: Text(
-                  group.key,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-            ),
-            for (final field in group.value)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: field.relation == null && field.options.isEmpty
-                    ? FieldLabel(
-                        label:
-                            '${field.label}${field.required ? ' *' : ' (선택)'}',
-                        child: Semantics(
-                          label: field.label,
-                          child: TextFormField(
-                            key: ValueKey('admin-field-${field.key}'),
-                            controller: _controllers[field.key],
-                            enabled: !_saving,
-                            maxLines: field.multiline ? 3 : 1,
-                            decoration: const InputDecoration(),
-                            validator: (v) =>
-                                field.required &&
-                                    (v == null || v.trim().isEmpty)
-                                ? '${field.label}을 입력하세요.'
-                                : null,
-                          ),
-                        ),
-                      )
-                    : FormField<String>(
-                        initialValue: _value(field.key),
-                        validator: (v) =>
-                            field.required && _value(field.key).isEmpty
-                            ? '${field.label}을 선택하세요.'
-                            : null,
-                        builder: (state) => Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            IgnorePointer(
-                              ignoring: _saving,
-                              child: AnchoredSelectField<String>(
-                                externalLabel: true,
-                                key: ValueKey('admin-field-${field.key}'),
-                                value: _value(field.key),
-                                label:
-                                    '${field.label}${field.required ? ' *' : ' (선택)'}',
-                                options: [
-                                  const SelectOption('', '미선택'),
-                                  for (final entry in field.options.entries)
-                                    SelectOption(entry.key, entry.value),
-                                  for (final r in _choices(field))
-                                    SelectOption(
-                                      r.id,
-                                      '${r.name}${r.kind.versioned ? ' · v${r.revision}' : ''}',
-                                    ),
-                                  if (_value(field.key).isNotEmpty &&
-                                      !field.options.containsKey(
-                                        _value(field.key),
-                                      ) &&
-                                      !_choices(
-                                        field,
-                                      ).any((r) => r.id == _value(field.key)))
-                                    SelectOption(
-                                      _value(field.key),
-                                      '연결 대상 없음 · 다시 선택하세요',
-                                    ),
-                                ],
-                                onChanged: (v) {
-                                  setState(() {
-                                    _controllers[field.key]!.text = v;
-                                    if (field.key == 'ruleSetId' &&
-                                        v.isNotEmpty) {
-                                      final group = widget.repository.records
-                                          .firstWhere((r) => r.id == v);
-                                      for (final key in [
-                                        'institutionId',
-                                        'departmentId',
-                                        'curriculumId',
-                                        if (widget.repository.live) ...[
-                                          'effectiveFrom',
-                                          'effectiveTo',
-                                        ],
-                                      ]) {
-                                        _controllers[key]!.text = group.value(
-                                          key,
-                                        );
-                                      }
-                                    }
-                                  });
-                                  state.didChange(v);
-                                },
-                              ),
-                            ),
-                            if (state.hasError)
-                              Text(
-                                state.errorText!,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
-                              ),
-                          ],
-                        ),
+          _panel(
+            '${widget.kind.label} 적용 범위·상세',
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final group in adminFieldGroups(remaining).entries) ...[
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      group.key,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ResponsivePanels(
+                    enabled: !group.value.any((f) => f.multiline),
+                    children: [for (final field in group.value) _field(field)],
+                  ),
+                ],
+                if (_message != null)
+                  Semantics(liveRegion: true, child: Text(_message!)),
+                if (_error != null)
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      _error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
                       ),
-              ),
-          ],
-          if (_message != null)
-            Semantics(liveRegion: true, child: Text(_message!)),
-          if (_error != null)
-            Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
+                const Divider(height: 24),
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    TextButton(
+                      onPressed: _saving ? null : _cancel,
+                      child: const Text('취소'),
+                    ),
+                    FilledButton(
+                      onPressed: _saving ? null : _save,
+                      child: Text(_saving ? '저장 중…' : '등록'),
+                    ),
+                  ],
+                ),
+              ],
             ),
+            key: ValueKey('admin-details-${widget.kind.name}'),
+          ),
         ],
       ),
-    ),
-    actions: [
-      TextButton(onPressed: _saving ? null : _cancel, child: const Text('취소')),
-      FilledButton(
-        onPressed: _saving ? null : _save,
-        child: Text(
-          _saving
-              ? '저장 중…'
-              : widget.revoke
-              ? '범위 회수'
-              : widget.inline
-              ? '등록'
-              : '저장',
-        ),
-      ),
-    ],
-  );
+    );
+  }
+
   Widget _shell({
     required Listenable changes,
     required bool editing,

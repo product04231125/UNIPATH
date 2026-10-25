@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:university_path_frontend/features/admin/admin_editor.dart';
+import 'package:university_path_frontend/features/admin/admin_models.dart';
 import 'package:university_path_frontend/features/admin/admin_repository.dart';
 import 'package:university_path_frontend/features/admin/admin_workspace.dart';
 import 'package:university_path_frontend/features/auth/app_role.dart';
@@ -58,10 +59,19 @@ void main() {
         );
         expect(empty, findsOneWidget);
         expect(tester.getSize(list).height, inInclusiveRange(240, 360));
-        expect(tester.getTopLeft(list).dy, tester.getTopLeft(form).dy);
+        expect(
+          tester.getTopLeft(list).dy,
+          tester
+              .getTopLeft(find.byKey(const ValueKey('admin-basic-ruleSet')))
+              .dy,
+        );
         expect(
           tester.getTopLeft(list).dx,
-          lessThan(tester.getTopLeft(form).dx),
+          lessThan(
+            tester
+                .getTopLeft(find.byKey(const ValueKey('admin-basic-ruleSet')))
+                .dx,
+          ),
         );
         expect(find.widgetWithText(FilledButton, '규칙 묶음 등록'), findsNothing);
         expect(
@@ -113,6 +123,77 @@ void main() {
       },
     );
   }
+  testWidgets('mixed layout keeps all fields and validates both panels', (
+    tester,
+  ) async {
+    final repo = FakeAdminRepository();
+    await showWorkspace(tester, repo, AppRole.superAdmin, '/admin/schools');
+    final form = find.descendant(
+      of: find.byKey(const ValueKey('admin-registration-department-school-a')),
+      matching: find.byType(AdminEditor),
+    );
+    final list = find.byKey(const ValueKey('admin-section-department'));
+    final basic = find.byKey(const ValueKey('admin-basic-department'));
+    final details = find.byKey(const ValueKey('admin-details-department'));
+    expect(tester.getTopLeft(list).dy, tester.getTopLeft(basic).dy);
+    expect(
+      tester.getTopLeft(details).dy,
+      greaterThan(tester.getBottomLeft(list).dy),
+    );
+    expect(tester.getTopLeft(details).dx, tester.getTopLeft(list).dx);
+    expect(
+      tester.getSize(details).width,
+      greaterThan(tester.getSize(list).width * 1.9),
+    );
+    for (final field in repo.fields(AdminKind.department)) {
+      expect(
+        find.descendant(
+          of: form,
+          matching: find.byKey(ValueKey('admin-field-${field.key}')),
+        ),
+        findsOneWidget,
+      );
+    }
+    final name = find.descendant(
+      of: basic,
+      matching: find.byKey(const ValueKey('admin-field-name')),
+    );
+    final code = find.descendant(
+      of: details,
+      matching: find.byKey(const ValueKey('admin-field-code')),
+    );
+    await tester.ensureVisible(name);
+    await tester.enterText(name, '새 학과');
+    final save = find.descendant(
+      of: form,
+      matching: find.widgetWithText(FilledButton, '등록'),
+    );
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(find.text('코드을 입력하세요.'), findsOneWidget);
+    expect(repo.records.any((r) => r.name == '새 학과'), isFalse);
+    await tester.ensureVisible(code);
+    await tester.enterText(code, 'NEW');
+    final cancel = find.descendant(
+      of: form,
+      matching: find.widgetWithText(TextButton, '취소'),
+    );
+    await tester.ensureVisible(cancel);
+    await tester.tap(cancel);
+    await tester.pumpAndSettle();
+    expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
+    await tester.tap(find.text('계속 작성'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextFormField>(name).controller!.text, '새 학과');
+    expect(tester.widget<TextFormField>(code).controller!.text, 'NEW');
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(repo.records.any((r) => r.name == '새 학과'), isTrue);
+    expect(tester.widget<TextFormField>(code).controller!.text, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'read only school list uses full width without registration placeholder',
     (tester) async {
