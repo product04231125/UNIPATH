@@ -38,12 +38,15 @@ OpenAPI(`/api/v1/docs`)가 기준이다.
 | 기능 | 문서 | 현재 상태 |
 | --- | --- | --- |
 | 인증 | [auth](features/auth.md) | 실제 가입·로그인·서버 세션·역할/학교 범위 |
+| 학교 문서 근거 검토 | [school-knowledge-review](features/school-knowledge-review.md) | 등록 추출본·페이지/범위 검토, 독립 확인 승인·회수 |
 | 관리자 | [admin](features/admin.md) | 실제 API 학사 관리·역할/범위·검토 버전/감사, debug 합성 샘플 |
 | 메뉴 탐색 | [navigation](features/navigation.md) | 주요 메뉴 hash URL·뒤로/앞으로·직접 진입 |
 | 홈 | [home](features/home.md) | 개인 계획 기반 시작 화면 |
 | 일정 | [schedule](features/schedule.md) | 실제 계정 서버 개인 일정·동의 이전 |
 | 수강 관리 | [course](features/course.md) | 실제 계정 서버 개인 수강 CRUD·학기 필터 |
-| 졸업 요건 | [graduation](features/graduation.md) | 실제 계정 서버 교육과정·과목·개인 규칙 CRUD·기록 연결 |
+| 졸업 요건 | [graduation](features/graduation.md) | 학교 검토 졸업감사 실행·근거·이력, 별도 개인 기준 작업 공간 |
+| 학교 발급 자료 | [official-records](features/official-records.md) | 본인 PDF 제출·이력, 관리자 원본/학생 기록 검토·승인 |
+| 학교 문서 검색 | [school-document-search](features/school-document-search.md) | 등록 학교 문맥 검색·발췌·출처·근거 부족 |
 | 활동 | [activity](features/activity.md) | 실제 계정 서버 개인 활동·봉사 CRUD |
 | 경험 | [experience](features/experience.md) | 실제 계정 서버 개인 경험 CRUD |
 | 자격 | [credential](features/credential.md) | 실제 계정 서버 개인 자격 CRUD |

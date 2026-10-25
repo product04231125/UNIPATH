@@ -155,7 +155,9 @@ flowchart LR
 포함한다. 승인 회수·새 적용본이 나타나면 과거 근거와 진행 중 결과를 버린다. 검토한 빈 페이지는
 완전성에만 포함하고 본문·인용을 만들지 않는다. 전체 corpus 한도를 넘으면 부분 자료로
 생성하지 않는다. 원문 파일 다운로드·파일 자동 승인·실제 LLM/임베딩·대화 저장은 하지 않는다.
-[검토·검색 API](api/school-knowledge.md)를 따르며 새 검토/검색 화면 연결은 후속이다.
+[검토·검색 API](api/school-knowledge.md)를 따르며 등록 추출본·페이지 검토/승인·회수는
+[관리자 근거 검토 화면](frontend/features/school-knowledge-review.md), 검색은 별도 학생/관리자 화면에 연결했다.
+신규 추출본 등록·페이지 수정/삭제 UI는 후속이다.
 
 ### 실행 규칙 검토와 선택
 
@@ -217,6 +219,11 @@ flowchart LR
     ManualReview --> AtomicGrant[신청 승인·역할·학교 범위 원자적 부여]
     AtomicGrant --> Guard
     AtomicGrant --> AccessDB
+    InitialSignup[최초 계정·학교 정보 가입 폼] --> SignupAPI[최초 가입 API]
+    SignupAPI --> AtomicReceipt[(일반 계정·비공개 학교 신청·세션 원자적 저장)]
+    AtomicReceipt --> ExplicitReview[슈퍼관리자 신원·소속 확인 및 학교 연결 선택]
+    ExplicitReview --> SchoolGrant[(신청 승인·학교 등록 또는 기존 연결·역할·범위 원자적 저장)]
+    SchoolGrant --> AccessDB
 ```
 
 아래 전체 도메인/외부 서비스 관계는 목표 구조다. 인증·운영자 초기화는

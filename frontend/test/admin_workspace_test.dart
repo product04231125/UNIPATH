@@ -92,7 +92,7 @@ void main() {
       );
       expect(
         tester
-            .getTopLeft(find.byKey(const ValueKey('admin-section-institution')))
+            .getTopLeft(find.byKey(const ValueKey('admin-frame-institution')))
             .dy,
         lessThan(220),
       );
@@ -100,7 +100,7 @@ void main() {
     },
   );
   testWidgets(
-    'admin list and permanent registration use two columns and stack',
+    'desktop admin sections contain list and complete registration in one frame',
     (tester) async {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final repo = FakeAdminRepository();
@@ -125,20 +125,23 @@ void main() {
         );
         await tester.pumpAndSettle();
         final first = find.byKey(ValueKey('admin-section-${item.$2}'));
-        final second = find.descendant(
-          of: find.byKey(ValueKey('admin-registration-${item.$2}-school-a')),
-          matching: find.byType(AdminEditor),
-        );
+        final frame = find.byKey(ValueKey('admin-frame-${item.$2}'));
+        final second = find.byKey(ValueKey('admin-basic-${item.$2}'));
+        final details = find.byKey(ValueKey('admin-details-${item.$2}'));
+        expect(find.descendant(of: frame, matching: first), findsOneWidget);
+        expect(find.descendant(of: frame, matching: details), findsOneWidget);
         expect(tester.getTopLeft(first).dy, tester.getTopLeft(second).dy);
         expect(
           tester.getTopLeft(first).dx,
           lessThan(tester.getTopLeft(second).dx),
         );
-        await tester.binding.setSurfaceSize(const Size(480, 520));
-        await tester.pumpAndSettle();
         expect(
-          tester.getTopLeft(second).dy,
-          greaterThan(tester.getTopLeft(first).dy),
+          tester.getTopLeft(details).dy,
+          greaterThan(tester.getBottomLeft(first).dy),
+        );
+        expect(
+          tester.getBottomLeft(frame).dy,
+          greaterThan(tester.getBottomLeft(details).dy),
         );
         expect(tester.takeException(), isNull);
       }
@@ -834,8 +837,14 @@ void main() {
             .text,
         entry.value['name'],
       );
-      await tester.tap(find.text('저장'));
+      await tester.tap(
+        find.text(entry.key == AdminKind.rule ? '요건 설명 저장' : '저장'),
+      );
       await tester.pumpAndSettle();
+      if (entry.key == AdminKind.rule) {
+        await tester.tap(find.text('취소'));
+        await tester.pumpAndSettle();
+      }
       expect(find.byType(InputDialog), findsNothing);
       final created = repo.records.singleWhere(
         (r) => r.name == entry.value['name'],
@@ -846,7 +855,9 @@ void main() {
       expect(find.byType(InputDialog), findsNothing);
       await openEditor(tester, repo, entry.key, record: created);
       await setField(tester, 'name', '수정 ${created.name}');
-      await tester.tap(find.text('저장'));
+      await tester.tap(
+        find.text(entry.key == AdminKind.rule ? '요건 설명 저장' : '저장'),
+      );
       await tester.pumpAndSettle();
       expect(repo.find(created.id)!.name, '수정 ${created.name}');
       expect(tester.takeException(), isNull);

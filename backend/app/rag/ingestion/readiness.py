@@ -18,7 +18,8 @@ def inspect_corpus(chunks: list[dict]) -> dict:
     for document_id, group in sorted(documents.items()):
         expected = group[0]["document_page_count"]
         present = {c["page"] for c in group}
-        missing = sorted(set(range(1, expected + 1)) - present)
+        reviewed_blank = set(group[0].get("reviewed_blank_pages", []))
+        missing = sorted(set(range(1, expected + 1)) - present - reviewed_blank)
         issues = []
         for chunk in sorted(group, key=lambda c: (c["page"], c.get("page_part_index", 0))):
             blockers = []
@@ -49,6 +50,7 @@ def inspect_corpus(chunks: list[dict]) -> dict:
                 "document_hash": group[0]["document_hash"],
                 "chunk_count": len(group),
                 "missing_pages": missing,
+                "reviewed_blank_pages": sorted(reviewed_blank),
                 "chunks": issues,
                 "ready_for_scoped_local_test": not missing
                 and all(not c["blockers"] and c["passes_retriever_approval_flags"] for c in issues),

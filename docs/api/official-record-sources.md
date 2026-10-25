@@ -5,7 +5,7 @@
 성적·봉사·자격 기록의 승인이나 졸업 판정이 아니다. 응답의 `graduation_eligible`은 항상
 `false`다. 기록별 페이지 매핑·문맥·완전성 검토와 별도 승인은
 [학교 검토 기록 API](official-student-records.md)를 따른다. 학교별 성적 환산·재수강 정책의
-자동 해석과 공식 감사 API는 후속이다.
+자동 해석은 제공하지 않으며 판정은 [졸업감사 API](graduation-audits.md)를 따른다.
 학교 SSO, OCR, 외부 스토리지·LLM 공급자를 도입하지 않는다.
 
 ## 원본과 접근 범위
@@ -103,4 +103,5 @@ Flutter의 `RecordSourceApi`와 `RecordSourceUpload/RecordSource/RecordSourceEve
 capability를 같은 로그인에서 캡처하며 쿠키/메모리 bearer와 `X-Unipath-Owner`를 공유한다.
 본인 조회 응답이 다른 소유자이거나 단건 응답 ID가 다른 경우 사용하지 않는다. 업로드·다운로드
 도중 다른 계정이나 같은 계정의 새 로그인이 생기면 이전 capability의 응답을 버린다.
-PDF·인증 토큰은 이 adapter에서 디스크/환경설정에 보관하지 않는다. 제출·검토 화면 연결은 후속이다.
+PDF·인증 토큰은 이 adapter에서 디스크/환경설정에 보관하지 않는다.
+[제출·검토 화면](../frontend/features/official-records.md)에서 기존 계약을 사용한다.

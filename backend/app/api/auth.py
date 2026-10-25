@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_session
 from app.core.config import Environment
+from app.schemas.admin_signups import SchoolAdminSignupRegister, SchoolAdminSignupResponse
 from app.schemas.auth import (
     LoginRequest,
     LoginResponse,
@@ -14,7 +15,7 @@ from app.schemas.auth import (
     RegisterRequest,
     SessionMode,
 )
-from app.services import auth
+from app.services import admin_signups, auth
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 Database = Annotated[Session, Depends(get_session)]
@@ -63,6 +64,14 @@ def session_response(request: Request, response: Response, payload, result, toke
 @router.post("/register", response_model=LoginResponse, status_code=201)
 def register(payload: RegisterRequest, request: Request, response: Response, db: Database):
     result, token = auth.register(db, payload, request.app.state.settings, request)
+    return session_response(request, response, payload, result, token)
+
+
+@router.post("/school-admin-signups", response_model=SchoolAdminSignupResponse, status_code=201)
+def school_admin_signup(
+    payload: SchoolAdminSignupRegister, request: Request, response: Response, db: Database
+):
+    result, token = admin_signups.register(db, request, payload)
     return session_response(request, response, payload, result, token)
 
 
