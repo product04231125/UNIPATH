@@ -357,28 +357,50 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
 
   Widget _records(AdminKind kind) {
     if (!_canCreate(kind)) return _recordList(kind);
-    return KeyedSubtree(
-      key: ValueKey('admin-registration-${kind.name}-$_schoolId'),
-      child: AdminEditor(
-        key: _editorKeys.putIfAbsent(kind, () => GlobalKey<AdminEditorState>()),
-        repository: _repo,
-        actorId: _actor,
-        kind: kind,
-        schoolId: _schoolId,
-        inline: true,
-        list: _recordList(kind),
+    return Card(
+      key: ValueKey('admin-frame-${kind.name}'),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Semantics(
+              header: true,
+              child: Text(
+                kind.label,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            const SizedBox(height: 20),
+            KeyedSubtree(
+              key: ValueKey('admin-registration-${kind.name}-$_schoolId'),
+              child: AdminEditor(
+                key: _editorKeys.putIfAbsent(
+                  kind,
+                  () => GlobalKey<AdminEditorState>(),
+                ),
+                repository: _repo,
+                actorId: _actor,
+                kind: kind,
+                schoolId: _schoolId,
+                inline: true,
+                list: _recordList(kind, framed: false),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _recordList(AdminKind kind) => Card(
-    key: ValueKey('admin-section-${kind.name}'),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(20),
-      side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(20),
+  Widget _recordList(AdminKind kind, {bool framed = true}) {
+    final content = Padding(
+      key: ValueKey('admin-section-${kind.name}'),
+      padding: EdgeInsets.all(framed ? 20 : 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -391,7 +413,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
               Semantics(
                 header: true,
                 child: Text(
-                  '${kind.label} 목록',
+                  framed ? '${kind.label} 목록' : '목록',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
@@ -521,8 +543,18 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           ),
         ],
       ),
-    ),
-  );
+    );
+    if (!framed) return content;
+    return Card(
+      key: ValueKey('admin-frame-${kind.name}'),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: content,
+    );
+  }
+
   Widget _recordActions(AdminRecord r, {bool detail = false}) => Wrap(
     spacing: 8,
     runSpacing: 8,
