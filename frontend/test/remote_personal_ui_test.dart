@@ -10,6 +10,7 @@ import 'package:university_path_frontend/features/records/course/course_page.dar
 import 'package:university_path_frontend/features/graduation/personal_graduation_workspace.dart';
 
 import 'support/auth_fixture.dart';
+import 'course_period_test.dart' as period;
 import 'support/personal_gateway.dart';
 import 'support/personal_workspace_fixture.dart';
 
@@ -75,6 +76,8 @@ void main() {
             'me/course-records/${fixtureId(PersonalRecordKind.course)}',
           );
           expect(request.$3!['expected_version'], 1);
+          expect(request.$3!['term'], '2026-2');
+          expect(request.$3!.containsKey('year'), isFalse);
           expect(request.$3!.containsKey('owner_id'), isFalse);
           expect(request.$3!.containsKey('client_id'), isFalse);
           expect(tester.takeException(), isNull);
@@ -83,6 +86,81 @@ void main() {
       );
     }
   }
+  testWidgets(
+    'server split course period retries identical create and preserves wire contract',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final gateway = CoursePeriodGateway()
+        ..empty = true
+        ..failWrites = true;
+      await tester.pumpWidget(
+        scope(gateway, const CoursePage(showMockData: false)),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('수강 과목 직접 입력'));
+      await tester.pumpAndSettle();
+      await period.enter(tester, 'title', '서버 계절 과목');
+      await period.enter(tester, 'course-year', '2024');
+      await period.enter(tester, 'term', '겨울 계절학기');
+      await period.enter(tester, 'category', '교양');
+      await period.enter(tester, 'credits', '2');
+      await period.save(tester);
+      expect(find.textContaining('입력은 유지됩니다'), findsOneWidget);
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('record-field-course-year')),
+            )
+            .controller!
+            .text,
+        '2024',
+      );
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('record-field-term')),
+            )
+            .controller!
+            .text,
+        '겨울 계절학기',
+      );
+      gateway.failWrites = false;
+      await period.save(tester);
+      final creates = gateway.calls.where((call) => call.$1 == 'POST').toList();
+      expect(creates, hasLength(2));
+      expect(creates[0].$3, creates[1].$3);
+      expect(creates[1].$2, 'me/course-records');
+      expect(creates[1].$3!['term'], '2024년 겨울 계절학기');
+      expect(
+        creates[1].$3!.keys,
+        unorderedEquals([
+          'client_id',
+          'title',
+          'detail',
+          'term',
+          'category',
+          'credits',
+          'section',
+          'course_code',
+          'grade',
+          'completion',
+        ]),
+      );
+      expect(find.textContaining('수강 기간: 2024년 겨울 계절학기'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, '수정'));
+      await tester.pumpAndSettle();
+      await period.enter(tester, 'course-year', '2025');
+      await period.save(tester);
+      final patch = gateway.calls.singleWhere((call) => call.$1 == 'PATCH');
+      expect(patch.$3!['expected_version'], 1);
+      expect(patch.$3!['term'], '2025년 겨울 계절학기');
+      expect(patch.$3!.containsKey('year'), isFalse);
+      expect(patch.$3!.containsKey('client_id'), isFalse);
+      expect(find.textContaining('수강 기간: 2025년 겨울 계절학기'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets(
     'graduation selectors use same server repositories and never evaluate free text',
     (tester) async {
@@ -122,4 +200,26 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+}
+
+class CoursePeriodGateway extends PersonalGateway {
+  @override
+  Future<Map<String, dynamic>?> request(
+    String method,
+    String path, [
+    Map<String, Object?>? body,
+  ]) async {
+    if (method == 'GET' || failWrites) return super.request(method, path, body);
+    calls.add((method, path, body));
+    return {
+      ...body!,
+      'id': body['client_id'] ?? path.split('/').last,
+      'owner_id': userId,
+      'version': method == 'POST' ? 1 : 2,
+      'origin': 'personal',
+      'official': false,
+      'created_at': '2026-10-25T00:00:00Z',
+      'updated_at': '2026-10-25T00:00:00Z',
+    };
+  }
 }

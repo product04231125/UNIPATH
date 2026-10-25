@@ -217,7 +217,8 @@ void main() {
       await tester.pumpAndSettle();
       for (final field in {
         'title': '수정할 합성 과목',
-        'term': '2026-2',
+        'course-year': '2026',
+        'term': '2학기',
         'category': '전공',
         'credits': '-3',
       }.entries) {
@@ -241,7 +242,7 @@ void main() {
       expect(find.textContaining('개인 입력 합계 5.0학점'), findsOneWidget);
       await tester.tap(find.text('전체 학기'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('2026-2').last);
+      await tester.tap(find.text('2학기').last);
       await tester.pumpAndSettle();
       expect(find.text('다른 학기 합성 과목'), findsNothing);
       expect(find.textContaining('개인 입력 합계 3.0학점'), findsOneWidget);
@@ -289,7 +290,13 @@ void main() {
     (
       '수강 관리',
       '수강 과목 직접 입력',
-      {'title': '합성 과목', 'term': '2026-2', 'category': '개인 전공', 'credits': '3'},
+      {
+        'title': '합성 과목',
+        'course-year': '2026',
+        'term': '2학기',
+        'category': '개인 전공',
+        'credits': '3',
+      },
     ),
     ('활동', '활동 직접 기록', {'title': '합성 활동'}),
     ('경험', '경험 직접 기록', {'title': '합성 경험', 'type': '프로젝트'}),
