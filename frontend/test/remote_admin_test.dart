@@ -330,19 +330,15 @@ void main() {
           find.byKey(const ValueKey('admin-menu-/admin/schools')),
         );
         await tester.pumpAndSettle();
-        await tester.ensureVisible(find.widgetWithText(FilledButton, '학교 등록'));
-        await tester.tap(find.widgetWithText(FilledButton, '학교 등록'));
-        await tester.pumpAndSettle();
         final schoolForm = find.byKey(
           const ValueKey('admin-registration-institution-$schoolId'),
         );
-        await tester.enterText(
-          find.descendant(
-            of: schoolForm,
-            matching: find.byKey(const ValueKey('admin-field-name')),
-          ),
-          '등록할 학교',
+        final name = find.descendant(
+          of: schoolForm,
+          matching: find.byKey(const ValueKey('admin-field-name')),
         );
+        await tester.ensureVisible(name);
+        await tester.enterText(name, '등록할 학교');
         final save = find.descendant(
           of: schoolForm,
           matching: find.widgetWithText(FilledButton, '등록'),
