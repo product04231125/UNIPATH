@@ -1,0 +1,36 @@
+[
+  {
+    "id": "synthetic",
+    "context": {
+      "institution": "테스트대학교",
+      "department": "테스트학과",
+      "admission_year": 2026,
+      "track": "single_major"
+    },
+    "expected_status": "grounded",
+    "expected_reason": "generated_from_evidence",
+    "source_versions": {
+      "c58ded12-ffa2-5829-b695-2b85a66ed505": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "evidence": [
+      {
+        "document_id": "c58ded12-ffa2-5829-b695-2b85a66ed505",
+        "page": 1,
+        "quote": "사회봉사 36시간"
+      }
+    ],
+    "question": "단일전공 사회봉사 조건은?",
+    "author": "합성 작성자",
+    "reviewer": "합성 검토자",
+    "reviewed": false,
+    "suite": "development",
+    "required_phrases": [
+      "36시간",
+      "단일전공"
+    ],
+    "forbidden_phrases": [
+      "16시간",
+      "졸업 가능"
+    ]
+  }
+]

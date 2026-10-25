@@ -177,3 +177,5 @@ RAG 전용 테스트 수와 실행 결과는 기능 PR에서 확인한다. 외�
 인용/조건 회귀 검사, 코퍼스 미검토 항목 점검을 추가했다.
 실행법과 합성 예시는 [evals/README.md](evals/README.md), 합의 대기 항목과
 담당자별 질문은 [TEAM_DECISIONS.md](TEAM_DECISIONS.md)를 참고한다.
+
+2026-10-25 추가: [독립 QA 및 원문 검토 안내](evals/QA_GUIDE.md). 검토한 빈 페이지를 준비 상태 점검에 반영한다.
