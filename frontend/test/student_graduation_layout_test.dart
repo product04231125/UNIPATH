@@ -96,7 +96,16 @@ void main() {
           findsOneWidget,
         );
         final fields = await personalGraduationFields(entry.value);
-        for (final field in fields) {
+        for (final field in fields.where(
+          (f) =>
+              entry.value != PersonalRecordKind.personalGraduationRule ||
+              ![
+                'ruleType',
+                'requiredValue',
+                'currentValue',
+                'unit',
+              ].contains(f.key),
+        )) {
           expect(
             find.byKey(
               ValueKey(

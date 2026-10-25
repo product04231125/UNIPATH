@@ -10,6 +10,7 @@ import '../../shared/widgets/responsive_columns.dart';
 import '../../shared/widgets/responsive_panels.dart';
 import 'personal_record_fields.dart';
 import 'personal_record_repository.dart';
+import '../graduation/personal_requirement_panel.dart';
 
 /// Student-owned local records. No administrator repository or server role.
 class LocalRecordWorkbench extends StatefulWidget {
@@ -38,11 +39,14 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
   final _controllers = <String, TextEditingController>{};
   List<PersonalRecordField> _fields = [];
   PersonalRecord? _editing;
+  var _rulePanel = GlobalKey<PersonalRequirementPanelState>();
+  bool get _isRule => widget.kind == PersonalRecordKind.personalGraduationRule;
   bool _loading = true, _saving = false;
   String? _error, _message;
-  bool get dirty => _controllers.entries.any(
+  bool get _metadataDirty => _controllers.entries.any(
     (e) => e.value.text != (_editing?.value(e.key) ?? ''),
   );
+  bool get dirty => _metadataDirty || (_rulePanel.currentState?.dirty ?? false);
   Future<bool> allowLeave() async =>
       !_saving && (!dirty || await confirmInputDiscard(context));
   @override
@@ -70,7 +74,15 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
       if (!mounted) return;
       _fields = fields;
       for (final f in fields) {
-        _controllers.putIfAbsent(f.key, TextEditingController.new);
+        _controllers.putIfAbsent(f.key, () {
+          final c = TextEditingController();
+          if (_isRule) {
+            c.addListener(() {
+              if (mounted) setState(() {});
+            });
+          }
+          return c;
+        });
       }
     } catch (_) {
       if (mounted) _error = '자료를 읽지 못했습니다. 다시 읽기를 눌러주세요.';
@@ -81,6 +93,7 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
   void _reset([PersonalRecord? record]) {
     _form.currentState?.reset();
     _editing = record;
+    _rulePanel = GlobalKey<PersonalRequirementPanelState>();
     for (final e in _controllers.entries) {
       e.value.text = record?.value(e.key) ?? '';
     }
@@ -92,6 +105,9 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
 
   Future<void> _save() async {
     if (_saving || !_form.currentState!.validate()) return;
+    if (_isRule && !(_rulePanel.currentState?.validateForMetadata() ?? false)) {
+      return;
+    }
     final values = {
       ...?_editing?.values,
       for (final e in _controllers.entries) e.key: e.value.text.trim(),
@@ -108,15 +124,16 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
     try {
       final linkError = await widget.validateValues?.call(values);
       if (linkError != null) throw StateError(linkError);
+      final id = _editing?.id ?? PersonalRecord.newId();
       await _repo.save(
-        PersonalRecord(
-          id: _editing?.id ?? PersonalRecord.newId(),
-          version: _editing?.version,
-          values: values,
-        ),
+        PersonalRecord(id: id, version: _editing?.version, values: values),
       );
       if (mounted) {
-        _reset();
+        if (_isRule) {
+          _editing = _repo.records.where((r) => r.id == id).first;
+        } else {
+          _reset();
+        }
         setState(
           () => _message =
               '개인 자료를 ${_repo.isServerBacked ? '계정 서버' : '기기'}에 저장했습니다.',
@@ -177,14 +194,19 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
       padding: const EdgeInsets.only(bottom: 16),
       child: f.options.isEmpty
           ? FieldLabel(
-              label: '${f.label}${f.required ? ' *' : ' (선택)'}',
+              label:
+                  '${_isRule && f.key == 'condition' ? '요건 설명' : f.label}${f.required ? ' *' : ' (선택)'}',
               child: Semantics(
                 label: f.label,
                 child: TextFormField(
                   key: ValueKey('record-field-${f.key}'),
                   controller: c,
                   enabled: !_saving,
-                  maxLines: f.multiline ? 3 : 1,
+                  maxLines: _isRule && f.key == 'condition'
+                      ? 1
+                      : f.multiline
+                      ? 3
+                      : 1,
                   validator: f.validate,
                   keyboardType: f.type == PersonalFieldType.number
                       ? TextInputType.number
@@ -202,7 +224,8 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                     externalLabel: true,
                     key: ValueKey('record-select-${f.key}'),
                     value: c.text,
-                    label: '${f.label}${f.required ? ' *' : ' (선택)'}',
+                    label:
+                        '${_isRule && f.key == 'condition' ? '요건 설명' : f.label}${f.required ? ' *' : ' (선택)'}',
                     options: [
                       const SelectOption('', '미선택'),
                       for (final value in f.options.where((v) => v.isNotEmpty))
@@ -361,6 +384,18 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
   );
 
   Widget _details(List<PersonalRecordField> fields) {
+    fields = fields
+        .where(
+          (f) =>
+              !_isRule ||
+              ![
+                'ruleType',
+                'requiredValue',
+                'currentValue',
+                'unit',
+              ].contains(f.key),
+        )
+        .toList();
     final short = fields
         .where((f) => !f.multiline && f.type != PersonalFieldType.url)
         .toList();
@@ -421,6 +456,29 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _details(details),
+                    if (_isRule)
+                      PersonalRequirementPanel(
+                        key: _rulePanel,
+                        curriculumId: _controllers['curriculumId']?.text ?? '',
+                        rule: _editing,
+                        metadataDirty: _metadataDirty,
+                        onBusy: (busy) {
+                          if (mounted) setState(() => _saving = busy);
+                        },
+                        onChanged: (draft) {
+                          if (draft.kind != 'none') {
+                            _controllers['ruleType']!.text = draft.kind;
+                          }
+                          _controllers['requiredValue']!.text =
+                              draft.values['minimum'] ?? '';
+                          _controllers['unit']!.text =
+                              draft.kind == 'minimum_credits'
+                              ? '학점'
+                              : draft.kind == 'minimum_volunteer_hours'
+                              ? '시간'
+                              : '';
+                        },
+                      ),
                     if (_message != null)
                       Semantics(liveRegion: true, child: Text(_message!)),
                     if (_error != null)
