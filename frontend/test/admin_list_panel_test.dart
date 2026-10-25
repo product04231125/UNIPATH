@@ -175,7 +175,7 @@ void main() {
     },
   );
   testWidgets(
-    'long descriptions keep full detail width and dates share a row',
+    'requirement description stays on one line and dates share a row',
     (tester) async {
       await showWorkspace(
         tester,
@@ -191,10 +191,16 @@ void main() {
         of: form,
         matching: find.byKey(ValueKey('admin-field-$key')),
       );
-      final details = find.byKey(const ValueKey('admin-details-rule'));
       expect(
-        tester.getSize(field('definition')).width,
-        greaterThan(tester.getSize(details).width * .9),
+        tester
+            .widget<TextField>(
+              find.descendant(
+                of: field('definition'),
+                matching: find.byType(TextField),
+              ),
+            )
+            .maxLines,
+        1,
       );
       expect(
         tester.getTopLeft(field('effectiveFrom')).dy,

@@ -118,7 +118,7 @@ List<AdminField> adminFields(AdminKind kind) => [
         'custom': '기타',
       },
     ),
-    const AdminField('definition', '조건·대체 요건 설명', multiline: true),
+    const AdminField('definition', '요건 설명'),
     const AdminField('sourceUrl', '근거 HTTP(S) URL', required: false),
   ],
   if (kind == AdminKind.document) ...[

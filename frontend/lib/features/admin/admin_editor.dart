@@ -9,6 +9,8 @@ import '../records/personal_record_repository.dart';
 import 'admin_models.dart';
 import 'admin_fields.dart';
 import 'admin_repository.dart';
+import 'remote_admin_repository.dart';
+import 'admin_rule_execution_panel.dart';
 
 class AdminEditor extends StatefulWidget {
   const AdminEditor({
@@ -38,17 +40,40 @@ class AdminEditorState extends State<AdminEditor> {
   late final List<AdminField> _fields;
   late final Map<String, TextEditingController> _controllers;
   late final Map<String, String> _initial;
-  bool _saving = false;
-  String? _error, _message;
-  bool get saving => _saving;
-  bool get dirty =>
+  bool _saving = false, _panelBusy = false;
+  AdminRecord? _savedRecord;
+  var _executionKey = GlobalKey<AdminRuleExecutionPanelState>();
+  final _conditionChanges = ValueNotifier<int>(0);
+  bool get _isRule => widget.kind == AdminKind.rule && !widget.revoke;
+  AdminRecord? get _rule =>
+      widget.repository.records
+          .where((r) => r.id == _savedRecord?.id)
+          .firstOrNull ??
+      _savedRecord;
+  bool get _metadataLocked => _isRule && _rule?.status == 'applied';
+  bool get _metadataDirty =>
       _fields.any((f) => _value(f.key) != (_initial[f.key] ?? ''));
+  String? _error, _message;
+  bool get saving => _saving || _panelBusy;
+  bool get dirty =>
+      _metadataDirty || (_executionKey.currentState?.dirty ?? false);
   Future<bool> allowLeave() async {
-    if (_saving) return false;
+    if (saving) return false;
     return !dirty || await confirmInputDiscard(context);
   }
 
   void _reset() {
+    for (final f in _fields) {
+      _initial[f.key] =
+          widget.record?.value(f.key) ??
+          (f.key == 'institutionId'
+              ? widget.schoolId
+              : f.key == 'scopeType'
+              ? 'institution'
+              : '');
+    }
+    _savedRecord = widget.record;
+    _executionKey = GlobalKey<AdminRuleExecutionPanelState>();
     for (final f in _fields) {
       _controllers[f.key]!.text = _initial[f.key] ?? '';
     }
@@ -70,6 +95,7 @@ class AdminEditorState extends State<AdminEditor> {
   @override
   void initState() {
     super.initState();
+    _savedRecord = widget.record;
     _fields = widget.revoke
         ? [const AdminField('reason', '회수 사유', multiline: true)]
         : widget.repository.fields(widget.kind);
@@ -88,6 +114,15 @@ class AdminEditorState extends State<AdminEditor> {
       for (final f in _fields)
         f.key: TextEditingController(text: _initial[f.key]),
     };
+    if (_isRule) {
+      for (final c in _controllers.values) {
+        c.addListener(_refreshRule);
+      }
+    }
+  }
+
+  void _refreshRule() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -95,6 +130,7 @@ class AdminEditorState extends State<AdminEditor> {
     for (final c in _controllers.values) {
       c.dispose();
     }
+    _conditionChanges.dispose();
     super.dispose();
   }
 
@@ -129,7 +165,7 @@ class AdminEditorState extends State<AdminEditor> {
         return true;
       });
   Future<void> _save() async {
-    if (_saving || !_form.currentState!.validate()) return;
+    if (saving || _metadataLocked || !_form.currentState!.validate()) return;
     setState(() {
       _saving = true;
       _error = null;
@@ -144,25 +180,42 @@ class AdminEditorState extends State<AdminEditor> {
         );
       } else {
         final values = {
-          ...?widget.record?.values,
+          ...?(_isRule ? _rule : widget.record)?.values,
           for (final f in _fields) f.key: _value(f.key).trim(),
           if (widget.repository.live && widget.kind != AdminKind.institution)
             'institutionId': _controllers.containsKey('institutionId')
                 ? _value('institutionId')
                 : widget.schoolId,
         };
-        await widget.repository.save(
-          widget.actorId,
-          widget.record?.copy(values: values) ??
-              AdminRecord(
-                id: 'mock-${PersonalRecord.newId()}',
-                kind: widget.kind,
-                values: values,
-              ),
-        );
+        final record =
+            (_isRule ? _rule : widget.record)?.copy(values: values) ??
+            AdminRecord(
+              id: 'mock-${PersonalRecord.newId()}',
+              kind: widget.kind,
+              values: values,
+            );
+        if (_isRule && widget.repository is RemoteAdminRepository) {
+          _savedRecord = await (widget.repository as RemoteAdminRepository)
+              .saveWithResult(widget.actorId, record);
+        } else {
+          await widget.repository.save(widget.actorId, record);
+          if (_isRule) {
+            _savedRecord = widget.repository.records
+                .where((r) => r.id == record.id)
+                .firstOrNull;
+          }
+        }
       }
       if (mounted) {
-        if (widget.inline) {
+        if (_isRule) {
+          for (final f in _fields) {
+            _initial[f.key] = _value(f.key);
+          }
+          setState(() {
+            _saving = false;
+            _message = '요건 설명을 저장했습니다. 아래에서 계산 조건을 이어서 저장하세요.';
+          });
+        } else if (widget.inline) {
           _reset();
           setState(() => _message = '등록했습니다. 다음 내용을 입력할 수 있습니다.');
         } else {
@@ -185,19 +238,11 @@ class AdminEditorState extends State<AdminEditor> {
   Widget build(BuildContext context) {
     if (widget.inline && widget.list != null) return _mixedLayout();
     return _shell(
-      changes: Listenable.merge(_controllers.values.toList()),
+      changes: Listenable.merge([..._controllers.values, _conditionChanges]),
       editing: widget.record != null,
-      saving: _saving,
-      hasContent: () => _fields.any(
-        (f) =>
-            _value(f.key).trim() != (_initial[f.key] ?? '') &&
-            _value(f.key).trim().isNotEmpty,
-      ),
-      hasUnsavedChanges: () => _fields.any(
-        (f) => widget.record == null
-            ? _value(f.key).trim() != _initial[f.key]
-            : _value(f.key) != _initial[f.key],
-      ),
+      saving: saving,
+      hasContent: () => dirty,
+      hasUnsavedChanges: () => dirty,
       title: Text(
         widget.revoke
             ? '관리 범위 회수'
@@ -222,6 +267,7 @@ class AdminEditorState extends State<AdminEditor> {
               ),
               for (final field in group.value) _field(field),
             ],
+            if (_isRule) _executionPanel(),
             if (_message != null)
               Semantics(liveRegion: true, child: Text(_message!)),
             if (_error != null)
@@ -233,17 +279,16 @@ class AdminEditorState extends State<AdminEditor> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: _saving ? null : _cancel,
-          child: const Text('취소'),
-        ),
+        TextButton(onPressed: saving ? null : _cancel, child: const Text('취소')),
         FilledButton(
-          onPressed: _saving ? null : _save,
+          onPressed: saving || _metadataLocked ? null : _save,
           child: Text(
             _saving
                 ? '저장 중…'
                 : widget.revoke
                 ? '범위 회수'
+                : _isRule
+                ? '요건 설명 저장'
                 : widget.inline
                 ? '등록'
                 : '저장',
@@ -252,6 +297,25 @@ class AdminEditorState extends State<AdminEditor> {
       ],
     );
   }
+
+  Widget _executionPanel() => AdminRuleExecutionPanel(
+    key: _executionKey,
+    repository: widget.repository,
+    actorId: widget.actorId,
+    schoolId: _value('institutionId').isEmpty
+        ? widget.schoolId
+        : _value('institutionId'),
+    ruleType: _value('ruleType'),
+    description: _value('definition'),
+    rule: _rule,
+    metadataDirty: _metadataDirty,
+    onChanged: () {
+      _conditionChanges.value++;
+    },
+    onBusy: (busy) {
+      if (mounted) setState(() => _panelBusy = busy);
+    },
+  );
 
   Widget _field(AdminField field) => Padding(
     padding: const EdgeInsets.only(bottom: 14),
@@ -263,7 +327,7 @@ class AdminEditorState extends State<AdminEditor> {
               child: TextFormField(
                 key: ValueKey('admin-field-${field.key}'),
                 controller: _controllers[field.key],
-                enabled: !_saving,
+                enabled: !saving && !_metadataLocked,
                 maxLines: field.multiline ? 3 : 1,
                 decoration: const InputDecoration(),
                 validator: (v) =>
@@ -282,7 +346,7 @@ class AdminEditorState extends State<AdminEditor> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 IgnorePointer(
-                  ignoring: _saving,
+                  ignoring: saving || _metadataLocked,
                   child: AnchoredSelectField<String>(
                     externalLabel: true,
                     key: ValueKey('admin-field-${field.key}'),
@@ -409,6 +473,7 @@ class AdminEditorState extends State<AdminEditor> {
                   for (final group in adminFieldGroups(remaining).values)
                     ...group,
                 ]),
+                if (_isRule) _executionPanel(),
                 if (_message != null)
                   Semantics(liveRegion: true, child: Text(_message!)),
                 if (_error != null)
@@ -428,12 +493,18 @@ class AdminEditorState extends State<AdminEditor> {
                   runSpacing: 8,
                   children: [
                     TextButton(
-                      onPressed: _saving ? null : _cancel,
+                      onPressed: saving ? null : _cancel,
                       child: const Text('취소'),
                     ),
                     FilledButton(
-                      onPressed: _saving ? null : _save,
-                      child: Text(_saving ? '저장 중…' : '등록'),
+                      onPressed: saving || _metadataLocked ? null : _save,
+                      child: Text(
+                        _saving
+                            ? '저장 중…'
+                            : _isRule
+                            ? '요건 설명 저장'
+                            : '등록',
+                      ),
                     ),
                   ],
                 ),
