@@ -4,6 +4,7 @@ import '../../shared/widgets/input_dialog.dart';
 import '../records/official_sources_dialog.dart';
 import '../records/official_records_dialog.dart';
 import '../graduation/school_document_search_dialog.dart';
+import '../admin/school_knowledge_review_dialog.dart';
 import 'app_role.dart';
 import 'school_workflow_session.dart';
 
@@ -18,6 +19,18 @@ class SchoolWorkflowActions extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
+        if (admin)
+          OutlinedButton.icon(
+            icon: const Icon(Icons.rate_review_outlined),
+            label: const Text('학교 문서 근거 검토'),
+            onPressed: () => showInputDialog<void>(
+              context: context,
+              builder: (_) => SchoolKnowledgeReviewDialog(
+                auth: session.auth,
+                ownerId: session.identity.id,
+              ),
+            ),
+          ),
         OutlinedButton.icon(
           icon: const Icon(Icons.manage_search),
           label: const Text('학교 문서 검색·근거'),
