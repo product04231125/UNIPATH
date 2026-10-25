@@ -36,10 +36,12 @@ class SchoolAdminApplicationsDialog extends StatefulWidget {
     required this.auth,
     required this.identity,
     this.inline = false,
+    this.reviewSchools = const [],
   });
   final AuthApi auth;
   final AuthIdentity identity;
   final bool inline;
+  final List<SelectOption<String>> reviewSchools;
   @override
   State<SchoolAdminApplicationsDialog> createState() => _ApplicationsState();
 }
@@ -71,6 +73,8 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
   List<SchoolAdminApplicationView> _items = [];
   List<SchoolAdminApplicationReviewView> _reviewItems = [];
   String? _school, _cursor, _error, _notice, _requestFingerprint;
+  final _reviewSchoolNames = <String, String>{};
+  String _reviewSchool = '';
   String _filter = '', _clientId = PersonalRecord.newId();
   bool _loading = true, _busy = false, _uncertain = false;
   bool _unregistered = false;
@@ -109,10 +113,14 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
       if (_review) {
         final page = await _reviews.list(
           status: _filter.isEmpty ? null : _filter,
+          institutionId: _reviewSchool.isEmpty ? null : _reviewSchool,
           cursor: more ? _cursor : null,
         );
         if (!mounted) return;
         setState(() {
+          for (final item in page.items) {
+            _reviewSchoolNames[item.institutionId] = item.institutionName;
+          }
           _reviewItems = [if (more) ..._reviewItems, ...page.items];
           _cursor = page.nextCursor;
         });
@@ -447,11 +455,43 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
             ],
             onChanged: (v) {
               if (!_busy && !_loading) {
-                _filter = v;
+                setState(() {
+                  _filter = v;
+                  _reviewItems = [];
+                  _cursor = null;
+                });
                 _load();
               }
             },
           ),
+        if (_review) ...[
+          const SizedBox(height: 12),
+          AnchoredSelectField<String>(
+            key: const ValueKey('application-school-filter'),
+            value: _reviewSchool,
+            label: '신청 학교',
+            searchable: true,
+            searchLabel: '학교 이름 검색',
+            options: [
+              const SelectOption('', '전체 학교'),
+              for (final entry in {
+                ..._reviewSchoolNames,
+                for (final school in widget.reviewSchools)
+                  school.value: school.label,
+              }.entries)
+                SelectOption(entry.key, entry.value),
+            ],
+            onChanged: (value) {
+              if (_busy || _loading || value == _reviewSchool) return;
+              setState(() {
+                _reviewSchool = value;
+                _reviewItems = [];
+                _cursor = null;
+              });
+              _load();
+            },
+          ),
+        ],
         if (!_loading && (_review ? _reviewItems.isEmpty : _items.isEmpty))
           const Text('신청 내역이 없습니다.'),
         if (_review)
