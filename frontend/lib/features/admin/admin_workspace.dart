@@ -360,17 +360,16 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
 
   Widget _records(AdminKind kind) {
     if (!_canCreate(kind)) return _recordList(kind);
-    return ResponsiveColumns(
+    return KeyedSubtree(
       key: ValueKey('admin-registration-${kind.name}-$_schoolId'),
-      enabled: true,
-      first: _recordList(kind),
-      second: AdminEditor(
+      child: AdminEditor(
         key: _editorKeys.putIfAbsent(kind, () => GlobalKey<AdminEditorState>()),
         repository: _repo,
         actorId: _actor,
         kind: kind,
         schoolId: _schoolId,
         inline: true,
+        list: _recordList(kind),
       ),
     );
   }
