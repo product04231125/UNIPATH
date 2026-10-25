@@ -28,3 +28,11 @@ AdminEditor가 하나의 FormState와 controller 집합을 소유한다. 목록 
 - 사용자 요청으로 모든 등록 대상의 목록·등록 기본 정보·상세·취소/등록을 대상별 하나의 바깥 경계로 묶었다. 내부 카드 경계를 제거하고 구분선·여백으로 구분했다. 대상명을 바깥에서 한 번 표시하고 내부 제목의 반복을 줄였다. 등록 불가 목록은 기존 전체 폭 단일 경계를 유지한다.
 - 관리자 7개 회귀 1회 통과: 입력 실패 보존·재시도·필수 검증·양쪽 입력 유지·짧은 입력 정렬·긴 설명 폭·목록 조회를 확인했다. 정적 분석 1회 문제 없음, Web/Windows build 각 1회 성공. DTO/API/권한/저장 변경 없음.
 - 실제 Web 슈퍼관리자 샘플 1440×1100에서 규칙 묶음/졸업요건 각각의 경계와 다음 대상의 구분, 학교/학과 묶음을 확인했다. 캡처 frontend/build/admin-audit/unified-rule-sections.jpg, unified-school-sections.jpg는 로컬 근거이며 Git에는 포함하지 않는다. 좁은 화면·운영 서버·네이티브 실기는 추가 검증하지 않았다.
+
+
+## develop 기반 PR 분리 검증
+
+- 관리자 UI 커밋 4개만 최신 develop 기반 codex/admin-ui-layout에 분리했다. 가입/접수 PR #38과 문서 근거 검토 등 다른 기능은 포함하지 않는다.
+- 이전 상시 2열/세로 배치를 전제로 한 테스트를 대상별 통합 경계의 데스크톱 검증으로 갱신했다. admin_list_panel_test.dart 및 admin_workspace_test.dart의 데스크톱 30개 통과, 분석 1회 문제 없음, Web/Windows build 각 1회 성공.
+- 테스트는 --name '^(?!.*(compact admin|compact=true|narrow|inline registration)).*$'로 좁은 사례를 제외했다. 초기 제품 루트 실행 시도는 pubspec 부재로 시작 전 종료했고 frontend에서 실행했다. 새 작업 폴더의 의존성 설치 전 포맷 경고는 의존성 해석 뒤 분석 통과로 확인했다.
+- 운영 서버·네이티브·좁은 화면 검증은 추가하지 않았다. 기존 원본 브랜치 시각 캡처는 당시 증거로 남기며 새 작업 폴더의 캡처라고 표시하지 않는다.

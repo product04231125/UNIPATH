@@ -100,7 +100,7 @@ void main() {
     },
   );
   testWidgets(
-    'admin list and permanent registration use two columns and stack',
+    'desktop admin sections contain list and complete registration in one frame',
     (tester) async {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final repo = FakeAdminRepository();
@@ -125,20 +125,23 @@ void main() {
         );
         await tester.pumpAndSettle();
         final first = find.byKey(ValueKey('admin-section-${item.$2}'));
-        final second = find.descendant(
-          of: find.byKey(ValueKey('admin-registration-${item.$2}-school-a')),
-          matching: find.byType(AdminEditor),
-        );
+        final frame = find.byKey(ValueKey('admin-frame-${item.$2}'));
+        final second = find.byKey(ValueKey('admin-basic-${item.$2}'));
+        final details = find.byKey(ValueKey('admin-details-${item.$2}'));
+        expect(find.descendant(of: frame, matching: first), findsOneWidget);
+        expect(find.descendant(of: frame, matching: details), findsOneWidget);
         expect(tester.getTopLeft(first).dy, tester.getTopLeft(second).dy);
         expect(
           tester.getTopLeft(first).dx,
           lessThan(tester.getTopLeft(second).dx),
         );
-        await tester.binding.setSurfaceSize(const Size(480, 520));
-        await tester.pumpAndSettle();
         expect(
-          tester.getTopLeft(second).dy,
-          greaterThan(tester.getTopLeft(first).dy),
+          tester.getTopLeft(details).dy,
+          greaterThan(tester.getBottomLeft(first).dy),
+        );
+        expect(
+          tester.getBottomLeft(frame).dy,
+          greaterThan(tester.getBottomLeft(details).dy),
         );
         expect(tester.takeException(), isNull);
       }
