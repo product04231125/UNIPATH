@@ -15,6 +15,7 @@ import 'admin_models.dart';
 import 'admin_repository.dart';
 import 'admin_editor.dart';
 import 'admin_shell.dart';
+import 'school_admin_application_inbox.dart';
 
 class AdminWorkspace extends StatefulWidget {
   const AdminWorkspace({
@@ -44,6 +45,7 @@ class AdminWorkspace extends StatefulWidget {
     '/admin/documents': '공식 문서',
     '/admin/history': '관리 이력',
     '/admin/accounts': '관리자 관리',
+    '/admin/applications': '학교관리자 신청 접수',
     '/admin/settings': '설정',
   };
   @override
@@ -907,7 +909,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         widget.role != AppRole.user &&
         _repo.active(_actor) &&
         _role != AppRole.user &&
-        (_section != '/admin/accounts' || _role == AppRole.superAdmin) &&
+        (!{'/admin/accounts', '/admin/applications'}.contains(_section) ||
+            _role == AppRole.superAdmin) &&
         (_detailId == null ||
             detail != null &&
                 sectionKinds[_section]?.contains(detail.kind) == true &&
@@ -916,7 +919,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       sidebarVisible: widget.sidebarVisible,
       menus: {
         for (final entry in AdminWorkspace.menus.entries)
-          if (entry.key != '/admin/accounts' || _role == AppRole.superAdmin)
+          if (!{'/admin/accounts', '/admin/applications'}.contains(entry.key) ||
+              _role == AppRole.superAdmin)
             entry.key: entry.value,
       },
       section: _section,
@@ -943,7 +947,9 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     Text('${_role.label} · 관리자 작업 공간'),
                     const SizedBox(height: 12),
                   ],
-                  if (_schools.isNotEmpty && allowed)
+                  if (_schools.isNotEmpty &&
+                      allowed &&
+                      _section != '/admin/applications')
                     Align(
                       alignment: Alignment.centerLeft,
                       child: ConstrainedBox(
@@ -1024,6 +1030,13 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                       const SizedBox(height: 24),
                     ],
                     if (_section == '/admin/history') _history(),
+                    if (_section == '/admin/applications')
+                      SchoolAdminApplicationInbox(
+                        schools: [
+                          for (final school in _schools)
+                            SelectOption(school.id, school.name),
+                        ],
+                      ),
                     if (_section == '/admin/settings')
                       const Align(
                         alignment: Alignment.topLeft,
