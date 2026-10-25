@@ -9,6 +9,7 @@ import '../records/personal_record_repository.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import 'unregistered_school_application_form.dart';
+import 'school_signup_panel.dart';
 
 String applicationStatus(String status) => switch (status) {
   'pending' => '승인 대기',
@@ -355,10 +356,15 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
           ),
         ],
         if (!_review && _unregistered)
-          UnregisteredSchoolApplicationForm(
-            draft: _unregisteredDraft,
+          SchoolSignupPanel(
+            auth: widget.auth,
+            ownerId: widget.identity.id,
             applicantName: widget.identity.displayName,
-            enabled: !_busy,
+            inline: true,
+            draft: _unregisteredDraft,
+            onBusyChanged: (value) {
+              if (mounted) setState(() => _busy = value);
+            },
           ),
         if (!_review && !_unregistered) ...[
           TextButton(

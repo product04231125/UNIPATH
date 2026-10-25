@@ -68,6 +68,7 @@ def application_schema_backup(directory: Path):
             "graduation_catalog_review_events",
             "graduation_audits",
             "school_admin_applications",
+            "school_admin_signups",
         } <= tables
     print("Application migration backup restored with all constraints and indexes intact.")
 

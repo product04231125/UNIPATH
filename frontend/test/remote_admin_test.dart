@@ -7,7 +7,6 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/features/admin/admin_models.dart';
-import 'package:university_path_frontend/features/admin/admin_editor.dart';
 import 'package:university_path_frontend/features/admin/admin_workspace.dart';
 import 'package:university_path_frontend/features/admin/remote_admin_repository.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
@@ -334,13 +333,13 @@ void main() {
         final schoolForm = find.byKey(
           const ValueKey('admin-registration-institution-$schoolId'),
         );
-        final name = find.descendant(
+        final nameField = find.descendant(
           of: schoolForm,
           matching: find.byKey(const ValueKey('admin-field-name')),
         );
-        await tester.ensureVisible(name);
-        await tester.enterText(name, '등록할 학교');
-        final save = find.descendant(
+        await tester.ensureVisible(nameField);
+        await tester.enterText(nameField, '등록할 학교');
+        final register = find.descendant(
           of: schoolForm,
           matching: find.widgetWithText(FilledButton, '등록'),
         );

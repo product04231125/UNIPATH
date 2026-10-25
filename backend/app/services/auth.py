@@ -173,6 +173,12 @@ def login(db: Session, payload: LoginRequest, config: Settings, request: Request
 def register(db: Session, payload: RegisterRequest, config: Settings, request: Request):
     check_origin(request, cookie=payload.session_mode == SessionMode.COOKIE)
     throttle(db, "register:" + payload.email, limit=3)
+    user = create_user(db, payload)
+    return establish(db, user, payload.session_mode, config, request)
+
+
+def create_user(db: Session, payload: RegisterRequest):
+    """Flush an unprivileged account; the caller owns the enclosing transaction."""
     user = User(
         email=payload.email,
         display_name=payload.display_name,
@@ -185,7 +191,7 @@ def register(db: Session, payload: RegisterRequest, config: Settings, request: R
     except IntegrityError:
         db.rollback()
         raise conflict() from None
-    return establish(db, user, payload.session_mode, config, request)
+    return user
 
 
 def logout(db: Session, identity: Identity, *, all_sessions: bool = False):

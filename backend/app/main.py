@@ -7,6 +7,8 @@ from app.api.academic import router as academic_router
 from app.api.access import router as access_router
 from app.api.admin_applications import admin_router as admin_applications_router
 from app.api.admin_applications import router as admin_applications_owner_router
+from app.api.admin_signups import admin_router as school_signup_admin_router
+from app.api.admin_signups import router as school_signup_owner_router
 from app.api.assistant import router as assistant_router
 from app.api.auth import router as auth_router
 from app.api.catalog import router as catalog_router
@@ -88,6 +90,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(router, prefix="/api/v1")
     application.include_router(assistant_router, prefix="/api/v1")
     application.include_router(auth_router, prefix="/api/v1")
+    application.include_router(school_signup_owner_router, prefix="/api/v1")
+    application.include_router(school_signup_admin_router, prefix="/api/v1")
     application.include_router(admin_applications_owner_router, prefix="/api/v1")
     application.include_router(admin_applications_router, prefix="/api/v1")
     application.include_router(access_router, prefix="/api/v1")

@@ -219,6 +219,11 @@ flowchart LR
     ManualReview --> AtomicGrant[신청 승인·역할·학교 범위 원자적 부여]
     AtomicGrant --> Guard
     AtomicGrant --> AccessDB
+    InitialSignup[최초 계정·학교 정보 가입 폼] --> SignupAPI[최초 가입 API]
+    SignupAPI --> AtomicReceipt[(일반 계정·비공개 학교 신청·세션 원자적 저장)]
+    AtomicReceipt --> ExplicitReview[슈퍼관리자 신원·소속 확인 및 학교 연결 선택]
+    ExplicitReview --> SchoolGrant[(신청 승인·학교 등록 또는 기존 연결·역할·범위 원자적 저장)]
+    SchoolGrant --> AccessDB
 ```
 
 아래 전체 도메인/외부 서비스 관계는 목표 구조다. 인증·운영자 초기화는

@@ -23,6 +23,10 @@ rule_sets·graduation_rules·official_documents를 추가했다. `0004_personal_
 추가해 **총 49개 도메인 테이블**을 구현한다(Alembic 버전 테이블 별도).
 `0013_admin_decision_roundtrip`은 결정 CHECK의 동등한 OR 표현으로 백업·복원 지문을
 안정화하며 테이블이나 허용 상태를 추가하지 않는다.
+`0014_school_admin_signups`는 최초 가입·미등록 학교 신청 테이블을 추가해 총 50개
+도메인 테이블을 구현한다. 계정·신청은 원자적으로 저장하고 학교 FK는 승인 전 null이다.
+승인 시 명시한 기존 학교 또는 새 학교와 관리 범위를 연결한다. 신청자/client_id UNIQUE,
+신청자/학교명 정규화 키의 대기 부분 UNIQUE 및 상태·결정 CHECK를 적용한다.
 학교 메타데이터/버전/삭제 표시와 범위 회수 사유도 추가한다.
 아래 전체 논리 ERD/단계 표의 개별 학생 기록 엔터티는 학교 검토 묶음으로 우선 구현한다.
 공식 감사는 최소 입력·조건·결과를 JSONB 스냅샷으로 구현하고 별도 결과 행 테이블은 만들지 않는다.
@@ -99,6 +103,10 @@ erDiagram
     USERS ||--o{ AUTH_SESSIONS : owns
     USERS ||--o{ ADMIN_SCOPES : receives
     USERS ||--o{ SCHOOL_ADMIN_APPLICATIONS : applies
+    USERS ||--o{ SCHOOL_ADMIN_SIGNUPS : initial_or_unregistered_request
+    USERS o|--o{ SCHOOL_ADMIN_SIGNUPS : reviews
+    INSTITUTIONS o|--o{ SCHOOL_ADMIN_SIGNUPS : approved_school
+    ADMIN_SCOPES o|--o{ SCHOOL_ADMIN_SIGNUPS : granted_scope
     USERS o|--o{ SCHOOL_ADMIN_APPLICATIONS : reviews
     INSTITUTIONS ||--o{ SCHOOL_ADMIN_APPLICATIONS : requested_school
     ADMIN_SCOPES o|--o{ SCHOOL_ADMIN_APPLICATIONS : granted_scope
@@ -125,6 +133,18 @@ erDiagram
         string status
         int version
         uuid reviewed_by FK
+        uuid granted_scope_id FK
+    }
+    SCHOOL_ADMIN_SIGNUPS {
+        uuid id PK
+        uuid applicant_id FK
+        uuid client_id
+        string school_name
+        string school_key
+        string official_url
+        string status
+        int version
+        uuid institution_id FK "null before approval"
         uuid granted_scope_id FK
     }
     AUTH_SESSIONS {

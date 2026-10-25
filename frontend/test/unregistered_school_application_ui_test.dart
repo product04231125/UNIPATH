@@ -32,7 +32,7 @@ void main() {
     (const Size(480, 520), 2.0),
   ]) {
     testWidgets(
-      'empty catalogue supports a local-only school draft and discard at $variant',
+      'empty catalogue supports an owned school request draft and protected discard at $variant',
       (tester) async {
         tester.view.physicalSize = variant.$1;
         tester.view.devicePixelRatio = 1;
@@ -81,10 +81,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('등록된 학교'), findsOneWidget);
         await tapVisible(tester, find.text('미등록 학교'));
-        expect(
-          find.text('미등록 학교 신청은 아직 접수할 수 없습니다. 작성 내용은 서버에 저장되지 않습니다.'),
-          findsOneWidget,
-        );
+        expect(find.textContaining('가입·미등록 학교 신청 이력입니다.'), findsOneWidget);
         expect(
           tester
               .widget<TextField>(
@@ -102,10 +99,10 @@ void main() {
         await type(tester, '직책', '학사 담당자');
         await type(tester, '연락 이메일', 'draft@example.test');
         await type(tester, '신청 사유', '학교 서비스 등록 요청');
-        final submit = find.widgetWithText(FilledButton, '접수 연동 대기');
+        final submit = find.widgetWithText(FilledButton, '미등록 학교 신청');
         await tester.ensureVisible(submit);
         await tester.pumpAndSettle();
-        expect(tester.widget<FilledButton>(submit).onPressed, isNull);
+        expect(tester.widget<FilledButton>(submit).onPressed, isNotNull);
         expect(writes, 0);
         expect(find.textContaining('신청이 접수됐습니다.'), findsNothing);
         expect(find.text('신청 내역이 없습니다.'), findsOneWidget);

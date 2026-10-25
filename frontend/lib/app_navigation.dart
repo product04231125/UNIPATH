@@ -12,6 +12,7 @@ import 'features/admin/remote_admin_repository.dart';
 import 'app_shell/workspace_title_bar.dart';
 import 'shared/widgets/task_focus_group.dart';
 import 'features/auth/auth_api.dart';
+import 'features/api/school_signup_models.dart';
 import 'features/auth/account_access_page.dart';
 import 'features/auth/local_data_owner.dart';
 import 'features/api/student_api.dart';
@@ -262,6 +263,31 @@ class AppNavigation extends RouterDelegate<AppLocation>
     _startSessionChecks();
   }
 
+  Future<SchoolAdminSignupView> _registerSchoolAdmin({
+    required String email,
+    required String password,
+    required String displayName,
+    required SchoolAdminSignupDetails details,
+  }) async {
+    final gateway = _auth;
+    if (gateway is! AuthApi) throw const AuthFailure('가입 접수 서버를 확인해 주세요.');
+    final epoch = ++_authEpoch;
+    _loginNotice = null;
+    final result = await gateway.registerSchoolAdmin(
+      email: email,
+      password: password,
+      displayName: displayName,
+      details: details,
+    );
+    if (_closed || epoch != _authEpoch) {
+      throw const AuthFailure('로그인 상태가 변경되었습니다.');
+    }
+    _identity = result.identity;
+    LocalDataOwner.currentUserId = result.identity.id;
+    _startSessionChecks();
+    return result.signup;
+  }
+
   bool authenticated;
   AppRole _role = AppRole.user;
   AdminRepository? _adminRepository;
@@ -446,6 +472,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
       page = LoginPage(
         notice: _loginNotice,
         authenticate: _authenticate,
+        registerSchoolAdmin: _auth is AuthApi ? _registerSchoolAdmin : null,
         onSignedIn: () {
           _signedIn(context, _identity?.role ?? AppRole.user);
         },

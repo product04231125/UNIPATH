@@ -5,11 +5,21 @@ import '../../shared/widgets/anchored_select_field.dart';
 import '../auth/app_role.dart';
 import '../auth/school_workflow_session.dart';
 import 'school_admin_applications_dialog.dart';
+import 'school_signup_panel.dart';
 
 /// The inbox contains only applications returned by the existing review API.
-class SchoolAdminApplicationInbox extends StatelessWidget {
+class SchoolAdminApplicationInbox extends StatefulWidget {
   const SchoolAdminApplicationInbox({super.key, this.schools = const []});
   final List<SelectOption<String>> schools;
+
+  @override
+  State<SchoolAdminApplicationInbox> createState() =>
+      _SchoolAdminApplicationInboxState();
+}
+
+class _SchoolAdminApplicationInboxState
+    extends State<SchoolAdminApplicationInbox> {
+  bool _initial = false;
 
   @override
   Widget build(BuildContext context) {
@@ -23,17 +33,40 @@ class SchoolAdminApplicationInbox extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          '현재 접수 목록에는 등록된 학교의 관리 권한 신청만 표시됩니다. 회원가입에서 작성한 최초 학교 신청은 아직 접수되지 않습니다.',
+        const Text('등록 학교 권한 신청과 최초 가입·미등록 학교 신청을 구분해 심사합니다.'),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ChoiceChip(
+              label: const Text('등록 학교 권한 신청'),
+              selected: !_initial,
+              onSelected: (_) => setState(() => _initial = false),
+            ),
+            ChoiceChip(
+              label: const Text('최초·미등록 학교 접수'),
+              selected: _initial,
+              onSelected: (_) => setState(() => _initial = true),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
-        SchoolAdminApplicationsDialog(
-          key: ValueKey(session.identity),
-          auth: session.auth,
-          identity: session.identity,
-          inline: true,
-          reviewSchools: schools,
-        ),
+        if (_initial)
+          SchoolSignupPanel(
+            key: ValueKey(session.identity),
+            auth: session.auth,
+            ownerId: session.identity.id,
+            admin: true,
+            inline: true,
+          )
+        else
+          SchoolAdminApplicationsDialog(
+            key: ValueKey(session.identity),
+            auth: session.auth,
+            identity: session.identity,
+            inline: true,
+            reviewSchools: widget.schools,
+          ),
       ],
     );
   }

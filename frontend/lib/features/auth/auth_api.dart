@@ -8,6 +8,13 @@ import 'app_role.dart';
 import 'account_security_gateway.dart';
 import 'auth_http_stub.dart' if (dart.library.js_interop) 'auth_http_web.dart';
 import 'record_files_gateway.dart';
+import '../api/school_signup_models.dart';
+
+class SchoolSignupResult {
+  const SchoolSignupResult(this.identity, this.signup);
+  final AuthIdentity identity;
+  final SchoolAdminSignupView signup;
+}
 
 class AuthFailure implements Exception {
   const AuthFailure(this.message, {this.status, this.fields = const []});
@@ -85,7 +92,9 @@ class AuthApi implements AuthGateway, ApiGateway {
   /// Pin a workspace to this login. Server checks the owner as well, including
   /// cookies changed by a different browser tab before our next session poll.
   ApiGateway forOwner(String ownerId) {
-    if (_ownerId != ownerId) throw const AuthFailure('다시 로그인해 주세요.');
+    if (_ownerId != ownerId) {
+      throw const AuthFailure('다시 로그인해 주세요.', status: 403);
+    }
     return _OwnerGateway(this, ownerId, _sessionEpoch);
   }
 
@@ -256,7 +265,7 @@ class AuthApi implements AuthGateway, ApiGateway {
   ) async {
     void check() {
       if (_ownerId != ownerId || epoch != _sessionEpoch) {
-        throw const AuthFailure('계정이 변경되었습니다. 다시 로그인해 주세요.');
+        throw const AuthFailure('계정이 변경되었습니다. 다시 로그인해 주세요.', status: 403);
       }
     }
 
@@ -350,6 +359,44 @@ class AuthApi implements AuthGateway, ApiGateway {
         'session_mode': _cookieMode ? 'cookie' : 'bearer',
       },
     ))!;
+    return _acceptAuthentication(response);
+  }
+
+  Future<SchoolSignupResult> registerSchoolAdmin({
+    required String email,
+    required String password,
+    required String displayName,
+    required SchoolAdminSignupDetails details,
+  }) async {
+    final epoch = _sessionEpoch;
+    final response = (await _request('POST', 'auth/school-admin-signups', {
+      ...details.toJson(),
+      'email': email.trim(),
+      'password': password,
+      'display_name': displayName.trim(),
+      'session_mode': _cookieMode ? 'cookie' : 'bearer',
+    }))!;
+    if (epoch != _sessionEpoch) {
+      throw const AuthFailure('로그인 상태가 변경되었습니다. 신청 이력을 확인해 주세요.');
+    }
+    try {
+      final signup = SchoolAdminSignupView.fromJson(
+        Map<String, dynamic>.from(response['signup'] as Map),
+      );
+      final identity = AuthIdentity.fromJson(response);
+      if (signup.applicantId != identity.id ||
+          signup.clientId != details.clientId) {
+        throw const FormatException('Signup receipt mismatch');
+      }
+      return SchoolSignupResult(_acceptAuthentication(response), signup);
+    } on AuthFailure {
+      rethrow;
+    } catch (_) {
+      throw const AuthFailure('가입 접수 응답을 확인하지 못했습니다. 같은 입력으로 다시 확인해 주세요.');
+    }
+  }
+
+  AuthIdentity _acceptAuthentication(Map<String, dynamic> response) {
     try {
       final identity = AuthIdentity.fromJson(response);
       if (!_cookieMode) {
