@@ -358,136 +358,174 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         ((_statuses[kind] ?? '').isEmpty || _status(r) == _statuses[kind]);
   });
 
-  Widget _records(AdminKind kind) => ResponsiveColumns(
-    key: ValueKey('admin-registration-${kind.name}-$_schoolId'),
-    enabled: true,
-    first: _recordList(kind),
-    second: _canCreate(kind)
-        ? AdminEditor(
-            key: _editorKeys.putIfAbsent(
-              kind,
-              () => GlobalKey<AdminEditorState>(),
-            ),
-            repository: _repo,
-            actorId: _actor,
-            kind: kind,
-            schoolId: _schoolId,
-            inline: true,
-          )
-        : const SizedBox.shrink(),
-  );
-  Widget _recordList(AdminKind kind) => Column(
-    key: ValueKey('admin-section-${kind.name}'),
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      const SizedBox(height: 16),
-      Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        spacing: 12,
-        runSpacing: 8,
-        children: [
-          Text(
-            AdminWorkspace.menus[_section] == kind.label ? '목록' : kind.label,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          if (_canCreate(kind))
-            FilledButton(
-              onPressed: _busy ? null : () => _edit(kind),
-              child: Text('${kind.label} 등록'),
-            ),
-        ],
+  Widget _records(AdminKind kind) {
+    if (!_canCreate(kind)) return _recordList(kind);
+    return ResponsiveColumns(
+      key: ValueKey('admin-registration-${kind.name}-$_schoolId'),
+      enabled: true,
+      first: _recordList(kind),
+      second: AdminEditor(
+        key: _editorKeys.putIfAbsent(kind, () => GlobalKey<AdminEditorState>()),
+        repository: _repo,
+        actorId: _actor,
+        kind: kind,
+        schoolId: _schoolId,
+        inline: true,
       ),
-      if (kind != AdminKind.institution && _rows(kind).isNotEmpty) ...[
-        const SizedBox(height: 12),
-        TextFormField(
-          key: ValueKey('admin-search-$_schoolId-${kind.name}'),
-          initialValue: _queries[kind] ?? '',
-          decoration: InputDecoration(
-            labelText: '${kind.label} 이름·소속·코드 검색',
-            prefixIcon: const Icon(Icons.search),
-          ),
-          onChanged: (value) => setState(() => _queries[kind] = value),
-        ),
-        if (kind.versioned ||
-            kind == AdminKind.scope ||
-            kind == AdminKind.account) ...[
-          const SizedBox(height: 8),
-          AnchoredSelectField<String>(
-            externalLabel: true,
-            key: ValueKey('admin-status-${kind.name}'),
-            value: _statuses[kind] ?? '',
-            label: '${kind.label} 상태',
-            options: [
-              const SelectOption('', '전체 상태'),
-              for (final status in _rows(kind).map(_status).toSet())
-                SelectOption(status, _statusLabel(status)),
-            ],
-            onChanged: (value) => setState(() => _statuses[kind] = value),
-          ),
-        ],
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Text(
-            '${_filteredRows(kind).length}개 표시 / ${_rows(kind).length}개',
-          ),
-        ),
-        if (_filteredRows(kind).isEmpty)
-          const Text('검색·필터에 맞는 항목이 없습니다. 검색어와 상태를 바꿔보세요.'),
-      ],
-      if (_rows(kind).isEmpty)
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Text(
-            '${kind.label} 데이터가 없습니다.${_canCreate(kind) ? ' 옆의 등록 영역에서 시작하세요.' : '권한과 관리 범위를 확인하세요.'}',
-          ),
-        ),
-      ResponsivePanels(
-        enabled: kind == AdminKind.document,
+    );
+  }
+
+  Widget _recordList(AdminKind kind) => Card(
+    key: ValueKey('admin-section-${kind.name}'),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(20),
+      side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final r in _filteredRows(kind))
-            Card(
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.outlineVariant,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              Semantics(
+                header: true,
+                child: Text(
+                  '${kind.label} 목록',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
+              Text('${_rows(kind).length}개'),
+            ],
+          ),
+          const Divider(height: 32),
+          if (kind != AdminKind.institution && _rows(kind).isNotEmpty) ...[
+            const SizedBox(height: 12),
+            TextFormField(
+              key: ValueKey('admin-search-$_schoolId-${kind.name}'),
+              initialValue: _queries[kind] ?? '',
+              decoration: InputDecoration(
+                labelText: '${kind.label} 이름·소속·코드 검색',
+                prefixIcon: const Icon(Icons.search),
+              ),
+              onChanged: (value) => setState(() => _queries[kind] = value),
+            ),
+            if (kind.versioned ||
+                kind == AdminKind.scope ||
+                kind == AdminKind.account) ...[
+              const SizedBox(height: 8),
+              AnchoredSelectField<String>(
+                externalLabel: true,
+                key: ValueKey('admin-status-${kind.name}'),
+                value: _statuses[kind] ?? '',
+                label: '${kind.label} 상태',
+                options: [
+                  const SelectOption('', '전체 상태'),
+                  for (final status in _rows(kind).map(_status).toSet())
+                    SelectOption(status, _statusLabel(status)),
+                ],
+                onChanged: (value) => setState(() => _statuses[kind] = value),
+              ),
+            ],
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                '${_filteredRows(kind).length}개 표시 / ${_rows(kind).length}개',
+              ),
+            ),
+            if (_filteredRows(kind).isEmpty)
+              const Text('검색·필터에 맞는 항목이 없습니다. 검색어와 상태를 바꿔보세요.'),
+          ],
+          if (_rows(kind).isEmpty)
+            ConstrainedBox(
+              key: ValueKey('admin-empty-${kind.name}'),
+              constraints: const BoxConstraints(minHeight: 180),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      r.name,
-                      style: Theme.of(context).textTheme.titleMedium,
+                    ExcludeSemantics(
+                      child: Icon(
+                        Icons.list_alt_outlined,
+                        size: 32,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                    if (_recordContext(r).isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          _recordContext(r),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '등록된 ${kind.label} 항목이 없습니다',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _canCreate(kind)
+                          ? '등록 폼에서 추가하면 이 목록에 표시됩니다.'
+                          : '조회할 수 있는 항목이 없습니다. 권한과 관리 범위를 확인하세요.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                    if (kind.versioned)
-                      Text('v${r.revision} · ${_statusLabel(r.status)}'),
-                    if (kind == AdminKind.scope) Text(_statusLabel(r.status)),
-                    if (kind == AdminKind.account)
-                      Text(
-                        '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}',
-                      ),
-                    if (kind == AdminKind.account && _repo.live)
-                      Text(r.value('email')),
-                    const SizedBox(height: 16),
-                    _recordActions(r),
+                    ),
                   ],
                 ),
               ),
             ),
+          ResponsivePanels(
+            enabled: kind == AdminKind.document,
+            children: [
+              for (final r in _filteredRows(kind))
+                Card(
+                  margin: const EdgeInsets.symmetric(vertical: 6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          r.name,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        if (_recordContext(r).isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              _recordContext(r),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                        if (kind.versioned)
+                          Text('v${r.revision} · ${_statusLabel(r.status)}'),
+                        if (kind == AdminKind.scope)
+                          Text(_statusLabel(r.status)),
+                        if (kind == AdminKind.account)
+                          Text(
+                            '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}',
+                          ),
+                        if (kind == AdminKind.account && _repo.live)
+                          Text(r.value('email')),
+                        const SizedBox(height: 16),
+                        _recordActions(r),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
-    ],
+    ),
   );
   Widget _recordActions(AdminRecord r, {bool detail = false}) => Wrap(
     spacing: 8,
