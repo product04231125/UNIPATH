@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/anchored_select_field.dart';
+
 import '../auth/app_role.dart';
 import '../auth/school_workflow_session.dart';
 import 'school_admin_applications_dialog.dart';
 
 /// The inbox contains only applications returned by the existing review API.
 class SchoolAdminApplicationInbox extends StatelessWidget {
-  const SchoolAdminApplicationInbox({super.key});
+  const SchoolAdminApplicationInbox({super.key, this.schools = const []});
+  final List<SelectOption<String>> schools;
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +32,7 @@ class SchoolAdminApplicationInbox extends StatelessWidget {
           auth: session.auth,
           identity: session.identity,
           inline: true,
+          reviewSchools: schools,
         ),
       ],
     );

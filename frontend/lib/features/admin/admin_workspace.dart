@@ -1031,7 +1031,12 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     ],
                     if (_section == '/admin/history') _history(),
                     if (_section == '/admin/applications')
-                      const SchoolAdminApplicationInbox(),
+                      SchoolAdminApplicationInbox(
+                        schools: [
+                          for (final school in _schools)
+                            SelectOption(school.id, school.name),
+                        ],
+                      ),
                     if (_section == '/admin/settings')
                       const Align(
                         alignment: Alignment.topLeft,
