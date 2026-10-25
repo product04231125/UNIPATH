@@ -10,6 +10,7 @@ import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/surface_card.dart';
 import 'fixtures/record_mock_entry.dart';
+import 'course/course_term.dart';
 import 'personal_record_repository.dart';
 import 'personal_record_fields.dart';
 import 'personal_repository_scope.dart';
@@ -64,6 +65,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
   bool _loading = true;
   bool _loadFailed = false;
   String _term = '';
+  String _year = '';
   List<PersonalRecordField> _fields = [];
   Listenable? _importChanges;
   int _loadRevision = 0;
@@ -137,6 +139,17 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       for (final field in fields)
         field.key: TextEditingController(text: record?.value(field.key) ?? ''),
     };
+    final isCourse = widget.kind == PersonalRecordKind.course;
+    final originalTerm = record?.value('term') ?? '';
+    final period = CourseTerm.parse(originalTerm);
+    final initialYear = record == null ? '${DateTime.now().year}' : period.year;
+    final year = TextEditingController(text: initialYear);
+    if (isCourse) controllers['term']!.text = period.semester;
+    final initialSemester = controllers['term']?.text ?? '';
+    bool periodChanged() =>
+        isCourse &&
+        (year.text != initialYear ||
+            controllers['term']!.text != initialSemester);
     final form = GlobalKey<FormState>();
     final operationId = record?.id ?? PersonalRecord.newId();
     bool saving = false;
@@ -145,18 +158,30 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, updateDialog) => InputDialog(
-          changes: Listenable.merge(controllers.values.toList()),
+          changes: Listenable.merge([
+            ...controllers.values,
+            if (isCourse) year,
+          ]),
           editing: record != null,
           saving: saving,
-          hasUnsavedChanges: () => fields.any(
-            (field) =>
-                controllers[field.key]!.text !=
-                    (record?.value(field.key) ?? '') &&
-                (record != null ||
-                    controllers[field.key]!.text.trim().isNotEmpty),
-          ),
+          hasUnsavedChanges: () =>
+              (isCourse &&
+                  year.text.trim() != initialYear.trim() &&
+                  (record != null || year.text.trim().isNotEmpty)) ||
+              fields.any(
+                (field) =>
+                    controllers[field.key]!.text !=
+                        (isCourse && field.key == 'term'
+                            ? initialSemester
+                            : (record?.value(field.key) ?? '')) &&
+                    (record != null ||
+                        controllers[field.key]!.text.trim().isNotEmpty),
+              ),
           hasContent: () =>
-              controllers.values.any((c) => c.text.trim().isNotEmpty),
+              controllers.values.any((c) => c.text.trim().isNotEmpty) ||
+              (isCourse &&
+                  year.text.trim().isNotEmpty &&
+                  year.text.trim() != initialYear.trim()),
           title: Text(record == null ? widget.addLabel : '개인 기록 수정'),
           content: Form(
             key: form,
@@ -170,7 +195,27 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                       : '기기 로컬 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드·서버 전송은 하지 않습니다.',
                 ),
                 const SizedBox(height: 16),
-                for (final field in fields)
+                for (final field in fields) ...[
+                  if (isCourse && field.key == 'term') ...[
+                    TextFormField(
+                      key: const ValueKey('record-field-course-year'),
+                      controller: year,
+                      enabled: !saving,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText:
+                            '수강 연도 (학년도)${record == null || period.year.isNotEmpty ? ' *' : ' (선택)'}',
+                        helperText: record != null && period.year.isEmpty
+                            ? '기존 기록은 연도 미지정입니다. 확인한 연도만 입력하세요.'
+                            : '예: 2026 · 과거·계획 연도도 입력할 수 있습니다.',
+                      ),
+                      validator: (value) => CourseTerm.validateYear(
+                        value,
+                        required: record == null || period.year.isNotEmpty,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
                   Padding(
                     padding: const EdgeInsets.only(bottom: 14),
                     child: field.options.isEmpty
@@ -187,8 +232,33 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                             decoration: InputDecoration(
                               labelText:
                                   '${field.label}${field.required ? ' *' : ' (선택)'}',
+                              helperText: isCourse && field.key == 'term'
+                                  ? '예: 1학기, 2학기, 여름 계절학기 · 연도는 위 칸에 입력하세요.'
+                                  : null,
                             ),
-                            validator: field.validate,
+                            validator: (value) {
+                              final error = field.validate(value);
+                              if (error != null ||
+                                  !isCourse ||
+                                  field.key != 'term') {
+                                return error;
+                              }
+                              if (periodChanged() || record == null) {
+                                if (CourseTerm.parse(value ?? '')
+                                    .year
+                                    .isNotEmpty) {
+                                  return '연도는 수강 연도 칸에, 학기는 이 칸에 나눠 입력하세요.';
+                                }
+                                if (CourseTerm.encode(
+                                      year.text,
+                                      value ?? '',
+                                    ).length >
+                                    128) {
+                                  return '연도와 학기를 합쳐 128자 이내로 입력하세요.';
+                                }
+                              }
+                              return null;
+                            },
                           )
                         : FormField<String>(
                             initialValue: controllers[field.key]!.text,
@@ -241,6 +311,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                             ),
                           ),
                   ),
+                ],
                 if (error != null)
                   Text(
                     error!,
@@ -267,6 +338,14 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                         for (final field in fields)
                           field.key: controllers[field.key]!.text.trim(),
                       };
+                      if (isCourse) {
+                        values['term'] = record != null && !periodChanged()
+                            ? originalTerm
+                            : CourseTerm.encode(
+                                year.text,
+                                controllers['term']!.text,
+                              );
+                      }
                       final crossError = personalRecordCrossError(values);
                       if (crossError != null) {
                         updateDialog(() => error = crossError);
@@ -314,6 +393,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         ),
       ),
     );
+    year.dispose();
     for (final controller in controllers.values) {
       controller.dispose();
     }
@@ -369,7 +449,9 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               .where((f) => f.key != 'title' && record.value(f.key).isNotEmpty)
               .map(
                 (f) =>
-                    '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
+                    f.key == 'term' && widget.kind == PersonalRecordKind.course
+                    ? '수강 기간: ${CourseTerm.parse(record.value('term')).label}'
+                    : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
               )
               .join(' · '),
           status: '개인 기록',
@@ -411,9 +493,12 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         ),
       );
     }
-    final personal = _repository.records
-        .where((r) => _term.isEmpty || r.value('term') == _term)
-        .toList();
+    final personal = _repository.records.where((r) {
+      if (widget.kind != PersonalRecordKind.course) return true;
+      final period = CourseTerm.parse(r.value('term'));
+      return (_year.isEmpty || period.yearFilter == _year) &&
+          (_term.isEmpty || period.semester == _term);
+    }).toList();
     final entries = [if (widget.showMockData) ...widget.fixture];
     final isCourse = widget.kind == PersonalRecordKind.course;
     return ContentScrollView(
@@ -471,19 +556,62 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                     ),
                     const SizedBox(height: 10),
                     if (widget.kind == PersonalRecordKind.course) ...[
-                      AnchoredSelectField<String>(
-                        value: _term,
-                        label: '학기 필터',
-                        options: [
-                          const SelectOption('', '전체 학기'),
-                          for (final term
-                              in _repository.records
-                                  .map((r) => r.value('term'))
-                                  .toSet())
-                            SelectOption(term, term),
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 12,
+                        children: [
+                          SizedBox(
+                            width: 240,
+                            child: AnchoredSelectField<String>(
+                              key: const ValueKey('record-course-year-filter'),
+                              value: _year,
+                              label: '수강 연도 필터',
+                              options: [
+                                const SelectOption('', '전체 연도'),
+                                for (final year in {
+                                  ..._repository.records.map(
+                                    (r) =>
+                                        CourseTerm.parse(r.value('term'))
+                                            .yearFilter,
+                                  ),
+                                  if (_year.isNotEmpty) _year,
+                                }.toList()..sort((a, b) => b.compareTo(a)))
+                                  SelectOption(
+                                    year,
+                                    year == CourseTerm.unspecified
+                                        ? '연도 미지정'
+                                        : '$year년',
+                                  ),
+                              ],
+                              onChanged: (value) =>
+                                  setState(() => _year = value),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 240,
+                            child: AnchoredSelectField<String>(
+                              key: const ValueKey('record-course-term-filter'),
+                              value: _term,
+                              label: '학기 필터',
+                              options: [
+                                const SelectOption('', '전체 학기'),
+                                for (final term in {
+                                  ..._repository.records.map(
+                                    (r) =>
+                                        CourseTerm.parse(r.value('term'))
+                                            .semester,
+                                  ),
+                                  if (_term.isNotEmpty) _term,
+                                }.toList()..sort())
+                                  SelectOption(term, term),
+                              ],
+                              onChanged: (value) =>
+                                  setState(() => _term = value),
+                            ),
+                          ),
                         ],
-                        onChanged: (value) => setState(() => _term = value),
                       ),
+                      const SizedBox(height: 10),
                       Text(
                         '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점 · 공식 이수학점 아님',
                       ),
@@ -498,7 +626,12 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                       Text(
                         '사용자가 승인됨으로 기록한 봉사 시간 합계 ${personal.where((r) => r.value('approval') == 'approved').fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('approvedHours')) ?? 0))}시간 · 학교 검증 아님',
                       ),
-                    if (personal.isEmpty) Text('개인 기록이 없습니다. 직접 입력해 주세요.'),
+                    if (personal.isEmpty)
+                      Text(
+                        isCourse && (_year.isNotEmpty || _term.isNotEmpty)
+                            ? '선택한 연도·학기에 맞는 개인 기록이 없습니다. 필터를 변경해 주세요.'
+                            : '개인 기록이 없습니다. 직접 입력해 주세요.',
+                      ),
                     for (final record in personal) _personalEntry(record),
                     if (entries.isNotEmpty) ...[
                       const SizedBox(height: 16),
