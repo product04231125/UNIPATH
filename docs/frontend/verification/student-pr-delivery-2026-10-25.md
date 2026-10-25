@@ -14,3 +14,17 @@ origin/develop 535cd69에서 수강 fd32126과 학생 졸업 기준 배치 5b84d
 - 분석·Web/Windows 빌드 각1회 성공. 원본 수강55개·졸업19개와 분리 검증50개는 서로 다른 범위다.
 - 화면 렌더링은 원본의 동일 변경에서 확인했다. 원본 검증 문서의 로컬 캡처 경로를 참고한다.
   운영 서버·Windows 네이티브 실기는 미검증. 새 API·DTO·DB·판정 로직 변경 없음.
+
+## 종류별 조건·계산 API 연결 추가
+
+기존 PR #40 브랜치에 원본500ed6a를 e77a7cb로 옮겼다. 개인 규칙 폼에서5종 조건을 직접 입력하고
+기존 개인 규칙 설명 저장→개인 계산 조건/결과 이력 저장으로 이어진다. 계산 요청 유실 시 같은 요청을
+재시도하고 동일 요건 버전의 최신 조건을 복원한다. 신규 API/DTO 필드/판정 로직은 추가하지 않는다.
+관리자 변경은 PR #39에 따로 유지한다.
+
+현재 분리 브랜치에서 course_period/personal_requirement_panel/student_graduation_layout/
+personal_calculation/personal_graduation/personal_records/remote_personal_ui/page_header/input_dialog의
+65개가 통과했다. 기존50개 결과에 숫자를 합산한 것이 아니라 이번 선택 범위의 실제 통과 수다.
+선택식: `^(?!.*(480|narrow|student creates school department|course prioritizes personal records)).*$`.
+분석 문제 없음·Web/Windows 빌드 각1회 성공. 로그 requirement-pr40-{test,analyze,web,windows}.log.
+실서버·Windows 실기 미검증과 샘플의 실제 계산 불가 경계는 유지한다.
