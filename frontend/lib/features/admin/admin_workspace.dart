@@ -81,6 +81,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     _ => '/admin/accounts',
   };
 
+  String _accountRole = '';
   final _queries = <AdminKind, String>{};
   final _statuses = <AdminKind, String>{};
   String get _actor =>
@@ -327,7 +328,28 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     _ => '범위 유형 확인 필요',
   };
 
+  String _accountScopeText(AdminRecord account) {
+    if (account.value('role') == 'super_admin') return '전체 학교';
+    final scopes = _repo.records.where(
+      (r) =>
+          r.kind == AdminKind.scope &&
+          r.status == 'active' &&
+          r.value('userId') == account.id &&
+          _repo.canRead(_actor, r),
+    );
+    final labels = scopes
+        .map(
+          (r) => [
+            _relationName(r.value('institutionId')),
+            _scopeSummary(r),
+          ].where((s) => s.isNotEmpty).join(' · '),
+        )
+        .toSet();
+    return labels.isEmpty ? '부여된 관리 범위 없음' : labels.join(' / ');
+  }
+
   String _recordContext(AdminRecord r) => [
+    if (r.kind == AdminKind.account) '관리 범위: ${_accountScopeText(r)}',
     if (_repo.school(r) != r.id) _relationName(_repo.school(r)),
     for (final key in [
       'departmentId',
@@ -351,7 +373,12 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   Iterable<AdminRecord> _filteredRows(AdminKind kind) => _rows(kind).where((r) {
     if (kind == AdminKind.institution) return true;
     final query = (_queries[kind] ?? '').trim().toLowerCase();
-    return '${r.name} ${_recordContext(r)}'.toLowerCase().contains(query) &&
+    return '${r.name} ${r.kind == AdminKind.account ? '${r.value('email')} ${roleFromRecord(r).label}' : ''} ${_recordContext(r)}'
+            .toLowerCase()
+            .contains(query) &&
+        (kind != AdminKind.account ||
+            _accountRole.isEmpty ||
+            r.value('role') == _accountRole) &&
         ((_statuses[kind] ?? '').isEmpty || _status(r) == _statuses[kind]);
   });
 
@@ -421,13 +448,34 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             ],
           ),
           const Divider(height: 32),
+          if (kind == AdminKind.account) ...[
+            const Text(
+              '사용자 목록은 전체 학교 기준입니다. 부여된 관리 범위만 표시하며 학생 개인 기록은 열람하지 않습니다.',
+            ),
+            const SizedBox(height: 12),
+            AnchoredSelectField<String>(
+              key: const ValueKey('admin-account-role'),
+              externalLabel: true,
+              value: _accountRole,
+              label: '사용자 역할',
+              options: const [
+                SelectOption('', '전체 역할'),
+                SelectOption('super_admin', '슈퍼관리자'),
+                SelectOption('school_admin', '학교관리자'),
+                SelectOption('user', '학생'),
+              ],
+              onChanged: (value) => setState(() => _accountRole = value),
+            ),
+          ],
           if (kind != AdminKind.institution && _rows(kind).isNotEmpty) ...[
             const SizedBox(height: 12),
             TextFormField(
               key: ValueKey('admin-search-$_schoolId-${kind.name}'),
               initialValue: _queries[kind] ?? '',
               decoration: InputDecoration(
-                labelText: '${kind.label} 이름·소속·코드 검색',
+                labelText: kind == AdminKind.account
+                    ? '사용자 이름·이메일·학교 검색'
+                    : '${kind.label} 이름·소속·코드 검색',
                 prefixIcon: const Icon(Icons.search),
               ),
               onChanged: (value) => setState(() => _queries[kind] = value),
@@ -1034,6 +1082,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                               _schoolId = v;
                               _editorKeys.clear();
                               _error = null;
+                              _accountRole = '';
                               _queries.clear();
                               _statuses.clear();
                             });
