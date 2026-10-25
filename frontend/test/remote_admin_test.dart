@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/features/admin/admin_models.dart';
+import 'package:university_path_frontend/features/admin/admin_editor.dart';
 import 'package:university_path_frontend/features/admin/admin_workspace.dart';
 import 'package:university_path_frontend/features/admin/remote_admin_repository.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
@@ -343,8 +344,8 @@ void main() {
           of: schoolForm,
           matching: find.widgetWithText(FilledButton, '등록'),
         );
-        await tester.ensureVisible(save);
-        await tester.tap(save);
+        await tester.ensureVisible(register);
+        await tester.tap(register);
         await tester.pumpAndSettle();
         expect(
           server.data['institutions']!.any((row) => row['name'] == '등록할 학교'),
@@ -363,6 +364,23 @@ void main() {
           ),
           isTrue,
         );
+        await tester.ensureVisible(nameField);
+        await tester.enterText(nameField, '아직 저장하지 않은 학교');
+        final guardedLogout = find.byTooltip('로그아웃');
+        final logoutAction = guardedLogout.evaluate().isNotEmpty
+            ? guardedLogout
+            : find.text('로그아웃');
+        await tester.ensureVisible(logoutAction);
+        await tester.tap(logoutAction);
+        await tester.pumpAndSettle();
+        expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
+        expect(server.loggedOut, isFalse);
+        await tester.tap(find.text('계속 작성'));
+        await tester.pumpAndSettle();
+        expect(find.text('아직 저장하지 않은 학교'), findsOneWidget);
+        await tester.ensureVisible(nameField);
+        await tester.enterText(nameField, '');
+        await tester.pumpAndSettle();
         final logout = find.byTooltip('로그아웃');
         if (logout.evaluate().isNotEmpty) {
           await tester.ensureVisible(logout);

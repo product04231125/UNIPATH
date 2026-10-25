@@ -230,14 +230,14 @@ Flutter Web은 역할에 따라 학생 사용자 화면과 학교 관리자 화�
 
 ### 모듈별 기본 소유권
 
-| 모듈 | 주 담당 | 협업 영역 |
-|---|---|---|
-| School Knowledge Module | AI·RAG·데이터 | 백엔드 API 연동 |
-| Career / Certificate Module (자격증 1차, 진로 2차) | AI·RAG·데이터 | 프론트 결과 표시 |
-| Academic Rule Engine | 백엔드·통합 | AI의 규정 데이터 제공 |
-| Job Analysis Module (2차 MVP) | AI·RAG·데이터 | 백엔드의 경험 비교 및 저장 |
-| Personalization Module | 백엔드·통합 | 프론트의 입력·표현 |
-| Flutter Web (1차)·Windows 애플리케이션 (3차) | 프론트엔드·UX·QA | 전 모듈 API 연동 |
+| 모듈                                          | 주 담당        | 협업 영역           |
+| ------------------------------------------- | ----------- | --------------- |
+| School Knowledge Module                     | AI·RAG·데이터  | 백엔드 API 연동      |
+| Career / Certificate Module (자격증 1차, 진로 2차) | AI·RAG·데이터  | 프론트 결과 표시       |
+| Academic Rule Engine                        | 백엔드·통합      | AI의 규정 데이터 제공   |
+| Job Analysis Module (2차 MVP)                | AI·RAG·데이터  | 백엔드의 경험 비교 및 저장 |
+| Personalization Module                      | 백엔드·통합      | 프론트의 입력·표현      |
+| Flutter Web (1차)·Windows 애플리케이션 (3차)        | 프론트엔드·UX·QA | 전 모듈 API 연동     |
 
 ## 4. 핵심 데이터 모델
 
