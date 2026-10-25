@@ -5,6 +5,7 @@ import 'package:university_path_frontend/features/admin/admin_models.dart';
 import 'package:university_path_frontend/features/admin/admin_repository.dart';
 import 'package:university_path_frontend/features/admin/admin_workspace.dart';
 import 'package:university_path_frontend/features/auth/app_role.dart';
+import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
 
 Future<void> showWorkspace(
   WidgetTester tester,
@@ -123,6 +124,85 @@ void main() {
       },
     );
   }
+  testWidgets(
+    'curriculum department and year share one row across field groups',
+    (tester) async {
+      final repo = FakeAdminRepository();
+      await showWorkspace(tester, repo, AppRole.superAdmin, '/admin/curricula');
+      final form = find.descendant(
+        of: find.byKey(
+          const ValueKey('admin-registration-curriculum-school-a'),
+        ),
+        matching: find.byType(AdminEditor),
+      );
+      Finder field(String key) => find.descendant(
+        of: form,
+        matching: find.byKey(ValueKey('admin-field-$key')),
+      );
+      final department = field('departmentId');
+      final year = field('year');
+      expect(
+        tester.getBottomLeft(department).dy,
+        tester.getBottomLeft(year).dy,
+      );
+      expect(
+        tester.getTopLeft(department).dx,
+        lessThan(tester.getTopLeft(year).dx),
+      );
+      expect(tester.getSize(department).width, tester.getSize(year).width);
+      await tester.enterText(field('name'), '2026 교육과정');
+      await tester.enterText(year, '2026');
+      final save = find.descendant(
+        of: form,
+        matching: find.widgetWithText(FilledButton, '등록'),
+      );
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(find.text('학과을 선택하세요.'), findsOneWidget);
+      expect(tester.widget<TextFormField>(year).controller!.text, '2026');
+      tester
+          .widget<AnchoredSelectField<String>>(department)
+          .onChanged('school-a-dept');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      final created = repo.records.singleWhere((r) => r.name == '2026 교육과정');
+      expect(created.value('departmentId'), 'school-a-dept');
+      expect(created.value('year'), '2026');
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'long descriptions keep full detail width and dates share a row',
+    (tester) async {
+      await showWorkspace(
+        tester,
+        FakeAdminRepository(),
+        AppRole.superAdmin,
+        '/admin/rules',
+      );
+      final form = find.descendant(
+        of: find.byKey(const ValueKey('admin-registration-rule-school-a')),
+        matching: find.byType(AdminEditor),
+      );
+      Finder field(String key) => find.descendant(
+        of: form,
+        matching: find.byKey(ValueKey('admin-field-$key')),
+      );
+      final details = find.byKey(const ValueKey('admin-details-rule'));
+      expect(
+        tester.getSize(field('definition')).width,
+        greaterThan(tester.getSize(details).width * .9),
+      );
+      expect(
+        tester.getTopLeft(field('effectiveFrom')).dy,
+        tester.getTopLeft(field('effectiveTo')).dy,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('mixed layout keeps all fields and validates both panels', (
     tester,
   ) async {

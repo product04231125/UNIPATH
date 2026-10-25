@@ -357,6 +357,30 @@ class AdminEditorState extends State<AdminEditor> {
     ),
   );
 
+  Widget _compactDetails(List<AdminField> fields) {
+    final rows = <Widget>[];
+    final shortFields = <Widget>[];
+    void flush() {
+      if (shortFields.isEmpty) return;
+      rows.add(ResponsivePanels(children: List.of(shortFields)));
+      shortFields.clear();
+    }
+
+    for (final field in fields) {
+      if (field.multiline) {
+        flush();
+        rows.add(_field(field));
+      } else {
+        shortFields.add(_field(field));
+      }
+    }
+    flush();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: rows,
+    );
+  }
+
   Widget _mixedLayout() {
     final basic = _fields
         .where((f) => f.key == 'name' || f.key == 'institutionId')
@@ -386,20 +410,10 @@ class AdminEditorState extends State<AdminEditor> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final group in adminFieldGroups(remaining).entries) ...[
-                  Semantics(
-                    header: true,
-                    child: Text(
-                      group.key,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ResponsivePanels(
-                    enabled: !group.value.any((f) => f.multiline),
-                    children: [for (final field in group.value) _field(field)],
-                  ),
-                ],
+                _compactDetails([
+                  for (final group in adminFieldGroups(remaining).values)
+                    ...group,
+                ]),
                 if (_message != null)
                   Semantics(liveRegion: true, child: Text(_message!)),
                 if (_error != null)
