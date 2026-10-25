@@ -331,9 +331,6 @@ void main() {
           find.byKey(const ValueKey('admin-menu-/admin/schools')),
         );
         await tester.pumpAndSettle();
-        await tester.ensureVisible(find.widgetWithText(FilledButton, '학교 등록'));
-        await tester.tap(find.widgetWithText(FilledButton, '학교 등록'));
-        await tester.pumpAndSettle();
         final schoolForm = find.byWidgetPredicate(
           (widget) =>
               widget is AdminEditor && widget.kind == AdminKind.institution,

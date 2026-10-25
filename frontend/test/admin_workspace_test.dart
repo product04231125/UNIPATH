@@ -92,7 +92,7 @@ void main() {
       );
       expect(
         tester
-            .getTopLeft(find.byKey(const ValueKey('admin-section-institution')))
+            .getTopLeft(find.byKey(const ValueKey('admin-frame-institution')))
             .dy,
         lessThan(220),
       );
