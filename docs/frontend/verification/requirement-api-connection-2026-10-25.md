@@ -57,3 +57,14 @@ HTTP 검증은 기존 AuthApi/RemoteAdminRepository/생성 DTO를 사용하는 �
 운영 서버·실학교 데이터·Windows 실행 실기·최종 학교 승인은 미검증이다. 좁은 화면은 사용자 지시로 제외했다.
 관리자는 계산 조건 초안까지 연결하며 승인/회수 화면은 이 변경 범위에 포함하지 않는다.
 학생 조건은 개인 규칙의 typed 영속 필드가 없어 기존 계산 이력에 저장하며 현재 버전의 최신 이력에서 복원한다.
+
+## 기존 관리자 PR #39 반영 검증
+
+원본331983a의 관리자 변경을 develop 기반 기존 codex/admin-ui-layout에1e67a7b로 분리했다.
+학생 계산 조건 파일·학생 기능 문서는 PR #40에 유지하며 이 PR에 포함하지 않는다.
+위69개 통합 검증은 원본 브랜치 결과다. PR #39의 현재 코드에서는 관리자 관련4개 테스트 파일
+(admin_requirement_connection/admin_workspace/admin_list_panel/remote_admin)의47개를 별도로 실행해 통과했다.
+선택식은 `^(?!.*(480|narrow|compact=true|compact admin header|inline registration preserves failures)).*$`이다.
+정적 분석 문제 없음·Web/Windows 빌드 각1회 성공. 로컬 로그 requirement-pr39-{test,analyze,web,windows}.log.
+종류별 실행 초안 저장·메타데이터 적용·기존 관리자 CRUD/배치/권한·입력 보호의 분리 브랜치 검증이다.
+운영 서버/Windows 실기 미검증과 별도 실행 승인 경계는 그대로다.
