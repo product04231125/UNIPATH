@@ -83,6 +83,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     _ => '/admin/accounts',
   };
 
+  String _accountRole = '';
   final _queries = <AdminKind, String>{};
   final _statuses = <AdminKind, String>{};
   String get _actor =>
@@ -329,7 +330,28 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     _ => '범위 유형 확인 필요',
   };
 
+  String _accountScopeText(AdminRecord account) {
+    if (account.value('role') == 'super_admin') return '전체 학교';
+    final scopes = _repo.records.where(
+      (r) =>
+          r.kind == AdminKind.scope &&
+          r.status == 'active' &&
+          r.value('userId') == account.id &&
+          _repo.canRead(_actor, r),
+    );
+    final labels = scopes
+        .map(
+          (r) => [
+            _relationName(r.value('institutionId')),
+            _scopeSummary(r),
+          ].where((s) => s.isNotEmpty).join(' · '),
+        )
+        .toSet();
+    return labels.isEmpty ? '부여된 관리 범위 없음' : labels.join(' / ');
+  }
+
   String _recordContext(AdminRecord r) => [
+    if (r.kind == AdminKind.account) '관리 범위: ${_accountScopeText(r)}',
     if (_repo.school(r) != r.id) _relationName(_repo.school(r)),
     for (final key in [
       'departmentId',
@@ -353,141 +375,236 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   Iterable<AdminRecord> _filteredRows(AdminKind kind) => _rows(kind).where((r) {
     if (kind == AdminKind.institution) return true;
     final query = (_queries[kind] ?? '').trim().toLowerCase();
-    return '${r.name} ${_recordContext(r)}'.toLowerCase().contains(query) &&
+    return '${r.name} ${r.kind == AdminKind.account ? '${r.value('email')} ${roleFromRecord(r).label}' : ''} ${_recordContext(r)}'
+            .toLowerCase()
+            .contains(query) &&
+        (kind != AdminKind.account ||
+            _accountRole.isEmpty ||
+            r.value('role') == _accountRole) &&
         ((_statuses[kind] ?? '').isEmpty || _status(r) == _statuses[kind]);
   });
 
-  Widget _records(AdminKind kind) => ResponsiveColumns(
-    key: ValueKey('admin-registration-${kind.name}-$_schoolId'),
-    enabled: true,
-    first: _recordList(kind),
-    second: _canCreate(kind)
-        ? AdminEditor(
-            key: _editorKeys.putIfAbsent(
-              kind,
-              () => GlobalKey<AdminEditorState>(),
-            ),
-            repository: _repo,
-            actorId: _actor,
-            kind: kind,
-            schoolId: _schoolId,
-            inline: true,
-          )
-        : const SizedBox.shrink(),
-  );
-  Widget _recordList(AdminKind kind) => Column(
-    key: ValueKey('admin-section-${kind.name}'),
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      const SizedBox(height: 16),
-      Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        spacing: 12,
-        runSpacing: 8,
-        children: [
-          Text(
-            AdminWorkspace.menus[_section] == kind.label ? '목록' : kind.label,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          if (_canCreate(kind))
-            FilledButton(
-              onPressed: _busy ? null : () => _edit(kind),
-              child: Text('${kind.label} 등록'),
-            ),
-        ],
+  Widget _records(AdminKind kind) {
+    if (!_canCreate(kind)) return _recordList(kind);
+    return Card(
+      key: ValueKey('admin-frame-${kind.name}'),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
       ),
-      if (kind != AdminKind.institution && _rows(kind).isNotEmpty) ...[
-        const SizedBox(height: 12),
-        TextFormField(
-          key: ValueKey('admin-search-$_schoolId-${kind.name}'),
-          initialValue: _queries[kind] ?? '',
-          decoration: InputDecoration(
-            labelText: '${kind.label} 이름·소속·코드 검색',
-            prefixIcon: const Icon(Icons.search),
-          ),
-          onChanged: (value) => setState(() => _queries[kind] = value),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Semantics(
+              header: true,
+              child: Text(
+                kind.label,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            const SizedBox(height: 20),
+            KeyedSubtree(
+              key: ValueKey('admin-registration-${kind.name}-$_schoolId'),
+              child: AdminEditor(
+                key: _editorKeys.putIfAbsent(
+                  kind,
+                  () => GlobalKey<AdminEditorState>(),
+                ),
+                repository: _repo,
+                actorId: _actor,
+                kind: kind,
+                schoolId: _schoolId,
+                inline: true,
+                list: _recordList(kind, framed: false),
+              ),
+            ),
+          ],
         ),
-        if (kind.versioned ||
-            kind == AdminKind.scope ||
-            kind == AdminKind.account) ...[
-          const SizedBox(height: 8),
-          AnchoredSelectField<String>(
-            externalLabel: true,
-            key: ValueKey('admin-status-${kind.name}'),
-            value: _statuses[kind] ?? '',
-            label: '${kind.label} 상태',
-            options: [
-              const SelectOption('', '전체 상태'),
-              for (final status in _rows(kind).map(_status).toSet())
-                SelectOption(status, _statusLabel(status)),
-            ],
-            onChanged: (value) => setState(() => _statuses[kind] = value),
-          ),
-        ],
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Text(
-            '${_filteredRows(kind).length}개 표시 / ${_rows(kind).length}개',
-          ),
-        ),
-        if (_filteredRows(kind).isEmpty)
-          const Text('검색·필터에 맞는 항목이 없습니다. 검색어와 상태를 바꿔보세요.'),
-      ],
-      if (_rows(kind).isEmpty)
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Text(
-            '${kind.label} 데이터가 없습니다.${_canCreate(kind) ? ' 옆의 등록 영역에서 시작하세요.' : '권한과 관리 범위를 확인하세요.'}',
-          ),
-        ),
-      ResponsivePanels(
-        enabled: kind == AdminKind.document,
+      ),
+    );
+  }
+
+  Widget _recordList(AdminKind kind, {bool framed = true}) {
+    final content = Padding(
+      key: ValueKey('admin-section-${kind.name}'),
+      padding: EdgeInsets.all(framed ? 20 : 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final r in _filteredRows(kind))
-            Card(
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.outlineVariant,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: [
+              Semantics(
+                header: true,
+                child: Text(
+                  framed ? '${kind.label} 목록' : '목록',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
+              Text('${_rows(kind).length}개'),
+            ],
+          ),
+          const Divider(height: 32),
+          if (kind == AdminKind.account) ...[
+            const Text(
+              '사용자 목록은 전체 학교 기준입니다. 부여된 관리 범위만 표시하며 학생 개인 기록은 열람하지 않습니다.',
+            ),
+            const SizedBox(height: 12),
+            AnchoredSelectField<String>(
+              key: const ValueKey('admin-account-role'),
+              externalLabel: true,
+              value: _accountRole,
+              label: '사용자 역할',
+              options: const [
+                SelectOption('', '전체 역할'),
+                SelectOption('super_admin', '슈퍼관리자'),
+                SelectOption('school_admin', '학교관리자'),
+                SelectOption('user', '학생'),
+              ],
+              onChanged: (value) => setState(() => _accountRole = value),
+            ),
+          ],
+          if (kind != AdminKind.institution && _rows(kind).isNotEmpty) ...[
+            const SizedBox(height: 12),
+            TextFormField(
+              key: ValueKey('admin-search-$_schoolId-${kind.name}'),
+              initialValue: _queries[kind] ?? '',
+              decoration: InputDecoration(
+                labelText: kind == AdminKind.account
+                    ? '사용자 이름·이메일·학교 검색'
+                    : '${kind.label} 이름·소속·코드 검색',
+                prefixIcon: const Icon(Icons.search),
+              ),
+              onChanged: (value) => setState(() => _queries[kind] = value),
+            ),
+            if (kind.versioned ||
+                kind == AdminKind.scope ||
+                kind == AdminKind.account) ...[
+              const SizedBox(height: 8),
+              AnchoredSelectField<String>(
+                externalLabel: true,
+                key: ValueKey('admin-status-${kind.name}'),
+                value: _statuses[kind] ?? '',
+                label: '${kind.label} 상태',
+                options: [
+                  const SelectOption('', '전체 상태'),
+                  for (final status in _rows(kind).map(_status).toSet())
+                    SelectOption(status, _statusLabel(status)),
+                ],
+                onChanged: (value) => setState(() => _statuses[kind] = value),
+              ),
+            ],
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                '${_filteredRows(kind).length}개 표시 / ${_rows(kind).length}개',
+              ),
+            ),
+            if (_filteredRows(kind).isEmpty)
+              const Text('검색·필터에 맞는 항목이 없습니다. 검색어와 상태를 바꿔보세요.'),
+          ],
+          if (_rows(kind).isEmpty)
+            ConstrainedBox(
+              key: ValueKey('admin-empty-${kind.name}'),
+              constraints: const BoxConstraints(minHeight: 180),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      r.name,
-                      style: Theme.of(context).textTheme.titleMedium,
+                    ExcludeSemantics(
+                      child: Icon(
+                        Icons.list_alt_outlined,
+                        size: 32,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                    if (_recordContext(r).isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          _recordContext(r),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '등록된 ${kind.label} 항목이 없습니다',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _canCreate(kind)
+                          ? '등록 폼에서 추가하면 이 목록에 표시됩니다.'
+                          : '조회할 수 있는 항목이 없습니다. 권한과 관리 범위를 확인하세요.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                    if (kind.versioned)
-                      Text('v${r.revision} · ${_statusLabel(r.status)}'),
-                    if (kind == AdminKind.scope) Text(_statusLabel(r.status)),
-                    if (kind == AdminKind.account)
-                      Text(
-                        '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}',
-                      ),
-                    if (kind == AdminKind.account && _repo.live)
-                      Text(r.value('email')),
-                    const SizedBox(height: 16),
-                    _recordActions(r),
+                    ),
                   ],
                 ),
               ),
             ),
+          ResponsivePanels(
+            enabled: kind == AdminKind.document,
+            children: [
+              for (final r in _filteredRows(kind))
+                Card(
+                  margin: const EdgeInsets.symmetric(vertical: 6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          r.name,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        if (_recordContext(r).isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              _recordContext(r),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                        if (kind.versioned)
+                          Text('v${r.revision} · ${_statusLabel(r.status)}'),
+                        if (kind == AdminKind.scope)
+                          Text(_statusLabel(r.status)),
+                        if (kind == AdminKind.account)
+                          Text(
+                            '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}',
+                          ),
+                        if (kind == AdminKind.account && _repo.live)
+                          Text(r.value('email')),
+                        const SizedBox(height: 16),
+                        _recordActions(r),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
-    ],
-  );
+    );
+    if (!framed) return content;
+    return Card(
+      key: ValueKey('admin-frame-${kind.name}'),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: content,
+    );
+  }
+
   Widget _recordActions(AdminRecord r, {bool detail = false}) => Wrap(
     spacing: 8,
     runSpacing: 8,
@@ -497,6 +614,14 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           onPressed: () => _navigate('$_section/${r.id}'),
           icon: const Icon(Icons.arrow_forward, size: 18),
           label: const Text('상세'),
+        ),
+      if (_repo.canWrite(_actor, r) &&
+          r.kind == AdminKind.rule &&
+          r.status == 'applied')
+        FilledButton.tonalIcon(
+          onPressed: _busy ? null : () => _edit(r.kind, r),
+          icon: const Icon(Icons.rule_outlined, size: 18),
+          label: const Text('계산 조건'),
         ),
       if (_repo.canWrite(_actor, r) &&
           !(_repo.live && r.kind == AdminKind.scope) &&
@@ -971,6 +1096,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                               _schoolId = v;
                               _editorKeys.clear();
                               _error = null;
+                              _accountRole = '';
                               _queries.clear();
                               _statuses.clear();
                             });

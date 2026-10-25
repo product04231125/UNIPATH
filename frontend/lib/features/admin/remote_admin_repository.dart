@@ -372,6 +372,10 @@ class RemoteAdminRepository extends AdminRepository {
 
   @override
   Future<void> save(String actorId, AdminRecord record) async {
+    await saveWithResult(actorId, record);
+  }
+
+  Future<AdminRecord> saveWithResult(String actorId, AdminRecord record) async {
     final existing = _records.any((r) => r.id == record.id);
     if (record.kind == AdminKind.account && !existing) {
       throw StateError('사용자는 회원가입으로 생성합니다.');
@@ -381,7 +385,9 @@ class RemoteAdminRepository extends AdminRepository {
     final path =
         '${paths[record.kind]}${existing ? '/${record.id}' : ''}${record.kind == AdminKind.account ? '/access' : ''}';
     final response = (await _request(existing ? 'PATCH' : 'POST', path, body))!;
-    await _refreshAfterWrite(_record(record.kind, response));
+    final saved = _record(record.kind, response);
+    await _refreshAfterWrite(saved);
+    return saved;
   }
 
   AdminRecord _find(String id) => _records.firstWhere((r) => r.id == id);
