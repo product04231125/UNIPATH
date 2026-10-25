@@ -339,22 +339,17 @@ class AdminEditorState extends State<AdminEditor> {
           ),
   );
 
-  Widget _panel(String title, Widget content, {Key? key}) => Card(
+  Widget _panel(String title, Widget content, {Key? key}) => Column(
     key: key,
-    child: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Semantics(
-            header: true,
-            child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-          ),
-          const SizedBox(height: 16),
-          content,
-        ],
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Semantics(
+        header: true,
+        child: Text(title, style: Theme.of(context).textTheme.titleMedium),
       ),
-    ),
+      const SizedBox(height: 16),
+      content,
+    ],
   );
 
   Widget _compactDetails(List<AdminField> fields) {
@@ -396,7 +391,7 @@ class AdminEditorState extends State<AdminEditor> {
             // Keep search/filter fields outside the registration FormState.
             first: Form(child: widget.list!),
             second: _panel(
-              '${widget.kind.label} 등록',
+              '등록 기본 정보',
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [for (final field in basic) _field(field)],
@@ -404,9 +399,9 @@ class AdminEditorState extends State<AdminEditor> {
               key: ValueKey('admin-basic-${widget.kind.name}'),
             ),
           ),
-          const SizedBox(height: 16),
+          const Divider(height: 40),
           _panel(
-            '${widget.kind.label} 적용 범위·상세',
+            '적용 범위·상세',
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

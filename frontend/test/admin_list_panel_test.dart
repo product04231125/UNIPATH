@@ -51,7 +51,7 @@ void main() {
           matching: find.byType(AdminEditor),
         );
         expect(
-          find.descendant(of: list, matching: find.text('규칙 묶음 목록')),
+          find.descendant(of: list, matching: find.text('목록')),
           findsOneWidget,
         );
         expect(
@@ -59,7 +59,7 @@ void main() {
           findsOneWidget,
         );
         expect(empty, findsOneWidget);
-        expect(tester.getSize(list).height, inInclusiveRange(240, 360));
+        expect(tester.getSize(list).height, inInclusiveRange(180, 360));
         expect(
           tester.getTopLeft(list).dy,
           tester
