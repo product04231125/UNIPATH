@@ -837,8 +837,14 @@ void main() {
             .text,
         entry.value['name'],
       );
-      await tester.tap(find.text('저장'));
+      await tester.tap(
+        find.text(entry.key == AdminKind.rule ? '요건 설명 저장' : '저장'),
+      );
       await tester.pumpAndSettle();
+      if (entry.key == AdminKind.rule) {
+        await tester.tap(find.text('취소'));
+        await tester.pumpAndSettle();
+      }
       expect(find.byType(InputDialog), findsNothing);
       final created = repo.records.singleWhere(
         (r) => r.name == entry.value['name'],
@@ -849,7 +855,9 @@ void main() {
       expect(find.byType(InputDialog), findsNothing);
       await openEditor(tester, repo, entry.key, record: created);
       await setField(tester, 'name', '수정 ${created.name}');
-      await tester.tap(find.text('저장'));
+      await tester.tap(
+        find.text(entry.key == AdminKind.rule ? '요건 설명 저장' : '저장'),
+      );
       await tester.pumpAndSettle();
       expect(repo.find(created.id)!.name, '수정 ${created.name}');
       expect(tester.takeException(), isNull);

@@ -617,6 +617,14 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           label: const Text('상세'),
         ),
       if (_repo.canWrite(_actor, r) &&
+          r.kind == AdminKind.rule &&
+          r.status == 'applied')
+        FilledButton.tonalIcon(
+          onPressed: _busy ? null : () => _edit(r.kind, r),
+          icon: const Icon(Icons.rule_outlined, size: 18),
+          label: const Text('계산 조건'),
+        ),
+      if (_repo.canWrite(_actor, r) &&
           !(_repo.live && r.kind == AdminKind.scope) &&
           r.status != 'applied' &&
           r.status != 'revoked' &&
