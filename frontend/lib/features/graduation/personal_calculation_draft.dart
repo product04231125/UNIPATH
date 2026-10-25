@@ -69,6 +69,69 @@ class PersonalCalculationSources {
 /// Explicit form values only. Saved rule text/current value/grade/status labels
 /// are never parsed into executable conditions or approval observations.
 class PersonalCalculationDraft {
+  PersonalCalculationDraft();
+  factory PersonalCalculationDraft.fromCondition(
+    PersonalCondition condition, {
+    PersonalCalculationSources? sources,
+  }) {
+    final draft = PersonalCalculationDraft();
+    draft.kind = condition.toJson()['kind'] as String;
+    switch (condition) {
+      case PersonalCreditCondition():
+        draft.values.addAll({
+          'minimum': condition.minimum,
+          'category': condition.category ?? '',
+        });
+        draft.allCourses = condition.courseRecordIds == null;
+        draft.selected.addAll(condition.courseRecordIds ?? []);
+      case PersonalVolunteerCondition():
+        draft.values['minimum'] = condition.minimum;
+        draft.selected.addAll(condition.activityIds);
+      case PersonalCourseCondition():
+        for (final course in condition.courses) {
+          final link = sources?.links
+              .where((r) => r.id == course.curriculumCourseId)
+              .firstOrNull;
+          final grade = condition.grades
+              .where((g) => g.courseRecordId == link?.data.courseRecordId)
+              .firstOrNull;
+          if (grade != null) {
+            draft.observation(course.curriculumCourseId).addAll({
+              'points': grade.points,
+              'scale': grade.scale,
+            });
+          }
+          draft.selected.add(course.curriculumCourseId);
+          draft.observation(course.curriculumCourseId).addAll({
+            'minimumCredits': course.minimumCredits ?? '',
+            'minimumGradePoints': course.minimumGradePoints ?? '',
+            'comparisonGradeScale': course.comparisonGradeScale ?? '',
+          });
+        }
+      case PersonalCertificateCondition():
+        for (final item in condition.certificates) {
+          draft.selected.add(item.credentialId);
+          draft.observation(item.credentialId).addAll({
+            'possession': item.possession,
+            'validityKnown': '${item.validityKnown}',
+          });
+        }
+      case PersonalThesisCondition():
+        draft.values.addAll({
+          'thesisType': condition.thesisType,
+          'acceptedGrades': condition.acceptedGrades.join(', '),
+        });
+        draft.requiresApproval = condition.requiresApproval;
+        for (final item in condition.records) {
+          draft.selected.add(item.achievementId);
+          draft.observation(item.achievementId).addAll({
+            'completion': item.completion,
+            'approval': item.approval,
+          });
+        }
+    }
+    return draft;
+  }
   String kind = 'none';
   final values = <String, String>{};
   final selected = <String>{};

@@ -260,12 +260,17 @@ void main() {
       await tester.pumpAndSettle();
       await fill(tester, {
         'title': '합성 규칙',
-        'ruleType': '필수 과목',
         'condition': '해당 과목을 기록으로 연결하여 확인',
-        'requiredValue': '-1',
-        'currentValue': '3',
-        'unit': '학점',
       });
+      await tester.ensureVisible(find.text('조건 미지정 · 확인 필요'));
+      await tester.tap(find.text('조건 미지정 · 확인 필요'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(MenuItemButton, '최소 학점'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('requirement-minimum-minimum_credits')),
+        '-1',
+      );
       await select(tester, 'scope', '교육과정');
       await select(tester, 'curriculumId', '합성 교육과정 · 2024');
       await select(tester, 'curriculumCourseId', '합성 과목 · 전공');
@@ -276,8 +281,11 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
-      expect(find.text('0 이상의 숫자를 입력하세요.'), findsOneWidget);
-      await fill(tester, {'requiredValue': '3'});
+      expect(find.text('0~1,000,000의 숫자를 소수 여섯 자리 이내로 입력하세요.'), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const ValueKey('requirement-minimum-minimum_credits')),
+        '3',
+      );
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('내 기록에 저장'));
@@ -304,7 +312,7 @@ void main() {
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
       expect(find.textContaining('과목 학점: 4'), findsOneWidget);
-      await tester.tap(find.text('교육과정'));
+      await tester.tap(find.widgetWithText(OutlinedButton, '교육과정'));
       await tester.pumpAndSettle();
       // Editing the curriculum must not reset its rules or courses.
       await tester.ensureVisible(find.text('수정'));
@@ -334,7 +342,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('교육과정'));
+      await tester.tap(find.widgetWithText(OutlinedButton, '교육과정'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('삭제'));
       await tester.pumpAndSettle();
