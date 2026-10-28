@@ -406,6 +406,7 @@ class _WorkspaceState extends State<Workspace> {
           chatPreferences: widget.windowHost.supportsDetached
               ? _chatPreferences
               : null,
+          studentApi: widget.studentApi,
         ),
         _ => const SizedBox.shrink(),
       };
