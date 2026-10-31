@@ -116,10 +116,10 @@ def encode(field, key):
 
 
 def render_model(
-    model, *, names=None, unions=None, payload_name="PersonalImportPayload", base=None
+    model, *, names=None, unions=None, payload_name="PersonalImportPayload", base=None, schema=None
 ):
     names = NAMES if names is None else names
-    schema = model.model_json_schema()
+    schema = model.model_json_schema() if schema is None else schema
     required = set(schema.get("required", []))
     fields, arguments, reads, writes = [], [], [], []
     for wire, field in schema["properties"].items():
@@ -164,12 +164,14 @@ def render_model(
     )
 
 
-def runtime_helpers():
-    return (
+def runtime_helpers(*, decimals=True):
+    decimal_helper = (
         "String _decimal(Object? value) {\n"
         " if (value is String || (value is num && value.isFinite)) "
         "{ return value.toString(); }\n"
         " throw const FormatException('Expected decimal wire value');\n}\n"
+    )
+    return (decimal_helper if decimals else "") + (
         "Object _constant(Object? value, Object expected) {\n"
         " if (value != expected) { "
         "throw const FormatException('Unexpected contract constant'); }\n"

@@ -157,7 +157,7 @@ def test_synthetic_grounded_result_preserves_original_source_metadata(client):
     citation = body["citations"][0]
     assert citation == {
         key: evidence[key] for key in ("chunk_id", "document_id", "title", "source_url", "page")
-    } | {"excerpt": evidence["content"]}
+    } | {"excerpt": evidence["content"], "applicability": None}
     assert "source_file" not in response.text
 
 

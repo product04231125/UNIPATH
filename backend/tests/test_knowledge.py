@@ -180,6 +180,14 @@ def test_complete_scoped_review_search_generation_and_terminal_revocation(auth_c
     assert result["status"] == "evidence_found"
     assert {s["document_id"] for s in result["sources"]} == {source["id"]}
     assert all(s["source_url"] == source["source_url"] for s in result["sources"])
+    applicability = result["sources"][0]["applicability"]
+    assert applicability["institution_id"] == inst["id"]
+    assert applicability["department_id"] == dep["id"]
+    assert applicability["source_version"] == source["version"]
+    assert applicability["knowledge_document_id"] == document["id"]
+    assert applicability["knowledge_version"] == document["version"]
+    assert applicability["admission_years"] == [2026]
+    assert applicability["tracks"] == ["single_major"]
     assert "answer" not in result and "source_file" not in str(result)
     no_generator = search(c, student, scope, endpoint="school-queries")
     assert (no_generator["status"], no_generator["reason"]) == (
@@ -190,6 +198,7 @@ def test_complete_scoped_review_search_generation_and_terminal_revocation(auth_c
     c.app.state.knowledge_index_cache.generator = generator
     grounded = search(c, student, scope, endpoint="school-queries")
     assert grounded["status"] == "grounded" and grounded["citations"]
+    assert grounded["citations"][0]["applicability"] == applicability
     assert len(generator.calls[-1].evidence) == 3  # Both parts and the exception page.
     assert not search(c, student, context(inst, dep, admission_year=2025))["sources"]
     missing = search(c, student, context(inst, dep, admission_year=None, track=None))

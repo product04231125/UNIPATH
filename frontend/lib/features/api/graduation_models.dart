@@ -992,3 +992,173 @@ class GraduationAuditList implements GraduationPayload {
     'next_cursor': nextCursor,
   };
 }
+
+class GraduationRequirementGuidance implements GraduationPayload {
+  const GraduationRequirementGuidance({
+    required this.ruleSetId,
+    required this.ruleSetVersion,
+    required this.ruleId,
+    required this.title,
+    required this.status,
+    required this.reason,
+    this.current,
+    this.required,
+    this.deficit,
+    this.missingCourseIds = const [],
+    this.uncertainCourseIds = const [],
+    this.evidenceRecordIds = const [],
+    required this.evidence,
+    required this.recordEvidence,
+  });
+  final String ruleSetId;
+  final int ruleSetVersion;
+  final String ruleId;
+  final String title;
+  final String status;
+  final String reason;
+  final String? current;
+  final String? required;
+  final String? deficit;
+  final List<String> missingCourseIds;
+  final List<String> uncertainCourseIds;
+  final List<String> evidenceRecordIds;
+  final List<AuditEvidence> evidence;
+  final List<AuditRecordEvidence> recordEvidence;
+  factory GraduationRequirementGuidance.fromJson(
+    Map<String, dynamic> value,
+  ) => GraduationRequirementGuidance(
+    ruleSetId: value['rule_set_id'] as String,
+    ruleSetVersion: value['rule_set_version'] as int,
+    ruleId: value['rule_id'] as String,
+    title: value['title'] as String,
+    status: _choice(value['status'], [
+      "satisfied",
+      "not_satisfied",
+      "needs_review",
+      "not_applicable",
+    ]),
+    reason: value['reason'] as String,
+    current: value['current'] == null ? null : _decimal(value['current']),
+    required: value['required'] == null ? null : _decimal(value['required']),
+    deficit: value['deficit'] == null ? null : _decimal(value['deficit']),
+    missingCourseIds: value['missing_course_ids'] == null
+        ? const []
+        : List.unmodifiable(
+            (value['missing_course_ids'] as List).map((v) => v as String),
+          ),
+    uncertainCourseIds: value['uncertain_course_ids'] == null
+        ? const []
+        : List.unmodifiable(
+            (value['uncertain_course_ids'] as List).map((v) => v as String),
+          ),
+    evidenceRecordIds: value['evidence_record_ids'] == null
+        ? const []
+        : List.unmodifiable(
+            (value['evidence_record_ids'] as List).map((v) => v as String),
+          ),
+    evidence: List.unmodifiable(
+      (value['evidence'] as List).map(
+        (v) => AuditEvidence.fromJson(Map<String, dynamic>.from(v as Map)),
+      ),
+    ),
+    recordEvidence: List.unmodifiable(
+      (value['record_evidence'] as List).map(
+        (v) =>
+            AuditRecordEvidence.fromJson(Map<String, dynamic>.from(v as Map)),
+      ),
+    ),
+  );
+  @override
+  Map<String, Object?> toJson() => {
+    'rule_set_id': ruleSetId,
+    'rule_set_version': ruleSetVersion,
+    'rule_id': ruleId,
+    'title': title,
+    'status': status,
+    'reason': reason,
+    'current': current,
+    'required': required,
+    'deficit': deficit,
+    'missing_course_ids': missingCourseIds.map((v) => v).toList(),
+    'uncertain_course_ids': uncertainCourseIds.map((v) => v).toList(),
+    'evidence_record_ids': evidenceRecordIds.map((v) => v).toList(),
+    'evidence': evidence.map((v) => v.toJson()).toList(),
+    'record_evidence': recordEvidence.map((v) => v.toJson()).toList(),
+  };
+}
+
+class GraduationGuidance implements GraduationPayload {
+  const GraduationGuidance({
+    required this.auditId,
+    required this.context,
+    required this.evaluatedOn,
+    required this.status,
+    required this.reason,
+    required this.currentUsable,
+    required this.summary,
+    required this.requirements,
+    required this.issues,
+    required this.nextSteps,
+    this.notice = "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다.",
+  });
+  final String auditId;
+  final GraduationContext context;
+  final String evaluatedOn;
+  final String status;
+  final String reason;
+  final bool currentUsable;
+  final String summary;
+  final List<GraduationRequirementGuidance> requirements;
+  final List<AuditIssue> issues;
+  final List<String> nextSteps;
+  final String notice;
+  factory GraduationGuidance.fromJson(Map<String, dynamic> value) =>
+      GraduationGuidance(
+        auditId: value['audit_id'] as String,
+        context: GraduationContext.fromJson(
+          Map<String, dynamic>.from(value['context'] as Map),
+        ),
+        evaluatedOn: value['evaluated_on'] as String,
+        status: _choice(value['status'], [
+          "satisfied",
+          "not_satisfied",
+          "needs_review",
+          "not_applicable",
+        ]),
+        reason: value['reason'] as String,
+        currentUsable: value['current_usable'] as bool,
+        summary: value['summary'] as String,
+        requirements: List.unmodifiable(
+          (value['requirements'] as List).map(
+            (v) => GraduationRequirementGuidance.fromJson(
+              Map<String, dynamic>.from(v as Map),
+            ),
+          ),
+        ),
+        issues: List.unmodifiable(
+          (value['issues'] as List).map(
+            (v) => AuditIssue.fromJson(Map<String, dynamic>.from(v as Map)),
+          ),
+        ),
+        nextSteps: List.unmodifiable(
+          (value['next_steps'] as List).map((v) => v as String),
+        ),
+        notice: value['notice'] == null
+            ? "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
+            : value['notice'] as String,
+      );
+  @override
+  Map<String, Object?> toJson() => {
+    'audit_id': auditId,
+    'context': context.toJson(),
+    'evaluated_on': evaluatedOn,
+    'status': status,
+    'reason': reason,
+    'current_usable': currentUsable,
+    'summary': summary,
+    'requirements': requirements.map((v) => v.toJson()).toList(),
+    'issues': issues.map((v) => v.toJson()).toList(),
+    'next_steps': nextSteps.map((v) => v).toList(),
+    'notice': notice,
+  };
+}

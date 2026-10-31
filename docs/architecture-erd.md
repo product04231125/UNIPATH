@@ -7,6 +7,24 @@ FastAPI 내부는 기능별 모듈로 분리하되, MVP 단계에서는 마이�
 
 ### 현재 개발환경 구현
 
+핵심 흐름 검증용 [개인화·채용 분석 계약](api/job-analysis.md)을 추가했다.
+개인화 문맥은 선택한 본인 자료와 버전을 확인해 요청 시 조립하고 공용 RAG와 분리한다.
+실제 채용 분석기는 기본 미연결이며 외부 전송·개인화 학교 답변 생성은 후속이다.
+기존 졸업 감사에는 별도 읽기 전용 안내 템플릿을 제공한다. 아래 확장용 채용 저장소와
+전체 2차 MVP 다이어그램은 목표 구조이며 이 최소 계약에서 새 테이블을 생성하지 않는다.
+
+```mermaid
+flowchart LR
+    Selected[명시적으로 선택한 개인 기록] --> Owner[본인 소유권·현재 버전 확인]
+    Owner --> Context[개인 문맥 조립 · official=false]
+    Posting[공고 원문 1개] --> Adapter[채용 분석 어댑터 · 현재 미연결]
+    Context --> Adapter
+    Adapter --> Guard[공고·개인 인용 및 신원·버전 재확인]
+    Guard --> Comparison[비교 결과 · 요청 후 보관하지 않음]
+    Approved[공통 승인 학교 문서] --> School[별도 학교 RAG 검색·적용 조건]
+    Audit[기존 Rule Engine 감사] --> Guidance[판정·근거·부족 항목 안내 템플릿]
+```
+
 `compose.yaml`은 하나의 FastAPI `api` 서비스, PostgreSQL 17/pgvector `db`
 서비스와 시작 전 Alembic을 실행하는 일회성 `migrate` 서비스를 구성한다.
 DB 준비 → 마이그레이션 성공 → API 시작 순서이며 도메인을 별도 서비스로 나누지 않는다.

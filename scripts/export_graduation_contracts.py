@@ -28,6 +28,8 @@ MODELS = [
     dto.GraduationAuditHeader,
     dto.GraduationAuditView,
     dto.GraduationAuditList,
+    dto.GraduationRequirementGuidance,
+    dto.GraduationGuidance,
 ]
 NAMES = {**PROGRAM_NAMES, **{model.__name__: model.__name__ for model in MODELS}}
 UNIONS = {frozenset(model.__name__ for model in CONDITIONS): "OfficialCondition"}

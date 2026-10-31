@@ -225,3 +225,22 @@ class GraduationAuditView(GraduationAuditHeader):
 class GraduationAuditList(StrictModel):
     items: list[GraduationAuditHeader]
     next_cursor: UUID | None = None
+
+
+class GraduationRequirementGuidance(AuditResultItem):
+    evidence: list[AuditEvidence]
+    record_evidence: list[AuditRecordEvidence]
+
+
+class GraduationGuidance(StrictModel):
+    audit_id: UUID
+    context: GraduationContext
+    evaluated_on: Day
+    status: EvaluationStatus
+    reason: str
+    current_usable: bool
+    summary: str
+    requirements: list[GraduationRequirementGuidance]
+    issues: list[AuditIssue]
+    next_steps: list[str]
+    notice: str = "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."

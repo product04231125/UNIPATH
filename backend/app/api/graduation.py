@@ -105,3 +105,10 @@ def audit_history(
 @owner_router.get("/{audit_id}", response_model=dto.GraduationAuditView)
 def audit(audit_id: UUID, db: Database, identity: CurrentIdentity):
     return audits.view(db, identity, audits.read(db, identity, audit_id))
+
+
+@owner_router.get("/{audit_id}/guidance", response_model=dto.GraduationGuidance)
+def guidance(audit_id: UUID, db: Database, identity: CurrentIdentity):
+    from app.services.graduation_guidance import render
+
+    return render(audits.view(db, identity, audits.read(db, identity, audit_id)))
