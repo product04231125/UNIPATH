@@ -1,5 +1,11 @@
 # 학교 문서 검토·DB 검색 API
 
+검색 `sources`와 생성 답변 `citations`에는 DB 자료의 `applicability`를 추가한다.
+학교·학과·교육과정 UUID, 원문 버전, 추출본 UUID·버전, 문서 적용 기간, 출처 확인일,
+청크의 입학연도·이수경로를 반환한다. 생성기가 만든 값은 사용하지 않는다.
+등록 UUID 경로에서만 채우며 기존 이름 기반 로컬 어댑터는 null이다.
+기존 출처 필드와 상태 의미는 유지한다.
+
 `0006_school_knowledge`는 `school_knowledge_documents`, `school_knowledge_chunks`를 추가한다.
 학사 메타데이터의 `applied`와 본문 검색 승인을 분리한다. 승인된 문서 본문은 PostgreSQL에
 보관하고 RAG 팀의 한국어 BM25를 재사용한다. 임베딩 모델·차원·실제 LLM은 선택하지 않았다.

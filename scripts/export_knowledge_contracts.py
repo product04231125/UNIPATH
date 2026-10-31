@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT / "backend"))
 
 dto = importlib.import_module("app.schemas.knowledge")
 AssistantCitation = importlib.import_module("app.schemas.assistant").AssistantCitation
+CitationApplicability = importlib.import_module("app.schemas.assistant").CitationApplicability
 
 MODELS = [
     dto.ChunkPart,
@@ -26,6 +27,7 @@ MODELS = [
     dto.KnowledgeContext,
     dto.KnowledgeQuery,
     dto.KnowledgeSearch,
+    CitationApplicability,
     AssistantCitation,
     dto.KnowledgeSearchResponse,
 ]

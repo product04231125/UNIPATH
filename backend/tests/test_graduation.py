@@ -119,6 +119,40 @@ def audit(c, owner, ctx, *, expected=201, **extra):
     return response.json(), body
 
 
+@pytest.mark.parametrize(
+    "credits,records,status",
+    [("3.5", True, "satisfied"), ("1", True, "not_satisfied"), ("3.5", False, "needs_review")],
+)
+def test_graduation_guidance_preserves_decisions_evidence_and_owner_scope(
+    auth_client, auth_db, credits, records, status
+):
+    c = auth_client
+    root, _, ctx, owner, *_ = fixture(c, auth_db, credits=credits, records=records)
+    reviewed, _ = review(c, root, ctx)
+    result, _ = audit(c, owner, ctx)
+    path = ME + "/" + result["id"] + "/guidance"
+    response = c.get(path, headers=owner)
+    assert response.status_code == 200, response.text
+    guidance = response.json()
+    assert guidance["status"] == result["status"] == status
+    assert guidance["evaluated_on"] == result["evaluated_on"]
+    assert guidance["requirements"][0]["evidence"] == result["criteria"][0]["rules"][0]["evidence"]
+    if records:
+        assert guidance["requirements"][0]["record_evidence"][0]["source_page"] == 1
+    assert response.headers["Cache-Control"] == "no-store"
+    assert c.get(path, headers=root).status_code == 404
+    assert c.get(path).status_code == 401
+    c.post(
+        ADMIN + "/" + reviewed["id"] + "/revoke",
+        headers=root,
+        json={"expected_version": reviewed["version"], "reason": "합성 근거 회수"},
+    ).raise_for_status()
+    stale = c.get(path, headers=owner).json()
+    assert stale["status"] == status and stale["current_usable"] is False
+    assert stale["summary"].startswith("현재 안내에는 재확인이 필요합니다.")
+    assert stale["next_steps"]
+
+
 def test_reviewed_rules_and_records_produce_reproducible_private_official_audit(
     auth_client, auth_db
 ):

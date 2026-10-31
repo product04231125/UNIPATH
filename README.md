@@ -96,6 +96,12 @@ HTTPS 설정은 [`docs/releases.md`](docs/releases.md)에 있습니다.
 - 진로 정보 RAG 질의응답
 - 채용공고 요구사항 추출 및 개인 경험 비교
 
+착수용 [개인화·채용 분석 API 계약](docs/api/job-analysis.md)은 구현했습니다.
+명시적으로 선택한 본인 기록과 공고 원문을 입력받고 소유권·버전·인용을 검증합니다.
+실제 AI 분석기는 미연결이며 기본 응답은 `not_configured`입니다. 전체 2차 MVP 완료와
+구분합니다. [졸업 결과 안내](docs/api/graduation-audits.md)는 기존 Rule Engine 결과를
+근거·부족 항목·추가 확인 사항으로 정리합니다.
+
 ### 3차 MVP 기능
 
 - 다수 채용공고의 비교·우선순위화

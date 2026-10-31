@@ -181,6 +181,11 @@ uv run --frozen python -m app.operations.db_backups verify ../backups/시각-식
 
 ## 코드 구조와 설정
 
+추가된 핵심 흐름은 [개인화·채용 분석](../docs/api/job-analysis.md)과
+[졸업 결과 안내](../docs/api/graduation-audits.md)를 따른다. 개인화는 선택한 본인 기록만
+조립하고 실제 AI 분석기는 미연결이다. 학교 DB 인용에는 출처 적용 조건과 버전이 포함된다.
+공고·개인화 문맥·분석 결과를 보관하는 새 테이블은 추가하지 않는다.
+
 - `app/api/`: 라우터 및 의존성
 - `app/schemas/`: Pydantic 요청·응답과 공통 오류
 - `app/models/`: SQLAlchemy 모델과 공통 metadata

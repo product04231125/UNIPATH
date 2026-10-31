@@ -548,6 +548,75 @@ class SchoolKnowledgeSearch implements SchoolKnowledgePayload {
   };
 }
 
+class SchoolKnowledgeCitationApplicability implements SchoolKnowledgePayload {
+  const SchoolKnowledgeCitationApplicability({
+    required this.institutionId,
+    required this.departmentId,
+    required this.curriculumId,
+    required this.sourceVersion,
+    required this.knowledgeDocumentId,
+    required this.knowledgeVersion,
+    required this.effectiveFrom,
+    required this.effectiveTo,
+    required this.sourceCheckedOn,
+    required this.admissionYears,
+    required this.tracks,
+  });
+  final String institutionId;
+  final String? departmentId;
+  final String? curriculumId;
+  final int sourceVersion;
+  final String knowledgeDocumentId;
+  final int knowledgeVersion;
+  final String? effectiveFrom;
+  final String? effectiveTo;
+  final String sourceCheckedOn;
+  final List<int> admissionYears;
+  final List<String> tracks;
+  factory SchoolKnowledgeCitationApplicability.fromJson(
+    Map<String, dynamic> value,
+  ) => SchoolKnowledgeCitationApplicability(
+    institutionId: value['institution_id'] as String,
+    departmentId: value['department_id'] == null
+        ? null
+        : value['department_id'] as String,
+    curriculumId: value['curriculum_id'] == null
+        ? null
+        : value['curriculum_id'] as String,
+    sourceVersion: value['source_version'] as int,
+    knowledgeDocumentId: value['knowledge_document_id'] as String,
+    knowledgeVersion: value['knowledge_version'] as int,
+    effectiveFrom: value['effective_from'] == null
+        ? null
+        : value['effective_from'] as String,
+    effectiveTo: value['effective_to'] == null
+        ? null
+        : value['effective_to'] as String,
+    sourceCheckedOn: value['source_checked_on'] as String,
+    admissionYears: List.unmodifiable(
+      (value['admission_years'] as List).map((v) => v as int),
+    ),
+    tracks: List.unmodifiable(
+      (value['tracks'] as List).map((v) => v as String),
+    ),
+  );
+
+  @override
+  Map<String, Object?> toJson() => {
+    'institution_id': institutionId,
+    'department_id': departmentId,
+    'curriculum_id': curriculumId,
+    'source_version': sourceVersion,
+    'knowledge_document_id': knowledgeDocumentId,
+    'knowledge_version': knowledgeVersion,
+    'effective_from': effectiveFrom,
+    'effective_to': effectiveTo,
+    'source_checked_on': sourceCheckedOn,
+    'admission_years': admissionYears.map((v) => v).toList(),
+    'tracks': tracks.map((v) => v).toList(),
+  };
+}
+
 class SchoolKnowledgeCitation implements SchoolKnowledgePayload {
   const SchoolKnowledgeCitation({
     required this.chunkId,
@@ -556,6 +625,7 @@ class SchoolKnowledgeCitation implements SchoolKnowledgePayload {
     required this.sourceUrl,
     required this.page,
     required this.excerpt,
+    this.applicability,
   });
   final String chunkId;
   final String documentId;
@@ -563,6 +633,7 @@ class SchoolKnowledgeCitation implements SchoolKnowledgePayload {
   final String sourceUrl;
   final int page;
   final String excerpt;
+  final SchoolKnowledgeCitationApplicability? applicability;
   factory SchoolKnowledgeCitation.fromJson(Map<String, dynamic> value) =>
       SchoolKnowledgeCitation(
         chunkId: value['chunk_id'] as String,
@@ -571,6 +642,11 @@ class SchoolKnowledgeCitation implements SchoolKnowledgePayload {
         sourceUrl: value['source_url'] as String,
         page: value['page'] as int,
         excerpt: value['excerpt'] as String,
+        applicability: value['applicability'] == null
+            ? null
+            : SchoolKnowledgeCitationApplicability.fromJson(
+                Map<String, dynamic>.from(value['applicability'] as Map),
+              ),
       );
 
   @override
@@ -581,6 +657,7 @@ class SchoolKnowledgeCitation implements SchoolKnowledgePayload {
     'source_url': sourceUrl,
     'page': page,
     'excerpt': excerpt,
+    'applicability': applicability?.toJson(),
   };
 }
 

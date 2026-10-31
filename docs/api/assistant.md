@@ -78,7 +78,8 @@ Pydantic 원본은 `backend/app/schemas/assistant.py`, OpenAPI는
 그 밖의 생성기 출력·인용 검증 코드는 OpenAPI enum을 따른다. `missing_fields`는
 `question`, `institution`, `department`, `admission_year`, `track`, `graduation_audit` 중
 하나다. `graduation_audit`는 요청에 넣는 필드가 아니라 향후 별도 졸업감사 흐름을
-안내할 문맥이다. 현재 졸업감사 API는 구현되지 않았다.
+안내할 문맥이다. 본인 공식 감사는 별도 [졸업요건 감사 API](graduation-audits.md)를
+사용하며 이 이름 기반 질의가 자동으로 실행하지 않는다.
 
 ## 인용 계약
 

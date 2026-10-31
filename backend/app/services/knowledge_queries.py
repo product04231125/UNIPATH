@@ -17,6 +17,7 @@ from app.schemas.assistant import (
     AssistantCitation,
     AssistantQueryRequest,
     AssistantQueryResponse,
+    CitationApplicability,
     SchoolQueryContext,
 )
 from app.schemas.knowledge import KnowledgeSearchResponse
@@ -150,6 +151,43 @@ def failure(search, reason="rag_processing_failed", *, status="failed"):
     return KnowledgeSearchResponse(**values) if search else AssistantQueryResponse(**values)
 
 
+def add_applicability(db, records, citations):
+    """Attach current DB metadata, never metadata invented by a generator."""
+    by_source = {source.id: (source, document) for source, document in records}
+    rows = {
+        row.id: row
+        for row in db.scalars(
+            select(KnowledgeChunk).where(KnowledgeChunk.id.in_([c.chunk_id for c in citations]))
+        )
+    }
+    result = []
+    for citation in citations:
+        source, document = by_source[citation.document_id]
+        row = rows[citation.chunk_id]
+        if row.knowledge_document_id != document.id:
+            raise ValueError("Citation does not belong to the selected approved source")
+        result.append(
+            citation.model_copy(
+                update={
+                    "applicability": CitationApplicability(
+                        institution_id=source.institution_id,
+                        department_id=source.department_id,
+                        curriculum_id=source.curriculum_id,
+                        source_version=source.version,
+                        knowledge_document_id=document.id,
+                        knowledge_version=document.version,
+                        effective_from=source.effective_from,
+                        effective_to=source.effective_to,
+                        source_checked_on=document.source_checked_on,
+                        admission_years=row.admission_years or [],
+                        tracks=row.tracks or [],
+                    )
+                }
+            )
+        )
+    return result
+
+
 def execute(db, request, payload, cache, *, search=False):
     identity = auth.current_identity(request, db)
     auth.throttle(db, "school-knowledge:" + str(identity.user.id), limit=60)
@@ -224,7 +262,7 @@ def execute(db, request, payload, cache, *, search=False):
     db.expire_all()
     auth.current_identity(request, db)
     try:
-        current, _, _ = selection(db, payload.context)
+        current, current_records, _ = selection(db, payload.context)
     except ValueError:
         cache.discard(key)
         return failure(search)
@@ -233,4 +271,11 @@ def execute(db, request, payload, cache, *, search=False):
         return failure(
             search, "document_context_not_approved_or_incomplete", status="insufficient_evidence"
         )
+    try:
+        if search:
+            result.sources = add_applicability(db, current_records, result.sources)
+        else:
+            result.citations = add_applicability(db, current_records, result.citations)
+    except (KeyError, ValueError, TypeError):
+        return failure(search)
     return result
