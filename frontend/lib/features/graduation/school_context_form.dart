@@ -50,11 +50,34 @@ class SchoolContextFormState extends State<SchoolContextForm> {
   bool _loading = true;
   String _initialDate = '';
   bool get hasEditedDate => date.text != _initialDate;
-  String? get institutionId => _loading || _error != null ? null : _school;
+  bool get isReady => !_loading && _error == null;
+  String? get selectedInstitutionId => _school;
+  String? get selectedDepartmentId => _department;
+  String? get selectedCurriculumId => _curriculum;
+  String? get institutionId => isReady ? _school : null;
   String? get departmentId => _department;
   String? get curriculumId => _curriculum;
+  String? get institutionName =>
+      _nameOf(_schools.map((item) => (item.id, item.name)), _school);
+  String? get departmentName =>
+      _nameOf(_departments.map((item) => (item.id, item.name)), _department);
+  String? get curriculumName =>
+      _nameOf(_curricula.map((item) => (item.id, item.name)), _curriculum);
   bool get hasSelection =>
       _school != null || _department != null || _curriculum != null;
+
+  String? _nameOf(Iterable<(String, String)> items, String? id) {
+    if (id == null) {
+      return null;
+    }
+    for (final item in items) {
+      if (item.$1 == id) {
+        return item.$2;
+      }
+    }
+    return null;
+  }
+
   List<String> _fields = [];
   void showErrors(List<String> fields) => setState(() => _fields = fields);
   String? _fieldError(String name) =>

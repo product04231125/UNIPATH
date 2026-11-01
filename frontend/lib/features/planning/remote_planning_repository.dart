@@ -194,6 +194,9 @@ class RemotePlanningRepository extends PlanningRepository {
     track: value.track,
     academicYearOverride: value.academicYearOverride,
     weekStartsOn: weekStartDayFromStorage(value.weekStartsOn),
+    institutionId: value.institutionId,
+    departmentId: value.departmentId,
+    curriculumId: value.curriculumId,
     version: value.version,
   );
   Map<String, Object?> _profileData(PlanningProfile value) => {
@@ -203,6 +206,9 @@ class RemotePlanningRepository extends PlanningRepository {
     'track': value.track,
     'academic_year_override': value.academicYearOverride,
     'week_starts_on': value.weekStartsOn.storageValue,
+    'institution_id': value.institutionId,
+    'department_id': value.departmentId,
+    'curriculum_id': value.curriculumId,
   };
   void _refreshEvents() {
     _events =
@@ -248,14 +254,11 @@ class RemotePlanningRepository extends PlanningRepository {
     String? track,
   }) => _enqueue(
     () => _saveProfile(
-      PlanningProfile(
-        school: school ?? '',
-        department: department ?? '',
+      _profile.withSchoolContext(
+        school: school,
+        department: department,
         admissionYear: admissionYear,
         track: track,
-        academicYearOverride: _profile.academicYearOverride,
-        weekStartsOn: _profile.weekStartsOn,
-        version: _profile.version,
       ),
     ),
   );

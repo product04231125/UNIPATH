@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/graduation/official_graduation_page.dart';
+import 'package:university_path_frontend/features/planning/planning_repository.dart';
 
 import 'graduation_api_test.dart' as fixture;
 import 'support/auth_fixture.dart';
@@ -138,4 +139,62 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'saved catalog profile fills the audit school without a new school',
+    (tester) async {
+      tester.view.resetPhysicalSize();
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final auth = AuthApi(
+        cookieMode: false,
+        client: MockClient((request) async {
+          final path = request.url.path;
+          if (path.endsWith('/login')) {
+            return fixture.json({...identityJson(), 'access_token': token});
+          }
+          if (path.contains('/catalog/')) {
+            return fixture.json({
+              'items': [catalogRow(path)],
+              'next_cursor': null,
+            });
+          }
+          return fixture.json({'items': <Object?>[], 'next_cursor': null});
+        }),
+      );
+      addTearDown(auth.close);
+      await fixture.login(auth);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: OfficialGraduationPage(
+              auth: auth,
+              ownerId: userId,
+              onPersonal: () {},
+              profile: const PlanningProfile(
+                school: '검증 대학',
+                department: '검증 학과',
+                admissionYear: 2024,
+                track: 'single_major',
+                institutionId: otherId,
+                departmentId: otherId,
+                curriculumId: otherId,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text('설정에 저장한 등록 학교를 불러왔습니다. 기준일은 이 감사 실행에서 입력합니다.'),
+        findsOneWidget,
+      );
+      expect(find.text('검증 대학'), findsWidgets);
+      expect(find.text('2024'), findsWidgets);
+      expect(find.text('single_major'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

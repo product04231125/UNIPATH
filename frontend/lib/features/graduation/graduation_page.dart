@@ -51,9 +51,22 @@ class _GraduationPageState extends State<GraduationPage> {
     }
     final session = SchoolWorkflowSession.maybeOf(context);
     if (session != null) {
+      final planning = widget.planning;
+      if (planning != null && planning.isLoading) {
+        return const ContentScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PageHeader(title: '학교 검토 자료 기준 졸업요건 감사'),
+              LinearProgressIndicator(),
+            ],
+          ),
+        );
+      }
       return OfficialGraduationPage(
         auth: session.auth,
         ownerId: session.identity.id,
+        profile: planning == null || planning.loadFailed ? null : planning.profile,
         onPersonal: () {
           setState(() => _personal = true);
           _reportMinimumWidth();

@@ -83,6 +83,17 @@ flowchart LR
 [졸업요건 감사 API](api/graduation-audits.md)는 학교·학과·교육과정·입학연도·이수경로와
 기준일을 받아 전체 규정 검토 및 본인 학교 승인 기록만 코어에 전달한다. 질문 텍스트나
 개인 프로필로 학적·기준일을 자동 확정하지 않는다.
+설정에서 명시적으로 선택한 등록 학교·학과·교육과정 UUID는 본인 프로필에 보존하고
+공식 감사 입력의 초깃값으로 불러온다. 학생이 기준일과 적용 문맥을 확인한 뒤 실행한다.
+개인 교육과정의 프로필 적용은 이름이 같아도 등록 UUID를 비우며 학교 학적으로 승격하지 않는다.
+
+```mermaid
+flowchart LR
+    CatalogChoice[설정의 등록 학교·학과·교육과정 선택] --> Profile[본인 프로필 UUID·입학연도·이수 경로]
+    Profile --> AuditForm[감사 입력 초깃값 · 학생이 문맥·기준일 확인]
+    AuditForm --> ExplicitAudit[명시적 감사 실행 · 기존 Rule Engine]
+    PersonalChoice[개인 교육과정을 프로필로 적용] --> PersonalProfile[이름·입학연도 저장 · 등록 UUID 해제]
+```
 `app/rules/`의 결정론적인 계산 코어는 DB·HTTP·LLM과 분리해 구현했다. 내부의 공식 규칙
 계산과 개인 기준 계산을 구분한다. 개인 계산 API는 본인 DB 자료와 명시적 조건을 코어에
 전달하며 불변 결과/입력 snapshot을 저장한다. 공식 자료 감사는 별도 DB 이력에

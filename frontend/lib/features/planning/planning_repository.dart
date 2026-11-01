@@ -121,13 +121,11 @@ class PlanningRepository extends ChangeNotifier {
     String? track,
   }) => _enqueue(
     () => _commitProfile(
-      PlanningProfile(
-        school: school ?? '',
-        department: department ?? '',
+      _profile.withSchoolContext(
+        school: school,
+        department: department,
         admissionYear: admissionYear,
         track: track,
-        academicYearOverride: _profile.academicYearOverride,
-        weekStartsOn: _profile.weekStartsOn,
       ),
     ),
   );
@@ -179,6 +177,9 @@ class PlanningProfile {
     this.track,
     this.academicYearOverride,
     this.weekStartsOn = WeekStartDay.sunday,
+    this.institutionId,
+    this.departmentId,
+    this.curriculumId,
     this.version,
   });
 
@@ -188,9 +189,38 @@ class PlanningProfile {
   final String? track;
   final int? academicYearOverride;
   final WeekStartDay weekStartsOn;
+  final String? institutionId;
+  final String? departmentId;
+  final String? curriculumId;
 
   /// Server version captured when a form starts; absent for local data.
   final int? version;
+
+  bool get hasCatalogSchool =>
+      institutionId != null && institutionId!.isNotEmpty;
+
+  PlanningProfile withSchoolContext({
+    String? school,
+    String? department,
+    int? admissionYear,
+    String? track,
+  }) {
+    final nextSchool = school ?? '';
+    final nextDepartment = department ?? '';
+    final keep = nextSchool == this.school && nextDepartment == this.department;
+    return PlanningProfile(
+      school: nextSchool,
+      department: nextDepartment,
+      admissionYear: admissionYear,
+      track: track,
+      academicYearOverride: academicYearOverride,
+      weekStartsOn: weekStartsOn,
+      institutionId: keep ? institutionId : null,
+      departmentId: keep ? departmentId : null,
+      curriculumId: keep ? curriculumId : null,
+      version: version,
+    );
+  }
 
   bool get isConfigured =>
       school.trim().isNotEmpty &&
@@ -211,6 +241,9 @@ class PlanningProfile {
     'track': track,
     'academicYearOverride': academicYearOverride,
     'weekStartsOn': weekStartsOn.storageValue,
+    'institutionId': institutionId,
+    'departmentId': departmentId,
+    'curriculumId': curriculumId,
   };
 
   factory PlanningProfile.fromJson(Map<String, dynamic> json) =>
@@ -221,6 +254,9 @@ class PlanningProfile {
         track: json['track'] as String?,
         academicYearOverride: json['academicYearOverride'] as int?,
         weekStartsOn: weekStartDayFromStorage(json['weekStartsOn']),
+        institutionId: json['institutionId'] as String?,
+        departmentId: json['departmentId'] as String?,
+        curriculumId: json['curriculumId'] as String?,
       );
 }
 

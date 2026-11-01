@@ -47,6 +47,22 @@ class _PersonalGraduationWorkspaceState
     }
   }
 
+  Future<void> _useProfile(PersonalRecord record) {
+    final planning = widget.planning!;
+    final current = planning.profile;
+    return planning.saveProfile(
+      PlanningProfile(
+        school: record.value('school'),
+        department: record.value('department'),
+        admissionYear: int.tryParse(record.value('admissionYear')),
+        track: current.track,
+        academicYearOverride: current.academicYearOverride,
+        weekStartsOn: current.weekStartsOn,
+        version: current.version,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scope = PersonalRepositoryScope.read(context);
@@ -109,14 +125,7 @@ class _PersonalGraduationWorkspaceState
                   onUse:
                       _kind == PersonalRecordKind.personalCurriculum &&
                           widget.planning != null
-                      ? (record) => widget.planning!.saveSchoolContext(
-                          school: record.value('school'),
-                          department: record.value('department'),
-                          admissionYear: int.tryParse(
-                            record.value('admissionYear'),
-                          ),
-                          track: record.value('title'),
-                        )
+                      ? _useProfile
                       : null,
                 ),
         ),
