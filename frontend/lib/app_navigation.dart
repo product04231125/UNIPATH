@@ -32,6 +32,7 @@ class AppLocation {
     '/activities',
     '/credentials',
     '/portfolio',
+    '/job-postings',
     '/settings',
   ];
   final String path;

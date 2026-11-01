@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_page.dart';
+import 'package:university_path_frontend/main.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -18,12 +18,10 @@ void main() {
         PersonalRecord(id: 'job-act', values: {'title': '선택한 봉사'}),
       );
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(body: PortfolioPage(showMockData: false)),
-        ),
+        const UniversityPathApp(startAuthenticated: true),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(OutlinedButton, '채용공고 분석'));
+      await tester.tap(find.text('채용공고 분석'));
       await tester.pumpAndSettle();
       expect(find.textContaining('분석 실행은 아직 연결되지 않았습니다'), findsWidgets);
       expect(find.text('분석 실행 불가 · 연결 전'), findsOneWidget);
@@ -36,9 +34,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('선택한 기록 1개'), findsOneWidget);
-      await tester.tap(find.widgetWithText(OutlinedButton, '내 자료'));
+      await tester.tap(find.text('자료'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(OutlinedButton, '채용공고 분석'));
+      await tester.tap(find.text('채용공고 분석').first);
       await tester.pumpAndSettle();
       expect(
         tester

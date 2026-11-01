@@ -276,7 +276,8 @@ void main() {
       ('졸업 요건', '기준 선택'),
       ('활동', '등록한 활동'),
       ('자격', '등록한 자격'),
-      ('자료·채용공고 분석', '내 자료'),
+      ('자료', '내 자료'),
+      ('채용공고 분석', '채용공고 텍스트'),
       ('설정', '학업과 계획'),
     ]) {
       await tester.tap(find.text(menu.$1));
@@ -284,10 +285,8 @@ void main() {
       expect(find.textContaining(menu.$2), findsWidgets);
     }
     expect(find.byTooltip('경험'), findsNothing);
-    await tester.tap(find.text('자료·채용공고 분석'));
-    await tester.pumpAndSettle();
-    expect(find.widgetWithText(OutlinedButton, '내 자료'), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, '채용공고 분석'), findsOneWidget);
+    expect(find.text('자료'), findsOneWidget);
+    expect(find.text('채용공고 분석'), findsOneWidget);
     expect(find.text('성과 기록'), findsNothing);
     expect(find.text('기존 구성'), findsNothing);
     expect(find.text('기존 지원 문서'), findsNothing);

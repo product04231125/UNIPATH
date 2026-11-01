@@ -137,7 +137,7 @@ void main() {
       await tester.enterText(find.byType(TextFormField).at(1), 'test-password');
       await tester.tap(find.byKey(const Key('login-submit')));
       await tester.pumpAndSettle();
-      expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 7);
+      expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 8);
       expect(provider.value.uri.path, '/settings');
       await tester.pumpWidget(const SizedBox());
       provider.dispose();
@@ -155,7 +155,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 7);
+      expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 8);
       expect(provider.value.uri.path, '/settings');
       await tester.pumpWidget(const SizedBox());
       provider.dispose();

@@ -7,7 +7,8 @@ import 'package:university_path_frontend/shared/widgets/content_scroll_view.dart
 import 'package:university_path_frontend/features/records/course/course_page.dart';
 import 'package:university_path_frontend/features/records/activity/activity_page.dart';
 import 'package:university_path_frontend/features/records/credential/credential_page.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_page.dart';
+import 'package:university_path_frontend/features/records/portfolio/job_analysis_page.dart';
+import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_drafts_page.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
@@ -53,6 +54,8 @@ void main() {
           SchedulePage(repository: repository),
           SettingsPage(repository: repository),
           const GraduationPage(showMockData: false),
+          const MaterialsPage(),
+          const JobAnalysisPage(),
         ]) {
           await tester.pumpWidget(host(page, scale: scale));
           await tester.pumpAndSettle();
@@ -67,42 +70,6 @@ void main() {
             greaterThanOrEqualTo(16),
           );
           expect(tester.takeException(), isNull, reason: '$page');
-        }
-
-        await tester.pumpWidget(
-          host(const PortfolioPage(showMockData: false), scale: scale),
-        );
-        await tester.pumpAndSettle();
-        final tabs = ['내 자료', '채용공고 분석'];
-        final titles = ['내 자료', '채용공고 분석'];
-        final anchor = tester.getTopLeft(find.byType(PageHeader));
-        final tabRow = find
-            .ancestor(
-              of: find.widgetWithText(OutlinedButton, tabs.first),
-              matching: find.byType(Wrap),
-            )
-            .first;
-        expect(anchor.dx, 28);
-        expect(anchor.dy - tester.getBottomLeft(tabRow).dy, closeTo(12, .01));
-        for (var index = 0; index < tabs.length; index++) {
-          await tester.tap(find.widgetWithText(OutlinedButton, tabs[index]));
-          await tester.pumpAndSettle();
-          expect(tester.getTopLeft(find.byType(PageHeader)), anchor);
-          expect(
-            find.descendant(
-              of: find.byType(PageHeader),
-              matching: find.text(titles[index]),
-            ),
-            findsOneWidget,
-          );
-          expect(find.textContaining('PORTFOLIO & OUTCOMES'), findsNothing);
-          expect(find.text('성과 기록'), findsNothing);
-          expect(find.text('기존 구성'), findsNothing);
-          expect(find.text('기존 지원 문서'), findsNothing);
-          if (index == 1) {
-            expect(find.textContaining('분석 실행은 아직 연결되지 않았습니다'), findsWidgets);
-          }
-          expect(tester.takeException(), isNull);
         }
 
         await tester.pumpWidget(

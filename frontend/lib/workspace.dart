@@ -27,7 +27,8 @@ import 'features/planning/weekly_schedule.dart';
 import 'features/records/activity/activity_page.dart';
 import 'features/records/course/course_page.dart';
 import 'features/records/credential/credential_page.dart';
-import 'features/records/portfolio/portfolio_page.dart';
+import 'features/records/portfolio/job_analysis_page.dart';
+import 'features/records/portfolio/materials_page.dart';
 import 'features/settings/settings_page.dart';
 import 'features/schedule/schedule_page.dart';
 
@@ -70,7 +71,8 @@ class _WorkspaceState extends State<Workspace> {
     '졸업 요건',
     '활동',
     '자격',
-    '자료·채용공고 분석',
+    '자료',
+    '채용공고 분석',
   ];
   static const _icons = [
     Icons.home_outlined,
@@ -80,10 +82,12 @@ class _WorkspaceState extends State<Workspace> {
     Icons.volunteer_activism_outlined,
     Icons.workspace_premium_outlined,
     Icons.collections_bookmark_outlined,
+    Icons.work_outline,
   ];
 
   var _page = 0;
   final _visitedPages = <int>{};
+  final _materials = GlobalKey<MaterialsPageState>();
   var _showMockData = true;
   var _chatOpen = false;
   var _chatManuallyOpened = false;
@@ -274,7 +278,7 @@ class _WorkspaceState extends State<Workspace> {
       integratedTitleBar: widget.integratedTitleBar,
       selectedPage: _page,
       navigationItems: navigationItems,
-      onPageSelected: _selectPage,
+      onPageSelected: (value) => _selectPage(value),
       // Navigation shares the home baseline so changing destinations cannot
       // expand a compact startup sidebar just because that page is narrower.
       minimumContentWidth: math.max(
@@ -396,7 +400,8 @@ class _WorkspaceState extends State<Workspace> {
         ),
         4 => ActivityPage(showMockData: _showMockData),
         5 => CredentialPage(showMockData: _showMockData),
-        6 => PortfolioPage(showMockData: _showMockData, active: _page == 6),
+        6 => MaterialsPage(key: _materials),
+        7 => const JobAnalysisPage(),
         _ when index == settingsPage - 1 => SettingsPage(
           repository: _planningRepository,
           chatPreferences: widget.windowHost.supportsDetached
@@ -408,6 +413,18 @@ class _WorkspaceState extends State<Workspace> {
       };
 
   void _selectPage(int value, {PendingUiAction? addRequest}) {
+    unawaited(_selectPageGuarded(value, addRequest: addRequest));
+  }
+
+  Future<void> _selectPageGuarded(
+    int value, {
+    PendingUiAction? addRequest,
+  }) async {
+    if (_page == _labels.indexOf('자료') && value != _page) {
+      final allow =
+          await (_materials.currentState?.allowLeave() ?? Future.value(true));
+      if (!allow || !mounted) return;
+    }
     setState(() {
       _scheduleAddRequest = addRequest;
       _page = value;

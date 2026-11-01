@@ -9,7 +9,8 @@
 - Flutter SDK Router로 주요 메뉴 선택과 URL을 연결한다. Web은 기본 hash 전략을 사용해
   `/#/schedule`처럼 진입하며 별도 서버 rewrite나 라우터 패키지를 추가하지 않는다.
 - 경로는 `/home`, `/schedule`, `/courses`, `/graduation`, `/activities`,
-  `/credentials`, `/portfolio`, `/settings`다. `/`는 홈이다. 이전 `/experiences`는
+  `/credentials`, `/portfolio`, `/job-postings`, `/settings`다. `/`는 홈이다.
+  `/portfolio`는 자료, `/job-postings`는 채용공고 분석이다. 이전 `/experiences`는
   합쳐진 활동 화면(`/activities`)을 연다. 메뉴 선택은 새 탐색 항목으로
   보고하며 브라우저 뒤로·앞으로 변경은 같은 Workspace의 선택 메뉴를 갱신한다.
 - 직접 진입·새로고침은 주소의 메뉴를 연다. 모달·빠른 추가 의도·목업 스위치·채팅 열림·
@@ -26,7 +27,7 @@
 
 ## 검증과 후속 계약
 
-- `app_navigation_test.dart`는 9개 직접 진입, URL 보고 유형, 외부 주소 변경의 뒤로/앞으로 대응,
+- `app_navigation_test.dart`는 메뉴 경로마다 직접 진입, URL 보고 유형, 외부 주소 변경의 뒤로/앞으로 대응,
   Workspace 유지, 새로고침·목업 로그인 후 요청 메뉴 복원과 미등록 경로 복구를 검사한다.
 - `input_dialog_test.dart`의 홈 빠른 추가 검사는 URL 연동 뒤에도 팝업을 한 번만 열고 일반 탐색에서는
   열지 않는지 검사한다. 실제 IAB에서 /schedule 직접 진입, /activities 이동, 뒤로·앞으로와
