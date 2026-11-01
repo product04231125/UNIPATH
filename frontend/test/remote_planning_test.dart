@@ -170,6 +170,74 @@ void main() {
     first.dispose();
     second.dispose();
   });
+  test('server profile keeps catalog ids until school names change', () async {
+    final server = PlanningServer();
+    final first = repo(server);
+    await first.load();
+    await first.saveProfile(
+      PlanningProfile(
+        school: '검증 대학',
+        department: '검증 학과',
+        institutionId: otherId,
+        departmentId: otherId,
+        curriculumId: otherId,
+        version: first.profile.version,
+      ),
+    );
+    final second = repo(server);
+    await second.load();
+    expect(second.profile.institutionId, otherId);
+    expect(second.profile.departmentId, otherId);
+    expect(second.profile.curriculumId, otherId);
+    await second.saveSchoolContext(school: '직접 입력 학교', department: '직접 입력 학과');
+    expect(second.profile.institutionId, isNull);
+    expect(second.profile.departmentId, isNull);
+    expect(second.profile.curriculumId, isNull);
+    expect(server.profile['institution_id'], isNull);
+    first.dispose();
+    second.dispose();
+  });
+  test('same-name personal context clears catalog ids while chat context keeps them', () async {
+    final server = PlanningServer();
+    server.profile.addAll({
+      'school': '검증 대학',
+      'department': '검증 학과',
+      'institution_id': otherId,
+      'department_id': otherId,
+      'curriculum_id': otherId,
+      'admission_year': 2026,
+      'track': 'single_major',
+      'week_starts_on': 'monday',
+      'academic_year_override': 2,
+    });
+    final repository = repo(server);
+    await repository.load();
+    await repository.saveSchoolContext(
+      school: '검증 대학',
+      department: '검증 학과',
+      admissionYear: 2026,
+      track: 'single_major',
+    );
+    expect(repository.profile.curriculumId, otherId);
+    await repository.saveSchoolContext(
+      school: '검증 대학',
+      department: '검증 학과',
+      admissionYear: 2026,
+      track: 'single_major',
+      clearCatalogIds: true,
+    );
+    expect(repository.profile.school, '검증 대학');
+    expect(repository.profile.institutionId, isNull);
+    expect(repository.profile.departmentId, isNull);
+    expect(repository.profile.curriculumId, isNull);
+    expect(server.profile['institution_id'], isNull);
+    expect(server.profile['department_id'], isNull);
+    expect(server.profile['curriculum_id'], isNull);
+    expect(repository.profile.weekStartsOn, WeekStartDay.monday);
+    expect(repository.profile.academicYearOverride, 2);
+    expect(repository.profile.track, 'single_major');
+    repository.dispose();
+  });
   test('uncertain event create retries same client UUID, and rejects changed payload', () async {
     final server = PlanningServer()..loseCreateResponse = true;
     final repository = repo(server);

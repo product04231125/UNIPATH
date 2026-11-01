@@ -178,7 +178,7 @@ void main() {
     },
   );
   testWidgets(
-    'explicit curriculum profile application preserves existing schedule settings',
+    'personal curriculum clears matching catalog ids and preserves settings',
     (tester) async {
       await seed(PersonalRecordKind.personalCurriculum, 'profile', {
         'title': '내 교육과정',
@@ -191,6 +191,17 @@ void main() {
       addTearDown(planning.dispose);
       await planning.load();
       final week = planning.profile.weekStartsOn;
+      await planning.saveProfile(
+        PlanningProfile(
+          school: '내 학교',
+          department: '내 학과',
+          track: 'single_major',
+          institutionId: 'school-id',
+          departmentId: 'dept-id',
+          curriculumId: 'cur-id',
+          weekStartsOn: week,
+        ),
+      );
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -210,6 +221,10 @@ void main() {
       expect(planning.profile.school, '내 학교');
       expect(planning.profile.department, '내 학과');
       expect(planning.profile.admissionYear, 2025);
+      expect(planning.profile.track, 'single_major');
+      expect(planning.profile.institutionId, isNull);
+      expect(planning.profile.departmentId, isNull);
+      expect(planning.profile.curriculumId, isNull);
       expect(planning.profile.weekStartsOn, week);
     },
   );
