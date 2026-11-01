@@ -115,7 +115,7 @@ class _PersonalGraduationWorkspaceState
                           admissionYear: int.tryParse(
                             record.value('admissionYear'),
                           ),
-                          track: record.value('title'),
+                          track: widget.planning!.profile.track,
                         )
                       : null,
                 ),

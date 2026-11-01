@@ -72,25 +72,23 @@ class _SettingsPageState extends State<SettingsPage> {
     _pendingInstitutionId = profile.institutionId;
     _pendingDepartmentId = profile.departmentId;
     _pendingCurriculumId = profile.curriculumId;
-    _useCatalog = _catalogModeFor(profile);
+    _useCatalog = widget.studentApi != null;
     _profileInitialized =
         !widget.repository.isLoading && !widget.repository.loadFailed;
   }
 
   bool get _canUseCatalog => widget.studentApi != null;
 
-  bool _catalogModeFor(PlanningProfile profile) {
-    if (!_canUseCatalog) {
-      return false;
+  String? get _personalSchoolLabel {
+    final profile = widget.repository.profile;
+    if (profile.hasCatalogSchool || profile.school.trim().isEmpty) {
+      return null;
     }
-    if (profile.hasCatalogSchool) {
-      return true;
+    final department = profile.department.trim();
+    if (department.isEmpty) {
+      return profile.school;
     }
-    if (profile.school.trim().isNotEmpty ||
-        profile.department.trim().isNotEmpty) {
-      return false;
-    }
-    return true;
+    return '${profile.school} · $department';
   }
 
   @override
@@ -133,7 +131,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _pendingInstitutionId = profile.institutionId;
         _pendingDepartmentId = profile.departmentId;
         _pendingCurriculumId = profile.curriculumId;
-        _useCatalog = _catalogModeFor(profile);
+        _useCatalog = widget.studentApi != null;
         _profileInitialized = true;
       }
       final suggestedYear = _suggestedYear();
@@ -183,31 +181,27 @@ class _SettingsPageState extends State<SettingsPage> {
                               ),
                               const SizedBox(height: 18),
                               if (_canUseCatalog) ...[
-                                AnchoredSelectField<bool>(
-                                  key: const Key('school-source-select'),
-                                  value: _useCatalog,
-                                  label: '학교 등록',
-                                  options: const [
-                                    SelectOption(true, '등록된 학교 목록에서 고르기'),
-                                    SelectOption(false, '목록에 없는 학교 직접 입력'),
-                                  ],
-                                  onChanged: _setCatalogMode,
-                                ),
-                                const SizedBox(height: 8),
                                 Align(
                                   alignment: Alignment.centerLeft,
                                   child: Text(
-                                    _useCatalog
-                                        ? '목록에서 고른 학교·학과·교육과정의 ID가 서버 프로필에 저장됩니다. 공식 학적 증명은 아닙니다.'
-                                        : '직접 입력한 이름은 개인 계획용이며 공식 감사의 학교 ID가 아닙니다.',
+                                    '등록된 학교는 목록에서 검색해 고릅니다. 목록에 없으면 학교를 만들지 않습니다. 졸업 요건의 내 학교·학과 기준 설정에서 개인 교육과정·규칙을 등록하고 학업 프로필로 사용을 누르면 학교·학과·입학연도가 여기에 저장됩니다.',
                                     style: TextStyle(
                                       color: Theme.of(context)
                                           .colorScheme
                                           .onSurfaceVariant,
-                                      fontSize: AppTypography.caption,
+                                      height: 1.45,
                                     ),
                                   ),
                                 ),
+                                if (_personalSchoolLabel != null) ...[
+                                  const SizedBox(height: 8),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      '개인 기준에서 가져온 학교: $_personalSchoolLabel',
+                                    ),
+                                  ),
+                                ],
                                 const SizedBox(height: 14),
                               ],
                               if (_useCatalog && widget.studentApi != null)
@@ -438,29 +432,6 @@ class _SettingsPageState extends State<SettingsPage> {
         .academicYearFor(DateTime.now());
   }
 
-  void _setCatalogMode(bool value) {
-    final form = _schoolForm.currentState;
-    setState(() {
-      if (!value && form != null) {
-        final schoolName = form.institutionName;
-        final departmentName = form.departmentName;
-        if (schoolName != null && schoolName.isNotEmpty) {
-          _school.text = schoolName;
-        }
-        if (departmentName != null && departmentName.isNotEmpty) {
-          _department.text = departmentName;
-        }
-        _pendingInstitutionId = form.selectedInstitutionId;
-        _pendingDepartmentId = form.selectedDepartmentId;
-        _pendingCurriculumId = form.selectedCurriculumId;
-      }
-      _useCatalog = value;
-      _saved = false;
-      _dirty = true;
-      _error = null;
-    });
-  }
-
   void _captureCatalogSelection() {
     final form = _schoolForm.currentState;
     if (form == null) {
@@ -478,15 +449,32 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final catalog = _useCatalog ? _schoolForm.currentState : null;
-    if (_useCatalog &&
-        (catalog == null ||
-            !catalog.isReady ||
-            catalog.institutionId == null)) {
+    if (_useCatalog && (catalog == null || !catalog.isReady)) {
       setState(() {
-        _error = '목록에서 학교를 고르거나, 목록에 없는 학교로 바꿔 주세요.';
+        _error = '학교 목록을 확인한 뒤 다시 저장해 주세요.';
       });
       return;
     }
+    final picked = catalog?.institutionId != null;
+    final cleared =
+        (_displayedProfile?.hasCatalogSchool ?? false) &&
+        catalog != null &&
+        catalog.isReady &&
+        catalog.institutionId == null;
+    final school = picked
+        ? (catalog?.institutionName ?? '').trim()
+        : cleared
+        ? ''
+        : _useCatalog
+        ? (_displayedProfile?.school ?? '')
+        : _school.text.trim();
+    final department = picked
+        ? (catalog?.departmentName ?? '').trim()
+        : cleared
+        ? ''
+        : _useCatalog
+        ? (_displayedProfile?.department ?? '')
+        : _department.text.trim();
     setState(() {
       _saving = true;
       _saved = false;
@@ -496,19 +484,15 @@ class _SettingsPageState extends State<SettingsPage> {
       await widget.repository.saveProfile(
         PlanningProfile(
           version: _displayedProfile?.version,
-          school: _useCatalog
-              ? (catalog?.institutionName ?? '').trim()
-              : _school.text.trim(),
-          department: _useCatalog
-              ? (catalog?.departmentName ?? '').trim()
-              : _department.text.trim(),
+          school: school,
+          department: department,
           admissionYear: int.tryParse(_admissionYear.text.trim()),
           track: _track,
           academicYearOverride: _academicYearOverride,
           weekStartsOn: _weekStartsOn,
-          institutionId: _useCatalog ? catalog?.institutionId : null,
-          departmentId: _useCatalog ? catalog?.departmentId : null,
-          curriculumId: _useCatalog ? catalog?.curriculumId : null,
+          institutionId: picked ? catalog?.institutionId : null,
+          departmentId: picked ? catalog?.departmentId : null,
+          curriculumId: picked ? catalog?.curriculumId : null,
         ),
       );
       if (mounted) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../auth/auth_api.dart';
 import '../api/graduation_api.dart';
+import '../planning/planning_repository.dart';
 import '../records/personal_record_repository.dart';
 import 'school_context_form.dart';
 import '../../shared/widgets/content_scroll_view.dart';
@@ -34,10 +35,12 @@ class OfficialGraduationPage extends StatefulWidget {
     required this.auth,
     required this.ownerId,
     required this.onPersonal,
+    this.profile,
   });
   final AuthApi auth;
   final String ownerId;
   final VoidCallback onPersonal;
+  final PlanningProfile? profile;
   @override
   State<OfficialGraduationPage> createState() => _OfficialGraduationState();
 }
@@ -51,6 +54,12 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
   String? _cursor, _error, _fingerprint;
   String _clientId = PersonalRecord.newId();
   bool _busy = false, _loading = true, _uncertain = false;
+  bool get _savedSchool => widget.profile?.hasCatalogSchool ?? false;
+
+  String get _profileNotice => _savedSchool
+      ? '설정에 저장한 등록 학교를 불러왔습니다. 기준일은 이 감사 실행에서 입력합니다.'
+      : '목록에 없는 학교 이름은 이 감사의 학교 ID가 아닙니다.';
+
   Future<void> _personal() async {
     if (_busy) return;
     final form = _context.currentState;
@@ -200,10 +209,28 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: SchoolContextForm(
-              key: _context,
-              api: _gateway,
-              disabled: _busy,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(_profileNotice),
+                const SizedBox(height: 12),
+                SchoolContextForm(
+                  key: _context,
+                  api: _gateway,
+                  disabled: _busy,
+                  initialInstitutionId: _savedSchool
+                      ? widget.profile?.institutionId
+                      : null,
+                  initialDepartmentId: _savedSchool
+                      ? widget.profile?.departmentId
+                      : null,
+                  initialCurriculumId: _savedSchool
+                      ? widget.profile?.curriculumId
+                      : null,
+                  initialAdmissionYear: widget.profile?.admissionYear,
+                  initialTrack: widget.profile?.track,
+                ),
+              ],
             ),
           ),
         ),

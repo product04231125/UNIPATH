@@ -108,13 +108,13 @@ void main() {
     tester,
   ) async {
     final repository = await pumpSettings(tester, SettingsCatalogServer());
-    expect(find.text('학교 등록'), findsOneWidget);
-    expect(find.text('등록된 학교 목록에서 고르기'), findsOneWidget);
-    expect(find.text('예: 경동대학교'), findsNothing);
+    expect(find.textContaining('목록에 없으면 학교를 만들지 않습니다'), findsOneWidget);
+    expect(find.text('학교 선택'), findsOneWidget);
+    expect(find.text('목록에 없는 학교 직접 입력'), findsNothing);
     repository.dispose();
   });
 
-  testWidgets('catalog school selection stores ids, free text clears them', (
+  testWidgets('catalog school selection stores ids and clearing removes them', (
     tester,
   ) async {
     final server = SettingsCatalogServer();
@@ -128,10 +128,9 @@ void main() {
     expect(repository.profile.curriculumId, otherId);
     expect(repository.profile.school, '검증 대학');
     expect(repository.profile.department, '검증 학과');
-    await choose(tester, '등록된 학교 목록에서 고르기', '목록에 없는 학교 직접 입력');
-    await tester.enterText(find.byType(TextFormField).first, '직접 입력 대학');
+    await choose(tester, '검증 대학', '학교 선택');
     await saveSettings(tester);
-    expect(repository.profile.school, '직접 입력 대학');
+    expect(repository.profile.school, isEmpty);
     expect(repository.profile.institutionId, isNull);
     expect(repository.profile.departmentId, isNull);
     expect(repository.profile.curriculumId, isNull);
@@ -139,7 +138,7 @@ void main() {
     repository.dispose();
   });
 
-  testWidgets('typed names without ids keep free-text school fields', (
+  testWidgets('personal school names stay without becoming a catalog school', (
     tester,
   ) async {
     final server = SettingsCatalogServer();
@@ -163,9 +162,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('목록에 없는 학교 직접 입력'), findsOneWidget);
-    expect(find.text('미등록 대학'), findsOneWidget);
-    expect(find.text('학교 선택'), findsNothing);
+    expect(find.text('개인 기준에서 가져온 학교: 미등록 대학 · 미등록 학과'), findsOneWidget);
+    expect(find.text('학교 선택'), findsOneWidget);
+    await saveSettings(tester);
+    expect(repository.profile.school, '미등록 대학');
+    expect(repository.profile.institutionId, isNull);
     repository.dispose();
   });
 }
