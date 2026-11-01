@@ -62,6 +62,24 @@ void main() {
     });
   }
 
+  testWidgets('legacy experiences path opens the combined activity menu', (
+    tester,
+  ) async {
+    final provider = MemoryRouteProvider('/experiences');
+    await tester.pumpWidget(
+      UniversityPathApp(
+        startAuthenticated: true,
+        routeInformationProvider: provider,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 4);
+    expect(find.text('등록한 활동'), findsOneWidget);
+    expect(find.byTooltip('경험'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    provider.dispose();
+  });
+
   testWidgets(
     'menu pushes URL, browser back and forward keep workspace state',
     (tester) async {
@@ -119,7 +137,7 @@ void main() {
       await tester.enterText(find.byType(TextFormField).at(1), 'test-password');
       await tester.tap(find.byKey(const Key('login-submit')));
       await tester.pumpAndSettle();
-      expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 8);
+      expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 7);
       expect(provider.value.uri.path, '/settings');
       await tester.pumpWidget(const SizedBox());
       provider.dispose();
@@ -137,7 +155,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 8);
+      expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 7);
       expect(provider.value.uri.path, '/settings');
       await tester.pumpWidget(const SizedBox());
       provider.dispose();

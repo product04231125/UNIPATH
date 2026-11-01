@@ -27,7 +27,6 @@ import 'features/planning/weekly_schedule.dart';
 import 'features/records/activity/activity_page.dart';
 import 'features/records/course/course_page.dart';
 import 'features/records/credential/credential_page.dart';
-import 'features/records/experience/experience_page.dart';
 import 'features/records/portfolio/portfolio_page.dart';
 import 'features/settings/settings_page.dart';
 import 'features/schedule/schedule_page.dart';
@@ -70,9 +69,8 @@ class _WorkspaceState extends State<Workspace> {
     '수강 관리',
     '졸업 요건',
     '활동',
-    '경험',
     '자격',
-    '포트폴리오·성과',
+    '자료·채용공고 분석',
   ];
   static const _icons = [
     Icons.home_outlined,
@@ -80,7 +78,6 @@ class _WorkspaceState extends State<Workspace> {
     Icons.menu_book_outlined,
     Icons.school_outlined,
     Icons.volunteer_activism_outlined,
-    Icons.business_center_outlined,
     Icons.workspace_premium_outlined,
     Icons.collections_bookmark_outlined,
   ];
@@ -398,9 +395,8 @@ class _WorkspaceState extends State<Workspace> {
           }),
         ),
         4 => ActivityPage(showMockData: _showMockData),
-        5 => ExperiencePage(showMockData: _showMockData),
-        6 => CredentialPage(showMockData: _showMockData),
-        7 => PortfolioPage(showMockData: _showMockData, active: _page == 7),
+        5 => CredentialPage(showMockData: _showMockData),
+        6 => PortfolioPage(showMockData: _showMockData, active: _page == 6),
         _ when index == settingsPage - 1 => SettingsPage(
           repository: _planningRepository,
           chatPreferences: widget.windowHost.supportsDetached

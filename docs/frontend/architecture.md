@@ -62,7 +62,7 @@
 | `features/graduation` | 졸업요건 fixture, 개인 교육과정·과목·규칙 서버 저장과 관계 검증 |
 | `features/records/course` | 수강 관리와 수강 직접 입력 상태 |
 | `features/records/activity` | 활동 입력 상태 |
-| `features/records/experience` | 경험 입력 상태 |
+| `features/records/experience` | 경험 기록 저장소·필드. 학생 화면 입구는 활동 메뉴 |
 | `features/records/credential` | 자격 입력 상태 |
 | `features/records/portfolio` | 성과 원본, 포트폴리오 구성·지원 문서의 본인 서버 초안 |
 | `features/assistant` | 학교 질의 HTTP 어댑터·응답 DTO, 메인 소유 대화 상태와 IPC 원격 상태, 공통 응답 UI |

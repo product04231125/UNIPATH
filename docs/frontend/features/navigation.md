@@ -8,8 +8,9 @@
 
 - Flutter SDK Router로 주요 메뉴 선택과 URL을 연결한다. Web은 기본 hash 전략을 사용해
   `/#/schedule`처럼 진입하며 별도 서버 rewrite나 라우터 패키지를 추가하지 않는다.
-- 경로는 `/home`, `/schedule`, `/courses`, `/graduation`, `/activities`, `/experiences`,
-  `/credentials`, `/portfolio`, `/settings`다. `/`는 홈이다. 메뉴 선택은 새 탐색 항목으로
+- 경로는 `/home`, `/schedule`, `/courses`, `/graduation`, `/activities`,
+  `/credentials`, `/portfolio`, `/settings`다. `/`는 홈이다. 이전 `/experiences`는
+  합쳐진 활동 화면(`/activities`)을 연다. 메뉴 선택은 새 탐색 항목으로
   보고하며 브라우저 뒤로·앞으로 변경은 같은 Workspace의 선택 메뉴를 갱신한다.
 - 직접 진입·새로고침은 주소의 메뉴를 연다. 모달·빠른 추가 의도·목업 스위치·채팅 열림·
   포트폴리오 하위 단계는 URL에 저장하지 않는다. 일반 URL 진입으로 추가 폼을 열지 않는다.

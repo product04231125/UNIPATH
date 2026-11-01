@@ -8,6 +8,15 @@ import '../personal_record_repository.dart';
 import '../../auth/local_data_owner.dart';
 import 'material_database.dart';
 
+abstract final class MaterialKinds {
+  static const portfolio = '포트폴리오';
+  static const resume = '이력서';
+  static const coverLetter = '자기소개서';
+  static const other = '증빙·기타';
+  static const all = [portfolio, resume, coverLetter, other];
+  static bool isAllowed(String type) => all.contains(type);
+}
+
 class PersonalMaterial {
   PersonalMaterial({
     required this.id,

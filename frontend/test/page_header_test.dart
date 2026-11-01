@@ -6,7 +6,6 @@ import 'package:university_path_frontend/shared/widgets/page_header.dart';
 import 'package:university_path_frontend/shared/widgets/content_scroll_view.dart';
 import 'package:university_path_frontend/features/records/course/course_page.dart';
 import 'package:university_path_frontend/features/records/activity/activity_page.dart';
-import 'package:university_path_frontend/features/records/experience/experience_page.dart';
 import 'package:university_path_frontend/features/records/credential/credential_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_drafts_page.dart';
@@ -50,7 +49,6 @@ void main() {
         for (final page in <Widget>[
           const CoursePage(showMockData: false),
           const ActivityPage(showMockData: false),
-          const ExperiencePage(showMockData: false),
           const CredentialPage(showMockData: false),
           SchedulePage(repository: repository),
           SettingsPage(repository: repository),
@@ -75,16 +73,19 @@ void main() {
           host(const PortfolioPage(showMockData: false), scale: scale),
         );
         await tester.pumpAndSettle();
-        final tabs = ['성과 기록', '기존 구성', '기존 지원 문서'];
-        final titles = ['성과 기록', '포트폴리오 구성', '지원 문서'];
+        final tabs = ['내 자료', '채용공고 분석'];
+        final titles = ['내 자료', '채용공고 분석'];
         final anchor = tester.getTopLeft(find.byType(PageHeader));
         final tabRow = find
-            .ancestor(of: find.text(tabs.first), matching: find.byType(Wrap))
+            .ancestor(
+              of: find.widgetWithText(OutlinedButton, tabs.first),
+              matching: find.byType(Wrap),
+            )
             .first;
         expect(anchor.dx, 28);
         expect(anchor.dy - tester.getBottomLeft(tabRow).dy, closeTo(12, .01));
         for (var index = 0; index < tabs.length; index++) {
-          await tester.tap(find.text(tabs[index]));
+          await tester.tap(find.widgetWithText(OutlinedButton, tabs[index]));
           await tester.pumpAndSettle();
           expect(tester.getTopLeft(find.byType(PageHeader)), anchor);
           expect(
@@ -95,17 +96,11 @@ void main() {
             findsOneWidget,
           );
           expect(find.textContaining('PORTFOLIO & OUTCOMES'), findsNothing);
-          if (index > 0) {
-            expect(
-              tester.getTopLeft(find.byType(FilledButton).first).dx,
-              anchor.dx,
-            );
-            expect(
-              find.textContaining(
-                index == 1 ? '기기 로컬 사용 의도' : '지원처로 제출하지 않습니다.',
-              ),
-              findsOneWidget,
-            );
+          expect(find.text('성과 기록'), findsNothing);
+          expect(find.text('기존 구성'), findsNothing);
+          expect(find.text('기존 지원 문서'), findsNothing);
+          if (index == 1) {
+            expect(find.textContaining('분석 실행은 아직 연결되지 않았습니다'), findsWidgets);
           }
           expect(tester.takeException(), isNull);
         }
@@ -121,7 +116,10 @@ void main() {
           await tester.pumpAndSettle();
           expect(tester.getTopLeft(find.byType(PageHeader)), personalAnchor);
           expect(find.textContaining('개인 학업 정보'), findsOneWidget);
-          expect(find.textContaining('학교 공식 데이터나 졸업 판정이 아닙니다.'), findsOneWidget);
+          expect(
+            find.textContaining('학교 공식 데이터나 졸업 판정이 아닙니다.'),
+            findsOneWidget,
+          );
           expect(tester.takeException(), isNull);
         }
       });
@@ -227,7 +225,6 @@ void main() {
       for (final (page, title) in <(Widget, String)>[
         (const CoursePage(showMockData: false), '수강 관리'),
         (const ActivityPage(showMockData: false), '활동'),
-        (const ExperiencePage(showMockData: false), '경험'),
         (const CredentialPage(showMockData: false), '자격'),
       ]) {
         await tester.pumpWidget(host(page));
