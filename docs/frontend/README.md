@@ -51,7 +51,7 @@ OpenAPI(`/api/v1/docs`)가 기준이다.
 | 경험 | [experience](features/experience.md) | 별도 메뉴 없음. 활동 추가 때 프로젝트·인턴·동아리를 고르면 기존 경험 API에 저장 |
 | 자격 | [credential](features/credential.md) | 실제 계정 서버 개인 자격 CRUD |
 | 자료 | [portfolio](features/portfolio.md) | 종류가 있는 기기 PDF·설명 보관 |
-| 채용공고 분석 | [portfolio](features/portfolio.md) | 공고 텍스트·주소·선택 기록. 불가 이유만 표시하고 결과는 계약 대기 |
+| 채용공고 분석 | [portfolio](features/portfolio.md) | 텍스트·주소·PDF/캡처 중 하나. 불가 이유만 표시하고 결과는 계약 대기 |
 | AI 도우미 | [assistant](features/assistant.md) | 학교 질의 API·상태/인용 표시·창별 메모리 대화 |
 | 설정 | [settings](features/settings.md) | 실제 계정 서버 학업과 계획·기기 원본 보존 |
 | 외부 링크 | [external-links](features/external-links.md) | 1365·Q-Net·개인 증빙 URL 확인·열기·복사 |
