@@ -23,11 +23,25 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('채용공고 분석'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('분석 실행은 아직 연결되지 않았습니다'), findsWidgets);
+      expect(find.textContaining('학생용 채용 분석 API가 아직 없습니다'), findsOneWidget);
+      expect(find.textContaining('비교할 공고 텍스트와 주소가 없습니다'), findsOneWidget);
+      expect(find.text('답변: 받은 답변 없음'), findsOneWidget);
+      expect(find.text('근거: 받은 근거 없음'), findsOneWidget);
+      expect(find.text('불확실한 부분: 받은 내용 없음'), findsOneWidget);
       expect(find.text('분석 실행 불가 · 연결 전'), findsOneWidget);
       await tester.enterText(
         find.byKey(const ValueKey('job-posting-text')),
         '합성 채용공고 본문',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('job-posting-url')),
+        '공고주소',
+      );
+      await tester.pump();
+      expect(find.textContaining('주소가 http:// 또는 https://'), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const ValueKey('job-posting-url')),
+        'https://example.test/jobs/1',
       );
       await tester.tap(
         find.byKey(const ValueKey('job-record-activity/job-act')),
@@ -46,6 +60,15 @@ void main() {
             .controller!
             .text,
         '합성 채용공고 본문',
+      );
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('job-posting-url')),
+            )
+            .controller!
+            .text,
+        'https://example.test/jobs/1',
       );
       expect(
         tester

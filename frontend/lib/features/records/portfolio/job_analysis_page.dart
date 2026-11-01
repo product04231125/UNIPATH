@@ -31,6 +31,7 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
   };
 
   final _posting = TextEditingController();
+  final _url = TextEditingController();
   final _selected = <String>{};
   final _records = <PersonalRecordKind, List<PersonalRecord>>{};
   var _loading = true;
@@ -39,13 +40,44 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
   @override
   void initState() {
     super.initState();
+    _posting.addListener(_onInput);
+    _url.addListener(_onInput);
     _load();
   }
 
   @override
   void dispose() {
+    _posting.removeListener(_onInput);
+    _url.removeListener(_onInput);
     _posting.dispose();
+    _url.dispose();
     super.dispose();
+  }
+
+  void _onInput() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _urlInvalid {
+    final text = _url.text.trim();
+    if (text.isEmpty) return false;
+    final uri = Uri.tryParse(text);
+    return uri == null ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        uri.host.isEmpty;
+  }
+
+  String get _unavailableReason {
+    final reasons = <String>[
+      '학생용 채용 분석 API가 아직 없습니다. 공고 텍스트, 주소, 선택한 기록을 서버로 보내지 않았고 답변을 만들지 않았습니다.',
+    ];
+    if (_posting.text.trim().isEmpty && _url.text.trim().isEmpty) {
+      reasons.add('비교할 공고 텍스트와 주소가 없습니다.');
+    }
+    if (_urlInvalid) {
+      reasons.add('주소가 http:// 또는 https:// 로 시작하는 형식이 아닙니다.');
+    }
+    return reasons.join(' ');
   }
 
   Future<void> _load() async {
@@ -89,10 +121,7 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
       children: [
         const PageHeader(
           title: '채용공고 분석',
-          description: '공고 텍스트와 비교에 넣을 개인 기록을 준비합니다. 분석 실행은 아직 연결되지 않았습니다.',
-        ),
-        const Text(
-          '학생용 취업·채용 분석 경로가 아직 없습니다. 분석 문장이나 예시 답변을 만들지 않으며, 입력한 공고와 선택한 기록은 이 화면에 유지합니다.',
+          description: '공고 텍스트와 주소를 준비합니다. 분석을 할 수 없으면 그 이유를 표시합니다.',
         ),
         const SizedBox(height: 16),
         FieldLabel(
@@ -103,6 +132,21 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
             minLines: 6,
             maxLines: 12,
             decoration: const InputDecoration(hintText: '비교할 공고 본문을 붙여 넣으세요.'),
+          ),
+        ),
+        const SizedBox(height: 16),
+        FieldLabel(
+          label: '채용공고 주소',
+          child: TextFormField(
+            key: const ValueKey('job-posting-url'),
+            controller: _url,
+            keyboardType: TextInputType.url,
+            decoration: InputDecoration(
+              hintText: 'https://',
+              errorText: _urlInvalid
+                  ? 'http:// 또는 https:// 로 시작하는 주소를 입력하세요.'
+                  : null,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -166,11 +210,29 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
           ),
         ),
         const SizedBox(height: 16),
-        const Text(
-          '분석은 아직 연결되지 않았습니다. 공고 텍스트와 선택한 기록은 유지되며, 결과가 도착하기 전에는 분석 문장을 표시하지 않습니다.',
+        SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('분석 상태', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              const Text('상태: 분석할 수 없음'),
+              const SizedBox(height: 8),
+              Text(
+                '이유: $_unavailableReason',
+                key: const ValueKey('job-analysis-reason'),
+              ),
+              const SizedBox(height: 8),
+              const Text('답변: 받은 답변 없음'),
+              const SizedBox(height: 8),
+              const Text('근거: 받은 근거 없음'),
+              const SizedBox(height: 8),
+              const Text('불확실한 부분: 받은 내용 없음'),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
-        FilledButton(onPressed: null, child: const Text('분석 실행 불가 · 연결 전')),
+        const FilledButton(onPressed: null, child: Text('분석 실행 불가 · 연결 전')),
       ],
     ),
   );
