@@ -119,7 +119,6 @@ class PlanningRepository extends ChangeNotifier {
     String? department,
     int? admissionYear,
     String? track,
-    bool clearCatalogIds = false,
   }) => _enqueue(
     () => _commitProfile(
       _profile.withSchoolContext(
@@ -127,7 +126,6 @@ class PlanningRepository extends ChangeNotifier {
         department: department,
         admissionYear: admissionYear,
         track: track,
-        clearCatalogIds: clearCatalogIds,
       ),
     ),
   );
@@ -206,14 +204,10 @@ class PlanningProfile {
     String? department,
     int? admissionYear,
     String? track,
-    bool clearCatalogIds = false,
   }) {
     final nextSchool = school ?? '';
     final nextDepartment = department ?? '';
-    final keep =
-        !clearCatalogIds &&
-        nextSchool == this.school &&
-        nextDepartment == this.department;
+    final keep = nextSchool == this.school && nextDepartment == this.department;
     return PlanningProfile(
       school: nextSchool,
       department: nextDepartment,

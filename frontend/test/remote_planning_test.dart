@@ -219,12 +219,16 @@ void main() {
       track: 'single_major',
     );
     expect(repository.profile.curriculumId, otherId);
-    await repository.saveSchoolContext(
-      school: '검증 대학',
-      department: '검증 학과',
-      admissionYear: 2026,
-      track: 'single_major',
-      clearCatalogIds: true,
+    await repository.saveProfile(
+      PlanningProfile(
+        school: '검증 대학',
+        department: '검증 학과',
+        admissionYear: 2026,
+        track: repository.profile.track,
+        weekStartsOn: repository.profile.weekStartsOn,
+        academicYearOverride: repository.profile.academicYearOverride,
+        version: repository.profile.version,
+      ),
     );
     expect(repository.profile.school, '검증 대학');
     expect(repository.profile.institutionId, isNull);

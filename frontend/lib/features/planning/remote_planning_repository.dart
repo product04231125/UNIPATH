@@ -252,7 +252,6 @@ class RemotePlanningRepository extends PlanningRepository {
     String? department,
     int? admissionYear,
     String? track,
-    bool clearCatalogIds = false,
   }) => _enqueue(
     () => _saveProfile(
       _profile.withSchoolContext(
@@ -260,7 +259,6 @@ class RemotePlanningRepository extends PlanningRepository {
         department: department,
         admissionYear: admissionYear,
         track: track,
-        clearCatalogIds: clearCatalogIds,
       ),
     ),
   );
