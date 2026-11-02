@@ -378,7 +378,15 @@ void main() {
         of: find.byKey(const ValueKey('admin-registration-course-school-a')),
         matching: find.widgetWithText(FilledButton, '등록'),
       );
-      expect(tester.getSize(catalog).height, 72 * 8);
+      expect(tester.getSize(catalog).height, 72 * 3);
+      expect(
+        tester
+            .widget<Scrollbar>(
+              find.descendant(of: catalog, matching: find.byType(Scrollbar)),
+            )
+            .thumbVisibility,
+        isTrue,
+      );
       expect(find.text('긴 목록 과목 01'), findsOneWidget);
       expect(find.text('긴 목록 과목 12'), findsNothing);
       expect(
