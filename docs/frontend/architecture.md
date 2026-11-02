@@ -55,7 +55,7 @@
 | 모듈 | 소유 화면·로컬 상태 |
 | --- | --- |
 | `features/auth` | 로그인·회원가입 목업 |
-| `features/admin` | 공통 관리자 셸·입력 스키마·역할/범위·메모리 fake·변경 이력 |
+| `features/admin` | 공통 관리자 셸·입력 스키마·역할/범위·학점표·인증 요건 문서 편집·메모리 fake·변경 이력 |
 | `features/home` | 개인 계획 기반 이번 주 일정·준비 목록·우선 링크 |
 | `features/planning` | 실제 계정 서버 프로필·일정 repository와 원본 보존/동의 이전, debug 로컬 저장소 |
 | `features/schedule` | 월간 개인 일정과 선택 날짜 목록, 일정 CRUD |
