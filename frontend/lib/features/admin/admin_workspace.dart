@@ -62,6 +62,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   String _schoolId = '';
   bool _busy = false;
   final _editorKeys = <AdminKind, GlobalKey<AdminEditorState>>{};
+  final _catalogScroll = <AdminKind, ScrollController>{};
   var _ruleView = 'line';
   final _creditGrid = GlobalKey<GraduationCreditGridPageState>();
   final _certification = GlobalKey<GraduationCertificationPageState>();
@@ -129,6 +130,9 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   void dispose() {
     _repo.removeListener(_refresh);
     if (widget.repository == null) _repo.dispose();
+    for (final controller in _catalogScroll.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -578,7 +582,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   }
 
   static const _catalogRowHeight = 72.0;
-  static const _catalogVisibleRows = 8;
+  static const _catalogVisibleRows = 3;
 
   bool _canEdit(AdminRecord r) =>
       _repo.canWrite(_actor, r) && r.id != _actor && r.status != 'revoked';
@@ -604,15 +608,28 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     final visible = rows.length < _catalogVisibleRows
         ? rows.length
         : _catalogVisibleRows;
+    final overflowing = rows.length > _catalogVisibleRows;
+    final controller = _catalogScroll.putIfAbsent(kind, ScrollController.new);
     return SizedBox(
       key: ValueKey('admin-catalog-${kind.name}'),
       height: _catalogRowHeight * visible,
-      child: ListView.builder(
-        padding: EdgeInsets.zero,
-        primary: false,
-        itemCount: rows.length,
-        itemExtent: _catalogRowHeight,
-        itemBuilder: (context, index) => _catalogRow(rows[index]),
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: Scrollbar(
+          controller: controller,
+          thumbVisibility: overflowing,
+          interactive: true,
+          child: ListView.builder(
+            controller: controller,
+            padding: overflowing
+                ? const EdgeInsetsDirectional.only(end: 16)
+                : EdgeInsets.zero,
+            primary: false,
+            itemCount: rows.length,
+            itemExtent: _catalogRowHeight,
+            itemBuilder: (context, index) => _catalogRow(rows[index]),
+          ),
+        ),
       ),
     );
   }
