@@ -88,7 +88,7 @@ class AdminEditorState extends State<AdminEditor> {
     if (widget.inline) {
       if (await allowLeave() && mounted) _reset();
     } else {
-      if (mounted) await InputDialog.cancel<void>(context);
+      if (mounted) await InputDialog.cancel<String>(context);
     }
   }
 
@@ -279,6 +279,7 @@ class AdminEditorState extends State<AdminEditor> {
         ),
       ),
       actions: [
+        ..._lifecycleButtons(),
         TextButton(onPressed: saving ? null : _cancel, child: const Text('취소')),
         FilledButton(
           onPressed: saving || _metadataLocked ? null : _save,
@@ -317,9 +318,43 @@ class AdminEditorState extends State<AdminEditor> {
     },
   );
 
+  bool _isSelect(AdminField field) =>
+      field.relation != null || field.options.isNotEmpty || field.key == 'year';
+
+  List<SelectOption<String>> _selectOptions(AdminField field) {
+    if (field.key == 'year') {
+      return [
+        const SelectOption('', '미선택'),
+        for (final year in adminYearChoices(
+          records: widget.repository.records.where(
+            (r) =>
+                r.kind == AdminKind.curriculum &&
+                widget.repository.canRead(widget.actorId, r),
+          ),
+          selected: _value(field.key),
+        ))
+          SelectOption('$year', '$year년'),
+      ];
+    }
+    return [
+      const SelectOption('', '미선택'),
+      for (final entry in field.options.entries)
+        SelectOption(entry.key, entry.value),
+      for (final r in _choices(field))
+        SelectOption(
+          r.id,
+          '${r.name}${r.kind.versioned ? ' · v${r.revision}' : ''}',
+        ),
+      if (_value(field.key).isNotEmpty &&
+          !field.options.containsKey(_value(field.key)) &&
+          !_choices(field).any((r) => r.id == _value(field.key)))
+        SelectOption(_value(field.key), '연결 대상 없음 · 다시 선택하세요'),
+    ];
+  }
+
   Widget _field(AdminField field) => Padding(
     padding: const EdgeInsets.only(bottom: 14),
-    child: field.relation == null && field.options.isEmpty
+    child: !_isSelect(field)
         ? FieldLabel(
             label: '${field.label}${field.required ? ' *' : ' (선택)'}',
             child: Semantics(
@@ -352,21 +387,9 @@ class AdminEditorState extends State<AdminEditor> {
                     key: ValueKey('admin-field-${field.key}'),
                     value: _value(field.key),
                     label: '${field.label}${field.required ? ' *' : ' (선택)'}',
-                    options: [
-                      const SelectOption('', '미선택'),
-                      for (final entry in field.options.entries)
-                        SelectOption(entry.key, entry.value),
-                      for (final r in _choices(field))
-                        SelectOption(
-                          r.id,
-                          '${r.name}${r.kind.versioned ? ' · v${r.revision}' : ''}',
-                        ),
-                      if (_value(field.key).isNotEmpty &&
-                          !field.options.containsKey(_value(field.key)) &&
-                          !_choices(field)
-                              .any((r) => r.id == _value(field.key)))
-                        SelectOption(_value(field.key), '연결 대상 없음 · 다시 선택하세요'),
-                    ],
+                    searchable: true,
+                    searchLabel: field.key == 'year' ? '연도 검색' : '검색',
+                    options: _selectOptions(field),
                     onChanged: (v) {
                       setState(() {
                         _controllers[field.key]!.text = v;
@@ -515,6 +538,99 @@ class AdminEditorState extends State<AdminEditor> {
         ],
       ),
     );
+  }
+
+  AdminRecord? get _targetRecord {
+    final id = widget.record?.id;
+    if (id == null) return widget.record;
+    return widget.repository.records.where((r) => r.id == id).firstOrNull ??
+        widget.record;
+  }
+
+  Future<void> _confirmLifecycle(
+    String action,
+    Future<void> Function() run,
+  ) async {
+    if (saving) return;
+    final record = _targetRecord;
+    if (record == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${record.name} · $action'),
+        content: Text(
+          action == '초안 적용'
+              ? 'v${record.revision}의 내용·관리 범위·근거를 검토했습니까?'
+              : '대상과 연결 영향을 확인하세요. 참조가 남은 삭제는 차단하고 적용 이력은 보존합니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(action),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await run();
+      if (mounted) Navigator.pop(context);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = error is StateError
+              ? error.message
+              : '처리하지 못했습니다. 다시 시도하세요.';
+        });
+      }
+    }
+  }
+
+  List<Widget> _lifecycleButtons() {
+    final record = _targetRecord;
+    if (record == null || widget.inline || widget.revoke) return const [];
+    return [
+      if (record.kind.versioned &&
+          record.value('ruleSetId').isEmpty &&
+          record.status == 'draft')
+        FilledButton.tonal(
+          onPressed: saving
+              ? null
+              : () => _confirmLifecycle(
+                  '초안 적용',
+                  () => widget.repository.apply(widget.actorId, record.id),
+                ),
+          child: const Text('검토·적용'),
+        ),
+      if (record.kind.versioned &&
+          record.value('ruleSetId').isEmpty &&
+          record.status == 'applied')
+        FilledButton.tonal(
+          onPressed: saving
+              ? null
+              : () => _confirmLifecycle(
+                  '새 버전 초안',
+                  () => widget.repository.newVersion(widget.actorId, record.id),
+                ),
+          child: const Text('새 버전 초안'),
+        ),
+      if (record.kind == AdminKind.scope && record.status == 'active')
+        OutlinedButton(
+          onPressed: saving
+              ? null
+              : () => InputDialog.cancel<String>(context, 'revoke'),
+          child: const Text('범위 회수'),
+        ),
+    ];
   }
 
   Widget _shell({
