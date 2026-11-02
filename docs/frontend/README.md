@@ -39,7 +39,7 @@ OpenAPI(`/api/v1/docs`)가 기준이다.
 | --- | --- | --- |
 | 인증 | [auth](features/auth.md) | 실제 가입·로그인·서버 세션·역할/학교 범위 |
 | 학교 문서 근거 검토 | [school-knowledge-review](features/school-knowledge-review.md) | 등록 추출본·페이지/범위 검토, 독립 확인 승인·회수 |
-| 관리자 | [admin](features/admin.md) | 실제 API 학사 관리·역할/범위·검토 버전/감사, debug 합성 샘플 |
+| 관리자 | [admin](features/admin.md) | 학사 관리·한 줄 요건. 학점표·인증 요건은 문서 편집만 하고 저장은 계약 대기 |
 | 메뉴 탐색 | [navigation](features/navigation.md) | 주요 메뉴 hash URL·뒤로/앞으로·직접 진입 |
 | 홈 | [home](features/home.md) | 개인 계획 기반 시작 화면 |
 | 일정 | [schedule](features/schedule.md) | 실제 계정 서버 개인 일정·동의 이전 |

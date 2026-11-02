@@ -16,6 +16,8 @@ import 'admin_models.dart';
 import 'admin_repository.dart';
 import 'admin_editor.dart';
 import 'admin_shell.dart';
+import 'graduation_certification_page.dart';
+import 'graduation_credit_grid_page.dart';
 import 'school_admin_application_inbox.dart';
 
 class AdminWorkspace extends StatefulWidget {
@@ -60,11 +62,22 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   String _schoolId = '';
   bool _busy = false;
   final _editorKeys = <AdminKind, GlobalKey<AdminEditorState>>{};
+  var _ruleView = 'line';
+  final _creditGrid = GlobalKey<GraduationCreditGridPageState>();
+  final _certification = GlobalKey<GraduationCertificationPageState>();
   Future<bool> _allowLeave() async {
     for (final key in _editorKeys.values) {
       if (key.currentState != null && !await key.currentState!.allowLeave()) {
         return false;
       }
+    }
+    if (_creditGrid.currentState != null &&
+        !await _creditGrid.currentState!.allowLeave()) {
+      return false;
+    }
+    if (_certification.currentState != null &&
+        !await _certification.currentState!.allowLeave()) {
+      return false;
     }
     return mounted;
   }
@@ -1005,6 +1018,28 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     );
   }
 
+  Widget _ruleViewSwitcher() => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (final entry in [
+        ('line', '한 줄 요건'),
+        ('grid', '학점표'),
+        ('cert', '인증 요건'),
+      ])
+        OutlinedButton(
+          key: ValueKey('rule-view-${entry.$1}'),
+          onPressed: () async {
+            if (_ruleView == entry.$1) return;
+            if (!await _allowLeave()) return;
+            if (!mounted) return;
+            setState(() => _ruleView = entry.$1);
+          },
+          child: Text(entry.$2),
+        ),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
     if (!_schools.any((r) => r.id == _schoolId)) {
@@ -1152,11 +1187,48 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                         ),
                       ),
                     if (_section == '/admin/overview') _overview(),
-                    for (final kind
-                        in sectionKinds[_section] ?? <AdminKind>[]) ...[
-                      _records(kind),
-                      const SizedBox(height: 24),
+                    if (_section == '/admin/rules') ...[
+                      _ruleViewSwitcher(),
+                      const SizedBox(height: 16),
                     ],
+                    if (_section != '/admin/rules' || _ruleView == 'line')
+                      for (final kind
+                          in sectionKinds[_section] ?? <AdminKind>[]) ...[
+                        _records(kind),
+                        const SizedBox(height: 24),
+                      ]
+                    else if (_ruleView == 'grid')
+                      GraduationCreditGridPage(
+                        key: _creditGrid,
+                        schoolName: _relationName(_schoolId).isEmpty
+                            ? '현재 학교'
+                            : _relationName(_schoolId),
+                        departments: [
+                          for (final department in _repo.records.where(
+                            (r) =>
+                                r.kind == AdminKind.department &&
+                                r.value('institutionId') == _schoolId &&
+                                _repo.canRead(_actor, r),
+                          ))
+                            department,
+                        ],
+                      )
+                    else
+                      GraduationCertificationPage(
+                        key: _certification,
+                        schoolName: _relationName(_schoolId).isEmpty
+                            ? '현재 학교'
+                            : _relationName(_schoolId),
+                        departments: [
+                          for (final department in _repo.records.where(
+                            (r) =>
+                                r.kind == AdminKind.department &&
+                                r.value('institutionId') == _schoolId &&
+                                _repo.canRead(_actor, r),
+                          ))
+                            department,
+                        ],
+                      ),
                     if (_section == '/admin/history') _history(),
                     if (_section == '/admin/applications')
                       SchoolAdminApplicationInbox(
