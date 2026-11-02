@@ -482,7 +482,7 @@ flutter devices
 ```powershell
 cd frontend
 flutter pub get
-flutter run -d chrome --web-port 3000 --dart-define=API_BASE_URL=http://127.0.0.1:8010
+flutter run -d chrome --web-port 3000 --dart-define=API_BASE_URL=http://localhost:8010
 flutter run -d windows --dart-define=API_BASE_URL=http://127.0.0.1:8010
 flutter analyze
 flutter test
@@ -490,6 +490,7 @@ flutter build web
 flutter build windows
 ```
 
+Web 쿠키 세션은 `localhost`와 `127.0.0.1`을 다른 호스트로 보므로 Chrome은 `http://localhost:8010`을 사용합니다.
 Windows Release 실행 파일은 `frontend\build\windows\x64\runner\Release\university_path_frontend.exe`에 생성됩니다. Flutter가 `Path`에 없다면 위 명령의 `flutter` 대신 Flutter SDK의 `bin\flutter.bat` 절대 경로를 사용합니다.
 
 ## 8. 환경 분리 및 배포

@@ -26,6 +26,8 @@ class AdminServer {
   bool paginate = false;
   bool loggedOut = false;
   bool saved = false;
+  bool meUnauthorized = false;
+  String meRole = 'super_admin';
   Map<String, dynamic> row(String id, String name) => {
     'id': id,
     'name': name,
@@ -67,7 +69,8 @@ class AdminServer {
       return http.Response('', 204);
     }
     if (path.endsWith('/auth/me')) {
-      return json(identityJson(role: 'super_admin'));
+      if (meUnauthorized) return json({}, 401);
+      return json(identityJson(role: meRole));
     }
     final parts = path.split('/').skip(4).toList();
     final resource = parts.first;
@@ -269,6 +272,63 @@ void main() {
     },
   );
 
+  test('cookie API on a loopback IP is reported as a host mismatch', () {
+    final api = AuthApi(
+      client: MockClient((_) async => http.Response('', 401)),
+      baseUrl: Uri.parse('http://127.0.0.1:8010'),
+      cookieMode: true,
+    );
+    expect(api.cookieHostMismatch, isTrue);
+    expect(api.cookieHostHint, contains('localhost:8010'));
+    expect(api.missingSessionMessage, contains('같은 호스트'));
+    api.close();
+  });
+  test('cookie API on localhost is not a host mismatch', () {
+    final api = AuthApi(
+      client: MockClient((_) async => http.Response('', 401)),
+      baseUrl: Uri.parse('http://localhost:8010'),
+      cookieMode: true,
+    );
+    expect(api.cookieHostMismatch, isFalse);
+    expect(api.cookieHostHint, isNull);
+    api.close();
+  });
+  test('missing session is not reported as a permission change', () async {
+    final server = AdminServer();
+    final (api, repo) = await connected(server);
+    server.meUnauthorized = true;
+    await expectLater(
+      repo.load(),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('세션을 확인하지 못했습니다'),
+        ),
+      ),
+    );
+    expect(repo.records, isEmpty);
+    repo.dispose();
+    api.close();
+  });
+  test('demoted role is reported as a permission change', () async {
+    final server = AdminServer();
+    final (api, repo) = await connected(server);
+    server.meRole = 'user';
+    await expectLater(
+      repo.load(),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          '관리 권한이 변경되었습니다. 다시 로그인해 주세요.',
+        ),
+      ),
+    );
+    expect(repo.records, isEmpty);
+    repo.dispose();
+    api.close();
+  });
   test('permission failure clears cached privileged records', () async {
     final server = AdminServer();
     final (api, repo) = await connected(server);
