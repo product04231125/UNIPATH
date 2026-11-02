@@ -184,7 +184,16 @@ class RemoteAdminRepository extends AdminRepository {
         _records = [];
         _history = [];
         _notify();
-        throw StateError('관리 권한이 변경되었습니다. 다시 로그인해 주세요.');
+        final gateway = auth;
+        throw StateError(
+          identity == null
+              ? gateway is AuthApi
+                    ? gateway.missingSessionMessage
+                    : '세션을 확인하지 못했습니다. 다시 로그인해 주세요.'
+              : identity.id != userId
+              ? '계정이 변경되었습니다. 다시 로그인해 주세요.'
+              : '관리 권한이 변경되었습니다. 다시 로그인해 주세요.',
+        );
       }
       _identity = identity;
       final rows = <AdminRecord>[];

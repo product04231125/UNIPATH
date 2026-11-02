@@ -82,6 +82,21 @@ class AuthApi implements AuthGateway, ApiGateway {
   String? _ownerId;
   int _sessionEpoch = 0;
 
+  /// Cookie sessions are host-bound. `127.0.0.1` is not the same site as `localhost`.
+  bool get cookieHostMismatch {
+    if (!_cookieMode) return false;
+    final host = _base.host.toLowerCase();
+    return host == '127.0.0.1' || host == '::1' || host == '[::1]';
+  }
+
+  String? get cookieHostHint => cookieHostMismatch
+      ? '웹 세션 쿠키는 localhost에서만 유지됩니다. API를 http://localhost:8010으로 맞춘 뒤 http://localhost:3000에서 다시 로그인하세요.'
+      : null;
+
+  String get missingSessionMessage => cookieHostMismatch
+      ? '세션을 확인하지 못했습니다. 웹은 페이지와 API가 같은 호스트여야 쿠키가 유지됩니다. API를 http://localhost:8010으로 맞춘 뒤 다시 로그인하세요.'
+      : '세션을 확인하지 못했습니다. 다시 로그인해 주세요.';
+
   /// Pin a workspace to this login. Server checks the owner as well, including
   /// cookies changed by a different browser tab before our next session poll.
   ApiGateway forOwner(String ownerId) {

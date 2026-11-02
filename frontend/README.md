@@ -28,20 +28,22 @@ docker compose -f compose.yaml -f compose.rag.yaml up --build -d
 ```bash
 cd frontend
 flutter pub get
-flutter run -d chrome --web-port 3000 --dart-define=API_BASE_URL=http://127.0.0.1:8010
+flutter run -d chrome --web-port 3000 --dart-define=API_BASE_URL=http://localhost:8010
 ```
 
-Windows에서도 같은 설정을 사용한다.
+Windows 네이티브는 Bearer 토큰이라 `127.0.0.1`도 사용할 수 있다.
 
 ```powershell
 flutter run -d windows --dart-define=API_BASE_URL=http://127.0.0.1:8010
 ```
 
-`API_BASE_URL`은 API의 HTTP(S) 원점 주소다. 기본값은 `http://127.0.0.1:8010`이며
-실행/빌드 때 주입한다. `.env`를 브라우저에 복사하거나 토큰·API 키를 여기에 넣지 않는다.
-다른 PC에서는 `127.0.0.1`이 그 PC를 가리키므로 접근 가능한 API 주소와 백엔드 바인딩을
-설정해야 한다. Web 주소 `http://localhost:3000`은 기본 CORS 허용 주소에 포함되어 있다.
-다른 원점은 백엔드 `CORS_ORIGINS`에 추가한다.
+`API_BASE_URL`은 API의 HTTP(S) 원점 주소다. 클라이언트의 기본값은 `http://localhost:8010`이며
+실행/빌드 때 주입한다. Web 쿠키 세션은 SameSite=Strict라 `localhost`와 `127.0.0.1`을
+같은 호스트로 보지 않는다. 브라우저 주소는 `http://localhost:3000`, API는
+`http://localhost:8010`으로 맞춘다. `.env`를 브라우저에 복사하거나 토큰·API 키를 여기에
+넣지 않는다. 다른 PC에서는 `localhost`/`127.0.0.1`이 그 PC를 가리키므로 접근 가능한 API
+주소와 백엔드 바인딩을 설정해야 한다. Web 주소 `http://localhost:3000`은 기본 CORS 허용
+주소에 포함되어 있다. 다른 원점은 백엔드 `CORS_ORIGINS`에 추가한다.
 
 AI 도우미를 열고 `학교 질의 정보 입력`을 확인한 뒤 질문한다. 현재 실제 PDF는 검토 대기이며
 LLM 생성기가 없으므로 `공식 근거 부족` 안내가 정상이다. 학교·학과 누락은 추가 입력을,

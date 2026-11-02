@@ -448,8 +448,14 @@ class AppNavigation extends RouterDelegate<AppLocation>
       );
     } else if (!authenticated || _location.path == '/login') {
       key = 'login';
+      final gateway = _auth;
+      final cookieHint = gateway is AuthApi ? gateway.cookieHostHint : null;
+      final notice = [
+        _loginNotice,
+        cookieHint,
+      ].whereType<String>().join('\n\n');
       page = LoginPage(
-        notice: _loginNotice,
+        notice: notice.isEmpty ? null : notice,
         authenticate: _authenticate,
         onSignedIn: () {
           _signedIn(context, _identity?.role ?? AppRole.user);
