@@ -8,6 +8,7 @@ import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/surface_card.dart';
 import 'admin_models.dart';
 import 'graduation_certification.dart';
+import 'graduation_template_preview.dart';
 
 class GraduationCertificationPage extends StatefulWidget {
   const GraduationCertificationPage({
@@ -208,13 +209,29 @@ class GraduationCertificationPageState
                 ),
         ),
         const SizedBox(height: 12),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: OutlinedButton(
-            key: const ValueKey('certification-add-group'),
-            onPressed: () => _addGroup(),
-            child: const Text('묶음 추가'),
-          ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            OutlinedButton(
+              key: const ValueKey('certification-add-group'),
+              onPressed: () => _addGroup(),
+              child: const Text('묶음 추가'),
+            ),
+            OutlinedButton(
+              key: const ValueKey('certification-preview'),
+              onPressed: () => showGraduationTemplatePreview(
+                context: context,
+                title: '인증 요건 미리보기',
+                child: GraduationCertificationPreview(
+                  draft: _draft,
+                  schoolName: widget.schoolName,
+                  departments: widget.departments,
+                ),
+              ),
+              child: const Text('미리보기'),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         if (_draft.groups.isEmpty)

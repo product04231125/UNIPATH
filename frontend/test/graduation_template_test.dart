@@ -24,7 +24,11 @@ void main() {
   ) async {
     final group = GraduationCreditColumnGroup(id: 'g1', label: '교양 과목');
     final leaf = GraduationCreditColumn(id: 'c1', label: '기초교양', groupId: 'g1');
-    final empty = GraduationCreditColumn(id: 'c2', label: '경동교양', groupId: 'g1');
+    final empty = GraduationCreditColumn(
+      id: 'c2',
+      label: '경동교양',
+      groupId: 'g1',
+    );
     final na = GraduationCreditColumn(id: 'c3', label: '기초과학', groupId: 'g1');
     final row = GraduationCreditRow(id: 'r1', label: '단일전공', note: '');
     final grid = GraduationCreditGrid(
@@ -55,6 +59,22 @@ void main() {
     expect(find.text('해당 없음'), findsWidgets);
     expect(find.text('학점표 저장 불가 · 연결 전'), findsOneWidget);
     expect(find.textContaining('저장은 연결되지 않았습니다'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('credit-grid-preview')));
+    await tester.pumpAndSettle();
+    expect(find.text('학점표 미리보기'), findsOneWidget);
+    expect(find.text('경동대학교 컴퓨터공학과 졸업최소이수학점'), findsOneWidget);
+    expect(find.text('2026학년도 입학자'), findsOneWidget);
+    expect(find.text('-'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('template-preview-dialog')),
+        matching: find.text('비어 있음'),
+      ),
+      findsNothing,
+    );
+    await tester.tap(find.byKey(const ValueKey('template-preview-close')));
+    await tester.pumpAndSettle();
+    expect(find.text('학점표 미리보기'), findsNothing);
   });
 
   testWidgets('credit grid warns when printed subtotal differs from leaf sum', (
@@ -127,6 +147,14 @@ void main() {
       expect(find.textContaining('창의영역'), findsWidgets);
       expect(find.text('인증 요건 저장 불가 · 연결 전'), findsOneWidget);
       expect(find.textContaining('취득 여부를 판정하지 않습니다'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('certification-preview')));
+      await tester.pumpAndSettle();
+      expect(find.text('인증 요건 미리보기'), findsOneWidget);
+      expect(find.text('경동대학교 컴퓨터공학과 졸업자격요건'), findsOneWidget);
+      expect(find.text('창의영역 (모두)'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('template-preview-close')));
+      await tester.pumpAndSettle();
+      expect(find.text('인증 요건 미리보기'), findsNothing);
     },
   );
 
