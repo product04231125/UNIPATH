@@ -8,6 +8,7 @@ import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/surface_card.dart';
 import 'admin_models.dart';
 import 'graduation_credit_grid.dart';
+import 'graduation_template_preview.dart';
 
 class GraduationCreditGridPage extends StatefulWidget {
   const GraduationCreditGridPage({
@@ -301,6 +302,19 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
                   : _copyYear,
               child: const Text('이 표를 다른 연도로 복사'),
             ),
+            OutlinedButton(
+              key: const ValueKey('credit-grid-preview'),
+              onPressed: () => showGraduationTemplatePreview(
+                context: context,
+                title: '학점표 미리보기',
+                child: GraduationCreditGridPreview(
+                  grid: _grid,
+                  schoolName: widget.schoolName,
+                  departments: widget.departments,
+                ),
+              ),
+              child: const Text('미리보기'),
+            ),
           ],
         ),
         if (_copied)
@@ -327,6 +341,7 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Table(
+        defaultColumnWidth: const IntrinsicColumnWidth(),
         defaultVerticalAlignment: TableCellVerticalAlignment.middle,
         border: TableBorder.all(
           color: Theme.of(context).colorScheme.outlineVariant,
