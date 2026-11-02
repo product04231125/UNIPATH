@@ -62,22 +62,58 @@ abstract class ApiGateway {
   ]);
 }
 
+bool _isLoopbackHost(String host) {
+  final value = host.toLowerCase();
+  return value == 'localhost' ||
+      value == '127.0.0.1' ||
+      value == '::1' ||
+      value == '[::1]';
+}
+
+bool _isLoopbackIp(String host) {
+  final value = host.toLowerCase();
+  return value == '127.0.0.1' || value == '::1' || value == '[::1]';
+}
+
+/// Cookie sessions are host-bound. `127.0.0.1` is not the same site as
+/// `localhost`, so a loopback API follows the page host.
+Uri resolveCookieApiBase(Uri api, {required bool cookieMode, Uri? pageUrl}) {
+  if (!cookieMode) return api;
+  final pageHost = (pageUrl ?? Uri.base).host;
+  if (pageHost.isEmpty) return api;
+  if (!_isLoopbackHost(pageHost) || !_isLoopbackHost(api.host)) return api;
+  if (pageHost.toLowerCase() == api.host.toLowerCase()) return api;
+  return api.replace(host: pageHost);
+}
+
 /// Browser: HttpOnly cookie. Native: opaque token in this process only.
 class AuthApi implements AuthGateway, ApiGateway {
-  AuthApi({http.Client? client, Uri? baseUrl, bool? cookieMode})
-    : _client = client ?? createAuthHttpClient(),
-      _base =
-          baseUrl ??
-          Uri.parse(
-            const String.fromEnvironment(
-              'API_BASE_URL',
-              defaultValue: 'http://localhost:8010',
+  AuthApi({http.Client? client, Uri? baseUrl, bool? cookieMode, Uri? pageUrl})
+    : this._create(
+        client ?? createAuthHttpClient(),
+        cookieMode ?? kIsWeb,
+        baseUrl,
+        pageUrl,
+      );
+
+  AuthApi._create(this._client, bool cookieMode, Uri? baseUrl, Uri? pageUrl)
+    : _cookieMode = cookieMode,
+      _pageHost = (pageUrl ?? Uri.base).host.toLowerCase(),
+      _base = resolveCookieApiBase(
+        baseUrl ??
+            Uri.parse(
+              const String.fromEnvironment(
+                'API_BASE_URL',
+                defaultValue: 'http://localhost:8010',
+              ),
             ),
-          ),
-      _cookieMode = cookieMode ?? kIsWeb;
+        cookieMode: cookieMode,
+        pageUrl: pageUrl,
+      );
   final http.Client _client;
   final Uri _base;
   final bool _cookieMode;
+  final String _pageHost;
   String? _token;
   String? _ownerId;
   int _sessionEpoch = 0;
@@ -85,8 +121,11 @@ class AuthApi implements AuthGateway, ApiGateway {
   /// Cookie sessions are host-bound. `127.0.0.1` is not the same site as `localhost`.
   bool get cookieHostMismatch {
     if (!_cookieMode) return false;
-    final host = _base.host.toLowerCase();
-    return host == '127.0.0.1' || host == '::1' || host == '[::1]';
+    final apiHost = _base.host.toLowerCase();
+    if (_pageHost.isEmpty) return _isLoopbackIp(apiHost);
+    return _isLoopbackHost(_pageHost) &&
+        _isLoopbackHost(apiHost) &&
+        _pageHost != apiHost;
   }
 
   String? get cookieHostHint => cookieHostMismatch
