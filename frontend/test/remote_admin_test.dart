@@ -293,6 +293,34 @@ void main() {
     expect(api.cookieHostHint, isNull);
     api.close();
   });
+  test('cookie API on a loopback IP follows a localhost page', () async {
+    Uri? requested;
+    final api = AuthApi(
+      client: MockClient((request) async {
+        requested = request.url;
+        return http.Response('', 401);
+      }),
+      baseUrl: Uri.parse('http://127.0.0.1:8010'),
+      cookieMode: true,
+      pageUrl: Uri.parse('http://localhost:3000/'),
+    );
+    expect(api.cookieHostMismatch, isFalse);
+    expect(api.cookieHostHint, isNull);
+    await api.me();
+    expect(requested?.host, 'localhost');
+    expect(requested?.port, 8010);
+    api.close();
+  });
+  test('cookie API on localhost follows a loopback IP page', () {
+    expect(
+      resolveCookieApiBase(
+        Uri.parse('http://localhost:8010'),
+        cookieMode: true,
+        pageUrl: Uri.parse('http://127.0.0.1:3000/'),
+      ),
+      Uri.parse('http://127.0.0.1:8010'),
+    );
+  });
   test('missing session is not reported as a permission change', () async {
     final server = AdminServer();
     final (api, repo) = await connected(server);
