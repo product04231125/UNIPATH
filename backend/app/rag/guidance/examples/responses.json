@@ -1,0 +1,659 @@
+{
+  "synthetic": true,
+  "scenarios": {
+    "home": {
+      "schema_version": "academic-click-v2",
+      "node_id": "home",
+      "title": "학사 안내",
+      "state": "ready",
+      "reason": "menu",
+      "message": "궁금한 항목을 선택해 주세요.",
+      "cards": [],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "graduation",
+          "label": "졸업",
+          "action": "select_node",
+          "node_id": "graduation",
+          "availability": "available"
+        },
+        {
+          "id": "calendar",
+          "label": "학사일정",
+          "action": "select_node",
+          "node_id": "calendar",
+          "availability": "available"
+        },
+        {
+          "id": "notices",
+          "label": "공지사항",
+          "action": "select_node",
+          "node_id": "notices",
+          "availability": "content_pending"
+        },
+        {
+          "id": "registration",
+          "label": "수강신청",
+          "action": "select_node",
+          "node_id": "registration",
+          "availability": "content_pending"
+        },
+        {
+          "id": "major",
+          "label": "전공",
+          "action": "select_node",
+          "node_id": "major",
+          "availability": "content_pending"
+        },
+        {
+          "id": "scholarship",
+          "label": "장학금",
+          "action": "select_node",
+          "node_id": "scholarship",
+          "availability": "content_pending"
+        },
+        {
+          "id": "tuition",
+          "label": "등록금",
+          "action": "select_node",
+          "node_id": "tuition",
+          "availability": "content_pending"
+        },
+        {
+          "id": "dormitory",
+          "label": "기숙사",
+          "action": "select_node",
+          "node_id": "dormitory",
+          "availability": "content_pending"
+        },
+        {
+          "id": "departments",
+          "label": "학부·학과",
+          "action": "select_node",
+          "node_id": "departments",
+          "availability": "content_pending"
+        },
+        {
+          "id": "regulations",
+          "label": "학사관련규정",
+          "action": "select_node",
+          "node_id": "regulations",
+          "availability": "available"
+        }
+      ]
+    },
+    "graduation": {
+      "schema_version": "academic-click-v2",
+      "node_id": "graduation",
+      "title": "졸업",
+      "state": "ready",
+      "reason": "menu",
+      "message": "궁금한 항목을 선택해 주세요.",
+      "cards": [],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "summary",
+          "label": "내 졸업요건 요약",
+          "action": "select_node",
+          "node_id": "summary",
+          "availability": "available"
+        },
+        {
+          "id": "credits",
+          "label": "이수학점",
+          "action": "select_node",
+          "node_id": "credits",
+          "availability": "available"
+        },
+        {
+          "id": "courses",
+          "label": "필수과목",
+          "action": "select_node",
+          "node_id": "courses",
+          "availability": "available"
+        },
+        {
+          "id": "volunteer",
+          "label": "봉사",
+          "action": "select_node",
+          "node_id": "volunteer",
+          "availability": "available"
+        },
+        {
+          "id": "certificate",
+          "label": "자격",
+          "action": "select_node",
+          "node_id": "certificate",
+          "availability": "available"
+        },
+        {
+          "id": "thesis",
+          "label": "논문",
+          "action": "select_node",
+          "node_id": "thesis",
+          "availability": "available"
+        },
+        {
+          "id": "review",
+          "label": "추가 확인 항목",
+          "action": "select_node",
+          "node_id": "review",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ]
+    },
+    "credits": {
+      "schema_version": "academic-click-v2",
+      "node_id": "credits",
+      "title": "이수학점",
+      "state": "ready",
+      "reason": "audit_rendered",
+      "message": "기준일의 검토 자료에서 충족하지 못한 요건이 있습니다.",
+      "cards": [
+        {
+          "template_id": "minimum_credits.not_satisfied.quantity",
+          "rule_id": "00000000-0000-0000-0000-000000000006",
+          "rule_set_id": "00000000-0000-0000-0000-000000000005",
+          "rule_set_version": 1,
+          "title": "합성 예시: 총 이수학점",
+          "kind": "minimum_credits",
+          "status": "not_satisfied",
+          "reason": "below_threshold",
+          "body": "검토된 실적은 120학점, 요구 기준은 130학점입니다. 10학점 부족합니다.",
+          "unit": "학점",
+          "quantities": {
+            "current": "120",
+            "required": "130",
+            "deficit": "10"
+          },
+          "missing_courses": [],
+          "uncertain_courses": [],
+          "sources": [
+            {
+              "chunk_id": "00000000-0000-0000-0000-000000000009",
+              "knowledge_document_id": "00000000-0000-0000-0000-00000000000a",
+              "knowledge_version": 1,
+              "document_id": "00000000-0000-0000-0000-00000000000b",
+              "document_version": 1,
+              "title": "합성 예시 졸업요건 (실제 학교 규정 아님)",
+              "source_url": "https://example.org/synthetic-regulation",
+              "page": 1,
+              "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "document_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            }
+          ],
+          "source_state": "available",
+          "evidence_record_ids": []
+        }
+      ],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "graduation",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "graduation",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "audit": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "context": {
+          "institution_id": "00000000-0000-0000-0000-000000000002",
+          "department_id": "00000000-0000-0000-0000-000000000003",
+          "curriculum_id": "00000000-0000-0000-0000-000000000004",
+          "admission_year": 2026,
+          "track": "single_major"
+        },
+        "evaluated_on": "2026-11-02",
+        "status": "not_satisfied",
+        "reason": "requirements_not_met",
+        "current_usable": true,
+        "catalog_complete": true
+      },
+      "issues": [],
+      "notice": "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
+    },
+    "thesis": {
+      "schema_version": "academic-click-v2",
+      "node_id": "thesis",
+      "title": "논문",
+      "state": "ready",
+      "reason": "audit_rendered",
+      "message": "이 감사에 해당 종류의 판정 항목이 없습니다. 면제나 충족을 의미하지 않습니다.",
+      "cards": [],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "graduation",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "graduation",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "audit": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "context": {
+          "institution_id": "00000000-0000-0000-0000-000000000002",
+          "department_id": "00000000-0000-0000-0000-000000000003",
+          "curriculum_id": "00000000-0000-0000-0000-000000000004",
+          "admission_year": 2026,
+          "track": "single_major"
+        },
+        "evaluated_on": "2026-11-02",
+        "status": "not_satisfied",
+        "reason": "requirements_not_met",
+        "current_usable": true,
+        "catalog_complete": true
+      },
+      "issues": [],
+      "notice": "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
+    },
+    "departments": {
+      "schema_version": "academic-click-v2",
+      "node_id": "departments",
+      "title": "학부·학과",
+      "state": "unavailable",
+      "reason": "approved_content_not_configured",
+      "message": "검토된 안내 자료를 준비 중입니다. 현재 이 항목의 정보를 제공할 수 없습니다.",
+      "cards": [],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "home",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ]
+    },
+    "no_audit": {
+      "schema_version": "academic-click-v2",
+      "node_id": "summary",
+      "title": "내 졸업요건 요약",
+      "state": "needs_input",
+      "reason": "verified_audit_required",
+      "message": "학교·학과·교육과정을 확인하고 공식 졸업요건 감사를 선택해 주세요.",
+      "cards": [],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "graduation",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "graduation",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ]
+    },
+    "unknown_node": {
+      "schema_version": "academic-click-v2",
+      "node_id": null,
+      "state": "needs_selection",
+      "reason": "unknown_node",
+      "message": "안내 메뉴에서 항목을 선택해 주세요.",
+      "cards": [],
+      "buttons": [
+        {
+          "id": "home",
+          "label": "학사 안내",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "warnings": []
+    },
+    "satisfied": {
+      "schema_version": "academic-click-v2",
+      "node_id": "summary",
+      "title": "내 졸업요건 요약",
+      "state": "ready",
+      "reason": "audit_rendered",
+      "message": "기준일의 검토 자료로 등록된 요건을 충족했습니다.",
+      "cards": [
+        {
+          "template_id": "minimum_credits.satisfied.quantity",
+          "rule_id": "00000000-0000-0000-0000-000000000006",
+          "rule_set_id": "00000000-0000-0000-0000-000000000005",
+          "rule_set_version": 1,
+          "title": "합성 예시: 총 이수학점",
+          "kind": "minimum_credits",
+          "status": "satisfied",
+          "reason": "threshold_met",
+          "body": "검토된 실적은 130학점, 요구 기준은 130학점입니다. 이 항목을 충족했습니다.",
+          "unit": "학점",
+          "quantities": {
+            "current": "130",
+            "required": "130",
+            "deficit": "0"
+          },
+          "missing_courses": [],
+          "uncertain_courses": [],
+          "sources": [
+            {
+              "chunk_id": "00000000-0000-0000-0000-000000000009",
+              "knowledge_document_id": "00000000-0000-0000-0000-00000000000a",
+              "knowledge_version": 1,
+              "document_id": "00000000-0000-0000-0000-00000000000b",
+              "document_version": 1,
+              "title": "합성 예시 졸업요건 (실제 학교 규정 아님)",
+              "source_url": "https://example.org/synthetic-regulation",
+              "page": 1,
+              "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "document_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            }
+          ],
+          "source_state": "available",
+          "evidence_record_ids": []
+        }
+      ],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "graduation",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "graduation",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "audit": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "context": {
+          "institution_id": "00000000-0000-0000-0000-000000000002",
+          "department_id": "00000000-0000-0000-0000-000000000003",
+          "curriculum_id": "00000000-0000-0000-0000-000000000004",
+          "admission_year": 2026,
+          "track": "single_major"
+        },
+        "evaluated_on": "2026-11-02",
+        "status": "satisfied",
+        "reason": "requirements_not_met",
+        "current_usable": true,
+        "catalog_complete": true
+      },
+      "issues": [],
+      "notice": "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
+    },
+    "needs_review": {
+      "schema_version": "academic-click-v2",
+      "node_id": "summary",
+      "title": "내 졸업요건 요약",
+      "state": "ready",
+      "reason": "audit_rendered",
+      "message": "자료 또는 조건이 부족해 추가 확인이 필요합니다.",
+      "cards": [
+        {
+          "template_id": "minimum_credits.needs_review.status",
+          "rule_id": "00000000-0000-0000-0000-000000000006",
+          "rule_set_id": "00000000-0000-0000-0000-000000000005",
+          "rule_set_version": 1,
+          "title": "합성 예시: 총 이수학점",
+          "kind": "minimum_credits",
+          "status": "needs_review",
+          "reason": "incomplete_record_data",
+          "body": "자료 또는 조건의 추가 확인이 필요합니다. 부족 수치를 확정해 안내할 수 없습니다.",
+          "unit": "학점",
+          "quantities": {
+            "current": null,
+            "required": "130",
+            "deficit": null
+          },
+          "missing_courses": [],
+          "uncertain_courses": [],
+          "sources": [
+            {
+              "chunk_id": "00000000-0000-0000-0000-000000000009",
+              "knowledge_document_id": "00000000-0000-0000-0000-00000000000a",
+              "knowledge_version": 1,
+              "document_id": "00000000-0000-0000-0000-00000000000b",
+              "document_version": 1,
+              "title": "합성 예시 졸업요건 (실제 학교 규정 아님)",
+              "source_url": "https://example.org/synthetic-regulation",
+              "page": 1,
+              "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "document_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            }
+          ],
+          "source_state": "available",
+          "evidence_record_ids": []
+        }
+      ],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "graduation",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "graduation",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "audit": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "context": {
+          "institution_id": "00000000-0000-0000-0000-000000000002",
+          "department_id": "00000000-0000-0000-0000-000000000003",
+          "curriculum_id": "00000000-0000-0000-0000-000000000004",
+          "admission_year": 2026,
+          "track": "single_major"
+        },
+        "evaluated_on": "2026-11-02",
+        "status": "needs_review",
+        "reason": "requirements_not_met",
+        "current_usable": true,
+        "catalog_complete": true
+      },
+      "issues": [],
+      "notice": "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
+    },
+    "not_applicable": {
+      "schema_version": "academic-click-v2",
+      "node_id": "summary",
+      "title": "내 졸업요건 요약",
+      "state": "ready",
+      "reason": "audit_rendered",
+      "message": "적용 가능한 요건이 없어 판정을 안내할 수 없습니다.",
+      "cards": [
+        {
+          "template_id": "minimum_credits.not_applicable.status",
+          "rule_id": "00000000-0000-0000-0000-000000000006",
+          "rule_set_id": "00000000-0000-0000-0000-000000000005",
+          "rule_set_version": 1,
+          "title": "합성 예시: 총 이수학점",
+          "kind": "minimum_credits",
+          "status": "not_applicable",
+          "reason": "no_applicable_rules",
+          "body": "적용 가능한 요건이 없어 판정을 안내할 수 없습니다.",
+          "unit": "학점",
+          "quantities": {
+            "current": null,
+            "required": "130",
+            "deficit": null
+          },
+          "missing_courses": [],
+          "uncertain_courses": [],
+          "sources": [
+            {
+              "chunk_id": "00000000-0000-0000-0000-000000000009",
+              "knowledge_document_id": "00000000-0000-0000-0000-00000000000a",
+              "knowledge_version": 1,
+              "document_id": "00000000-0000-0000-0000-00000000000b",
+              "document_version": 1,
+              "title": "합성 예시 졸업요건 (실제 학교 규정 아님)",
+              "source_url": "https://example.org/synthetic-regulation",
+              "page": 1,
+              "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "document_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            }
+          ],
+          "source_state": "available",
+          "evidence_record_ids": []
+        }
+      ],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "graduation",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "graduation",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "audit": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "context": {
+          "institution_id": "00000000-0000-0000-0000-000000000002",
+          "department_id": "00000000-0000-0000-0000-000000000003",
+          "curriculum_id": "00000000-0000-0000-0000-000000000004",
+          "admission_year": 2026,
+          "track": "single_major"
+        },
+        "evaluated_on": "2026-11-02",
+        "status": "not_applicable",
+        "reason": "requirements_not_met",
+        "current_usable": true,
+        "catalog_complete": true
+      },
+      "issues": [],
+      "notice": "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
+    },
+    "stale_incomplete": {
+      "schema_version": "academic-click-v2",
+      "node_id": "summary",
+      "title": "내 졸업요건 요약",
+      "state": "ready",
+      "reason": "audit_rendered",
+      "message": "재확인 필요 — 과거 기준일 결과: 기준일의 검토 자료에서 충족하지 못한 요건이 있습니다.",
+      "cards": [
+        {
+          "template_id": "minimum_credits.not_satisfied.quantity",
+          "rule_id": "00000000-0000-0000-0000-000000000006",
+          "rule_set_id": "00000000-0000-0000-0000-000000000005",
+          "rule_set_version": 1,
+          "title": "합성 예시: 총 이수학점",
+          "kind": "minimum_credits",
+          "status": "not_satisfied",
+          "reason": "below_threshold",
+          "body": "검토된 실적은 120학점, 요구 기준은 130학점입니다. 10학점 부족합니다.",
+          "unit": "학점",
+          "quantities": {
+            "current": "120",
+            "required": "130",
+            "deficit": "10"
+          },
+          "missing_courses": [],
+          "uncertain_courses": [],
+          "sources": [
+            {
+              "chunk_id": "00000000-0000-0000-0000-000000000009",
+              "knowledge_document_id": "00000000-0000-0000-0000-00000000000a",
+              "knowledge_version": 1,
+              "document_id": "00000000-0000-0000-0000-00000000000b",
+              "document_version": 1,
+              "title": "합성 예시 졸업요건 (실제 학교 규정 아님)",
+              "source_url": "https://example.org/synthetic-regulation",
+              "page": 1,
+              "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "document_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            }
+          ],
+          "source_state": "available",
+          "evidence_record_ids": []
+        }
+      ],
+      "warnings": [
+        "현재 안내에는 재확인이 필요합니다. 아래는 과거 기준일의 결과입니다.",
+        "전체 졸업요건의 등록·검토가 확인되지 않았습니다."
+      ],
+      "buttons": [
+        {
+          "id": "graduation",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "graduation",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "audit": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "context": {
+          "institution_id": "00000000-0000-0000-0000-000000000002",
+          "department_id": "00000000-0000-0000-0000-000000000003",
+          "curriculum_id": "00000000-0000-0000-0000-000000000004",
+          "admission_year": 2026,
+          "track": "single_major"
+        },
+        "evaluated_on": "2026-11-02",
+        "status": "not_satisfied",
+        "reason": "requirements_not_met",
+        "current_usable": false,
+        "catalog_complete": false
+      },
+      "issues": [],
+      "notice": "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
+    }
+  }
+}
