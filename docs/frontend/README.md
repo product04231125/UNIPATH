@@ -13,7 +13,7 @@ OpenAPI(`/api/v1/docs`)가 기준이다.
 - [manual-input-audit.md](manual-input-audit.md): ERD/HTML 입력·관계의 구현 대조표와 계약 의존성
 - [백엔드 API 요구 명세](../api/frontend-backend-requirements.md): 서버 연결 요구와 미확정 계약
 - `features/`: 기능별 현재 동작·상태·계약 경계
-- `specs/`: 사용자 흐름과 수용 조건(Gherkin 등). 개인 학업·자료/PDF·관리자 본문 등록은 [workspace-registration.feature](specs/workspace-registration.feature). 학생 가입 경계·활동 메뉴 저장·설정 이름/공식 ID·이름 문맥 채팅은 [student-journey.feature](specs/student-journey.feature). 학교관리자 가입 유형·미접수 제출·접수 메뉴는 [school-admin-signup.feature](specs/school-admin-signup.feature). 그 밖의 화면별 성공/실패/입력 보존은 [screen-input-protection.feature](specs/screen-input-protection.feature). 계약이 없는 학사 안내·취업 질문은 [미계약 인수 문서](../api/student-journey-uncontracted.md)로 넘긴다.
+- `specs/`: 사용자 흐름과 수용 조건(Gherkin 등). 개인 학업·자료/PDF·관리자 본문 등록은 [workspace-registration.feature](specs/workspace-registration.feature). 학생 가입 경계·활동 메뉴 저장·설정 이름/공식 ID·이름 문맥 채팅은 [student-journey.feature](specs/student-journey.feature). 학교관리자 가입 유형·미접수 제출·접수 메뉴는 [school-admin-signup.feature](specs/school-admin-signup.feature). 그 밖의 화면별 성공/실패/입력 보존은 [screen-input-protection.feature](specs/screen-input-protection.feature). 계약이 없는 학사 안내·취업 질문은 [미계약 인수 문서](../api/student-journey-uncontracted.md)로 넘긴다. 학생 여정 명세 실행은 `frontend`에서 `flutter test test/bdd/student_journey_bdd_test.dart`다. workspace-registration, screen-input-protection, school-admin-signup는 이 명령에 포함하지 않는다.
 
 기능 문서는 현재 동작을 중심으로 유지하고, 상세 테스트 횟수·캡처·작업별 리뷰 결과는
 아래 검증 이력에서 참조한다. 에이전트 운영 지침과 스킬 절차는 개인 지침 저장소에서 관리한다.
