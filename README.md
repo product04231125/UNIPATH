@@ -490,6 +490,10 @@ flutter build web
 flutter build windows
 ```
 
+Web은 브라우저에서 `http://localhost:3000` 또는 `http://127.0.0.1:3000`으로 연다(기본 CORS에 둘 다 포함).
+같은 세션에서 호스트를 바꿔 가며 쓰지 않는다. 다른 기기(폰)에서 붙을 때만 PC LAN IP와
+백엔드 `0.0.0.0` 바인딩·`CORS_ORIGINS` 추가가 필요하다.
+
 Windows Release 실행 파일은 `frontend\build\windows\x64\runner\Release\university_path_frontend.exe`에 생성됩니다. Flutter가 `Path`에 없다면 위 명령의 `flutter` 대신 Flutter SDK의 `bin\flutter.bat` 절대 경로를 사용합니다.
 
 ## 8. 환경 분리 및 배포

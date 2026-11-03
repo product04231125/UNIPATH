@@ -31,17 +31,23 @@ flutter pub get
 flutter run -d chrome --web-port 3000 --dart-define=API_BASE_URL=http://127.0.0.1:8010
 ```
 
-Windows에서도 같은 설정을 사용한다.
+브라우저에서는 `http://localhost:3000` 또는 `http://127.0.0.1:3000`으로 연다.
+둘 다 기본 CORS에 포함된다. `localhost`와 `127.0.0.1`은 Origin이 다르므로
+한쪽만 열어도 되고, 주소창 호스트를 바꿔 가며 쓰지 않는다.
+
+Windows에서도 같은 API 주소를 사용한다.
 
 ```powershell
 flutter run -d windows --dart-define=API_BASE_URL=http://127.0.0.1:8010
 ```
 
-`API_BASE_URL`은 API의 HTTP(S) 원점 주소다. 기본값은 `http://127.0.0.1:8010`이며
-실행/빌드 때 주입한다. `.env`를 브라우저에 복사하거나 토큰·API 키를 여기에 넣지 않는다.
-다른 PC에서는 `127.0.0.1`이 그 PC를 가리키므로 접근 가능한 API 주소와 백엔드 바인딩을
-설정해야 한다. Web 주소 `http://localhost:3000`은 기본 CORS 허용 주소에 포함되어 있다.
-다른 원점은 백엔드 `CORS_ORIGINS`에 추가한다.
+`API_BASE_URL`은 API의 HTTP(S) 원점 주소다. 코드 기본값은 `http://localhost:8010`이며
+실행/빌드 때 주입한다. 로컬 루프백이면 `127.0.0.1:8010`과 `localhost:8010` 모두
+같은 PC API를 가리킨다. `.env`를 브라우저에 복사하거나 토큰·API 키를 여기에 넣지 않는다.
+같은 PC의 폰/에뮬이 아니라 **다른 기기(폰)**에서 붙을 때만 PC의 LAN IP가 필요하다.
+그때는 백엔드를 `0.0.0.0`에 바인딩하고 `API_BASE_URL`·`CORS_ORIGINS`에
+`http://<PC-LAN-IP>:8010` / `http://<PC-LAN-IP>:3000`을 넣는다.
+다른 원점도 백엔드 `CORS_ORIGINS`에 추가한다.
 
 AI 도우미를 열고 `학교 질의 정보 입력`을 확인한 뒤 질문한다. 현재 실제 PDF는 검토 대기이며
 LLM 생성기가 없으므로 `공식 근거 부족` 안내가 정상이다. 학교·학과 누락은 추가 입력을,
