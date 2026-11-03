@@ -26,6 +26,10 @@ import 'features/auth/school_workflow_session.dart';
 class AppLocation {
   const AppLocation(this.path);
 
+  /// Student settings tab that owns the academic PlanningProfile editor.
+  /// Open this tab instead of adding a new profile-edit route.
+  static const settingsPath = '/settings';
+
   static const menuPaths = [
     '/home',
     '/schedule',
@@ -35,8 +39,19 @@ class AppLocation {
     '/experiences',
     '/credentials',
     '/portfolio',
-    '/settings',
+    settingsPath,
   ];
+
+  /// Workspace / AppNavigation menu index for [settingsPath].
+  static int get settingsMenu => menuPaths.indexOf(settingsPath);
+
+  /// Selects the existing settings tab through Workspace `onPageChanged`.
+  static void openSettings(ValueChanged<int> onPageChanged) =>
+      onPageChanged(settingsMenu);
+
+  static VoidCallback bindOpenSettings(ValueChanged<int> onPageChanged) =>
+      () => openSettings(onPageChanged);
+
   final String path;
   int? get menu {
     final index = menuPaths.indexOf(path == '/' ? '/home' : path);
@@ -524,10 +539,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
             child: LayoutBuilder(
               builder: (frameContext, frameConstraints) {
                 final phone = isPhonePortraitShell(
-                  Size(
-                    frameConstraints.maxWidth,
-                    frameConstraints.maxHeight,
-                  ),
+                  Size(frameConstraints.maxWidth, frameConstraints.maxHeight),
                 );
                 return Column(
                   children: [
