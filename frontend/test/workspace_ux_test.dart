@@ -95,7 +95,7 @@ void main() {
   );
 
   testWidgets(
-    'returning to retained curriculum preserves its width requirement',
+    'graduation sample path keeps home baseline width without mock tables',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1440, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -103,25 +103,25 @@ void main() {
         const UniversityPathApp(startAuthenticated: true),
       );
       await tester.pumpAndSettle();
+      final homeWidth = tester
+          .widget<WorkspaceShell>(find.byType(WorkspaceShell))
+          .minimumContentWidth;
       await tester.tap(find.text('졸업 요건').first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('내 교육과정'));
-      await tester.pumpAndSettle();
-      final requiredWidth = tester
-          .widget<WorkspaceShell>(find.byType(WorkspaceShell))
-          .minimumContentWidth;
-      expect(requiredWidth, greaterThan(0));
-      await tester.tap(find.text('홈').first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('뒤로 가기'));
       await tester.pumpAndSettle();
       expect(
         tester
             .widget<WorkspaceShell>(find.byType(WorkspaceShell))
             .minimumContentWidth,
-        requiredWidth,
+        homeWidth,
       );
-      expect(find.text('내 교육과정 학점 현황'), findsOneWidget);
+      expect(find.text('내 교육과정 학점 현황'), findsNothing);
+      expect(
+        find.textContaining('학교 기준을 가져오는 API가 아직 연결되지 않았습니다'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('mock-data-toggle')), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
@@ -348,11 +348,10 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('responsive order includes curriculum tabs and dock width', (
+  testWidgets('graduation sample path keeps rail while AI docks', (
     tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    // Includes the 16px vertical scrollbar gutter beside the matrix.
     await tester.binding.setSurfaceSize(const Size(1456, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     await tester.pumpAndSettle();
@@ -361,37 +360,12 @@ void main() {
     await tester.tap(find.text('내 교육과정'));
     await tester.pumpAndSettle();
     expect(find.text('홈'), findsOneWidget);
+    expect(find.byType(Table), findsNothing);
     await tester.tap(find.byIcon(Icons.chat_bubble_outline));
     await tester.pumpAndSettle();
-    expect(find.byTooltip('홈'), findsOneWidget);
-    expect(horizontalExtent(tester, find.byType(Table)), 0);
-    // Inspect the table's ancestor scroll view, not its descendants.
-    final matrixScroll = find
-        .ancestor(of: find.byType(Table), matching: find.byType(Scrollable))
-        .first;
-    expect(
-      tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
-      0,
-    );
+    expect(find.text('홈'), findsOneWidget);
     await tester.tap(find.byTooltip('AI 도우미 닫기'));
     await tester.pumpAndSettle();
-    for (final width in [1233.0, 1062.0]) {
-      await tester.binding.setSurfaceSize(Size(width, 900));
-      await tester.pumpAndSettle();
-      expect(find.byTooltip('홈'), findsOneWidget);
-      expect(
-        tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
-        0,
-      );
-    }
-    await tester.binding.setSurfaceSize(const Size(1061, 900));
-    await tester.pumpAndSettle();
-    expect(find.byTooltip('홈'), findsOneWidget);
-    expect(
-      tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
-      greaterThan(0),
-    );
-    // Phone portrait (450×900, ratio 2.0) skips the 480 fallback and mock table.
     await tester.binding.setSurfaceSize(const Size(450, 900));
     await tester.pumpAndSettle();
     expect(find.byType(NavigationBar), findsOneWidget);
@@ -400,33 +374,13 @@ void main() {
       findsNothing,
     );
     expect(find.byType(Table), findsNothing);
-    // Leaving phone chrome restores the left rail and the active curriculum tab.
-    await tester.binding.setSurfaceSize(const Size(1061, 900));
-    await tester.pumpAndSettle();
-    expect(find.byTooltip('홈'), findsOneWidget);
-    expect(find.byType(Table), findsOneWidget);
-    expect(
-      tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
-      greaterThan(0),
-    );
-    await tester.tap(find.text('대학 공통'));
-    await tester.pumpAndSettle();
-    expect(find.text('홈'), findsOneWidget);
-    await tester.tap(find.text('내 교육과정'));
-    await tester.pumpAndSettle();
-    expect(find.byTooltip('홈'), findsOneWidget);
     await tester.binding.setSurfaceSize(const Size(1234, 900));
     await tester.pumpAndSettle();
     expect(find.text('홈'), findsOneWidget);
     expect(
-      tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
-      0,
+      find.textContaining('학교 기준을 가져오는 API가 아직 연결되지 않았습니다'),
+      findsOneWidget,
     );
-    await tester.tap(find.text('설정').first);
-    await tester.pumpAndSettle();
-    await tester.binding.setSurfaceSize(const Size(950, 900));
-    await tester.pumpAndSettle();
-    expect(find.byTooltip('홈'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

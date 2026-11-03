@@ -37,7 +37,7 @@ Future<void> open(WidgetTester tester, {double scale = 1}) async {
             .copyWith(textScaler: TextScaler.linear(scale)),
         child: child!,
       ),
-      home: const Scaffold(body: CoursePage(showMockData: false)),
+      home: const Scaffold(body: CoursePage()),
     ),
   );
   await tester.pumpAndSettle();

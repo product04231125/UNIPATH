@@ -48,13 +48,13 @@ void main() {
         addTearDown(repository.dispose);
         await repository.load();
         for (final page in <Widget>[
-          const CoursePage(showMockData: false),
-          const ActivityPage(showMockData: false),
-          const ExperiencePage(showMockData: false),
-          const CredentialPage(showMockData: false),
+          const CoursePage(),
+          const ActivityPage(),
+          const ExperiencePage(),
+          const CredentialPage(),
           SchedulePage(repository: repository),
           SettingsPage(repository: repository),
-          const GraduationPage(showMockData: false),
+          const GraduationPage(),
         ]) {
           await tester.pumpWidget(host(page, scale: scale));
           await tester.pumpAndSettle();
@@ -72,7 +72,7 @@ void main() {
         }
 
         await tester.pumpWidget(
-          host(const PortfolioPage(showMockData: false), scale: scale),
+          host(const PortfolioPage(), scale: scale),
         );
         await tester.pumpAndSettle();
         final tabs = ['성과 기록', '기존 구성', '기존 지원 문서'];
@@ -140,7 +140,7 @@ void main() {
     addTearDown(repository.dispose);
     await repository.load();
     for (final page in <Widget>[
-      const CoursePage(showMockData: false),
+      const CoursePage(),
       SchedulePage(repository: repository),
       SettingsPage(repository: repository),
       const PortfolioDraftsPage(isDocument: false),
@@ -225,10 +225,10 @@ void main() {
     'record menu headers use Korean titles and retain local notices',
     (tester) async {
       for (final (page, title) in <(Widget, String)>[
-        (const CoursePage(showMockData: false), '수강 관리'),
-        (const ActivityPage(showMockData: false), '활동'),
-        (const ExperiencePage(showMockData: false), '경험'),
-        (const CredentialPage(showMockData: false), '자격'),
+        (const CoursePage(), '수강 관리'),
+        (const ActivityPage(), '활동'),
+        (const ExperiencePage(), '경험'),
+        (const CredentialPage(), '자격'),
       ]) {
         await tester.pumpWidget(host(page));
         // The same header stays visible before and after storage loads.

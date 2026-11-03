@@ -71,7 +71,7 @@ void main() {
             ),
             child: child!,
           ),
-          home: const Scaffold(body: PortfolioPage(showMockData: false)),
+          home: const Scaffold(body: PortfolioPage()),
         );
         Future<void> fill(String key, String value) async {
           final field = find.byKey(ValueKey('record-field-$key'));

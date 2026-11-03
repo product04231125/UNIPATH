@@ -19,7 +19,7 @@
 - 공통 `PageHeader`로 한글 제목·설명을 표시하며 중복 영어 라벨은 제거했다.
   읽기 대기·실패에도 제목을 유지하고 학교 미연결·개인 기록 안내는 보존한다.
 - `frontend/lib/features/records/activity/activity_page.dart`가 화면·입력 상태를 소유한다.
-- 예시 행은 `frontend/lib/features/records/fixtures/activity_fixture.dart`에 있다.
+- 제품 화면의 활동 예시 행은 제거했다. 개인 기록만 표시한다.
 - 기관·기간·역할·직접 입력 봉사 시간·사용자가 확인한 승인 시간/상태/확인일을 분리 입력한다.
   실제 계정의 개인 기록 CRUD·서버 저장과 debug/기기 원본 보존, 사용자가 승인됨으로 기록한 봉사 시간 합계를 제공한다.
   상세 경계는 [ERD 대조](../manual-input-boundaries.md)를 따른다.

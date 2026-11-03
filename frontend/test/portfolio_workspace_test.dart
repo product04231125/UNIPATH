@@ -52,7 +52,7 @@ Future<void> selectSource(WidgetTester tester, String ref) async {
 }
 
 Widget portfolioPage() =>
-    const MaterialApp(home: Scaffold(body: PortfolioPage(showMockData: false)));
+    const MaterialApp(home: Scaffold(body: PortfolioPage()));
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -539,7 +539,7 @@ void main() {
                 .copyWith(textScaler: const TextScaler.linear(2)),
             child: child!,
           ),
-          home: const Scaffold(body: PortfolioPage(showMockData: false)),
+          home: const Scaffold(body: PortfolioPage()),
         ),
       );
       await tester.pumpAndSettle();

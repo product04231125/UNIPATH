@@ -47,7 +47,7 @@ void main() {
           addTearDown(() => tester.binding.setSurfaceSize(null));
           final gateway = PersonalGateway()..failWrites = true;
           await tester.pumpWidget(
-            scope(gateway, const CoursePage(showMockData: false), scale: scale),
+            scope(gateway, const CoursePage(), scale: scale),
           );
           await tester.pumpAndSettle();
           expect(find.text('합성 course'), findsOneWidget);
@@ -95,7 +95,7 @@ void main() {
         ..empty = true
         ..failWrites = true;
       await tester.pumpWidget(
-        scope(gateway, const CoursePage(showMockData: false)),
+        scope(gateway, const CoursePage()),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('수강 과목 직접 입력'));

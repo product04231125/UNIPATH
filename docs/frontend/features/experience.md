@@ -9,7 +9,7 @@
 - 공통 `PageHeader`로 한글 제목·설명을 표시하며 중복 영어 라벨은 제거했다.
   읽기 대기·실패에도 제목을 유지하고 학교 미연결·개인 기록 안내는 보존한다.
 - `frontend/lib/features/records/experience/experience_page.dart`가 화면·입력 상태를 소유한다.
-- 예시 행은 `frontend/lib/features/records/fixtures/experience_fixture.dart`에 있다.
+- 제품 화면의 경험 예시 행은 제거했다. 개인 기록만 표시한다.
 - 종류·기관·기간·역할·결과/개인 기여·진행 상태를 분리 입력하며 개인 기록을 추가·수정·삭제한다.
   실제 계정은 서버에서 재조회하며 debug/이전 원본은 기기에 남는다. [ERD 대조](../manual-input-boundaries.md)를 따른다.
 

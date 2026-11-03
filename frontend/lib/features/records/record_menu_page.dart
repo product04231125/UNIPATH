@@ -20,7 +20,7 @@ import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/external_link_button.dart';
 
 /// Temporary shared presentation only. Each feature entry owns its own
-/// configuration, fixture and mounted local input state.
+/// configuration and mounted local input state.
 class RecordMenuPage extends StatefulWidget {
   const RecordMenuPage({
     super.key,
@@ -30,12 +30,10 @@ class RecordMenuPage extends StatefulWidget {
     required this.description,
     required this.notice,
     required this.listTitle,
-    required this.fixture,
     required this.guideTitle,
     required this.guides,
     required this.addLabel,
     required this.detailLabel,
-    required this.showMockData,
     this.fieldsLoader,
     this.validateValues,
     this.guideActions = const [],
@@ -47,12 +45,10 @@ class RecordMenuPage extends StatefulWidget {
   final String description;
   final String notice;
   final String listTitle;
-  final List<RecordMockEntry> fixture;
   final String guideTitle;
   final List<String> guides;
   final String addLabel;
   final String detailLabel;
-  final bool showMockData;
   final Future<List<PersonalRecordField>> Function()? fieldsLoader;
   final Future<String?> Function(Map<String, String>)? validateValues;
   final List<Widget> guideActions;
@@ -502,7 +498,6 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       return (_year.isEmpty || period.yearFilter == _year) &&
           (_term.isEmpty || period.semester == _term);
     }).toList();
-    final entries = [if (widget.showMockData) ...widget.fixture];
     final isCourse = widget.kind == PersonalRecordKind.course;
     final phone = PhoneChromeScope.of(context);
     return ContentScrollView(
@@ -640,12 +635,6 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                             : '개인 기록이 없습니다. 직접 입력해 주세요.',
                       ),
                     for (final record in personal) _personalEntry(record),
-                    if (entries.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      const Divider(),
-
-                      for (final entry in entries) _entry(entry),
-                    ],
                   ],
                 ),
               );

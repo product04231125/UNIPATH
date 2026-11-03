@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../fixtures/portfolio_fixture.dart';
 import '../record_menu_page.dart';
 import '../personal_record_repository.dart';
 import 'portfolio_drafts_page.dart';
@@ -10,12 +9,10 @@ import 'material_repository.dart';
 class PortfolioPage extends StatefulWidget {
   const PortfolioPage({
     super.key,
-    required this.showMockData,
     this.active = true,
     this.materialRepository,
   });
 
-  final bool showMockData;
   final bool active;
   final MaterialRepository? materialRepository;
 
@@ -86,7 +83,6 @@ class _PortfolioPageState extends State<PortfolioPage> {
     description: '프로젝트, 논문, 수상과 산출물을 포트폴리오로 구성합니다.',
     notice: '내 프로젝트·논문·수상과 산출물을 직접 기록합니다. 완성 파일이나 짧은 설명은 내 자료에 등록할 수 있습니다.',
     listTitle: '성과 목록',
-    fixture: portfolioMockEntries,
     guideTitle: '성과 구성',
     guides: const [
       '설명·역할·결과·링크를 함께 보관',
@@ -97,6 +93,5 @@ class _PortfolioPageState extends State<PortfolioPage> {
     ],
     addLabel: '성과 직접 기록',
     detailLabel: '유형 · 역할 · 결과 또는 링크',
-    showMockData: widget.showMockData,
   );
 }

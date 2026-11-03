@@ -9,7 +9,7 @@
 - 공통 `PageHeader`로 한글 제목·설명을 표시하며 중복 영어 라벨은 제거했다.
   읽기 대기·실패에도 제목을 유지하고 학교 미연결·개인 기록 안내는 보존한다.
 - `frontend/lib/features/records/credential/credential_page.dart`가 화면·입력 상태를 소유한다.
-- 예시 행은 `frontend/lib/features/records/fixtures/credential_fixture.dart`에 있다.
+- 제품 화면의 자격 예시 행은 제거했다. 개인 기록만 표시한다.
 - 자격명·발급 기관·점수/등급·취득/만료일·보유 상태·증빙 링크를 분리 입력한다.
   실제 계정의 서버 개인 기록 CRUD와 debug/기기 원본 보존을 제공하며 자격증 번호는 수집하지 않는다.
   상세 경계는 [ERD 대조](../manual-input-boundaries.md)를 따른다.
