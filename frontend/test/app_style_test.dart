@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
+import 'package:university_path_frontend/features/admin/admin_repository.dart';
+import 'package:university_path_frontend/features/admin/admin_workspace.dart';
+import 'package:university_path_frontend/features/auth/app_role.dart';
 import 'package:university_path_frontend/shared/app_style.dart';
 
 double contrast(Color a, Color b) {
@@ -131,13 +134,26 @@ void main() {
     SharedPreferences.setMockInitialValues({
       AppAppearance.storageKey: 'orange',
     });
-    await tester.pumpWidget(const UniversityPathApp());
-    await tester.pumpAndSettle();
-    final entry = find.byKey(const Key('sample-super-admin-entry'));
-    await tester.ensureVisible(entry);
-    await tester.tap(entry);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('학교·학과'));
+    final repo = FakeAdminRepository();
+    addTearDown(repo.dispose);
+    var path = '/admin/schools';
+    await tester.pumpWidget(
+      AppPaletteHost(
+        builder: (theme, preview) => MaterialApp(
+          theme: theme,
+          builder: (context, child) => preview(context, child!),
+          home: StatefulBuilder(
+            builder: (context, setState) => AdminWorkspace(
+              repository: repo,
+              role: AppRole.superAdmin,
+              path: path,
+              onNavigate: (next) => setState(() => path = next),
+              onSignedOut: () {},
+            ),
+          ),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     final button = find
         .ancestor(

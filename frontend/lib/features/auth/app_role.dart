@@ -1,4 +1,4 @@
-/// Server role names are mapped explicitly by AuthIdentity; samples never grant server access.
+/// Server role names are mapped explicitly by AuthIdentity.
 enum AppRole { user, schoolAdmin, superAdmin }
 
 extension AppRoleLabel on AppRole {

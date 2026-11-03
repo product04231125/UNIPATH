@@ -6,7 +6,9 @@ import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/app_shell/workspace_title_bar.dart';
 import 'package:university_path_frontend/features/settings/settings_page.dart';
 import 'package:university_path_frontend/features/assistant/assistant_panel.dart';
+import 'package:university_path_frontend/features/admin/admin_repository.dart';
 import 'package:university_path_frontend/features/admin/admin_workspace.dart';
+import 'package:university_path_frontend/features/auth/app_role.dart';
 import 'package:university_path_frontend/shared/widgets/responsive_columns.dart';
 import 'package:university_path_frontend/shared/widgets/task_focus_group.dart';
 import 'package:university_path_frontend/shared/widgets/input_dialog.dart';
@@ -109,11 +111,42 @@ void main() {
     (tester) async {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.binding.setSurfaceSize(const Size(1440, 900));
-      await tester.pumpWidget(const UniversityPathApp());
-      await tester.pumpAndSettle();
-      final entry = find.byKey(const Key('sample-super-admin-entry'));
-      await tester.ensureVisible(entry);
-      await tester.tap(entry);
+      final repo = FakeAdminRepository();
+      addTearDown(repo.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FocusTraversalGroup(
+            policy: OrderedTraversalPolicy(),
+            child: Column(
+              children: [
+                FocusTraversalOrder(
+                  order: const NumericFocusOrder(1),
+                  child: TaskFocusGroup(
+                    child: WorkspaceTitleBar(
+                      title: '슈퍼관리자 · UniversityPath',
+                      onToggleSidebar: () {},
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: FocusTraversalOrder(
+                    order: const NumericFocusOrder(0),
+                    child: TaskFocusGroup(
+                      child: AdminWorkspace(
+                        repository: repo,
+                        role: AppRole.superAdmin,
+                        path: '/admin/overview',
+                        onNavigate: (_) {},
+                        onSignedOut: () {},
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       for (final size in [const Size(1440, 900), const Size(480, 520)]) {
         await tester.binding.setSurfaceSize(size);
