@@ -2,6 +2,7 @@ import '../../shared/app_style.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/equal_height_row.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/input_dialog.dart';
@@ -115,13 +116,18 @@ class _SchedulePageState extends State<SchedulePage> {
     },
   );
 
-  Widget _header({List<Widget> actions = const []}) => PageHeader(
-    title: '일정',
-    description: widget.repository.isServerBacked
-        ? '개인 계획 · ${widget.repository.storageLabel}. 학교 공식 일정·알림·반복 일정은 아직 연결되지 않았습니다.'
-        : '개인 계획을 이 기기에 저장합니다. 학교 공식 일정·알림·반복 일정은 아직 연결되지 않았습니다.',
-    actions: actions,
-  );
+  Widget _header({List<Widget> actions = const []}) {
+    final phone = PhoneChromeScope.of(context);
+    return PageHeader(
+      title: '일정',
+      description: phone
+          ? null
+          : widget.repository.isServerBacked
+          ? '개인 계획 · ${widget.repository.storageLabel}. 학교 공식 일정·알림·반복 일정은 아직 연결되지 않았습니다.'
+          : '개인 계획을 이 기기에 저장합니다. 학교 공식 일정·알림·반복 일정은 아직 연결되지 않았습니다.',
+      actions: actions,
+    );
+  }
 
   Widget _calendar() => Card(
     clipBehavior: Clip.antiAlias,

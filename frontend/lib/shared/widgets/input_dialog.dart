@@ -110,13 +110,19 @@ class InputDialog extends StatelessWidget {
       route.hasUnsavedChanges = hasUnsavedChanges ?? hasContent;
       route.allowImplicitDismiss = () => !saving && !editing && !hasContent();
     }
+    final viewInsets = MediaQuery.viewInsetsOf(context);
     return AnimatedBuilder(
       animation: changes,
       builder: (context, _) => PopScope(
         canPop: !saving && !editing && !hasContent(),
         child: TaskFocusGroup(
           child: Dialog(
-            insetPadding: const EdgeInsets.all(24),
+            insetPadding: EdgeInsets.fromLTRB(
+              24,
+              24,
+              24,
+              24 + viewInsets.bottom,
+            ),
             constraints: const BoxConstraints(maxWidth: 640),
             child: Padding(
               key: const Key('input-dialog-surface'),
