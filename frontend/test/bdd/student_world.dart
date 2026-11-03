@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,12 +13,8 @@ import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/auth/local_data_owner.dart';
 import 'package:university_path_frontend/features/auth/login_page.dart';
 import 'package:university_path_frontend/features/graduation/official_graduation_page.dart';
-import 'package:university_path_frontend/features/graduation/personal_graduation_workspace.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
 import 'package:university_path_frontend/features/planning/remote_planning_repository.dart';
-import 'package:university_path_frontend/features/records/activity/activity_page.dart';
-import 'package:university_path_frontend/features/records/course/course_page.dart';
-import 'package:university_path_frontend/features/records/credential/credential_page.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
 import 'package:university_path_frontend/features/records/portfolio/remote_portfolio_workspace_repository.dart';
@@ -313,6 +308,7 @@ class StudentWorld {
     await tester.pumpWidget(
       MaterialApp(
         home: LoginPage(
+          key: UniqueKey(),
           onSignedIn: () => signedIn = true,
           authenticate: authApi.authenticate,
         ),
@@ -405,9 +401,9 @@ class StudentWorld {
 
   Future<void> pumpMenu(WidgetTester tester, Widget page) async {
     LocalDataOwner.currentUserId = userId;
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    await tester.binding.setSurfaceSize(const Size(1440, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(MaterialApp(home: scoped(page)));
+    await tester.pumpWidget(MaterialApp(key: UniqueKey(), home: scoped(page)));
     await tester.pumpAndSettle();
   }
 
@@ -520,18 +516,42 @@ class StudentWorld {
     await tester.pumpAndSettle();
   }
 
+  Future<PersonalRecord> saveServerRecord(
+    PersonalRecordKind kind,
+    Map<String, String> values,
+  ) async {
+    LocalDataOwner.currentUserId = userId;
+    final repo = RemotePersonalRecordRepository(
+      StudentApi(ensureGateway(), ownerId: userId),
+      kind,
+      ensureOpen: () {},
+    );
+    await repo.load();
+    await repo.save(PersonalRecord(id: PersonalRecord.newId(), values: values));
+    return repo.records.last;
+  }
+
   Future<void> addNamedRecord(
     WidgetTester tester, {
     required String addLabel,
     String? choice,
     required Map<String, String> values,
   }) async {
-    await tester.tap(find.text(addLabel));
+    var add = find.widgetWithText(FilledButton, addLabel);
+    if (add.evaluate().isEmpty) {
+      add = find.text(addLabel);
+    }
+    await tester.ensureVisible(add.first);
+    await tester.tap(add.first, warnIfMissed: false);
     await tester.pumpAndSettle();
-    if (choice != null) {
+    final volunteer = find.byKey(const ValueKey('activity-add-volunteer'));
+    if (volunteer.evaluate().isNotEmpty) {
+      await tester.tap(find.text(choice ?? '봉사').last);
+      await tester.pumpAndSettle();
+    } else if (choice != null) {
       final option = find.text(choice);
       if (option.evaluate().isNotEmpty) {
-        await tester.tap(option);
+        await tester.tap(option.last);
         await tester.pumpAndSettle();
       }
     }

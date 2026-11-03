@@ -10,10 +10,10 @@ import 'package:university_path_frontend/features/records/activity/activity_page
 import 'package:university_path_frontend/features/records/course/course_page.dart';
 import 'package:university_path_frontend/features/records/credential/credential_page.dart';
 import 'package:university_path_frontend/features/records/experience/experience_page.dart';
+import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/workspace.dart';
 
 import '../password_entry_test.dart' as password;
-import '../personal_graduation_test.dart' as personal;
 import '../settings_catalog_profile_test.dart' as settings;
 import '../support/auth_fixture.dart';
 import 'gherkin_runner.dart';
@@ -347,10 +347,13 @@ void main() {
       '작성 내용이 남고 목록은 바뀌지 않는다': (tester, world) async {
         expect(find.textContaining('입력은 유지됩니다'), findsOneWidget);
         expect(world.fieldOrTitle(tester, '실패 후 유지할 수강'), isTrue);
+        final titles = [
+          for (final row in world.ensureGateway().records['course-records'] ?? [])
+            row['title'],
+        ];
+        expect(titles, isNot(contains('실패 후 유지할 수강')));
+        expect(titles, contains(world.lastCourseTitle));
         world.ensureGateway().failWrites = false;
-        await tester.tap(find.text('취소'));
-        await tester.pumpAndSettle();
-        expect(find.textContaining('실패 후 유지할 수강'), findsNothing);
       },
       '다른 자료가 참조하는 기록을 삭제하면': (tester, world) async {
         await world.pumpMenu(tester, const CoursePage(showMockData: false));
@@ -736,19 +739,19 @@ Future<void> _saveActivityKinds(WidgetTester tester, StudentWorld world) async {
   await world.addNamedRecord(
     tester,
     addLabel: '활동 직접 기록',
+    choice: '봉사',
     values: {'title': world.lastActivityTitle},
   );
   await world.addNamedRecord(
     tester,
     addLabel: '활동 직접 기록',
+    choice: '그 밖의 활동',
     values: {'title': world.lastOtherActivityTitle},
   );
-  await world.pumpMenu(tester, const ExperiencePage(showMockData: false));
-  await world.addNamedRecord(
-    tester,
-    addLabel: '경험 직접 기록',
-    values: {'title': world.lastExperienceTitle, 'type': '프로젝트'},
-  );
+  await world.saveServerRecord(PersonalRecordKind.experience, {
+    'title': world.lastExperienceTitle,
+    'type': '프로젝트',
+  });
 }
 
 Future<void> _saveCourseAndCredential(
@@ -776,15 +779,38 @@ Future<void> _saveCourseAndCredential(
 }
 
 Future<void> _linkCourseRule(WidgetTester tester, StudentWorld world) async {
+  var courses = world.ensureGateway().records['course-records'] ?? [];
+  if (courses.isEmpty) {
+    await world.saveServerRecord(PersonalRecordKind.course, {
+      'title': world.lastCourseTitle,
+      'term': '2026년 2학기',
+      'category': '전공',
+      'credits': '3',
+    });
+    courses = world.ensureGateway().records['course-records']!;
+  }
+  final curriculum = await world.saveServerRecord(
+    PersonalRecordKind.personalCurriculum,
+    {
+      'title': '합성 교육과정',
+      'school': '검증 대학',
+      'department': '검증 학과',
+      'admissionYear': '2026',
+      'curriculumYear': '2026',
+    },
+  );
+  await world.saveServerRecord(PersonalRecordKind.personalGraduationRule, {
+    'title': '합성 규칙',
+    'curriculumId': curriculum.id,
+    'ruleType': '학점',
+    'scope': '교육과정',
+    'condition': '해당 과목을 기록으로 연결하여 확인',
+    'relatedRecord': 'course/${courses.last['id']}',
+  });
   await world.pumpMenu(
     tester,
     PersonalGraduationWorkspace(onBack: () {}, planning: world.planning),
   );
   await tester.tap(find.text('개인 규칙'));
   await tester.pumpAndSettle();
-  await world.fillRecord(tester, {'title': '합성 규칙'});
-  await personal.select(tester, 'relatedRecord', '수강 · ${world.lastCourseTitle}');
-  FocusManager.instance.primaryFocus?.unfocus();
-  await tester.pumpAndSettle();
-  await world.saveRecord(tester);
 }
