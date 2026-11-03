@@ -32,8 +32,10 @@ flutter run -d chrome --web-port 3000 --dart-define=API_BASE_URL=http://127.0.0.
 ```
 
 브라우저에서는 `http://localhost:3000` 또는 `http://127.0.0.1:3000`으로 연다.
-둘 다 기본 CORS에 포함된다. `localhost`와 `127.0.0.1`은 Origin이 다르므로
-한쪽만 열어도 되고, 주소창 호스트를 바꿔 가며 쓰지 않는다.
+둘 다 기본 CORS에 포함된다. `localhost`와 `127.0.0.1`은 서로 다른 사이트이므로
+주소창 호스트를 바꿔 가며 쓰지 않는다. Web 쿠키는 SameSite=Strict라서, 페이지와
+API가 둘 다 루프백이면 클라이언트가 API 호스트를 페이지 호스트에 맞춘다
+(`127.0.0.1:8010` define + `localhost:3000` 페이지 → `localhost:8010` 호출).
 
 Windows에서도 같은 API 주소를 사용한다.
 
@@ -41,7 +43,7 @@ Windows에서도 같은 API 주소를 사용한다.
 flutter run -d windows --dart-define=API_BASE_URL=http://127.0.0.1:8010
 ```
 
-`API_BASE_URL`은 API의 HTTP(S) 원점 주소다. 코드 기본값은 `http://localhost:8010`이며
+`API_BASE_URL`은 API의 HTTP(S) 원점 주소다. 코드 기본값은 `http://127.0.0.1:8010`이며
 실행/빌드 때 주입한다. 로컬 루프백이면 `127.0.0.1:8010`과 `localhost:8010` 모두
 같은 PC API를 가리킨다. `.env`를 브라우저에 복사하거나 토큰·API 키를 여기에 넣지 않는다.
 같은 PC의 폰/에뮬이 아니라 **다른 기기(폰)**에서 붙을 때만 PC의 LAN IP가 필요하다.

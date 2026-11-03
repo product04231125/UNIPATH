@@ -8,6 +8,7 @@ import 'app_role.dart';
 import 'account_security_gateway.dart';
 import 'auth_http_stub.dart' if (dart.library.js_interop) 'auth_http_web.dart';
 import 'record_files_gateway.dart';
+import '../api/api_base_url.dart';
 import '../api/school_signup_models.dart';
 
 class SchoolSignupResult {
@@ -73,14 +74,7 @@ abstract class ApiGateway {
 class AuthApi implements AuthGateway, ApiGateway {
   AuthApi({http.Client? client, Uri? baseUrl, bool? cookieMode})
     : _client = client ?? createAuthHttpClient(),
-      _base =
-          baseUrl ??
-          Uri.parse(
-            const String.fromEnvironment(
-              'API_BASE_URL',
-              defaultValue: 'http://localhost:8010',
-            ),
-          ),
+      _base = resolveApiBaseUrl(baseUrl ?? configuredApiBaseUrl()),
       _cookieMode = cookieMode ?? kIsWeb;
   final http.Client _client;
   final Uri _base;

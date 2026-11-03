@@ -279,6 +279,43 @@ void main() {
     repo.dispose();
     api.close();
   });
+
+  test('missing session during load asks to sign in again', () async {
+    final server = AdminServer();
+    final api = AuthApi(
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/auth/me')) {
+          return http.Response(
+            jsonEncode({
+              'error': {'message': 'unauthenticated', 'field_errors': []},
+            }),
+            401,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        return server.respond(request);
+      }),
+      cookieMode: false,
+    );
+    final identity = await api.authenticate(
+      email: 'operator@example.test',
+      password: 'synthetic long password',
+    );
+    final repo = RemoteAdminRepository(identity, auth: api, api: api);
+    await expectLater(
+      repo.load(),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('로그인 세션을 확인하지 못했습니다'),
+        ),
+      ),
+    );
+    expect(repo.records, isEmpty);
+    repo.dispose();
+    api.close();
+  });
   test(
     'successful save is not repeated when the following refresh fails',
     () async {

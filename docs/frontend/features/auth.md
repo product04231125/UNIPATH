@@ -9,7 +9,10 @@
   중복 제출/모드 변경을 막고 실패 시 입력·오류 안내·재시도 경로를 유지한다.
 - Web은 HttpOnly 쿠키, Windows는 프로세스 메모리 토큰을 사용한다. 비밀번호·토큰을
   SharedPreferences에 저장하지 않는다. 로그아웃은 서버 세션을 종료한 뒤 화면을 전환하며
-  통신 실패 시 로그인 상태를 유지한다.
+  통신 실패 시 로그인 상태를 유지한다. Web에서 페이지와 `API_BASE_URL`이 모두
+  루프백(`localhost`/`127.0.0.1`/`::1`)이면 SameSite=Strict 쿠키가 붙도록 API 호스트를
+  페이지 호스트에 맞춘다. 로그인 응답으로 화면 역할만 잡고 `auth/me`가 401이면
+  관리 현황은 세션 확인 실패로 안내한다.
 - 역할은 서버 응답의 user/school_admin/super_admin으로 결정한다. 실제 관리자는 DB의
   학교 범위 화면을 사용한다. 개발용 샘플 진입은 `kShowDebugSampleLogin`(기본 `false`)와
   non-Release일 때만 로그인 화면에 보인다. 합성 학사 편집기(`FakeAdminRepository`)는

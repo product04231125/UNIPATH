@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../api/api_base_url.dart';
 import '../api/school_knowledge_models.dart';
 
 enum AssistantStatus { grounded, insufficientEvidence, needsUserInput, failed }
@@ -161,14 +162,7 @@ class AssistantApi implements AssistantGateway {
     Uri? baseUrl,
     this.timeout = const Duration(seconds: 20),
   }) : _client = client ?? http.Client(),
-       _baseUrl =
-           baseUrl ??
-           Uri.parse(
-             const String.fromEnvironment(
-               'API_BASE_URL',
-               defaultValue: 'http://127.0.0.1:8010',
-             ),
-           );
+       _baseUrl = resolveApiBaseUrl(baseUrl ?? configuredApiBaseUrl());
   final http.Client _client;
   final Uri _baseUrl;
   final Duration timeout;

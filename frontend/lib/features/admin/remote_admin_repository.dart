@@ -178,9 +178,15 @@ class RemoteAdminRepository extends AdminRepository {
     try {
       final identity = await auth.me();
       if (_disposed || epoch != _loadEpoch) return;
-      if (identity == null ||
-          identity.id != userId ||
-          identity.role == AppRole.user) {
+      if (identity == null) {
+        _records = [];
+        _history = [];
+        _notify();
+        throw StateError(
+          '로그인 세션을 확인하지 못했습니다. 같은 주소로 다시 로그인해 주세요.',
+        );
+      }
+      if (identity.id != userId || identity.role == AppRole.user) {
         _records = [];
         _history = [];
         _notify();
