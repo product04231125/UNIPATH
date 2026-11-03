@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 
@@ -58,7 +58,7 @@ class AppLocationParser extends RouteInformationParser<AppLocation> {
       RouteInformation(uri: Uri(path: configuration.path));
 }
 
-/// Server identity owns live navigation.
+/// Server identity owns live navigation; development samples remain isolated.
 class AppNavigation extends RouterDelegate<AppLocation>
     with
         ChangeNotifier,
@@ -475,6 +475,13 @@ class AppNavigation extends RouterDelegate<AppLocation>
         registerSchoolAdmin: _auth is AuthApi ? _registerSchoolAdmin : null,
         onSignedIn: () {
           _signedIn(context, _identity?.role ?? AppRole.user);
+        },
+        onSampleSignedIn: (role) {
+          _authEpoch++;
+          _identity = null;
+          _sessionTimer?.cancel();
+          LocalDataOwner.currentUserId = null;
+          _signedIn(context, role);
         },
       );
     } else if (_role != AppRole.user) {

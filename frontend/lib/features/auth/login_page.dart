@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'app_role.dart';
 import 'auth_api.dart';
 import '../admin/unregistered_school_application_form.dart';
 import '../api/school_signup_models.dart';
@@ -7,11 +9,18 @@ import '../records/personal_record_repository.dart';
 
 import 'package:university_path_frontend/shared/app_typography.dart';
 
-/// Production delegates authentication to the server.
+/// SSOT: local debug sample role entry on the login screen.
+///
+/// Default `false` hides the block for every viewport. Set `true` only while
+/// developing; Release builds still omit it via `!kReleaseMode`.
+const bool kShowDebugSampleLogin = false;
+
+/// Production delegates authentication to the server; sample callbacks are debug-only.
 class LoginPage extends StatefulWidget {
   const LoginPage({
     super.key,
     required this.onSignedIn,
+    this.onSampleSignedIn,
     this.authenticate,
     this.notice,
     this.registerSchoolAdmin,
@@ -26,6 +35,7 @@ class LoginPage extends StatefulWidget {
     required SchoolAdminSignupDetails details,
   })?
   registerSchoolAdmin;
+  final ValueChanged<AppRole>? onSampleSignedIn;
   final Future<void> Function({
     required String email,
     required String password,
@@ -325,6 +335,63 @@ class _LoginPageState extends State<LoginPage> {
                                     : '회원가입'),
                         ),
                       ),
+                    if (kShowDebugSampleLogin && !kReleaseMode) ...[
+                      const SizedBox(height: 28),
+                      const Divider(),
+                      Text('개발용 샘플 진입 · 실제 인증 아님'),
+                      const SizedBox(height: 16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              key: const Key('sample-student-entry'),
+                              onPressed: _submitting
+                                  ? null
+                                  : () {
+                                      if (widget.onSampleSignedIn != null) {
+                                        widget.onSampleSignedIn!(AppRole.user);
+                                      } else {
+                                        widget.onSignedIn();
+                                      }
+                                    },
+                              child: Text('학생'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                OutlinedButton(
+                                  key: const Key('sample-school-admin-entry'),
+                                  onPressed:
+                                      widget.onSampleSignedIn == null ||
+                                          _submitting
+                                      ? null
+                                      : () => widget.onSampleSignedIn!(
+                                          AppRole.schoolAdmin,
+                                        ),
+                                  child: Text('학교관리자'),
+                                ),
+                                const SizedBox(height: 8),
+                                OutlinedButton(
+                                  key: const Key('sample-super-admin-entry'),
+                                  onPressed:
+                                      widget.onSampleSignedIn == null ||
+                                          _submitting
+                                      ? null
+                                      : () => widget.onSampleSignedIn!(
+                                          AppRole.superAdmin,
+                                        ),
+                                  child: Text('슈퍼관리자'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
