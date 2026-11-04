@@ -185,6 +185,7 @@ void main() {
       expect(repo.records.single.value('schoolId'), 'school');
       expect(repo.records.single.value('code'), 'CS');
       expect(find.text('등록한 항목 1개'), findsOneWidget);
+      expect(find.text('개인 설정'), findsOneWidget);
       expect(find.byType(SurfaceCard), findsOneWidget);
       expect(tester.takeException(), isNull);
     },

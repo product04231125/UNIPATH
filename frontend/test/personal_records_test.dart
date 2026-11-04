@@ -102,6 +102,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('내 과목'), findsOneWidget);
         expect(find.text('자료구조'), findsNothing);
+        expect(find.text('개인 기록'), findsNothing);
         expect(find.textContaining('개인 입력 합계 2.0학점'), findsOneWidget);
         expect(
           find.textContaining('학기별 수강 계획과 개인 이수 기록을 정리합니다.'),

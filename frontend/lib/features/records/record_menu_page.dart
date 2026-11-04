@@ -177,12 +177,13 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
   }
 
   Widget _personalEntry(PersonalRecord record) {
+    final isCourse = widget.kind == PersonalRecordKind.course;
     final entry = RecordMockEntry(
       title: record.value('title'),
       detail: _fields
           .where((f) => f.key != 'title' && record.value(f.key).isNotEmpty)
           .map(
-            (f) => f.key == 'term' && widget.kind == PersonalRecordKind.course
+            (f) => f.key == 'term' && isCourse
                 ? '수강 기간: ${CourseTerm.parse(record.value('term')).label}'
                 : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
           )
@@ -202,7 +203,9 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          StatusBadge(status: entry.status),
+          // Course ownership is settings/profile context; keep the badge on
+          // activity/credential/experience menus only.
+          if (!isCourse) StatusBadge(status: entry.status),
           for (final field in _fields.where(
             (f) =>
                 f.type == PersonalFieldType.url &&

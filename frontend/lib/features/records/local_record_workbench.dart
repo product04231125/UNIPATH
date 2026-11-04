@@ -9,6 +9,7 @@ import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/feature_actions.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/responsive_columns.dart';
+import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/surface_card.dart';
 import '../../shared/widgets/responsive_panels.dart';
 import 'personal_record_fields.dart';
@@ -306,9 +307,17 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  r.value('title'),
-                  style: Theme.of(context).textTheme.titleMedium,
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      r.value('title'),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const StatusBadge(status: '개인 설정'),
+                  ],
                 ),
                 for (final f in _fields.where(
                   (f) => f.key != 'title' && r.value(f.key).isNotEmpty,
