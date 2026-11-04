@@ -36,10 +36,14 @@ Future<void> showPersonalRecordForm({
   StudentApi? studentApi,
   String? institutionId,
 }) async {
-  if (GuestPreviewScope.isActive(context)) {
+  bool blocked() {
+    if (!context.mounted) return true;
+    if (!GuestPreviewScope.isActive(context)) return false;
     GuestPreviewScope.showBlockedMessage(context);
-    return;
+    return true;
   }
+
+  if (blocked()) return;
   List<PersonalRecordField> fields;
   try {
     fields =
@@ -54,7 +58,7 @@ Future<void> showPersonalRecordForm({
     }
     return;
   }
-  if (!context.mounted) return;
+  if (!context.mounted || blocked()) return;
   onFieldsReady?.call(fields);
   final controllers = {
     for (final field in fields)
@@ -117,6 +121,13 @@ Future<void> showPersonalRecordForm({
         selectedCourseId = current.id;
       }
     }
+  }
+  if (!context.mounted || blocked()) {
+    year.dispose();
+    for (final controller in controllers.values) {
+      controller.dispose();
+    }
+    return;
   }
   final initialCourseId = selectedCourseId;
   void applyCourse(CoursePickOption option) {
@@ -459,7 +470,10 @@ Future<void> showPersonalRecordForm({
                                           ))
                                         SelectOption(
                                           controllers[field.key]!.text,
-                                          '연결 대상 없음 · 다시 선택하세요',
+                                          kind == PersonalRecordKind.activity &&
+                                                  field.key == 'approval'
+                                              ? '알 수 없는 승인 상태 · 다시 선택하세요'
+                                              : '연결 대상 없음 · 다시 선택하세요',
                                         ),
                                     ],
                                     onChanged: (value) {
@@ -502,6 +516,7 @@ Future<void> showPersonalRecordForm({
             onPressed: saving || (isCourse && courseOptions.isEmpty)
                 ? null
                 : () async {
+                    if (saving || blocked()) return;
                     if (!form.currentState!.validate()) return;
                     final values = {
                       for (final field in fields)
@@ -527,6 +542,10 @@ Future<void> showPersonalRecordForm({
                     try {
                       final linkError = await validateValues?.call(values);
                       if (!dialogContext.mounted) return;
+                      if (blocked()) {
+                        updateDialog(() => saving = false);
+                        return;
+                      }
                       if (linkError != null) {
                         updateDialog(() {
                           saving = false;

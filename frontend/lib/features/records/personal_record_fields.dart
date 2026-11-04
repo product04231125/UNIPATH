@@ -255,7 +255,7 @@ String? personalRecordCrossError(Map<String, String> values) {
   if (approved > 0 &&
       (values['approval'] != 'approved' ||
           (values['observedOn'] ?? '').isEmpty)) {
-    return '승인 시간을 기록하려면 승인 상태 approved와 학교 상태 확인일을 입력하세요.';
+    return '승인 시간을 기록하려면 승인 상태를 "승인"으로 선택하고 학교 상태 확인일을 입력하세요.';
   }
   return null;
 }

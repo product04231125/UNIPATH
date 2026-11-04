@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,11 +9,374 @@ import 'package:university_path_frontend/features/records/personal_record_fields
 import 'package:university_path_frontend/features/records/course/course_page.dart';
 import 'package:university_path_frontend/features/records/activity/activity_page.dart';
 import 'package:university_path_frontend/features/records/experience/experience_page.dart';
+import 'package:university_path_frontend/features/auth/guest_preview_scope.dart';
+import 'package:university_path_frontend/features/records/local_record_workbench.dart';
+import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
+import 'package:university_path_frontend/features/records/record_menu_page.dart';
 
 import 'support/achievement_records_page.dart';
 
+class _ActivityReviewRepository extends PersonalRecordRepository {
+  _ActivityReviewRepository() : super(PersonalRecordKind.activity);
+
+  bool failSaves = false;
+  final submitted = <PersonalRecord>[];
+  int deletes = 0;
+
+  @override
+  Future<void> save(PersonalRecord record) async {
+    submitted.add(record);
+    if (failSaves) throw StateError('Synthetic storage failure');
+    await super.save(record);
+  }
+
+  @override
+  Future<void> delete(String id, {int? expectedVersion}) async {
+    deletes++;
+    await super.delete(id, expectedVersion: expectedVersion);
+  }
+}
+
+Future<void> _pumpActivityReview(
+  WidgetTester tester, {
+  required _ActivityReviewRepository repository,
+  required ValueNotifier<bool> guest,
+  Widget page = const ActivityPage(),
+}) async {
+  await tester.binding.setSurfaceSize(const Size(1440, 900));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+  await tester.pumpWidget(
+    ValueListenableBuilder<bool>(
+      valueListenable: guest,
+      builder: (context, active, _) => GuestPreviewScope(
+        active: active,
+        child: MaterialApp(
+          home: PersonalRepositoryScope(
+            records: (_) => repository,
+            portfolio: () => throw UnimplementedError(),
+            child: Scaffold(body: page),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+RecordMenuPage _activityMenu({
+  Future<List<PersonalRecordField>> Function()? fieldsLoader,
+  Future<String?> Function(Map<String, String>)? validateValues,
+}) => RecordMenuPage(
+  kind: PersonalRecordKind.activity,
+  title: '활동',
+  description: '활동 기록',
+  listTitle: '등록한 활동',
+  guideTitle: '활동 준비',
+  guides: const [],
+  addLabel: '활동 직접 기록',
+  detailLabel: '기관 · 기간 · 역할',
+  fieldsLoader: fieldsLoader,
+  validateValues: validateValues,
+);
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('activity review guest blocks add edit and delete', (
+    tester,
+  ) async {
+    final repository = _ActivityReviewRepository();
+    await repository.load();
+    await repository.save(
+      PersonalRecord(id: 'existing', values: {'title': '기존 활동'}),
+    );
+    repository.submitted.clear();
+    final guest = ValueNotifier(true);
+    addTearDown(guest.dispose);
+    await _pumpActivityReview(tester, repository: repository, guest: guest);
+    for (final label in ['활동 직접 기록', '수정', '삭제']) {
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+      expect(find.byType(Dialog), findsNothing);
+      expect(find.text(GuestPreviewScope.blockedMessage), findsOneWidget);
+    }
+    expect(repository.submitted, isEmpty);
+    expect(repository.deletes, 0);
+    expect(repository.records.single.value('title'), '기존 활동');
+  });
+
+  testWidgets('activity review guest transition blocks open form save', (
+    tester,
+  ) async {
+    final repository = _ActivityReviewRepository();
+    final guest = ValueNotifier(false);
+    addTearDown(guest.dispose);
+    await _pumpActivityReview(tester, repository: repository, guest: guest);
+    await tester.tap(find.text('활동 직접 기록'));
+    await tester.pumpAndSettle();
+    final title = find.byKey(const ValueKey('record-field-title'));
+    await tester.enterText(title, '보존할 활동');
+    guest.value = true;
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('내 기록에 저장'));
+    await tester.pumpAndSettle();
+    expect(repository.submitted, isEmpty);
+    expect(tester.widget<TextFormField>(title).controller!.text, '보존할 활동');
+    guest.value = false;
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('내 기록에 저장'));
+    await tester.pumpAndSettle();
+    expect(repository.records.single.value('title'), '보존할 활동');
+    expect(find.text('내 기록에 저장'), findsNothing);
+  });
+
+  testWidgets(
+    'activity review guest transition during validation blocks save',
+    (tester) async {
+      final repository = _ActivityReviewRepository();
+      final guest = ValueNotifier(false);
+      addTearDown(guest.dispose);
+      final validation = Completer<String?>();
+      await _pumpActivityReview(
+        tester,
+        repository: repository,
+        guest: guest,
+        page: _activityMenu(validateValues: (_) => validation.future),
+      );
+      await tester.tap(find.text('활동 직접 기록'));
+      await tester.pumpAndSettle();
+      final title = find.byKey(const ValueKey('record-field-title'));
+      await tester.enterText(title, '검증 대기 활동');
+      await tester.tap(find.text('내 기록에 저장'));
+      await tester.pump();
+      guest.value = true;
+      await tester.pump();
+      validation.complete(null);
+      await tester.pumpAndSettle();
+      expect(repository.submitted, isEmpty);
+      expect(find.text('내 기록에 저장'), findsOneWidget);
+      expect(tester.widget<TextFormField>(title).controller!.text, '검증 대기 활동');
+    },
+  );
+
+  for (final becomeGuest in [false, true]) {
+    testWidgets(
+      'activity review pending fields avoid duplicate or guest forms guest=$becomeGuest',
+      (tester) async {
+        final repository = _ActivityReviewRepository();
+        final guest = ValueNotifier(false);
+        addTearDown(guest.dispose);
+        final fields = Completer<List<PersonalRecordField>>();
+        var loads = 0;
+        await _pumpActivityReview(
+          tester,
+          repository: repository,
+          guest: guest,
+          page: _activityMenu(
+            fieldsLoader: () async {
+              loads++;
+              return loads == 1
+                  ? personalRecordFields(PersonalRecordKind.activity)
+                  : fields.future;
+            },
+          ),
+        );
+        await tester.tap(find.text('활동 직접 기록'));
+        await tester.pump();
+        await tester.tap(find.text('활동 직접 기록'));
+        await tester.pump();
+        if (becomeGuest) {
+          guest.value = true;
+          await tester.pump();
+        }
+        fields.complete(personalRecordFields(PersonalRecordKind.activity));
+        await tester.pumpAndSettle();
+        expect(loads, 2);
+        expect(
+          find.text('내 기록에 저장'),
+          becomeGuest ? findsNothing : findsOneWidget,
+        );
+        expect(repository.submitted, isEmpty);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets(
+    'activity review failed save keeps input and retries the same record',
+    (tester) async {
+      final repository = _ActivityReviewRepository()..failSaves = true;
+      final guest = ValueNotifier(false);
+      addTearDown(guest.dispose);
+      await _pumpActivityReview(tester, repository: repository, guest: guest);
+      await tester.tap(find.text('활동 직접 기록'));
+      await tester.pumpAndSettle();
+      final title = find.byKey(const ValueKey('record-field-title'));
+      await tester.enterText(title, '다시 저장할 활동');
+      await tester.tap(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
+      expect(repository.records, isEmpty);
+      expect(tester.widget<TextFormField>(title).controller!.text, '다시 저장할 활동');
+      expect(find.textContaining('입력을 유지했으니 다시 시도하세요.'), findsOneWidget);
+      repository.failSaves = false;
+      await tester.tap(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
+      expect(repository.records.single.value('title'), '다시 저장할 활동');
+      expect(repository.submitted, hasLength(2));
+      expect(repository.submitted.first.id, repository.submitted.last.id);
+      expect(find.text('다시 저장할 활동'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'activity review guest transition during delete confirmation blocks delete',
+    (tester) async {
+      final repository = _ActivityReviewRepository();
+      await repository.load();
+      await repository.save(
+        PersonalRecord(id: 'existing', values: {'title': '남길 활동'}),
+      );
+      final guest = ValueNotifier(false);
+      addTearDown(guest.dispose);
+      await _pumpActivityReview(tester, repository: repository, guest: guest);
+      await tester.tap(find.text('삭제'));
+      await tester.pumpAndSettle();
+      guest.value = true;
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, '삭제').last);
+      await tester.pumpAndSettle();
+      expect(repository.deletes, 0);
+      expect(repository.records.single.value('title'), '남길 활동');
+    },
+  );
+
+  testWidgets('activity review workbench blocks guest save after validation', (
+    tester,
+  ) async {
+    final repository = _ActivityReviewRepository();
+    final guest = ValueNotifier(false);
+    addTearDown(guest.dispose);
+    final validation = Completer<String?>();
+    await _pumpActivityReview(
+      tester,
+      repository: repository,
+      guest: guest,
+      page: LocalRecordWorkbench(
+        kind: PersonalRecordKind.activity,
+        title: '활동 작업대',
+        repository: repository,
+        fieldsLoader: () async =>
+            personalRecordFields(PersonalRecordKind.activity),
+        validateValues: (_) => validation.future,
+      ),
+    );
+    final title = find.byKey(const ValueKey('record-field-title'));
+    await tester.enterText(title, '작업대 입력');
+    await tester.ensureVisible(find.text('등록'));
+    await tester.tap(find.text('등록'));
+    await tester.pump();
+    guest.value = true;
+    await tester.pump();
+    validation.complete(null);
+    await tester.pumpAndSettle();
+    expect(repository.submitted, isEmpty);
+    expect(tester.widget<TextFormField>(title).controller!.text, '작업대 입력');
+    expect(find.text('등록'), findsOneWidget);
+  });
+
+  testWidgets(
+    'activity review workbench guest transition blocks confirmed delete',
+    (tester) async {
+      final repository = _ActivityReviewRepository();
+      await repository.load();
+      await repository.save(
+        PersonalRecord(id: 'existing', values: {'title': '작업대 활동'}),
+      );
+      final guest = ValueNotifier(false);
+      addTearDown(guest.dispose);
+      await _pumpActivityReview(
+        tester,
+        repository: repository,
+        guest: guest,
+        page: LocalRecordWorkbench(
+          kind: PersonalRecordKind.activity,
+          title: '활동 작업대',
+          repository: repository,
+          fieldsLoader: () async =>
+              personalRecordFields(PersonalRecordKind.activity),
+        ),
+      );
+      expect(find.text('개인 기록'), findsOneWidget);
+      expect(find.text('개인 설정'), findsNothing);
+      await tester.tap(find.text('삭제'));
+      await tester.pumpAndSettle();
+      guest.value = true;
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, '삭제').last);
+      await tester.pumpAndSettle();
+      expect(repository.deletes, 0);
+      expect(repository.records.single.value('title'), '작업대 활동');
+    },
+  );
+
+  testWidgets('activity review unknown approval is not a missing relation', (
+    tester,
+  ) async {
+    final repository = _ActivityReviewRepository();
+    await repository.load();
+    await repository.save(
+      PersonalRecord(
+        id: 'unknown',
+        values: {'title': '확인할 활동', 'approval': 'future_status'},
+      ),
+    );
+    final guest = ValueNotifier(false);
+    addTearDown(guest.dispose);
+    await _pumpActivityReview(tester, repository: repository, guest: guest);
+    expect(find.textContaining('알 수 없는 승인 상태'), findsOneWidget);
+    expect(find.textContaining('연결 대상 없음'), findsNothing);
+    await tester.tap(find.text('수정'));
+    await tester.pumpAndSettle();
+    expect(find.text('알 수 없는 승인 상태 · 다시 선택하세요'), findsOneWidget);
+    expect(repository.records.single.value('approval'), 'future_status');
+  });
+
+  testWidgets(
+    'activity review opening 1365 confirmation leaves records unchanged',
+    (tester) async {
+      final repository = _ActivityReviewRepository();
+      await repository.load();
+      await repository.save(
+        PersonalRecord(
+          id: 'external',
+          values: {
+            'title': '외부 안내 활동',
+            'approval': 'pending',
+            'reportedHours': '2',
+          },
+        ),
+      );
+      repository.submitted.clear();
+      final guest = ValueNotifier(false);
+      addTearDown(guest.dispose);
+      await _pumpActivityReview(tester, repository: repository, guest: guest);
+      final link = find.textContaining('1365 봉사 찾기');
+      await tester.ensureVisible(link);
+      await tester.tap(link);
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(repository.submitted, isEmpty);
+      expect(repository.deletes, 0);
+      expect(repository.records.single.values, {
+        'title': '외부 안내 활동',
+        'approval': 'pending',
+        'reportedHours': '2',
+      });
+      final loaded = PersonalRecordRepository(PersonalRecordKind.activity);
+      await loaded.load();
+      expect(loaded.records.single.values, repository.records.single.values);
+    },
+  );
 
   test(
     'concurrent personal writes across owners preserve unrelated records',

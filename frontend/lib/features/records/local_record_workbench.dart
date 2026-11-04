@@ -132,6 +132,11 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
     });
     try {
       final linkError = await widget.validateValues?.call(values);
+      if (!mounted) return;
+      if (GuestPreviewScope.isActive(context)) {
+        GuestPreviewScope.showBlockedMessage(context);
+        return;
+      }
       if (linkError != null) throw StateError(linkError);
       final id = _editing?.id ?? PersonalRecord.newId();
       await _repo.save(
@@ -190,6 +195,10 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
       ),
     );
     if (yes != true || !mounted) return;
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     setState(() => _saving = true);
     try {
       await _repo.delete(record.id, expectedVersion: record.version);
@@ -325,14 +334,18 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                       r.value('title'),
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    const StatusBadge(status: '개인 설정'),
+                    StatusBadge(
+                      status: widget.kind == PersonalRecordKind.activity
+                          ? '개인 기록'
+                          : '개인 설정',
+                    ),
                   ],
                 ),
                 for (final f in _fields.where(
                   (f) => f.key != 'title' && r.value(f.key).isNotEmpty,
                 ))
                   Text(
-                    '${f.label}: ${f.options.isEmpty ? r.value(f.key) : f.optionLabels[r.value(f.key)] ?? '연결 대상 없음 · 다시 선택하세요'}',
+                    '${f.label}: ${f.options.isEmpty ? r.value(f.key) : f.optionLabels[r.value(f.key)] ?? (widget.kind == PersonalRecordKind.activity && f.key == 'approval' ? '알 수 없는 승인 상태 · 다시 선택하세요' : '연결 대상 없음 · 다시 선택하세요')}',
                   ),
                 const SizedBox(height: 12),
                 Wrap(

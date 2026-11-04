@@ -73,6 +73,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
   List<PersonalRecordField> _fields = [];
   Listenable? _importChanges;
   int _loadRevision = 0;
+  bool _formOpen = false;
 
   @override
   void initState() {
@@ -124,24 +125,30 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
   }
 
   Future<void> _showForm([PersonalRecord? record]) async {
-    await showPersonalRecordForm(
-      context: context,
-      kind: widget.kind,
-      repository: _repository,
-      addLabel: widget.addLabel,
-      record: record,
-      fieldsLoader: widget.fieldsLoader,
-      validateValues: widget.validateValues,
-      onFieldsReady: (fields) {
-        if (mounted) setState(() => _fields = fields);
-      },
-      onSaved: () {
-        if (mounted) setState(() {});
-      },
-      studentApi: widget.studentApi,
-      institutionId:
-          widget.planning?.profile.institutionId ?? widget.institutionId,
-    );
+    if (_formOpen) return;
+    _formOpen = true;
+    try {
+      await showPersonalRecordForm(
+        context: context,
+        kind: widget.kind,
+        repository: _repository,
+        addLabel: widget.addLabel,
+        record: record,
+        fieldsLoader: widget.fieldsLoader,
+        validateValues: widget.validateValues,
+        onFieldsReady: (fields) {
+          if (mounted) setState(() => _fields = fields);
+        },
+        onSaved: () {
+          if (mounted) setState(() {});
+        },
+        studentApi: widget.studentApi,
+        institutionId:
+            widget.planning?.profile.institutionId ?? widget.institutionId,
+      );
+    } finally {
+      _formOpen = false;
+    }
   }
 
   Future<void> _delete(PersonalRecord record) async {
@@ -201,7 +208,11 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           .map(
             (f) => f.key == 'term' && isCourse
                 ? '수강 기간: ${CourseTerm.parse(record.value('term')).label}'
-                : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
+                : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key))
+                          ? widget.kind == PersonalRecordKind.activity && f.key == 'approval'
+                                ? '알 수 없는 승인 상태 · 수정에서 다시 선택하세요'
+                                : '연결 대상 없음 · 수정에서 다시 선택하세요'
+                          : record.value(f.key))}',
           )
           .join(' · '),
       status: '개인 기록',
