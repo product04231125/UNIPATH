@@ -132,7 +132,9 @@ Future<String?> validatePersonalGraduationLinks(
     repositoryFactory: create,
   );
   for (final field in fields.where((f) => f.options.isNotEmpty)) {
-    if (field.validate(values[field.key]) != null) {
+    final value = values[field.key]?.trim() ?? '';
+    if (value.isEmpty) continue;
+    if (field.validate(value) != null) {
       return '${field.label}을 다시 선택하세요. 연결 대상이 변경되었을 수 있습니다.';
     }
   }

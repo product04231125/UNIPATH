@@ -317,9 +317,9 @@ void main() {
     }
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('내 기록에 저장'));
+    await tester.ensureVisible(find.text('등록'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('내 기록에 저장'));
+    await tester.tap(find.text('등록'));
     await tester.pumpAndSettle();
 
     expect(find.text('개인 교육과정 A'), findsOneWidget);

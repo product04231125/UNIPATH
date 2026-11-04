@@ -34,7 +34,9 @@ Future<void> showWorkspace(WidgetTester tester) async {
 }
 
 Future<void> save(WidgetTester tester) async {
-  final action = find.widgetWithText(FilledButton, '내 기록에 저장');
+  final action = find.widgetWithText(FilledButton, '등록').evaluate().isNotEmpty
+      ? find.widgetWithText(FilledButton, '등록')
+      : find.widgetWithText(FilledButton, '요건 설명 저장');
   await tester.ensureVisible(action);
   await tester.tap(action);
   await tester.pumpAndSettle();
@@ -92,19 +94,21 @@ void main() {
         expect(find.text('등록한 항목 0개'), findsOneWidget);
         expect(find.text('등록된 자료가 없습니다.'), findsOneWidget);
         expect(
-          find.descendant(of: details, matching: find.text('내 기록에 저장')),
+          find.descendant(
+            of: details,
+            matching: find.text(
+              entry.value == PersonalRecordKind.personalGraduationRule
+                  ? '요건 설명 저장'
+                  : '등록',
+            ),
+          ),
           findsOneWidget,
         );
         final fields = await personalGraduationFields(entry.value);
         for (final field in fields.where(
           (f) =>
               entry.value != PersonalRecordKind.personalGraduationRule ||
-              ![
-                'ruleType',
-                'requiredValue',
-                'currentValue',
-                'unit',
-              ].contains(f.key),
+              !['requiredValue', 'currentValue', 'unit'].contains(f.key),
         )) {
           expect(
             find.byKey(

@@ -5,6 +5,7 @@ import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/input_dialog.dart';
+import '../../shared/widgets/feature_actions.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/responsive_columns.dart';
 import '../../shared/widgets/responsive_panels.dart';
@@ -388,12 +389,7 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
         .where(
           (f) =>
               !_isRule ||
-              ![
-                'ruleType',
-                'requiredValue',
-                'currentValue',
-                'unit',
-              ].contains(f.key),
+              !['requiredValue', 'currentValue', 'unit'].contains(f.key),
         )
         .toList();
     final short = fields
@@ -441,7 +437,7 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                 enabled: true,
                 first: _list(),
                 second: _section(
-                  '${widget.title} ${_editing == null ? '추가' : '수정'}',
+                  '등록 기본 정보',
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [for (final f in basic) _input(f)],
@@ -466,9 +462,6 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                           if (mounted) setState(() => _saving = busy);
                         },
                         onChanged: (draft) {
-                          if (draft.kind != 'none') {
-                            _controllers['ruleType']!.text = draft.kind;
-                          }
                           _controllers['requiredValue']!.text =
                               draft.values['minimum'] ?? '';
                           _controllers['unit']!.text =
@@ -495,22 +488,28 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                         ),
                       ),
                     const Divider(height: 24),
-                    Wrap(
-                      alignment: WrapAlignment.end,
-                      spacing: 8,
-                      runSpacing: 8,
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: _saving
+                            ? null
+                            : () async {
+                                if (await allowLeave() && mounted) _reset();
+                              },
+                        child: const Text('취소'),
+                      ),
+                    ),
+                    FeatureActions(
                       children: [
-                        TextButton(
-                          onPressed: _saving
-                              ? null
-                              : () async {
-                                  if (await allowLeave() && mounted) _reset();
-                                },
-                          child: const Text('취소'),
-                        ),
                         FilledButton(
                           onPressed: _saving ? null : _save,
-                          child: Text(_saving ? '저장 중…' : '내 기록에 저장'),
+                          child: Text(
+                            _saving
+                                ? '저장 중…'
+                                : _isRule
+                                ? '요건 설명 저장'
+                                : '등록',
+                          ),
                         ),
                       ],
                     ),

@@ -96,7 +96,20 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
     ],
     PersonalRecordKind.personalGraduationRule => const [
       PersonalRecordField('ruleCode', '개인 규칙 코드'),
-      PersonalRecordField('ruleType', '규칙 종류', required: true),
+      PersonalRecordField(
+        'ruleType',
+        '규칙 종류',
+        required: true,
+        options: ['학점', '필수과목', '봉사', '논문·캡스톤', '자격', '기타'],
+        optionLabels: {
+          '학점': '학점',
+          '필수과목': '필수과목',
+          '봉사': '봉사',
+          '논문·캡스톤': '논문·캡스톤',
+          '자격': '자격',
+          '기타': '기타',
+        },
+      ),
       PersonalRecordField(
         'scope',
         '개인 적용 범위',

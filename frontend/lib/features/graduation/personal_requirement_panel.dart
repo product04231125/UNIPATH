@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/feature_actions.dart';
+import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../api/personal_evaluation_api.dart';
 import '../records/personal_record_repository.dart';
@@ -213,7 +215,7 @@ class PersonalRequirementPanelState extends State<PersonalRequirementPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('계산 조건', style: TextStyle(fontWeight: FontWeight.w700)),
+          const FeatureLine.section(text: '계산 조건'),
           const SizedBox(height: 12),
           if (_loading) const LinearProgressIndicator(),
           if (c?.sources != null)
@@ -264,10 +266,10 @@ class PersonalRequirementPanelState extends State<PersonalRequirementPanel> {
                   _changed();
                 },
               ),
-            Text(
-              widget.curriculumId.isEmpty
+            FeatureLine.one(
+              text: widget.curriculumId.isEmpty
                   ? '교육과정을 선택하면 연결할 기록을 읽습니다.'
-                  : '실제 로그인 계정에서 계산 자료와 조건 저장 API를 사용할 수 있습니다.',
+                  : '계산 조건은 계산 이력에 보존됩니다.',
             ),
           ],
           if (_error != null)
@@ -283,21 +285,23 @@ class PersonalRequirementPanelState extends State<PersonalRequirementPanel> {
               onPressed: _loading ? null : _load,
               child: const Text('계산 자료 다시 읽기'),
             ),
-          const Text('요건 설명 저장과 계산 조건 저장은 별도입니다. 계산 조건은 서버의 계산 이력에 보존됩니다.'),
           if (widget.rule == null || widget.metadataDirty)
-            const Text('요건을 먼저 저장한 뒤 계산 조건을 저장하세요.'),
-          FilledButton.icon(
-            onPressed:
-                _loading ||
-                    c == null ||
-                    widget.rule == null ||
-                    widget.metadataDirty
-                ? null
-                : _calculate,
-            icon: const Icon(Icons.calculate_outlined),
-            label: Text(
-              c?.pending != null ? '같은 계산 요청으로 다시 확인' : '계산 조건 저장·계산',
-            ),
+            const FeatureLine.one(text: '요건 설명을 먼저 저장하세요.'),
+          FeatureActions(
+            children: [
+              FilledButton(
+                onPressed:
+                    _loading ||
+                        c == null ||
+                        widget.rule == null ||
+                        widget.metadataDirty
+                    ? null
+                    : _calculate,
+                child: Text(
+                  c?.pending != null ? '같은 계산 요청으로 다시 확인' : '계산 조건 저장·계산',
+                ),
+              ),
+            ],
           ),
           if (c?.pending != null)
             TextButton(
