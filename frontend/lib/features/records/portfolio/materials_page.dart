@@ -4,6 +4,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../../../shared/app_style.dart';
+import '../../../shared/widgets/anchored_select_field.dart';
 import '../../../shared/widgets/content_scroll_view.dart';
 import '../../../shared/widgets/field_label.dart';
 import '../../../shared/widgets/input_dialog.dart';
@@ -106,7 +107,6 @@ class MaterialsPageState extends State<MaterialsPage> {
         _pdf = bytes;
         _fileName = file.name;
         if (_title.text.trim().isEmpty) _title.text = file.name;
-        if (_type.text.trim().isEmpty) _type.text = 'PDF';
       });
     } catch (e) {
       if (mounted) {
@@ -273,10 +273,9 @@ class MaterialsPageState extends State<MaterialsPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            r.title,
+                            r.type.isEmpty ? r.title : '${r.type} · ${r.title}',
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
-                          if (r.type.isNotEmpty) Text('종류: ${r.type}'),
                           if (r.description.isNotEmpty) Text(r.description),
                           if (r.pdf != null)
                             Text(
@@ -350,7 +349,60 @@ class MaterialsPageState extends State<MaterialsPage> {
                       ),
                       const SizedBox(height: 16),
                       _field('title', '자료 이름 *', _title, required: true),
-                      _field('type', '파일 종류 · 용도 (선택)', _type),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: FormField<String>(
+                          key: ValueKey(
+                            'material-type-state-${_editing?.id ?? 'new'}',
+                          ),
+                          initialValue: _type.text,
+                          validator: (value) =>
+                              MaterialKinds.isAllowed(value ?? _type.text)
+                              ? null
+                              : '자료 종류를 선택하세요.',
+                          builder: (state) => FieldLabel(
+                            label: '자료 종류 *',
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                AnchoredSelectField<String>(
+                                  key: const ValueKey('material-type'),
+                                  value: _type.text,
+                                  label: '자료 종류',
+                                  externalLabel: true,
+                                  options: [
+                                    const SelectOption('', '미선택'),
+                                    for (final kind in MaterialKinds.all)
+                                      SelectOption(kind, kind),
+                                    if (_type.text.isNotEmpty &&
+                                        !MaterialKinds.isAllowed(_type.text))
+                                      SelectOption(
+                                        _type.text,
+                                        '기존 종류 · 네 종류 중 하나를 다시 선택하세요',
+                                      ),
+                                  ],
+                                  onChanged: (value) {
+                                    _type.text = value;
+                                    state.didChange(value);
+                                  },
+                                ),
+                                if (state.hasError)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Text(
+                                      state.errorText!,
+                                      style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .error,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                       _field(
                         'description',
                         '담긴 내용 · 핵심 성과',

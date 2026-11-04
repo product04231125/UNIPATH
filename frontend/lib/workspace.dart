@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'app_shell/phone_shell.dart';
 import 'app_shell/workspace_shell.dart';
 import 'shared/pending_ui_action.dart';
 import 'features/assistant/assistant_window_host.dart';
@@ -27,8 +28,8 @@ import 'features/planning/weekly_schedule.dart';
 import 'features/records/activity/activity_page.dart';
 import 'features/records/course/course_page.dart';
 import 'features/records/credential/credential_page.dart';
-import 'features/records/experience/experience_page.dart';
-import 'features/records/portfolio/portfolio_page.dart';
+import 'features/records/portfolio/job_analysis_page.dart';
+import 'features/records/portfolio/materials_page.dart';
 import 'features/settings/settings_page.dart';
 import 'features/schedule/schedule_page.dart';
 
@@ -70,9 +71,9 @@ class _WorkspaceState extends State<Workspace> {
     '수강 관리',
     '졸업 요건',
     '활동',
-    '경험',
     '자격',
-    '포트폴리오·성과',
+    '자료',
+    '채용공고 분석',
   ];
   static const _icons = [
     Icons.home_outlined,
@@ -80,13 +81,14 @@ class _WorkspaceState extends State<Workspace> {
     Icons.menu_book_outlined,
     Icons.school_outlined,
     Icons.volunteer_activism_outlined,
-    Icons.business_center_outlined,
     Icons.workspace_premium_outlined,
     Icons.collections_bookmark_outlined,
+    Icons.work_outline,
   ];
 
   var _page = 0;
   final _visitedPages = <int>{};
+  final _materials = GlobalKey<MaterialsPageState>();
   var _showMockData = true;
   var _chatOpen = false;
   var _chatManuallyOpened = false;
@@ -266,6 +268,18 @@ class _WorkspaceState extends State<Workspace> {
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final phone = isPhonePortraitShell(
+          Size(constraints.maxWidth, constraints.maxHeight),
+        );
+        final showMockData = phone ? false : _showMockData;
+        return _buildShell(context, showMockData: showMockData);
+      },
+    );
+  }
+
+  Widget _buildShell(BuildContext context, {required bool showMockData}) {
     final navigationItems = [
       for (var index = 0; index < _labels.length; index++)
         WorkspaceNavigationItem(label: _labels[index], icon: _icons[index]),
@@ -277,16 +291,16 @@ class _WorkspaceState extends State<Workspace> {
       integratedTitleBar: widget.integratedTitleBar,
       selectedPage: _page,
       navigationItems: navigationItems,
-      onPageSelected: _selectPage,
+      onPageSelected: (value) => _selectPage(value),
       // Navigation shares the home baseline so changing destinations cannot
       // expand a compact startup sidebar just because that page is narrower.
       minimumContentWidth: math.max(
         WeeklySchedule.minimumWidth + 16,
-        _page == 3 && _showMockData && _graduationMinimumWidth > 0
+        _page == 3 && showMockData && _graduationMinimumWidth > 0
             ? _graduationMinimumWidth + 16
             : 0,
       ),
-      showMockData: _showMockData,
+      showMockData: showMockData,
       onMockDataChanged: (value) => setState(() => _showMockData = value),
       onSignedOut: _signOut,
       isAssistantOpen: _chatOpen,
@@ -298,8 +312,11 @@ class _WorkspaceState extends State<Workspace> {
       onAssistantWidthChanged: (delta) => setState(() {
         _chatWidth = (_chatWidth - delta).clamp(300.0, 480.0);
       }),
-      pageBuilder: (context, layout) =>
-          _buildPage(navigationItems.length, layout),
+      pageBuilder: (context, layout) => _buildPage(
+        navigationItems.length,
+        layout,
+        showMockData: showMockData,
+      ),
       assistantBuilder: (context, width, fullScreen) => AssistantPanel(
         key: _assistantPanelKey,
         active: _chatOpen,
@@ -344,7 +361,11 @@ class _WorkspaceState extends State<Workspace> {
           );
   }
 
-  Widget _buildPage(int settingsPage, WorkspaceShellLayout layout) {
+  Widget _buildPage(
+    int settingsPage,
+    WorkspaceShellLayout layout, {
+    required bool showMockData,
+  }) {
     _visitedPages.add(_page);
     return Stack(
       children: [
@@ -357,7 +378,12 @@ class _WorkspaceState extends State<Workspace> {
                 excluding: index != _page,
                 child: TickerMode(
                   enabled: index == _page,
-                  child: _pageFor(index, settingsPage, layout),
+                  child: _pageFor(
+                    index,
+                    settingsPage,
+                    layout,
+                    showMockData: showMockData,
+                  ),
                 ),
               ),
             ),
@@ -366,52 +392,68 @@ class _WorkspaceState extends State<Workspace> {
     );
   }
 
-  Widget _pageFor(int index, int settingsPage, WorkspaceShellLayout layout) =>
-      switch (index) {
-        0 => HomePage(
-          repository: _planningRepository,
-          coveredRightWidth: 0,
-          onOpenPage: _selectPage,
-          onOpenSettings: () => _selectPage(settingsPage - 1),
-          onOpenSchedule: (day) {
-            _scheduleAddRequest = null;
-            _scheduleInitialDay = day;
-            _selectPage(1);
-          },
-          onAddSchedule: () {
-            _scheduleInitialDay = DateTime.now();
-            _selectPage(1, addRequest: PendingUiAction());
-          },
-        ),
-        1 => SchedulePage(
-          repository: _planningRepository,
-          initialDay: _scheduleInitialDay,
-          addRequest: _scheduleAddRequest,
-        ),
-        2 => CoursePage(showMockData: _showMockData),
-        3 => GraduationPage(
-          planning: _planningRepository,
-          key: _graduationPageKey,
-          showMockData: _showMockData,
-          onMinimumWidthChanged: (width) => setState(() {
-            _graduationMinimumWidth = width;
-          }),
-        ),
-        4 => ActivityPage(showMockData: _showMockData),
-        5 => ExperiencePage(showMockData: _showMockData),
-        6 => CredentialPage(showMockData: _showMockData),
-        7 => PortfolioPage(showMockData: _showMockData, active: _page == 7),
-        _ when index == settingsPage - 1 => SettingsPage(
-          repository: _planningRepository,
-          chatPreferences: widget.windowHost.supportsDetached
-              ? _chatPreferences
-              : null,
-          studentApi: widget.studentApi,
-        ),
-        _ => const SizedBox.shrink(),
-      };
+  Widget _pageFor(
+    int index,
+    int settingsPage,
+    WorkspaceShellLayout layout, {
+    required bool showMockData,
+  }) => switch (index) {
+    0 => HomePage(
+      repository: _planningRepository,
+      coveredRightWidth: 0,
+      onOpenPage: _selectPage,
+      onOpenSettings: () => _selectPage(settingsPage - 1),
+      onOpenSchedule: (day) {
+        _scheduleAddRequest = null;
+        _scheduleInitialDay = day;
+        _selectPage(1);
+      },
+      onAddSchedule: () {
+        _scheduleInitialDay = DateTime.now();
+        _selectPage(1, addRequest: PendingUiAction());
+      },
+    ),
+    1 => SchedulePage(
+      repository: _planningRepository,
+      initialDay: _scheduleInitialDay,
+      addRequest: _scheduleAddRequest,
+    ),
+    2 => CoursePage(showMockData: showMockData),
+    3 => GraduationPage(
+      planning: _planningRepository,
+      key: _graduationPageKey,
+      showMockData: showMockData,
+      onMinimumWidthChanged: (width) => setState(() {
+        _graduationMinimumWidth = width;
+      }),
+    ),
+    4 => ActivityPage(showMockData: showMockData),
+    5 => CredentialPage(showMockData: showMockData),
+    6 => MaterialsPage(key: _materials),
+    7 => const JobAnalysisPage(),
+    _ when index == settingsPage - 1 => SettingsPage(
+      repository: _planningRepository,
+      chatPreferences: widget.windowHost.supportsDetached
+          ? _chatPreferences
+          : null,
+      studentApi: widget.studentApi,
+    ),
+    _ => const SizedBox.shrink(),
+  };
 
   void _selectPage(int value, {PendingUiAction? addRequest}) {
+    unawaited(_selectPageGuarded(value, addRequest: addRequest));
+  }
+
+  Future<void> _selectPageGuarded(
+    int value, {
+    PendingUiAction? addRequest,
+  }) async {
+    if (_page == _labels.indexOf('자료') && value != _page) {
+      final allow =
+          await (_materials.currentState?.allowLeave() ?? Future.value(true));
+      if (!allow || !mounted) return;
+    }
     setState(() {
       _scheduleAddRequest = addRequest;
       _page = value;

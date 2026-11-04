@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:university_path_frontend/app_shell/phone_shell.dart';
 import 'package:university_path_frontend/shared/app_typography.dart';
 
 class WorkspaceNavigationItem {
@@ -70,31 +71,66 @@ class WorkspaceShell extends StatelessWidget {
   final String profileSummary;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          const fallbackWidth = 480.0;
-          final usesScrollFallback = constraints.maxWidth < fallbackWidth;
-          final workspaceWidth = usesScrollFallback
-              ? fallbackWidth
-              : constraints.maxWidth;
-          final workspace = _buildWorkspace(context, workspaceWidth);
-          return usesScrollFallback
-              ? _WorkspaceScrollFallback(width: fallbackWidth, child: workspace)
-              : workspace;
-        },
-      ),
-    ),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      const fallbackWidth = 480.0;
+      final phone = isPhonePortraitShell(
+        Size(constraints.maxWidth, constraints.maxHeight),
+      );
+      final usesScrollFallback = !phone && constraints.maxWidth < fallbackWidth;
+      final workspaceWidth = usesScrollFallback
+          ? fallbackWidth
+          : constraints.maxWidth;
+      final showDockedAssistant = workspaceWidth >= 1180 && isAssistantOpen;
+      final showAssistantOverlay =
+          workspaceWidth < 1180 && isAssistantOpen && isAssistantManuallyOpened;
+      final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+      final workspace = _buildWorkspace(
+        context,
+        workspaceWidth,
+        phone: phone,
+        showDockedAssistant: showDockedAssistant,
+        showAssistantOverlay: showAssistantOverlay,
+      );
+      return PhoneChromeScope(
+        active: phone,
+        child: Scaffold(
+          resizeToAvoidBottomInset: true,
+          body: SafeArea(
+            bottom: !phone,
+            child: usesScrollFallback
+                ? _WorkspaceScrollFallback(
+                    width: fallbackWidth,
+                    child: workspace,
+                  )
+                : workspace,
+          ),
+          bottomNavigationBar: phone && !showAssistantOverlay && !keyboardOpen
+              ? _StudentPhoneNavigationBar(
+                  selectedPage: selectedPage,
+                  navigationItems: navigationItems,
+                  onPageSelected: onPageSelected,
+                  showMockData: showMockData,
+                  onMockDataChanged: onMockDataChanged,
+                  onSignedOut: onSignedOut,
+                )
+              : null,
+        ),
+      );
+    },
   );
 
-  Widget _buildWorkspace(BuildContext context, double maxWidth) {
-    final showDockedAssistant = maxWidth >= 1180 && isAssistantOpen;
-    final showAssistantOverlay =
-        maxWidth < 1180 && isAssistantOpen && isAssistantManuallyOpened;
+  Widget _buildWorkspace(
+    BuildContext context,
+    double maxWidth, {
+    required bool phone,
+    required bool showDockedAssistant,
+    required bool showAssistantOverlay,
+  }) {
     final overlayWidth = maxWidth;
     final dockWidth = showDockedAssistant ? assistantWidth + 6 : 0.0;
     final compactNavigation =
+        phone ||
         !sidebarVisible ||
         maxWidth < 900 ||
         MediaQuery.textScalerOf(context).scale(14) > 18 ||
@@ -110,6 +146,11 @@ class WorkspaceShell extends StatelessWidget {
       showAssistantOverlay: showAssistantOverlay,
       assistantOverlayWidth: overlayWidth,
     );
+    final mainPane = _workspaceMain(
+      context,
+      layout,
+      compact: compactNavigation,
+    );
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -119,80 +160,46 @@ class WorkspaceShell extends StatelessWidget {
             excluding: showAssistantOverlay,
             child: Offstage(
               offstage: showAssistantOverlay,
-              child: Row(
-                children: [
-                  _Sidebar(
-                    profileSummary: profileSummary,
-                    compact: compactNavigation,
-                    selectedPage: selectedPage,
-                    navigationItems: navigationItems,
-                    onPageSelected: onPageSelected,
-                    showMockData: showMockData,
-                    onMockDataChanged: onMockDataChanged,
-                    onSignedOut: onSignedOut,
-                  ),
-                  Expanded(
-                    child: ClipRect(
-                      child: Column(
-                        children: [
-                          if (!integratedTitleBar)
-                            SizedBox(
-                              height: 52,
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 20),
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    'UniversityPath',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface,
-                                    ),
+              child: phone
+                  ? mainPane
+                  : Row(
+                      children: [
+                        _Sidebar(
+                          profileSummary: profileSummary,
+                          compact: compactNavigation,
+                          selectedPage: selectedPage,
+                          navigationItems: navigationItems,
+                          onPageSelected: onPageSelected,
+                          showMockData: showMockData,
+                          onMockDataChanged: onMockDataChanged,
+                          onSignedOut: onSignedOut,
+                        ),
+                        Expanded(child: mainPane),
+                        if (showDockedAssistant)
+                          MouseRegion(
+                            cursor: SystemMouseCursors.resizeColumn,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.translucent,
+                              onHorizontalDragUpdate: (details) =>
+                                  onAssistantWidthChanged(details.delta.dx),
+                              child: SizedBox(
+                                width: 8,
+                                child: Center(
+                                  child: Container(
+                                    width: 1,
+                                    height: double.infinity,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .outlineVariant,
                                   ),
                                 ),
                               ),
                             ),
-                          Expanded(
-                            child: Padding(
-                              padding: EdgeInsets.fromLTRB(
-                                compactNavigation ? 16 : 28,
-                                26,
-                                compactNavigation ? 16 : 28,
-                                30,
-                              ),
-                              child: pageBuilder(context, layout),
-                            ),
                           ),
-                        ],
-                      ),
+                        if (showDockedAssistant)
+                          SizedBox(width: assistantWidth),
+                      ],
                     ),
-                  ),
-                  if (showDockedAssistant)
-                    MouseRegion(
-                      cursor: SystemMouseCursors.resizeColumn,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.translucent,
-                        onHorizontalDragUpdate: (details) =>
-                            onAssistantWidthChanged(details.delta.dx),
-                        child: SizedBox(
-                          width: 8,
-                          child: Center(
-                            child: Container(
-                              width: 1,
-                              height: double.infinity,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .outlineVariant,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (showDockedAssistant) SizedBox(width: assistantWidth),
-                ],
-              ),
             ),
           ),
         ),
@@ -232,6 +239,141 @@ class WorkspaceShell extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _workspaceMain(
+    BuildContext context,
+    WorkspaceShellLayout layout, {
+    required bool compact,
+  }) => ClipRect(
+    child: Column(
+      children: [
+        if (!integratedTitleBar)
+          SizedBox(
+            height: 52,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'UniversityPath',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              compact ? 16 : 28,
+              26,
+              compact ? 16 : 28,
+              30,
+            ),
+            child: pageBuilder(context, layout),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _StudentPhoneNavigationBar extends StatelessWidget {
+  const _StudentPhoneNavigationBar({
+    required this.selectedPage,
+    required this.navigationItems,
+    required this.onPageSelected,
+    required this.showMockData,
+    required this.onMockDataChanged,
+    required this.onSignedOut,
+  });
+
+  final int selectedPage;
+  final List<WorkspaceNavigationItem> navigationItems;
+  final ValueChanged<int> onPageSelected;
+  final bool showMockData;
+  final ValueChanged<bool> onMockDataChanged;
+  final VoidCallback onSignedOut;
+
+  int get _selectedBarIndex {
+    for (var index = 0; index < studentPhonePrimaryLabels.length; index++) {
+      final pageIndex = navigationItems.indexWhere(
+        (item) => item.label == studentPhonePrimaryLabels[index],
+      );
+      if (pageIndex == selectedPage) return index;
+    }
+    return studentPhonePrimaryLabels.length;
+  }
+
+  Future<void> _openMore(BuildContext context) async {
+    final moreItems = [
+      for (var index = 0; index < navigationItems.length; index++)
+        if (!studentPhonePrimaryLabels.contains(navigationItems[index].label))
+          (index: index, item: navigationItems[index]),
+    ];
+    await showPhoneMoreSheet<void>(
+      context: context,
+      destinations: [
+        for (final entry in moreItems)
+          PhoneMoreDestination(
+            label: entry.item.label,
+            icon: entry.item.icon,
+            selected: selectedPage == entry.index,
+            onTap: () {
+              Navigator.pop(context);
+              onPageSelected(entry.index);
+            },
+          ),
+      ],
+      actions: [
+        TextButton.icon(
+          key: const Key('logout-button'),
+          onPressed: () {
+            Navigator.pop(context);
+            onSignedOut();
+          },
+          icon: const Icon(Icons.logout, size: 18),
+          label: const Text('로그아웃'),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final destinations = [
+      for (final label in studentPhonePrimaryLabels)
+        NavigationDestination(
+          icon: Icon(
+            navigationItems.firstWhere((item) => item.label == label).icon,
+            key: Key('phone-nav-$label'),
+          ),
+          label: label,
+        ),
+      const NavigationDestination(
+        icon: Icon(Icons.more_horiz, key: Key('phone-nav-more')),
+        label: '더보기',
+      ),
+    ];
+    return NavigationBar(
+      key: const Key('phone-nav-bar'),
+      selectedIndex: _selectedBarIndex,
+      destinations: destinations,
+      onDestinationSelected: (index) {
+        if (index == studentPhonePrimaryLabels.length) {
+          _openMore(context);
+          return;
+        }
+        final label = studentPhonePrimaryLabels[index];
+        final pageIndex = navigationItems.indexWhere(
+          (item) => item.label == label,
+        );
+        if (pageIndex >= 0) onPageSelected(pageIndex);
+      },
     );
   }
 }

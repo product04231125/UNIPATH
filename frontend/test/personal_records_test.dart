@@ -50,7 +50,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('기록됨'), findsOneWidget);
+      expect(find.text('기록됨'), findsWidgets);
       expect(find.text('충족'), findsNothing);
       expect(find.textContaining('사용자가 확인한 승인 상태: 검토 필요'), findsOneWidget);
       expect(find.textContaining('needs_review'), findsNothing);
@@ -69,6 +69,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('개인 기록이 없습니다. 직접 입력해 주세요.'), findsOneWidget);
     expect(find.text('학과 멘토링'), findsOneWidget);
+    expect(find.text('캡스톤 설계 프로젝트'), findsOneWidget);
     expect(find.byType(ExpansionTile), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -272,6 +273,8 @@ void main() {
       await tester.ensureVisible(find.text('활동 직접 기록'));
       await tester.tap(find.text('활동 직접 기록'));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('봉사'));
+      await tester.pumpAndSettle();
       final title = find.byKey(const ValueKey('record-field-title'));
       await tester.ensureVisible(title);
       await tester.enterText(title, '합성 봉사');
@@ -290,6 +293,7 @@ void main() {
     (
       '수강 관리',
       '수강 과목 직접 입력',
+      null,
       {
         'title': '합성 과목',
         'course-year': '2026',
@@ -298,17 +302,12 @@ void main() {
         'credits': '3',
       },
     ),
-    ('활동', '활동 직접 기록', {'title': '합성 활동'}),
-    ('경험', '경험 직접 기록', {'title': '합성 경험', 'type': '프로젝트'}),
-    ('자격', '자격 직접 등록', {'title': '합성 자격'}),
-    (
-      '포트폴리오·성과',
-      '성과 직접 기록',
-      {'title': '합성 성과', 'type': '프로젝트', 'role': '설계', 'result': '시연 완료'},
-    ),
+    ('활동', '활동 직접 기록', '봉사', {'title': '합성 활동'}),
+    ('활동', '활동 직접 기록', '프로젝트·인턴·동아리', {'title': '합성 경험', 'type': '프로젝트'}),
+    ('자격', '자격 직접 등록', null, {'title': '합성 자격'}),
   ]) {
     testWidgets(
-      '${item.$1} supports structured input, remount and confirmed delete',
+      '${item.$1} ${item.$3 ?? ''} supports structured input, remount and confirmed delete',
       (tester) async {
         await tester.binding.setSurfaceSize(const Size(1440, 900));
         addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -318,13 +317,13 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text(item.$1).first);
         await tester.pumpAndSettle();
-        if (item.$1 == '포트폴리오·성과') {
-          await tester.tap(find.widgetWithText(OutlinedButton, '성과 기록'));
-          await tester.pumpAndSettle();
-        }
         await tester.tap(find.text(item.$2));
         await tester.pumpAndSettle();
-        for (final field in item.$3.entries) {
+        if (item.$3 != null) {
+          await tester.tap(find.text(item.$3!));
+          await tester.pumpAndSettle();
+        }
+        for (final field in item.$4.entries) {
           final input = find.byKey(ValueKey('record-field-${field.key}'));
           await tester.ensureVisible(input);
           await tester.enterText(input, field.value);
@@ -335,7 +334,7 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text(item.$1).first);
         await tester.pumpAndSettle();
-        expect(find.text(item.$3['title']!), findsOneWidget);
+        expect(find.textContaining(item.$4['title']!), findsOneWidget);
         await tester.ensureVisible(find.text('수정').first);
         await tester.tap(find.text('수정').first);
         await tester.pumpAndSettle();
@@ -344,16 +343,45 @@ void main() {
         await tester.enterText(name, '수정된 합성 기록');
         await tester.tap(find.text('내 기록에 저장'));
         await tester.pumpAndSettle();
-        expect(find.text('수정된 합성 기록'), findsOneWidget);
+        expect(find.textContaining('수정된 합성 기록'), findsOneWidget);
         await tester.ensureVisible(find.text('삭제').first);
         await tester.tap(find.text('삭제').first);
         await tester.pumpAndSettle();
         await tester.tap(find.text('삭제').last);
         await tester.pumpAndSettle();
-        expect(find.text(item.$3['title']!), findsNothing);
-        expect(find.text('수정된 합성 기록'), findsNothing);
+        expect(find.textContaining(item.$4['title']!), findsNothing);
+        expect(find.textContaining('수정된 합성 기록'), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );
   }
+
+  testWidgets('activity menu lists activity and experience records together', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final activities = PersonalRecordRepository(PersonalRecordKind.activity);
+    final experiences = PersonalRecordRepository(PersonalRecordKind.experience);
+    await activities.load();
+    await experiences.load();
+    await activities.save(
+      PersonalRecord(id: 'act-1', values: {'title': '합성 봉사 기록'}),
+    );
+    await experiences.save(
+      PersonalRecord(
+        id: 'exp-1',
+        values: {'title': '합성 프로젝트 기록', 'type': '프로젝트'},
+      ),
+    );
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: ActivityPage(showMockData: false)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('활동 · 합성 봉사 기록'), findsOneWidget);
+    expect(find.text('경험 · 합성 프로젝트 기록'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

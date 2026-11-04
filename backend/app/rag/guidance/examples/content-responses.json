@@ -1,0 +1,616 @@
+{
+  "synthetic": false,
+  "source_note": "수집 페이지·사용자 제공 PDF의 실제 추출 내용",
+  "scenarios": {
+    "home": {
+      "schema_version": "academic-click-v2",
+      "node_id": "home",
+      "title": "학사 안내",
+      "state": "ready",
+      "reason": "menu",
+      "message": "궁금한 항목을 선택해 주세요.",
+      "cards": [],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "graduation",
+          "label": "졸업",
+          "action": "select_node",
+          "node_id": "graduation",
+          "availability": "available"
+        },
+        {
+          "id": "calendar",
+          "label": "학사일정",
+          "action": "select_node",
+          "node_id": "calendar",
+          "availability": "available"
+        },
+        {
+          "id": "notices",
+          "label": "공지사항",
+          "action": "select_node",
+          "node_id": "notices",
+          "availability": "content_pending"
+        },
+        {
+          "id": "registration",
+          "label": "수강신청",
+          "action": "select_node",
+          "node_id": "registration",
+          "availability": "content_pending"
+        },
+        {
+          "id": "major",
+          "label": "전공",
+          "action": "select_node",
+          "node_id": "major",
+          "availability": "content_pending"
+        },
+        {
+          "id": "scholarship",
+          "label": "장학금",
+          "action": "select_node",
+          "node_id": "scholarship",
+          "availability": "content_pending"
+        },
+        {
+          "id": "tuition",
+          "label": "등록금",
+          "action": "select_node",
+          "node_id": "tuition",
+          "availability": "content_pending"
+        },
+        {
+          "id": "dormitory",
+          "label": "기숙사",
+          "action": "select_node",
+          "node_id": "dormitory",
+          "availability": "content_pending"
+        },
+        {
+          "id": "departments",
+          "label": "학부·학과",
+          "action": "select_node",
+          "node_id": "departments",
+          "availability": "content_pending"
+        },
+        {
+          "id": "regulations",
+          "label": "학사관련규정",
+          "action": "select_node",
+          "node_id": "regulations",
+          "availability": "available"
+        }
+      ]
+    },
+    "calendar": {
+      "schema_version": "academic-click-v2",
+      "node_id": "calendar",
+      "title": "학사일정",
+      "state": "ready",
+      "reason": "menu",
+      "message": "조회할 연도와 월을 선택하면 수집된 학사일정을 안내합니다.",
+      "cards": [],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "calendar:2026",
+          "label": "2026년",
+          "action": "select_node",
+          "node_id": "calendar:2026",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ]
+    },
+    "calendar:2026": {
+      "schema_version": "academic-click-v2",
+      "node_id": "calendar:2026",
+      "title": "2026년",
+      "state": "ready",
+      "reason": "menu",
+      "message": "궁금한 항목을 선택해 주세요.",
+      "cards": [],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "calendar:2026:01",
+          "label": "1월",
+          "action": "select_node",
+          "node_id": "calendar:2026:01",
+          "availability": "available"
+        },
+        {
+          "id": "calendar:2026:02",
+          "label": "2월",
+          "action": "select_node",
+          "node_id": "calendar:2026:02",
+          "availability": "available"
+        },
+        {
+          "id": "calendar:2026:03",
+          "label": "3월",
+          "action": "select_node",
+          "node_id": "calendar:2026:03",
+          "availability": "available"
+        },
+        {
+          "id": "calendar:2026:04",
+          "label": "4월",
+          "action": "select_node",
+          "node_id": "calendar:2026:04",
+          "availability": "available"
+        },
+        {
+          "id": "calendar:2026:05",
+          "label": "5월",
+          "action": "select_node",
+          "node_id": "calendar:2026:05",
+          "availability": "available"
+        },
+        {
+          "id": "calendar:2026:06",
+          "label": "6월",
+          "action": "select_node",
+          "node_id": "calendar:2026:06",
+          "availability": "available"
+        },
+        {
+          "id": "calendar:2026:07",
+          "label": "7월",
+          "action": "select_node",
+          "node_id": "calendar:2026:07",
+          "availability": "available"
+        },
+        {
+          "id": "calendar:2026:08",
+          "label": "8월",
+          "action": "select_node",
+          "node_id": "calendar:2026:08",
+          "availability": "available"
+        },
+        {
+          "id": "calendar:2026:09",
+          "label": "9월",
+          "action": "select_node",
+          "node_id": "calendar:2026:09",
+          "availability": "available"
+        },
+        {
+          "id": "calendar:2026:10",
+          "label": "10월",
+          "action": "select_node",
+          "node_id": "calendar:2026:10",
+          "availability": "available"
+        },
+        {
+          "id": "calendar:2026:11",
+          "label": "11월",
+          "action": "select_node",
+          "node_id": "calendar:2026:11",
+          "availability": "available"
+        },
+        {
+          "id": "calendar:2026:12",
+          "label": "12월",
+          "action": "select_node",
+          "node_id": "calendar:2026:12",
+          "availability": "available"
+        },
+        {
+          "id": "calendar",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "calendar",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ]
+    },
+    "calendar:2026:11": {
+      "schema_version": "academic-click-v2",
+      "node_id": "calendar:2026:11",
+      "title": "11월",
+      "state": "ready",
+      "reason": "calendar_snapshot",
+      "message": "2026년 11월 학사일정 5건입니다.",
+      "cards": [
+        {
+          "type": "calendar_event",
+          "title": "수업일수 3/4선(2학기)",
+          "body": "11. 16(월) — 수업일수 3/4선(2학기)",
+          "start_date": "2026-11-16",
+          "end_date": "2026-11-16",
+          "date_text": "11. 16(월)",
+          "sources": [
+            {
+              "type": "official_calendar",
+              "source_url": "https://www.kduniv.ac.kr/kor/CMS/ScheduleMgr/YearList.do?mCode=MN096&calendar_year=2026",
+              "fetched_at": "2026-11-02T05:58:56.978367+00:00",
+              "sha256": "bcaba34c16176f65855697666d0e96c8d309272cb342a65ad6cf3e102c1eeac4"
+            }
+          ]
+        },
+        {
+          "type": "calendar_event",
+          "title": "취업역량 경진대회",
+          "body": "11. 18(수) — 취업역량 경진대회",
+          "start_date": "2026-11-18",
+          "end_date": "2026-11-18",
+          "date_text": "11. 18(수)",
+          "sources": [
+            {
+              "type": "official_calendar",
+              "source_url": "https://www.kduniv.ac.kr/kor/CMS/ScheduleMgr/YearList.do?mCode=MN096&calendar_year=2026",
+              "fetched_at": "2026-11-02T05:58:56.978367+00:00",
+              "sha256": "bcaba34c16176f65855697666d0e96c8d309272cb342a65ad6cf3e102c1eeac4"
+            }
+          ]
+        },
+        {
+          "type": "calendar_event",
+          "title": "수능 시행일(2027학년도)",
+          "body": "11. 19(목) — 수능 시행일(2027학년도)",
+          "start_date": "2026-11-19",
+          "end_date": "2026-11-19",
+          "date_text": "11. 19(목)",
+          "sources": [
+            {
+              "type": "official_calendar",
+              "source_url": "https://www.kduniv.ac.kr/kor/CMS/ScheduleMgr/YearList.do?mCode=MN096&calendar_year=2026",
+              "fetched_at": "2026-11-02T05:58:56.978367+00:00",
+              "sha256": "bcaba34c16176f65855697666d0e96c8d309272cb342a65ad6cf3e102c1eeac4"
+            }
+          ]
+        },
+        {
+          "type": "calendar_event",
+          "title": "개시 90일(2학기)",
+          "body": "11. 28(토) — 개시 90일(2학기)",
+          "start_date": "2026-11-28",
+          "end_date": "2026-11-28",
+          "date_text": "11. 28(토)",
+          "sources": [
+            {
+              "type": "official_calendar",
+              "source_url": "https://www.kduniv.ac.kr/kor/CMS/ScheduleMgr/YearList.do?mCode=MN096&calendar_year=2026",
+              "fetched_at": "2026-11-02T05:58:56.978367+00:00",
+              "sha256": "bcaba34c16176f65855697666d0e96c8d309272cb342a65ad6cf3e102c1eeac4"
+            }
+          ]
+        },
+        {
+          "type": "calendar_event",
+          "title": "동계계절학기 수강신청기간",
+          "body": "11. 30(월) ∼ 12. 03(목) — 동계계절학기 수강신청기간",
+          "start_date": "2026-11-30",
+          "end_date": "2026-12-03",
+          "date_text": "11. 30(월) ∼ 12. 03(목)",
+          "sources": [
+            {
+              "type": "official_calendar",
+              "source_url": "https://www.kduniv.ac.kr/kor/CMS/ScheduleMgr/YearList.do?mCode=MN096&calendar_year=2026",
+              "fetched_at": "2026-11-02T05:58:56.978367+00:00",
+              "sha256": "bcaba34c16176f65855697666d0e96c8d309272cb342a65ad6cf3e102c1eeac4"
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "수집 시점의 게시 일정이며 이후 변경될 수 있습니다."
+      ],
+      "buttons": [
+        {
+          "id": "calendar:2026",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "calendar:2026",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "fetched_at": "2026-11-02T05:58:56.978367+00:00",
+      "snapshot_stale": false
+    },
+    "regulations": {
+      "schema_version": "academic-click-v2",
+      "node_id": "regulations",
+      "title": "학사관련규정",
+      "state": "ready",
+      "reason": "menu",
+      "message": "읽을 규정을 선택해 주세요. 학부·대학원 규정은 구분해 안내합니다.",
+      "cards": [],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "regulations:2-0-1",
+          "label": "학칙",
+          "action": "select_node",
+          "node_id": "regulations:2-0-1",
+          "availability": "available"
+        },
+        {
+          "id": "regulations:2-0-2",
+          "label": "학칙시행세칙",
+          "action": "select_node",
+          "node_id": "regulations:2-0-2",
+          "availability": "available"
+        },
+        {
+          "id": "regulations:2-0-3",
+          "label": "특수대학원 학칙",
+          "action": "select_node",
+          "node_id": "regulations:2-0-3",
+          "availability": "available"
+        },
+        {
+          "id": "regulations:2-0-4",
+          "label": "특수대학원 학칙시행세칙",
+          "action": "select_node",
+          "node_id": "regulations:2-0-4",
+          "availability": "available"
+        },
+        {
+          "id": "regulations:2-0-5",
+          "label": "일반대학원 학칙",
+          "action": "select_node",
+          "node_id": "regulations:2-0-5",
+          "availability": "available"
+        },
+        {
+          "id": "regulations:2-0-6",
+          "label": "일반대학원 학칙시행세칙",
+          "action": "select_node",
+          "node_id": "regulations:2-0-6",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ]
+    },
+    "regulations:2-0-5": {
+      "schema_version": "academic-click-v2",
+      "node_id": "regulations:2-0-5",
+      "title": "일반대학원 학칙",
+      "state": "ready",
+      "reason": "menu",
+      "message": "일반대학원 규정 · 제공된 PDF 7쪽 기준입니다. 개인에게 적용되는 시행일·입학연도·예외를 자동 판정하지 않습니다. 아래에서 장 또는 항목을 선택해 주세요.",
+      "cards": [],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "regulations:2-0-5:list:1",
+          "label": "항목 1–12",
+          "action": "select_node",
+          "node_id": "regulations:2-0-5:list:1",
+          "availability": "available"
+        },
+        {
+          "id": "regulations:2-0-5:list:2",
+          "label": "항목 13–15",
+          "action": "select_node",
+          "node_id": "regulations:2-0-5:list:2",
+          "availability": "available"
+        },
+        {
+          "id": "regulations",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "regulations",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "source": {
+        "type": "provided_pdf",
+        "document_id": "2-0-5",
+        "title": "일반대학원 학칙",
+        "page": null,
+        "sha256": "54630d2a844434d8cf6821c60fe2b50f20ebe3d1d31df5be78af84694ea70878",
+        "filename": "2-0-5.+일반대학원+학칙.pdf"
+      },
+      "scope": "일반대학원"
+    },
+    "regulations:2-0-5:s005:i0025": {
+      "schema_version": "academic-click-v2",
+      "node_id": "regulations:2-0-5:s005:i0025",
+      "title": "제20조 (수료 및 이수학점)",
+      "state": "ready",
+      "reason": "regulation_excerpt",
+      "message": "일반대학원 규정 · 제공된 PDF 7쪽 기준입니다. 개인에게 적용되는 시행일·입학연도·예외를 자동 판정하지 않습니다.",
+      "cards": [
+        {
+          "type": "regulation_excerpt",
+          "title": "제20조 (수료 및 이수학점)",
+          "body": "제20조 (수료 및 이수학점) ① 대학원의 각 학위과정의 수료에 필요한 학점은 석사과정은 24학점 이\n상, 박사과정은 36학점 이상으로 한다.\n② 석사과정의 학기별 이수학점 기준은 다음과 같다.\n학기 1학기 2학기 3학기 4학기\n이수 학점 6학점 이상 12학점 이상 18학점 이상 24학점 이상\n③ 박사과정의 학기별 이수학점 기준은 다음과 같다.\n학기 1학기 2학기 3학기 4학기 5학기 6학기\n이수 학점 6학점 이상 12학점 이상 18학점 이상 24학점 이상 30학점 이상 36학점 이상",
+          "sources": [
+            {
+              "type": "provided_pdf",
+              "document_id": "2-0-5",
+              "title": "일반대학원 학칙",
+              "page": 3,
+              "sha256": "54630d2a844434d8cf6821c60fe2b50f20ebe3d1d31df5be78af84694ea70878",
+              "filename": "2-0-5.+일반대학원+학칙.pdf"
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "첨부 문서 기준입니다. 현재 유효성·개인 적용 여부는 별도 확인이 필요합니다.",
+        "표·서식은 읽기 순서가 다를 수 있습니다. 페이지별 표를 확인해 주세요."
+      ],
+      "buttons": [
+        {
+          "id": "regulations:2-0-5:s005",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "regulations:2-0-5:s005",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "scope": "일반대학원"
+    },
+    "regulations:2-0-5:pages:3": {
+      "schema_version": "academic-click-v2",
+      "node_id": "regulations:2-0-5:pages:3",
+      "title": "3쪽",
+      "state": "ready",
+      "reason": "regulation_page",
+      "message": "일반대학원 규정 · 제공된 PDF 7쪽 기준입니다. 개인에게 적용되는 시행일·입학연도·예외를 자동 판정하지 않습니다.",
+      "cards": [
+        {
+          "type": "regulation_page",
+          "title": "일반대학원 학칙 3쪽",
+          "body": "일반대학원 학칙 2-0-5\n허용하는 범위에서 수업연한을 단축할 수 있다. 세부기준은 시행세칙으로 정한다.\n제18조 (재학연한) 재학연한은 휴학기간을 포함하여 석사과정 6년, 박사과정 8년, 석·박사통합과정\n10년으로 한다.\n제19조 (교육과정 및 수업방법) ① 교육과정은 공통과목, 전공과목, 연구과목 등으로 편성할 수 있다.\n② 수업은 주간·야간·주말·집중수업, 세미나, 실험·실습, 현장연구 및 원격수업 등의 방법으로 운영\n할 수 있다.\n③ 수업 언어는 한국어 또는 영어를 원칙으로 하되, 학문분야의 특성상 필요한 경우 대학원장의\n승인을 받아 다른 언어로 운영할 수 있다.\n제20조 (수료 및 이수학점) ① 대학원의 각 학위과정의 수료에 필요한 학점은 석사과정은 24학점 이\n상, 박사과정은 36학점 이상으로 한다.\n② 석사과정의 학기별 이수학점 기준은 다음과 같다.\n학기 1학기 2학기 3학기 4학기\n이수 학점 6학점 이상 12학점 이상 18학점 이상 24학점 이상\n③ 박사과정의 학기별 이수학점 기준은 다음과 같다.\n학기 1학기 2학기 3학기 4학기 5학기 6학기\n이수 학점 6학점 이상 12학점 이상 18학점 이상 24학점 이상 30학점 이상 36학점 이상\n제21조 (학기당 취득학점) 학생은 매 학기 9학점 이내에서 수강한다. 다만, 그 밖의 특별한 사유가\n있는 경우 대학원장의 승인을 받아 학점을 추가할 수 있으며 그 내용은 시행세칙을 따른다.\n제22조 (학점인정) ① 국내·외 타 대학원에서 취득한 학점은 교육과정의 동일성 또는 유사성이 인정\n되는 경우 대학원장의 승인을 거쳐 다음 각 호의 범위에서 인정할 수 있다.\n1. 석사학위과정: 12학점 이내\n2. 박사학위과정: 15학점 이내\n3. 석·박사통합과정: 15학점 이내\n② 제1항에 따라 학점을 인정받은 경우에도 제16조에 따른 수업연한은 단축되지 아니한다.\n제5장 시험 및 성적 평가\n제23조 (시험) 매 학기 각 교과목에 대해서 정기 또는 수시 시험에 의한 평가를 실시할 수 있다. 다\n만, 과목에 따라서는 이를 별도로 부과하는 과제 또는 연구보고서로 대체할 수 있다.\n제24조 (학업평가 및 평점) ① 성적은 시험, 과제, 발표, 연구성과, 실험·실습 및 출석 등을 종합하여\n평가하며, 그 등급과 점수 및 평점은 다음과 같이 구분하여 표시한다.\n등급 점수 평점\nA+ 95~100 4.5\nA0 90~94 4.0\nB+ 85~89 3.5\nB0 80~84 3.0\nC+ 75~79 2.5\nC0 70~74 2.0\nF 69 이하 0",
+          "tables": [
+            [
+              [
+                "학기",
+                "1학기",
+                "2학기",
+                "3학기",
+                "4학기"
+              ],
+              [
+                "이수 학점",
+                "6학점 이상",
+                "12학점 이상",
+                "18학점 이상",
+                "24학점 이상"
+              ]
+            ],
+            [
+              [
+                "학기",
+                "1학기",
+                "2학기",
+                "3학기",
+                "4학기",
+                "5학기",
+                "6학기"
+              ],
+              [
+                "이수 학점",
+                "6학점 이상",
+                "12학점 이상",
+                "18학점 이상",
+                "24학점 이상",
+                "30학점 이상",
+                "36학점 이상"
+              ]
+            ],
+            [
+              [
+                "등급",
+                "점수",
+                "평점"
+              ],
+              [
+                "A+",
+                "95~100",
+                "4.5"
+              ],
+              [
+                "A0",
+                "90~94",
+                "4.0"
+              ],
+              [
+                "B+",
+                "85~89",
+                "3.5"
+              ],
+              [
+                "B0",
+                "80~84",
+                "3.0"
+              ],
+              [
+                "C+",
+                "75~79",
+                "2.5"
+              ],
+              [
+                "C0",
+                "70~74",
+                "2.0"
+              ],
+              [
+                "F",
+                "69 이하",
+                "0"
+              ]
+            ]
+          ],
+          "sources": [
+            {
+              "type": "provided_pdf",
+              "document_id": "2-0-5",
+              "title": "일반대학원 학칙",
+              "page": 3,
+              "sha256": "54630d2a844434d8cf6821c60fe2b50f20ebe3d1d31df5be78af84694ea70878",
+              "filename": "2-0-5.+일반대학원+학칙.pdf"
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "병합 셀은 null일 수 있습니다. 공란을 0이나 면제로 해석하지 마세요."
+      ],
+      "buttons": [
+        {
+          "id": "regulations:2-0-5:pages",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "regulations:2-0-5:pages",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "scope": "일반대학원"
+    }
+  }
+}

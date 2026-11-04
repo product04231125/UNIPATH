@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/app_navigation.dart';
+import 'package:university_path_frontend/app_shell/workspace_title_bar.dart';
+import 'package:university_path_frontend/features/admin/admin_repository.dart';
 import 'package:university_path_frontend/features/admin/admin_workspace.dart';
 import 'package:university_path_frontend/features/auth/app_role.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
@@ -37,17 +39,46 @@ void main() {
     expect(find.text('작성 중 프로필'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
   testWidgets('admin collapse retains icon destinations and current page', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(const UniversityPathApp());
-    await tester.pumpAndSettle();
-    final entry = find.byKey(const Key('sample-super-admin-entry'));
-    await tester.ensureVisible(entry);
-    await tester.tap(entry);
+    final repo = FakeAdminRepository();
+    addTearDown(repo.dispose);
+    var path = '/admin/overview';
+    var sidebarVisible = true;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) => FocusTraversalGroup(
+            policy: OrderedTraversalPolicy(),
+            child: Column(
+              children: [
+                WorkspaceTitleBar(
+                  title: '슈퍼관리자 · UniversityPath',
+                  sidebarVisible: sidebarVisible,
+                  onToggleSidebar: () =>
+                      setState(() => sidebarVisible = !sidebarVisible),
+                ),
+                Expanded(
+                  child: AdminWorkspace(
+                    repository: repo,
+                    role: AppRole.superAdmin,
+                    path: path,
+                    sidebarVisible: sidebarVisible,
+                    onNavigate: (next) => setState(() => path = next),
+                    onSignedOut: () {},
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('사이드바 축소'));
     await tester.pumpAndSettle();
@@ -63,8 +94,9 @@ void main() {
       findsOneWidget,
     );
   });
+
   testWidgets(
-    'administrator navigation and relogin preserve mock changes and student records',
+    'administrator edits and student records survive remounted admin workspace',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       final personal = PersonalRecordRepository(PersonalRecordKind.activity);
@@ -72,11 +104,22 @@ void main() {
       await personal.save(
         PersonalRecord(id: 'preserve', values: {'title': '합성 학생 기록'}),
       );
-      await tester.pumpWidget(const UniversityPathApp());
-      await tester.pumpAndSettle();
-      final entry = find.byKey(const Key('sample-super-admin-entry'));
-      await tester.ensureVisible(entry);
-      await tester.tap(entry);
+      final repo = FakeAdminRepository();
+      addTearDown(repo.dispose);
+      var path = '/admin/overview';
+      await tester.pumpWidget(
+        MaterialApp(
+          home: StatefulBuilder(
+            builder: (context, setState) => AdminWorkspace(
+              repository: repo,
+              role: AppRole.superAdmin,
+              path: path,
+              onNavigate: (next) => setState(() => path = next),
+              onSignedOut: () {},
+            ),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('학교·학과'));
       await tester.pumpAndSettle();
@@ -103,11 +146,19 @@ void main() {
       await tester.tap(find.text('관리 현황'));
       await tester.pumpAndSettle();
       expect(find.text('관리 가능한 학교 3개'), findsOneWidget);
-      await tester.ensureVisible(find.text('로그아웃'));
-      await tester.tap(find.text('로그아웃'));
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(entry);
-      await tester.tap(entry);
+
+      path = '/admin/overview';
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdminWorkspace(
+            repository: repo,
+            role: AppRole.superAdmin,
+            path: path,
+            onNavigate: (_) {},
+            onSignedOut: () {},
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(find.text('관리 가능한 학교 3개'), findsOneWidget);
       final reread = PersonalRecordRepository(PersonalRecordKind.activity);
@@ -116,22 +167,26 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
   setUp(() => SharedPreferences.setMockInitialValues({}));
   for (final role in [AppRole.schoolAdmin, AppRole.superAdmin]) {
-    testWidgets('sample ${role.name} enters shared admin and signs out', (
+    testWidgets('${role.name} enters shared admin and signs out', (
       tester,
     ) async {
-      await tester.pumpWidget(const UniversityPathApp());
-      await tester.pumpAndSettle();
-      final entry = find.byKey(
-        Key(
-          role == AppRole.schoolAdmin
-              ? 'sample-school-admin-entry'
-              : 'sample-super-admin-entry',
+      final repo = FakeAdminRepository();
+      addTearDown(repo.dispose);
+      var signedOut = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdminWorkspace(
+            repository: repo,
+            role: role,
+            path: '/admin/overview',
+            onNavigate: (_) {},
+            onSignedOut: () => signedOut = true,
+          ),
         ),
       );
-      await tester.ensureVisible(entry);
-      await tester.tap(entry);
       await tester.pumpAndSettle();
       expect(find.byType(AdminWorkspace), findsOneWidget);
       expect(
@@ -141,9 +196,10 @@ void main() {
       await tester.ensureVisible(find.text('로그아웃'));
       await tester.tap(find.text('로그아웃'));
       await tester.pumpAndSettle();
-      expect(find.byType(AdminWorkspace), findsNothing);
+      expect(signedOut, isTrue);
     });
   }
+
   testWidgets('student direct admin location is denied', (tester) async {
     final delegate = AppNavigation(authenticated: true);
     await tester.pumpWidget(
@@ -157,23 +213,4 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('접근할 수 없습니다.'), findsOneWidget);
   });
-  testWidgets(
-    'sample buttons retain left student right admins at narrow enlarged size',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(480, 520));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      tester.platformDispatcher.textScaleFactorTestValue = 2;
-      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-      await tester.pumpWidget(const UniversityPathApp());
-      await tester.pumpAndSettle();
-      final student = find.byKey(const Key('sample-student-entry'));
-      final admin = find.byKey(const Key('sample-school-admin-entry'));
-      await tester.ensureVisible(admin);
-      expect(
-        tester.getRect(student).left,
-        lessThan(tester.getRect(admin).left),
-      );
-      expect(tester.takeException(), isNull);
-    },
-  );
 }

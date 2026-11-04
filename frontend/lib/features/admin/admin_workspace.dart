@@ -16,6 +16,8 @@ import 'admin_models.dart';
 import 'admin_repository.dart';
 import 'admin_editor.dart';
 import 'admin_shell.dart';
+import 'graduation_certification_page.dart';
+import 'graduation_credit_grid_page.dart';
 import 'school_admin_application_inbox.dart';
 
 class AdminWorkspace extends StatefulWidget {
@@ -60,11 +62,23 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   String _schoolId = '';
   bool _busy = false;
   final _editorKeys = <AdminKind, GlobalKey<AdminEditorState>>{};
+  final _catalogScroll = <AdminKind, ScrollController>{};
+  var _ruleView = 'line';
+  final _creditGrid = GlobalKey<GraduationCreditGridPageState>();
+  final _certification = GlobalKey<GraduationCertificationPageState>();
   Future<bool> _allowLeave() async {
     for (final key in _editorKeys.values) {
       if (key.currentState != null && !await key.currentState!.allowLeave()) {
         return false;
       }
+    }
+    if (_creditGrid.currentState != null &&
+        !await _creditGrid.currentState!.allowLeave()) {
+      return false;
+    }
+    if (_certification.currentState != null &&
+        !await _certification.currentState!.allowLeave()) {
+      return false;
     }
     return mounted;
   }
@@ -116,6 +130,9 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   void dispose() {
     _repo.removeListener(_refresh);
     if (widget.repository == null) _repo.dispose();
+    for (final controller in _catalogScroll.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -188,7 +205,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       });
       return;
     }
-    await showInputDialog<void>(
+    final result = await showInputDialog<String>(
       context: context,
       builder: (_) => AdminEditor(
         repository: _repo,
@@ -199,6 +216,9 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         revoke: revoke,
       ),
     );
+    if (result == 'revoke' && record != null && !revoke) {
+      await _edit(kind, record, true);
+    }
   }
 
   Future<void> _confirmAction(
@@ -544,54 +564,9 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                   ],
                 ),
               ),
-            ),
-          ResponsivePanels(
-            enabled: kind == AdminKind.document,
-            children: [
-              for (final r in _filteredRows(kind))
-                Card(
-                  margin: const EdgeInsets.symmetric(vertical: 6),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          r.name,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        if (_recordContext(r).isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              _recordContext(r),
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ),
-                        if (kind.versioned)
-                          Text('v${r.revision} · ${_statusLabel(r.status)}'),
-                        if (kind == AdminKind.scope)
-                          Text(_statusLabel(r.status)),
-                        if (kind == AdminKind.account)
-                          Text(
-                            '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}',
-                          ),
-                        if (kind == AdminKind.account && _repo.live)
-                          Text(r.value('email')),
-                        const SizedBox(height: 16),
-                        _recordActions(r),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
+            )
+          else if (_filteredRows(kind).isNotEmpty)
+            _cappedCatalogList(kind),
         ],
       ),
     );
@@ -606,29 +581,118 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     );
   }
 
+  static const _catalogRowHeight = 72.0;
+  static const _catalogVisibleRows = 3;
+
+  bool _canEdit(AdminRecord r) =>
+      _repo.canWrite(_actor, r) && r.id != _actor && r.status != 'revoked';
+
+  bool _canDelete(AdminRecord r) =>
+      _repo.canWrite(_actor, r) &&
+      ![AdminKind.scope, AdminKind.account].contains(r.kind) &&
+      r.status != 'applied';
+
+  String _catalogSubtitle(AdminRecord r) {
+    final context = _recordContext(r);
+    if (context.isNotEmpty) return context;
+    if (r.kind.versioned) return 'v${r.revision} · ${_statusLabel(r.status)}';
+    if (r.kind == AdminKind.account) {
+      return '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}';
+    }
+    if (r.kind == AdminKind.scope) return _statusLabel(r.status);
+    return '';
+  }
+
+  Widget _cappedCatalogList(AdminKind kind) {
+    final rows = _filteredRows(kind).toList();
+    final visible = rows.length < _catalogVisibleRows
+        ? rows.length
+        : _catalogVisibleRows;
+    final overflowing = rows.length > _catalogVisibleRows;
+    final controller = _catalogScroll.putIfAbsent(kind, ScrollController.new);
+    return SizedBox(
+      key: ValueKey('admin-catalog-${kind.name}'),
+      height: _catalogRowHeight * visible,
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: Scrollbar(
+          controller: controller,
+          thumbVisibility: overflowing,
+          interactive: true,
+          child: ListView.builder(
+            controller: controller,
+            padding: overflowing
+                ? const EdgeInsetsDirectional.only(end: 16)
+                : EdgeInsets.zero,
+            primary: false,
+            itemCount: rows.length,
+            itemExtent: _catalogRowHeight,
+            itemBuilder: (context, index) => _catalogRow(rows[index]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _catalogRow(AdminRecord r) {
+    final subtitle = _catalogSubtitle(r);
+    return Padding(
+      key: ValueKey('admin-row-${r.id}'),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  r.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                if (subtitle.isNotEmpty)
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+              ],
+            ),
+          ),
+          if (_canEdit(r))
+            TextButton(
+              onPressed: _busy ? null : () => _edit(r.kind, r),
+              child: const Text('수정'),
+            ),
+          if (_canDelete(r))
+            FilledButton(
+              style: _dangerStyle(),
+              onPressed: _busy
+                  ? null
+                  : () => _confirmAction(r, '삭제', () async {
+                      await _repo.remove(_actor, r.id);
+                    }),
+              child: const Text('삭제'),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _recordActions(AdminRecord r, {bool detail = false}) => Wrap(
     spacing: 8,
     runSpacing: 8,
     children: [
-      if (!detail)
-        OutlinedButton.icon(
-          onPressed: () => _navigate('$_section/${r.id}'),
-          icon: const Icon(Icons.arrow_forward, size: 18),
-          label: const Text('상세'),
-        ),
-      if (_repo.canWrite(_actor, r) &&
-          r.kind == AdminKind.rule &&
-          r.status == 'applied')
+      if (_canEdit(r) && r.kind == AdminKind.rule && r.status == 'applied')
         FilledButton.tonalIcon(
           onPressed: _busy ? null : () => _edit(r.kind, r),
           icon: const Icon(Icons.rule_outlined, size: 18),
           label: const Text('계산 조건'),
         ),
-      if (_repo.canWrite(_actor, r) &&
-          !(_repo.live && r.kind == AdminKind.scope) &&
-          r.status != 'applied' &&
-          r.status != 'revoked' &&
-          r.id != _actor)
+      if (_canEdit(r) && r.status != 'applied')
         FilledButton.tonalIcon(
           style: FilledButton.styleFrom(
             backgroundColor: Theme.of(context).colorScheme.primaryContainer,
@@ -1005,6 +1069,28 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     );
   }
 
+  Widget _ruleViewSwitcher() => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (final entry in [
+        ('line', '한 줄 요건'),
+        ('grid', '학점표'),
+        ('cert', '인증 요건'),
+      ])
+        OutlinedButton(
+          key: ValueKey('rule-view-${entry.$1}'),
+          onPressed: () async {
+            if (_ruleView == entry.$1) return;
+            if (!await _allowLeave()) return;
+            if (!mounted) return;
+            setState(() => _ruleView = entry.$1);
+          },
+          child: Text(entry.$2),
+        ),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
     if (!_schools.any((r) => r.id == _schoolId)) {
@@ -1152,11 +1238,48 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                         ),
                       ),
                     if (_section == '/admin/overview') _overview(),
-                    for (final kind
-                        in sectionKinds[_section] ?? <AdminKind>[]) ...[
-                      _records(kind),
-                      const SizedBox(height: 24),
+                    if (_section == '/admin/rules') ...[
+                      _ruleViewSwitcher(),
+                      const SizedBox(height: 16),
                     ],
+                    if (_section != '/admin/rules' || _ruleView == 'line')
+                      for (final kind
+                          in sectionKinds[_section] ?? <AdminKind>[]) ...[
+                        _records(kind),
+                        const SizedBox(height: 24),
+                      ]
+                    else if (_ruleView == 'grid')
+                      GraduationCreditGridPage(
+                        key: _creditGrid,
+                        schoolName: _relationName(_schoolId).isEmpty
+                            ? '현재 학교'
+                            : _relationName(_schoolId),
+                        departments: [
+                          for (final department in _repo.records.where(
+                            (r) =>
+                                r.kind == AdminKind.department &&
+                                r.value('institutionId') == _schoolId &&
+                                _repo.canRead(_actor, r),
+                          ))
+                            department,
+                        ],
+                      )
+                    else
+                      GraduationCertificationPage(
+                        key: _certification,
+                        schoolName: _relationName(_schoolId).isEmpty
+                            ? '현재 학교'
+                            : _relationName(_schoolId),
+                        departments: [
+                          for (final department in _repo.records.where(
+                            (r) =>
+                                r.kind == AdminKind.department &&
+                                r.value('institutionId') == _schoolId &&
+                                _repo.canRead(_actor, r),
+                          ))
+                            department,
+                        ],
+                      ),
                     if (_section == '/admin/history') _history(),
                     if (_section == '/admin/applications')
                       SchoolAdminApplicationInbox(

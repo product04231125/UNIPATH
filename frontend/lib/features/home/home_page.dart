@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/equal_height_row.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 
@@ -42,6 +43,7 @@ class HomePage extends StatelessWidget {
           .toList();
       return LayoutBuilder(
         builder: (context, viewport) {
+          final phone = PhoneChromeScope.of(context);
           final compact =
               viewport.maxWidth >= 1000 &&
               MediaQuery.textScalerOf(context).scale(14) <= 16.8;
@@ -81,11 +83,13 @@ class HomePage extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '오늘 일정 ${todayEvents.length}개 · ${year == null ? '개인 계획 미설정' : '개인 계획 $year학년'} · ${repository.storageLabel}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
+                      if (!phone) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          '오늘 일정 ${todayEvents.length}개 · ${year == null ? '개인 계획 미설정' : '개인 계획 $year학년'} · ${repository.storageLabel}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
                       if (profile.isConfigured)
                         Text(
                           '${profile.school} · ${profile.department}',
@@ -186,11 +190,13 @@ class HomePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('앞으로 예정된 개인 일정이 없습니다.'),
-              const SizedBox(height: 4),
-              Text(
-                '과제 마감이나 참여할 활동을 기록해 이번 주 계획을 채워보세요.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+              if (!PhoneChromeScope.of(context)) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '과제 마감이나 참여할 활동을 기록해 이번 주 계획을 채워보세요.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () => onOpenPage(1),
@@ -301,10 +307,10 @@ class HomePage extends StatelessWidget {
       ],
       3 => const [
         _PlanLink(
-          '경험 정리',
+          '활동 정리',
           '프로젝트와 경험을 내 기록으로 남기세요.',
-          Icons.business_center_outlined,
-          5,
+          Icons.volunteer_activism_outlined,
+          4,
         ),
         _PlanLink(
           '수강 계획 확인',
@@ -321,10 +327,10 @@ class HomePage extends StatelessWidget {
           3,
         ),
         _PlanLink(
-          '포트폴리오 정리',
-          '기록한 경험과 성과를 정리하세요.',
+          '자료 정리',
+          '기록한 경험과 자료를 정리하세요.',
           Icons.collections_bookmark_outlined,
-          7,
+          6,
         ),
       ],
       _ => const [
@@ -334,12 +340,6 @@ class HomePage extends StatelessWidget {
           '참여한 활동을 내 기록으로 남기세요.',
           Icons.volunteer_activism_outlined,
           4,
-        ),
-        _PlanLink(
-          '경험 정리',
-          '프로젝트와 경험을 정리하세요.',
-          Icons.business_center_outlined,
-          5,
         ),
       ],
     };
@@ -366,7 +366,7 @@ class HomePage extends StatelessWidget {
                 ),
             ],
           ),
-          if (year != null)
+          if (year != null && !PhoneChromeScope.of(context))
             Text(
               '$year학년 개인 계획 링크 · 공식 학적 판정이나 서버 추천이 아닙니다.',
               style: Theme.of(context).textTheme.bodySmall,

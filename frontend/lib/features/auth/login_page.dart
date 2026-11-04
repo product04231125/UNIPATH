@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import 'app_role.dart';
 import 'auth_api.dart';
@@ -8,6 +8,12 @@ import '../api/school_signup_models.dart';
 import '../records/personal_record_repository.dart';
 
 import 'package:university_path_frontend/shared/app_typography.dart';
+
+/// SSOT: local debug sample role entry on the login screen.
+///
+/// Default `false` hides the block for every viewport. Set `true` only while
+/// developing; Release builds still omit it via `!kReleaseMode`.
+const bool kShowDebugSampleLogin = false;
 
 /// Production delegates authentication to the server; sample callbacks are debug-only.
 class LoginPage extends StatefulWidget {
@@ -163,7 +169,12 @@ class _LoginPageState extends State<LoginPage> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+            padding: EdgeInsets.fromLTRB(
+              24,
+              40,
+              24,
+              40 + MediaQuery.viewInsetsOf(context).bottom,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
               child: Form(
@@ -324,7 +335,7 @@ class _LoginPageState extends State<LoginPage> {
                                     : '회원가입'),
                         ),
                       ),
-                    if (!kReleaseMode) ...[
+                    if (kShowDebugSampleLogin && !kReleaseMode) ...[
                       const SizedBox(height: 28),
                       const Divider(),
                       Text('개발용 샘플 진입 · 실제 인증 아님'),

@@ -9,6 +9,7 @@ import 'features/auth/app_role.dart';
 import 'features/admin/admin_workspace.dart';
 import 'features/admin/admin_repository.dart';
 import 'features/admin/remote_admin_repository.dart';
+import 'app_shell/phone_shell.dart';
 import 'app_shell/workspace_title_bar.dart';
 import 'shared/widgets/task_focus_group.dart';
 import 'features/auth/auth_api.dart';
@@ -31,14 +32,19 @@ class AppLocation {
     '/courses',
     '/graduation',
     '/activities',
-    '/experiences',
     '/credentials',
     '/portfolio',
+    '/job-postings',
     '/settings',
   ];
   final String path;
   int? get menu {
-    final index = menuPaths.indexOf(path == '/' ? '/home' : path);
+    final normalized = path == '/'
+        ? '/home'
+        : path == '/experiences'
+        ? '/activities'
+        : path;
+    final index = menuPaths.indexOf(normalized);
     return index < 0 ? null : index;
   }
 }
@@ -469,8 +475,14 @@ class AppNavigation extends RouterDelegate<AppLocation>
       );
     } else if (!authenticated || _location.path == '/login') {
       key = 'login';
+      final gateway = _auth;
+      final cookieHint = gateway is AuthApi ? gateway.cookieHostHint : null;
+      final notice = [
+        _loginNotice,
+        cookieHint,
+      ].whereType<String>().join('\n\n');
       page = LoginPage(
-        notice: _loginNotice,
+        notice: notice.isEmpty ? null : notice,
         authenticate: _authenticate,
         registerSchoolAdmin: _auth is AuthApi ? _registerSchoolAdmin : null,
         onSignedIn: () {
@@ -520,65 +532,79 @@ class AppNavigation extends RouterDelegate<AppLocation>
           key: ValueKey('$key:${_identity?.id ?? "sample"}'),
           child: FocusTraversalGroup(
             policy: OrderedTraversalPolicy(),
-            child: Column(
-              children: [
-                FocusTraversalOrder(
-                  order: const NumericFocusOrder(1),
-                  child: TaskFocusGroup(
-                    child: Builder(
-                      builder: (dialogContext) => WorkspaceTitleBar(
-                        applicationLabel: _role == AppRole.superAdmin
-                            ? '학교관리자 신청 접수'
-                            : '학교 관리 권한·신청 이력',
-                        onApplications:
-                            _identity != null &&
+            child: LayoutBuilder(
+              builder: (frameContext, frameConstraints) {
+                final phone = isPhonePortraitShell(
+                  Size(
+                    frameConstraints.maxWidth,
+                    frameConstraints.maxHeight,
+                  ),
+                );
+                return Column(
+                  children: [
+                    FocusTraversalOrder(
+                      order: const NumericFocusOrder(1),
+                      child: TaskFocusGroup(
+                        child: Builder(
+                          builder: (dialogContext) => WorkspaceTitleBar(
+                            phoneChrome: phone,
+                            applicationLabel: _role == AppRole.superAdmin
+                                ? '학교관리자 신청 접수'
+                                : '학교 관리 권한·신청 이력',
+                            onApplications:
+                                _identity != null &&
+                                    authenticated &&
+                                    _auth is AuthApi
+                                ? () => _openApplications(dialogContext)
+                                : null,
+                            onAccountSecurity:
+                                _identity != null &&
+                                    authenticated &&
+                                    _auth is AuthApi
+                                ? () => _openAccountSecurity(dialogContext)
+                                : null,
+                            title: _role == AppRole.user
+                                ? 'UniversityPath'
+                                : '${_role.label} · UniversityPath',
+                            sidebarVisible: _sidebarVisible,
+                            onToggleSidebar: authenticated
+                                ? () {
+                                    _sidebarVisible = !_sidebarVisible;
+                                    notifyListeners();
+                                  }
+                                : null,
+                            onBack: authenticated && _historyIndex > 0
+                                ? () => _travel(context, -1)
+                                : null,
+                            onForward:
                                 authenticated &&
-                                _auth is AuthApi
-                            ? () => _openApplications(dialogContext)
-                            : null,
-                        onAccountSecurity:
-                            _identity != null &&
-                                authenticated &&
-                                _auth is AuthApi
-                            ? () => _openAccountSecurity(dialogContext)
-                            : null,
-                        title: _role == AppRole.user
-                            ? 'UniversityPath'
-                            : '${_role.label} · UniversityPath',
-                        sidebarVisible: _sidebarVisible,
-                        onToggleSidebar: authenticated
-                            ? () {
-                                _sidebarVisible = !_sidebarVisible;
-                                notifyListeners();
-                              }
-                            : null,
-                        onBack: authenticated && _historyIndex > 0
-                            ? () => _travel(context, -1)
-                            : null,
-                        onForward:
-                            authenticated && _historyIndex < _history.length - 1
-                            ? () => _travel(context, 1)
-                            : null,
+                                    _historyIndex < _history.length - 1
+                                ? () => _travel(context, 1)
+                                : null,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                Expanded(
-                  child: FocusTraversalOrder(
-                    order: const NumericFocusOrder(0),
-                    child: TaskFocusGroup(
-                      child:
-                          authenticated && _identity != null && _auth is AuthApi
-                          ? SchoolWorkflowSession(
-                              auth: _auth,
-                              identity: _identity!,
-                              child: page,
-                            )
-                          : page,
+                    Expanded(
+                      child: FocusTraversalOrder(
+                        order: const NumericFocusOrder(0),
+                        child: TaskFocusGroup(
+                          child:
+                              authenticated &&
+                                  _identity != null &&
+                                  _auth is AuthApi
+                              ? SchoolWorkflowSession(
+                                  auth: _auth,
+                                  identity: _identity!,
+                                  child: page,
+                                )
+                              : page,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
           ),
         ),
