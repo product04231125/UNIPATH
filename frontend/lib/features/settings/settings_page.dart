@@ -16,6 +16,7 @@ import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/content_scroll_view.dart';
+import 'account_settings_section.dart';
 import 'chat_preferences.dart';
 import 'chat_settings_section.dart';
 import 'appearance_settings_section.dart';
@@ -111,6 +112,7 @@ class _SettingsPageState extends State<SettingsPage> {
               const PageHeader(title: '설정', contextLabel: '일반'),
               PlanningStorageState(repository: widget.repository),
               const AppearanceSettingsSection(),
+              const AccountSettingsSection(),
               if (widget.chatPreferences != null)
                 ChatSettingsSection(preferences: widget.chatPreferences!),
             ],
@@ -408,6 +410,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const AppearanceSettingsSection(),
+                      const AccountSettingsSection(),
                       if (widget.chatPreferences != null)
                         ChatSettingsSection(
                           preferences: widget.chatPreferences!,

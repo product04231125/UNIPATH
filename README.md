@@ -57,7 +57,7 @@ develop의 로그인·가입·세션·역할/학교 범위는 실제 API/DB로 �
 접수를 함께 저장하고 슈퍼관리자 승인 시 학교 등록/기존 학교 연결·관리 권한 부여를 처리합니다.
 [학교관리자 신청·승인 API](docs/api/school-admin-applications.md)는 본인 신청과 슈퍼관리자의
 신원·학교 담당 확인 후 역할/학교 범위 부여를 원자적으로 처리합니다. 기존 권한 신청·심사 화면을 연결했으며, 회원가입의 최초 학교관리자 폼은 입력 준비까지 완료했습니다. 최초 학교 정보 접수 API는 후속 계약입니다.
-모든 실제 역할은 공통 제목표시줄의 [계정 보안](docs/api/account-security-integration.md)에서 비밀번호 변경·모든 기기 로그아웃을 사용합니다.
+모든 실제 역할은 설정의 [계정 보안](docs/api/account-security-integration.md)에서 비밀번호 변경·모든 기기 로그아웃을 사용합니다.
 학업 프로필·일정은 [서버 저장과 동의 이전 화면](docs/api/planning-integration.md)을 연결했습니다. [다른 개인 기록·구성·지원 문서 화면](docs/api/personal-workspace-integration.md)도 서버 저장과 동의 이전을 연결했습니다. 기기 원본은 보존합니다.
 [개인 기준 계산 API](docs/api/personal-evaluations.md)와 불변 결과 이력도 구현했습니다.
 [개인 자료 일괄 이전 API](docs/api/personal-imports.md)는 본인 확인·동의한 자료와 관계를

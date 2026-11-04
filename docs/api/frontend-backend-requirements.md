@@ -5,7 +5,7 @@
 이 문서는 백엔드 계약 요청 명세다. **2026-10-18 인증·역할·계정 상태·학교 전체 범위 API를 구현했다.**
 정확한 구현/DTO는 [인증 API](authentication.md)와 [OpenAPI](openapi.json)를 따른다.
 관리자 학사 CRUD·검토 버전·감사·역할/범위 UI 연결은 [학사 API](academic.md)로 구현했다.
-개인 자료 서버 API·학생용 카탈로그·비밀번호 변경과 전송 DTO/adapter도 구현했다. 실제 세 역할의 공통 제목표시줄에 [계정 보안 화면](account-security-integration.md)도 연결했다. 정확한 계약은
+개인 자료 서버 API·학생용 카탈로그·비밀번호 변경과 전송 DTO/adapter도 구현했다. 실제 세 역할의 설정 `계정·정보`에 [계정 보안 화면](account-security-integration.md)도 연결했다. 정확한 계약은
 [개인 자료](personal.md), [학생용 카탈로그](student-catalog.md)를 따른다. 학업 프로필·일정은 [화면 연결/동의 이전](planning-integration.md), 나머지 개인 기록·구성·문서는 [서버 작업 공간](personal-workspace-integration.md)을 연결했다.
 개인 자료와 명시적 조건의 [개인 계산/불변 이력 API](personal-evaluations.md)도 구현했으며
 화면의 다섯 명시 조건·계산·이력 조회/삭제도 연결했다. [학교 본문 검토·DB 검색](school-knowledge.md)은 별도 관리자

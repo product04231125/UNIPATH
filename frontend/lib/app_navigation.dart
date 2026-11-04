@@ -19,6 +19,7 @@ import 'features/auth/local_data_owner.dart';
 import 'features/api/student_api.dart';
 import 'features/auth/account_security_gateway.dart';
 import 'features/auth/account_security_dialog.dart';
+import 'features/settings/account_settings_section.dart';
 import 'shared/widgets/input_dialog.dart';
 import 'features/admin/school_admin_applications_dialog.dart';
 import 'features/auth/school_workflow_session.dart';
@@ -546,29 +547,25 @@ class AppNavigation extends RouterDelegate<AppLocation>
                 final phone = isPhonePortraitShell(
                   Size(frameConstraints.maxWidth, frameConstraints.maxHeight),
                 );
-                return Column(
-                  children: [
-                    FocusTraversalOrder(
-                      order: const NumericFocusOrder(1),
-                      child: TaskFocusGroup(
-                        child: Builder(
-                          builder: (dialogContext) => WorkspaceTitleBar(
+                final canAccount =
+                    _identity != null && authenticated && _auth is AuthApi;
+                return AccountSettingsActions(
+                  onAccountSecurity: canAccount
+                      ? () => _openAccountSecurity(frameContext)
+                      : null,
+                  onApplications: canAccount
+                      ? () => _openApplications(frameContext)
+                      : null,
+                  applicationLabel: _role == AppRole.superAdmin
+                      ? '학교관리자 신청 접수'
+                      : '학교 관리 권한·신청 이력',
+                  child: Column(
+                    children: [
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(1),
+                        child: TaskFocusGroup(
+                          child: WorkspaceTitleBar(
                             phoneChrome: phone,
-                            applicationLabel: _role == AppRole.superAdmin
-                                ? '학교관리자 신청 접수'
-                                : '학교 관리 권한·신청 이력',
-                            onApplications:
-                                _identity != null &&
-                                    authenticated &&
-                                    _auth is AuthApi
-                                ? () => _openApplications(dialogContext)
-                                : null,
-                            onAccountSecurity:
-                                _identity != null &&
-                                    authenticated &&
-                                    _auth is AuthApi
-                                ? () => _openAccountSecurity(dialogContext)
-                                : null,
                             title: _role == AppRole.user
                                 ? 'UniversityPath'
                                 : '${_role.label} · UniversityPath',
@@ -590,25 +587,25 @@ class AppNavigation extends RouterDelegate<AppLocation>
                           ),
                         ),
                       ),
-                    ),
-                    Expanded(
-                      child: FocusTraversalOrder(
-                        order: const NumericFocusOrder(0),
-                        child: TaskFocusGroup(
-                          child:
-                              authenticated &&
-                                  _identity != null &&
-                                  _auth is AuthApi
-                              ? SchoolWorkflowSession(
-                                  auth: _auth,
-                                  identity: _identity!,
-                                  child: page,
-                                )
-                              : page,
+                      Expanded(
+                        child: FocusTraversalOrder(
+                          order: const NumericFocusOrder(0),
+                          child: TaskFocusGroup(
+                            child:
+                                authenticated &&
+                                    _identity != null &&
+                                    _auth is AuthApi
+                                ? SchoolWorkflowSession(
+                                    auth: _auth,
+                                    identity: _identity!,
+                                    child: page,
+                                  )
+                                : page,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 );
               },
             ),

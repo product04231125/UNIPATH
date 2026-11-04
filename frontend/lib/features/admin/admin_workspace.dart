@@ -1,6 +1,7 @@
 import '../../shared/widgets/responsive_columns.dart';
 import '../../shared/widgets/responsive_panels.dart';
 import '../../shared/app_style.dart';
+import '../settings/account_settings_section.dart';
 import '../settings/appearance_settings_section.dart';
 
 import 'package:flutter/material.dart';
@@ -1170,7 +1171,13 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                         alignment: Alignment.topLeft,
                         child: SizedBox(
                           width: 548,
-                          child: AppearanceSettingsSection(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              AppearanceSettingsSection(),
+                              AccountSettingsSection(),
+                            ],
+                          ),
                         ),
                       ),
                   ],

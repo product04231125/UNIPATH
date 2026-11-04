@@ -10,18 +10,13 @@ class WorkspaceTitleBar extends StatelessWidget {
     this.onBack,
     this.onForward,
     this.onToggleSidebar,
-    this.onAccountSecurity,
-    this.onApplications,
-    this.applicationLabel = '학교 관리 권한·신청 이력',
     this.sidebarVisible = true,
     this.title = 'UniversityPath',
 
     /// Phone portrait: hide back/forward/sidebar/title; keep window controls only.
     this.phoneChrome = false,
   });
-  final VoidCallback? onBack, onForward, onToggleSidebar, onAccountSecurity;
-  final VoidCallback? onApplications;
-  final String applicationLabel;
+  final VoidCallback? onBack, onForward, onToggleSidebar;
   final bool sidebarVisible;
   final String title;
   final bool phoneChrome;
@@ -85,18 +80,6 @@ class WorkspaceTitleBar extends StatelessWidget {
                 ),
               ),
             ),
-            if (!phoneChrome && onApplications != null)
-              IconButton(
-                tooltip: applicationLabel,
-                onPressed: onApplications,
-                icon: const Icon(Icons.school_outlined),
-              ),
-            if (!phoneChrome && onAccountSecurity != null)
-              IconButton(
-                tooltip: '계정 보안',
-                onPressed: onAccountSecurity,
-                icon: const Icon(Icons.manage_accounts_outlined),
-              ),
             if (native) ...[
               IconButton(
                 tooltip: '최소화',
