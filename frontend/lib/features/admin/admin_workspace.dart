@@ -13,6 +13,7 @@ import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/surface_card.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/field_label.dart';
 import 'admin_models.dart';
 import 'admin_repository.dart';
 import 'admin_editor.dart';
@@ -524,7 +525,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           FeatureLine.section(
             text: framed ? '${kind.label} 목록' : '목록',
             padTop: !framed,
-            padBottom: framed,
+            padBottom: false,
             trailing: Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -539,6 +540,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             ),
           ),
           if (_refreshing) const LinearProgressIndicator(),
+          SizedBox(height: FeatureLine.slotGap(context)),
           if (kind == AdminKind.account) ...[
             AnchoredSelectField<String>(
               key: const ValueKey('admin-account-role'),
@@ -553,18 +555,21 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
               ],
               onChanged: (value) => setState(() => _accountRole = value),
             ),
+            const SizedBox(height: 8),
           ],
           if (kind != AdminKind.institution && _rows(kind).isNotEmpty) ...[
-            TextFormField(
-              key: ValueKey('admin-search-$_schoolId-${kind.name}'),
-              initialValue: _queries[kind] ?? '',
-              decoration: InputDecoration(
-                labelText: kind == AdminKind.account
-                    ? '사용자 이름·이메일·학교 검색'
-                    : '${kind.label} 이름·소속·코드 검색',
-                prefixIcon: const Icon(Icons.search),
+            FieldLabel(
+              label: kind == AdminKind.account
+                  ? '사용자 이름·이메일·학교 검색'
+                  : '${kind.label} 이름·소속·코드 검색',
+              child: TextFormField(
+                key: ValueKey('admin-search-$_schoolId-${kind.name}'),
+                initialValue: _queries[kind] ?? '',
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (value) => setState(() => _queries[kind] = value),
               ),
-              onChanged: (value) => setState(() => _queries[kind] = value),
             ),
             if (kind.versioned ||
                 kind == AdminKind.scope ||

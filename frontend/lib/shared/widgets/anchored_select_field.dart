@@ -19,6 +19,8 @@ class AnchoredSelectField<T> extends StatefulWidget {
     this.searchable = false,
     this.searchLabel = '검색',
     this.externalLabel = false,
+    /// Title-bar density: no floating label, tight padding for a 48px strip.
+    this.compact = false,
   });
   final T value;
   final String label;
@@ -27,6 +29,7 @@ class AnchoredSelectField<T> extends StatefulWidget {
   final bool searchable;
   final String searchLabel;
   final bool externalLabel;
+  final bool compact;
 
   @override
   State<AnchoredSelectField<T>> createState() => _AnchoredSelectFieldState<T>();
@@ -43,9 +46,13 @@ class _AnchoredSelectFieldState<T> extends State<AnchoredSelectField<T>> {
   }
 
   @override
-  Widget build(BuildContext context) => widget.externalLabel
-      ? FieldLabel(label: widget.label, child: _menu(context))
-      : _menu(context);
+  Widget build(BuildContext context) {
+    final menu = _menu(context);
+    if (widget.externalLabel && !widget.compact) {
+      return FieldLabel(label: widget.label, child: menu);
+    }
+    return menu;
+  }
 
   Widget _menu(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) => MenuAnchor(
@@ -134,12 +141,22 @@ class _AnchoredSelectFieldState<T> extends State<AnchoredSelectField<T>> {
         label: widget.label,
         child: InkWell(
           focusNode: _focus,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(widget.compact ? 12 : 20),
           onTap: () =>
               controller.isOpen ? controller.close() : controller.open(),
           child: InputDecorator(
+            isEmpty: false,
             decoration: InputDecoration(
-              labelText: widget.externalLabel ? null : widget.label,
+              labelText: widget.externalLabel || widget.compact
+                  ? null
+                  : widget.label,
+              floatingLabelBehavior: widget.compact
+                  ? FloatingLabelBehavior.never
+                  : null,
+              isDense: widget.compact,
+              contentPadding: widget.compact
+                  ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8)
+                  : null,
             ),
             child: Row(
               children: [
@@ -148,9 +165,11 @@ class _AnchoredSelectFieldState<T> extends State<AnchoredSelectField<T>> {
                     widget.options
                         .firstWhere((option) => option.value == widget.value)
                         .label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Icon(Icons.expand_more),
+                Icon(Icons.expand_more, size: widget.compact ? 18 : 24),
               ],
             ),
           ),

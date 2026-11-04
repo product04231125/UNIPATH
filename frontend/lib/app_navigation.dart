@@ -692,6 +692,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
                                       _adminSchoolChrome.visible
                                   ? AnchoredSelectField<String>(
                                       externalLabel: false,
+                                      compact: true,
                                       key: const ValueKey(
                                         'admin-school-selector',
                                       ),

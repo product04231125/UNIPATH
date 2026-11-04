@@ -478,6 +478,7 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
         ),
         if (_review)
           AnchoredSelectField(
+            externalLabel: true,
             value: _filter,
             label: '신청 상태',
             options: [
@@ -504,6 +505,7 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
           const SizedBox(height: 12),
           AnchoredSelectField<String>(
             key: const ValueKey('application-school-filter'),
+            externalLabel: true,
             value: _reviewSchool,
             label: '신청 학교',
             searchable: true,
@@ -528,8 +530,10 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
             },
           ),
         ],
-        if (!_loading && (_review ? _reviewItems.isEmpty : _items.isEmpty))
+        if (!_loading && (_review ? _reviewItems.isEmpty : _items.isEmpty)) ...[
+          SizedBox(height: FeatureLine.slotGap(context)),
           _emptyApplicationCards(),
+        ],
         if (_review)
           ..._reviewItems.map(
             (r) => Padding(

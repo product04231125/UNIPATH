@@ -36,6 +36,7 @@ class AppearanceSettingsSection extends StatelessWidget {
                 child: AnchoredSelectField<AppPalette>(
                   key: const Key('appearance-palette'),
                   label: '테마 선택',
+                  externalLabel: true,
                   value: appearance.palette,
                   options: [
                     for (final p in AppPalette.values) SelectOption(p, p.label),
