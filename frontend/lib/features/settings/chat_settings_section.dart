@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import 'chat_preferences.dart';
 
@@ -12,7 +13,7 @@ class ChatSettingsSection extends StatelessWidget {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: preferences,
     builder: (context, _) => Padding(
-      padding: const EdgeInsets.only(top: 24),
+      padding: EdgeInsets.only(top: phoneAwareGap(context, wide: 24)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

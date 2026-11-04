@@ -14,6 +14,7 @@ import '../graduation/school_context_form.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import 'account_settings_section.dart';
@@ -427,7 +428,7 @@ class _SettingsPageState extends State<SettingsPage> {
   );
 
   Widget _settingsCard({required Widget child}) => Card(
-    child: Padding(padding: const EdgeInsets.all(18), child: child),
+    child: Padding(padding: phoneAwarePadding(context), child: child),
   );
 
   int? _suggestedYear() {

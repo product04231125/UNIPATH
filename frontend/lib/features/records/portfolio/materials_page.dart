@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
+import '../../../app_shell/phone_shell.dart';
 import '../../../shared/app_style.dart';
 import '../../../shared/widgets/content_scroll_view.dart';
 import '../../../shared/widgets/field_label.dart';
@@ -241,7 +242,7 @@ class MaterialsPageState extends State<MaterialsPage> {
         const Text(
           'AI 자료 분석은 아직 연결되지 않았습니다. 등록만으로 서버에 전송되거나 AI 분석·학교 공식 판정에 사용되지 않습니다.',
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: phoneAwareGap(context, wide: 16)),
         if (_loading)
           const LinearProgressIndicator()
         else if (_failed) ...[
@@ -261,14 +262,16 @@ class MaterialsPageState extends State<MaterialsPage> {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 if (_records.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      vertical: phoneAwareGap(context, wide: 16),
+                    ),
                     child: Text('등록한 자료가 없습니다. 설명만 기록하거나 PDF를 선택해 등록하세요.'),
                   ),
                 for (final r in _records)
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: phoneAwarePadding(context, wide: 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -338,7 +341,7 @@ class MaterialsPageState extends State<MaterialsPage> {
             ),
             second: Card(
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: phoneAwarePadding(context, wide: 20),
                 child: Form(
                   key: _form,
                   child: Column(

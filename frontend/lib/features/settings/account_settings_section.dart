@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app_shell/phone_shell.dart';
+
 /// Provides account-security and school-application callbacks to settings pages.
 class AccountSettingsActions extends InheritedWidget {
   const AccountSettingsActions({
@@ -48,10 +50,10 @@ class AccountSettingsSection extends StatelessWidget {
       return const SizedBox.shrink();
     }
     return Padding(
-      padding: const EdgeInsets.only(top: 24),
+      padding: EdgeInsets.only(top: phoneAwareGap(context, wide: 24)),
       child: Card(
         child: Padding(
-          padding: const EdgeInsets.all(18),
+          padding: phoneAwarePadding(context),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

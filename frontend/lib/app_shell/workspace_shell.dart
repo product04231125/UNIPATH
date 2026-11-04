@@ -88,28 +88,26 @@ class WorkspaceShell extends StatelessWidget {
         showDockedAssistant: showDockedAssistant,
         showAssistantOverlay: showAssistantOverlay,
       );
+      final scaffold = Scaffold(
+        resizeToAvoidBottomInset: true,
+        body: SafeArea(
+          bottom: !phone,
+          child: usesScrollFallback
+              ? _WorkspaceScrollFallback(width: fallbackWidth, child: workspace)
+              : workspace,
+        ),
+        bottomNavigationBar: phone && !showAssistantOverlay && !keyboardOpen
+            ? _StudentPhoneNavigationBar(
+                selectedPage: selectedPage,
+                navigationItems: navigationItems,
+                onPageSelected: onPageSelected,
+                onSignedOut: onSignedOut,
+              )
+            : null,
+      );
       return PhoneChromeScope(
         active: phone,
-        child: Scaffold(
-          resizeToAvoidBottomInset: true,
-          body: SafeArea(
-            bottom: !phone,
-            child: usesScrollFallback
-                ? _WorkspaceScrollFallback(
-                    width: fallbackWidth,
-                    child: workspace,
-                  )
-                : workspace,
-          ),
-          bottomNavigationBar: phone && !showAssistantOverlay && !keyboardOpen
-              ? _StudentPhoneNavigationBar(
-                  selectedPage: selectedPage,
-                  navigationItems: navigationItems,
-                  onPageSelected: onPageSelected,
-                  onSignedOut: onSignedOut,
-                )
-              : null,
-        ),
+        child: phone ? withPhoneListDensity(context, scaffold) : scaffold,
       );
     },
   );
@@ -144,6 +142,7 @@ class WorkspaceShell extends StatelessWidget {
       context,
       layout,
       compact: compactNavigation,
+      phone: phone,
     );
     return Stack(
       fit: StackFit.expand,
@@ -238,6 +237,7 @@ class WorkspaceShell extends StatelessWidget {
     BuildContext context,
     WorkspaceShellLayout layout, {
     required bool compact,
+    required bool phone,
   }) => ClipRect(
     child: Column(
       children: [
@@ -260,12 +260,14 @@ class WorkspaceShell extends StatelessWidget {
           ),
         Expanded(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              compact ? 16 : 28,
-              26,
-              compact ? 16 : 28,
-              30,
-            ),
+            padding: phone
+                ? const EdgeInsets.all(phoneBodyPadding)
+                : EdgeInsets.fromLTRB(
+                    compact ? 16 : 28,
+                    26,
+                    compact ? 16 : 28,
+                    30,
+                  ),
             child: pageBuilder(context, layout),
           ),
         ),
@@ -347,7 +349,7 @@ class _StudentPhoneNavigationBar extends StatelessWidget {
         label: '더보기',
       ),
     ];
-    return NavigationBar(
+    return PhoneNavigationBar(
       key: const Key('phone-nav-bar'),
       selectedIndex: _selectedBarIndex,
       destinations: destinations,

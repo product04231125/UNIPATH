@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
+import 'package:university_path_frontend/app_shell/phone_shell.dart';
 import 'package:university_path_frontend/shared/widgets/page_header.dart';
 import 'package:university_path_frontend/shared/widgets/content_scroll_view.dart';
 import 'package:university_path_frontend/features/records/course/course_page.dart';
@@ -71,9 +72,7 @@ void main() {
           expect(tester.takeException(), isNull, reason: '$page');
         }
 
-        await tester.pumpWidget(
-          host(const PortfolioPage(), scale: scale),
-        );
+        await tester.pumpWidget(host(const PortfolioPage(), scale: scale));
         await tester.pumpAndSettle();
         final tabs = ['성과 기록', '기존 구성', '기존 지원 문서'];
         final titles = ['성과 기록', '포트폴리오 구성', '지원 문서'];
@@ -121,7 +120,10 @@ void main() {
           await tester.pumpAndSettle();
           expect(tester.getTopLeft(find.byType(PageHeader)), personalAnchor);
           expect(find.textContaining('개인 학업 정보'), findsOneWidget);
-          expect(find.textContaining('학교 공식 데이터나 졸업 판정이 아닙니다.'), findsOneWidget);
+          expect(
+            find.textContaining('학교 공식 데이터나 졸업 판정이 아닙니다.'),
+            findsOneWidget,
+          );
           expect(tester.takeException(), isNull);
         }
       });
@@ -247,4 +249,27 @@ void main() {
       }
     },
   );
+
+  testWidgets('phone chrome uses a compact page title and bottom gap', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: universityPathTheme(),
+        home: const PhoneChromeScope(
+          active: true,
+          child: Scaffold(body: PageHeader(title: '제목')),
+        ),
+      ),
+    );
+    expect(
+      tester.widget<Text>(find.text('제목')).style?.fontSize,
+      phonePageTitleSize,
+    );
+    final titleRect = tester.getRect(find.text('제목'));
+    expect(
+      tester.getSize(find.byType(PageHeader)).height,
+      closeTo(titleRect.height + phonePageHeaderBottomGap, .01),
+    );
+  });
 }

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../auth/app_role.dart';
 import '../auth/school_workflow_actions.dart';
+import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/input_dialog.dart';
@@ -1065,7 +1066,11 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
               : '접근할 수 없습니다.';
           return ContentScrollView(
             child: Padding(
-              padding: EdgeInsets.all(compactHeader ? 16 : 24),
+              padding: EdgeInsets.all(
+                PhoneChromeScope.of(context)
+                    ? phoneBodyPadding
+                    : (compactHeader ? 16 : 24),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

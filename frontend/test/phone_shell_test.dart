@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
+import 'package:university_path_frontend/app_shell/phone_shell.dart';
 import 'package:university_path_frontend/app_shell/workspace_shell.dart';
 import 'package:university_path_frontend/features/admin/admin_repository.dart';
 import 'package:university_path_frontend/features/admin/admin_workspace.dart';
@@ -64,6 +65,10 @@ void main() {
       await pumpApp(tester, size);
       expect(find.byType(NavigationBar), findsOneWidget);
       expect(
+        tester.getSize(find.byType(NavigationBar)).height,
+        phoneNavigationBarHeight,
+      );
+      expect(
         find.byKey(const Key('workspace-horizontal-scrollbar')),
         findsNothing,
       );
@@ -112,6 +117,16 @@ void main() {
             .dx,
     ];
     expect(moreXs, [...moreXs]..sort());
+    final moreChip = tester.getSize(
+      find
+          .ancestor(
+            of: find.descendant(of: sheet, matching: find.text('수강 관리')),
+            matching: find.byType(InkWell),
+          )
+          .first,
+    );
+    expect(moreChip.width, phoneMoreChipWidth);
+    expect(moreChip.height, greaterThanOrEqualTo(phoneMinTapTarget));
     expect(
       find.descendant(of: sheet, matching: find.text('계정 보안')),
       findsNothing,
@@ -208,6 +223,10 @@ void main() {
     testWidgets('admin phone $size uses a 4+more bottom bar', (tester) async {
       await pumpAdmin(tester, size);
       expect(find.byType(NavigationBar), findsOneWidget);
+      expect(
+        tester.getSize(find.byType(NavigationBar)).height,
+        phoneNavigationBarHeight,
+      );
       for (final label in ['관리 현황', '학교·학과', '교육과정·과목', '졸업요건', '더보기']) {
         expect(barLabel(label), findsOneWidget);
       }

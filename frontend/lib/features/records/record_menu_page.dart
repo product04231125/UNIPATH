@@ -643,7 +643,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     records,
-                    const SizedBox(height: 12),
+                    SizedBox(height: phoneAwareGap(context, wide: 12)),
                     ExpansionTile(
                       title: Text(widget.guideTitle),
                       childrenPadding: const EdgeInsets.symmetric(
@@ -694,7 +694,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
   );
 
   Widget _entry(RecordMockEntry entry) => Container(
-    padding: const EdgeInsets.symmetric(vertical: 11),
+    padding: EdgeInsets.symmetric(vertical: phoneAwareGap(context, wide: 11)),
     decoration: BoxDecoration(
       border: Border(
         bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),

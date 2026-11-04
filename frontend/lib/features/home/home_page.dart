@@ -49,13 +49,17 @@ class HomePage extends StatelessWidget {
               MediaQuery.textScalerOf(context).scale(14) <= 16.8;
           return ContentScrollView(
             key: const Key('home-scroll'),
-            padding: EdgeInsets.only(bottom: compact ? 8 : 24),
+            padding: EdgeInsets.only(
+              bottom: phone ? phoneListGap : (compact ? 8 : 24),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Padding(
                   key: const Key('home-overview'),
-                  padding: const EdgeInsets.only(bottom: 16),
+                  padding: EdgeInsets.only(
+                    bottom: phone ? phonePageHeaderBottomGap : 16,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -73,7 +77,10 @@ class HomePage extends StatelessWidget {
                             header: true,
                             child: Text(
                               '나의 대학생활 경로',
-                              style: Theme.of(context).textTheme.headlineMedium,
+                              style: phone
+                                  ? Theme.of(context).textTheme.headlineMedium
+                                        ?.copyWith(fontSize: phonePageTitleSize)
+                                  : Theme.of(context).textTheme.headlineMedium,
                             ),
                           ),
                           FilledButton.icon(
@@ -115,7 +122,7 @@ class HomePage extends StatelessWidget {
                     ),
                   ),
                 ),
-                SizedBox(height: compact ? 8 : 16),
+                SizedBox(height: phone ? phoneListGap : (compact ? 8 : 16)),
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final upcomingCard = _upcoming(
@@ -129,7 +136,7 @@ class HomePage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           upcomingCard,
-                          const SizedBox(height: 16),
+                          SizedBox(height: phoneAwareGap(context, wide: 16)),
                           prepare,
                         ],
                       );
@@ -143,7 +150,7 @@ class HomePage extends StatelessWidget {
                     );
                   },
                 ),
-                SizedBox(height: compact ? 8 : 16),
+                SizedBox(height: phone ? phoneListGap : (compact ? 8 : 16)),
                 _nextSteps(context, year, compact: true),
               ],
             ),
@@ -166,12 +173,12 @@ class HomePage extends StatelessWidget {
           : BorderSide.none,
     ),
     child: Padding(
-      padding: const EdgeInsets.all(18),
+      padding: phoneAwarePadding(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(title, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
+          SizedBox(height: phoneAwareGap(context, wide: 12)),
           child,
         ],
       ),
@@ -345,7 +352,10 @@ class HomePage extends StatelessWidget {
     };
     return Padding(
       key: const ValueKey('home-card-다음에 이어갈 기록'),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: PhoneChromeScope.of(context) ? phoneCardPadding : 18,
+        vertical: PhoneChromeScope.of(context) ? phoneListGap : 8,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app_shell/phone_shell.dart';
 import '../../shared/app_style.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 
@@ -11,7 +12,7 @@ class AppearanceSettingsSection extends StatelessWidget {
     if (appearance == null) return const SizedBox.shrink();
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: phoneAwarePadding(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

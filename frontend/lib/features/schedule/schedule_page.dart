@@ -76,7 +76,9 @@ class _SchedulePageState extends State<SchedulePage> {
       return LayoutBuilder(
         builder: (context, constraints) => ContentScrollView(
           padding: EdgeInsets.only(
-            bottom: constraints.maxHeight < 620 ? 28 : 8,
+            bottom: PhoneChromeScope.of(context)
+                ? phoneListGap
+                : (constraints.maxHeight < 620 ? 28 : 8),
           ),
           child: Align(
             alignment: Alignment.topLeft,
@@ -104,7 +106,7 @@ class _SchedulePageState extends State<SchedulePage> {
                     )
                   else ...[
                     _calendar(),
-                    const SizedBox(height: 18),
+                    SizedBox(height: phoneAwareGap(context, wide: 18)),
                     _dayList(selectedEvents),
                   ],
                 ],
@@ -132,7 +134,7 @@ class _SchedulePageState extends State<SchedulePage> {
   Widget _calendar() => Card(
     clipBehavior: Clip.antiAlias,
     child: Padding(
-      padding: const EdgeInsets.all(16),
+      padding: phoneAwarePadding(context, wide: 16),
       child: Column(
         children: [
           Row(
@@ -268,7 +270,7 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Widget _dayList(List<PlanningEvent> events) => Card(
     child: Padding(
-      padding: const EdgeInsets.all(16),
+      padding: phoneAwarePadding(context, wide: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

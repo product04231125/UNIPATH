@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
+import '../../../app_shell/phone_shell.dart';
 import '../../../shared/widgets/content_scroll_view.dart';
 import '../../../shared/widgets/field_label.dart';
 import '../../../shared/widgets/page_header.dart';
@@ -221,7 +222,7 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
           description:
               '공고 텍스트, 주소, PDF·캡처 중 하나를 준비합니다. 분석을 할 수 없으면 그 이유를 표시합니다.',
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: phoneAwareGap(context, wide: 16)),
         FieldLabel(
           label: '채용공고 텍스트',
           child: TextFormField(

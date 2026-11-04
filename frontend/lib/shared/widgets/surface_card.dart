@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app_shell/phone_shell.dart';
+
 class SurfaceCard extends StatelessWidget {
   static const horizontalInsets = 38.0;
 
@@ -10,7 +12,7 @@ class SurfaceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
-    padding: const EdgeInsets.all(18),
+    padding: phoneAwarePadding(context),
     decoration: BoxDecoration(
       color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(20),

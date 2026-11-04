@@ -5,6 +5,7 @@ import '../api/graduation_api.dart';
 import '../planning/planning_repository.dart';
 import '../records/personal_record_repository.dart';
 import 'school_context_form.dart';
+import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/external_link_button.dart';
 import '../../shared/widgets/page_header.dart';
@@ -208,7 +209,7 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
         const SizedBox(height: 12),
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: phoneAwarePadding(context, wide: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
