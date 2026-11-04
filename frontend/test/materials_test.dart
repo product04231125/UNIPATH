@@ -209,6 +209,15 @@ void main() {
           await tester.enterText(field, value);
         }
 
+        Future<void> selectKind(String kind) async {
+          await tap(find.byKey(const ValueKey('material-type')));
+          final option = find.text(kind).last;
+          await tester.ensureVisible(option);
+          await tester.pumpAndSettle();
+          await tester.tap(option);
+          await tester.pumpAndSettle();
+        }
+
         expect(
           tester
               .getSemantics(find.byKey(const ValueKey('material-title')))
@@ -218,6 +227,7 @@ void main() {
         semantics.dispose();
         final save = find.widgetWithText(FilledButton, '자료 등록');
         await fill('title', '내 이력서');
+        await selectKind('이력서');
         await fill('description', '내 프로젝트와 성과가 들어 있는 자료');
         await tap(find.text('PDF 선택')); // Cancel preserves note.
         expect(
@@ -240,6 +250,8 @@ void main() {
         await tap(find.text('PDF 선택'));
         await tap(save);
         expect((await repo.load()).single.pdf, pdf);
+        expect((await repo.load()).single.type, '이력서');
+        expect(find.text('이력서 · 내 이력서'), findsOneWidget);
         await tap(find.text('수정'));
         await fill('description', '수정된 설명');
         await tap(save);
@@ -273,6 +285,10 @@ void main() {
       find.byKey(const ValueKey('material-title')),
       '보존할 입력',
     );
+    await tester.tap(find.byKey(const ValueKey('material-type')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('증빙·기타').last);
+    await tester.pumpAndSettle();
     repo.fail = true;
     final save = find.widgetWithText(FilledButton, '자료 등록');
     await tester.ensureVisible(save);
@@ -310,5 +326,50 @@ void main() {
     await tester.tap(save);
     await tester.pumpAndSettle();
     expect((await repo.load()).single.title, '보존할 입력');
+  });
+
+  testWidgets('legacy free-text type stays listed until a kind is saved', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = MemoryMaterials();
+    await repo.save(
+      PersonalMaterial(
+        id: 'legacy',
+        title: '옛 자료',
+        type: '자유 입력 종류',
+        description: '기존 설명',
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MaterialsPage(repository: repo)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('자유 입력 종류 · 옛 자료'), findsOneWidget);
+    await tester.tap(find.text('수정'));
+    await tester.pumpAndSettle();
+    final save = find.widgetWithText(FilledButton, '자료 등록');
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(find.text('자료 종류를 선택하세요.'), findsOneWidget);
+    expect(find.text('자유 입력 종류 · 옛 자료'), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('material-type')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('material-type')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('증빙·기타').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect((await repo.load()).single.type, '증빙·기타');
+    expect(find.text('증빙·기타 · 옛 자료'), findsOneWidget);
+    expect(find.text('자유 입력 종류 · 옛 자료'), findsNothing);
   });
 }

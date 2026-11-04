@@ -13,7 +13,7 @@ OpenAPI(`/api/v1/docs`)가 기준이다.
 - [manual-input-audit.md](manual-input-audit.md): ERD/HTML 입력·관계의 구현 대조표와 계약 의존성
 - [백엔드 API 요구 명세](../api/frontend-backend-requirements.md): 서버 연결 요구와 미확정 계약
 - `features/`: 기능별 현재 동작·상태·계약 경계
-- `specs/`: 사용자 흐름과 수용 조건(Gherkin 등). 학생 가입·졸업 정보 연결·별도 채팅은 [student-journey.feature](specs/student-journey.feature). 계약이 없는 학사 안내·취업 질문은 [미계약 인수 문서](../api/student-journey-uncontracted.md)로 넘긴다.
+- `specs/`: 사용자 흐름과 수용 조건(Gherkin 등). 개인 학업·자료/PDF·관리자 본문 등록은 [workspace-registration.feature](specs/workspace-registration.feature). 학생 가입 경계·활동 메뉴 저장·설정 이름/공식 ID·이름 문맥 채팅은 [student-journey.feature](specs/student-journey.feature). 학교관리자 가입 유형·미접수 제출·접수 메뉴는 [school-admin-signup.feature](specs/school-admin-signup.feature). 그 밖의 화면별 성공/실패/입력 보존은 [screen-input-protection.feature](specs/screen-input-protection.feature). 계약이 없는 학사 안내·취업 질문은 [미계약 인수 문서](../api/student-journey-uncontracted.md)로 넘긴다. 학생 여정 명세 실행은 `frontend`에서 `flutter test test/bdd/student_journey_bdd_test.dart`다. workspace-registration, screen-input-protection, school-admin-signup는 이 명령에 포함하지 않는다.
 
 기능 문서는 현재 동작을 중심으로 유지하고, 상세 테스트 횟수·캡처·작업별 리뷰 결과는
 아래 검증 이력에서 참조한다. 에이전트 운영 지침과 스킬 절차는 개인 지침 저장소에서 관리한다.
@@ -39,7 +39,7 @@ OpenAPI(`/api/v1/docs`)가 기준이다.
 | --- | --- | --- |
 | 인증 | [auth](features/auth.md) | 실제 가입·로그인·서버 세션·역할/학교 범위 |
 | 학교 문서 근거 검토 | [school-knowledge-review](features/school-knowledge-review.md) | 등록 추출본·페이지/범위 검토, 독립 확인 승인·회수 |
-| 관리자 | [admin](features/admin.md) | 실제 API 학사 관리·역할/범위·검토 버전/감사, debug 합성 샘플 |
+| 관리자 | [admin](features/admin.md) | 학사 관리·한 줄 요건. 학점표·인증 요건은 문서 편집만 하고 저장은 계약 대기 |
 | 메뉴 탐색 | [navigation](features/navigation.md) | 주요 메뉴 hash URL·뒤로/앞으로·직접 진입 |
 | 홈 | [home](features/home.md) | 개인 계획 기반 시작 화면 |
 | 일정 | [schedule](features/schedule.md) | 실제 계정 서버 개인 일정·동의 이전 |

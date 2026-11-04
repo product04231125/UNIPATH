@@ -44,7 +44,7 @@ Future<void> openEditor(
     host(
       Builder(
         builder: (context) => TextButton(
-          onPressed: () => showInputDialog<void>(
+          onPressed: () => showInputDialog<String>(
             context: context,
             builder: (_) => AdminEditor(
               repository: repo,
@@ -653,14 +653,24 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('검토·적용'));
+    expect(find.text('상세'), findsNothing);
+    final listEdit = find.descendant(
+      of: find.byKey(const ValueKey('admin-row-r')),
+      matching: find.widgetWithText(TextButton, '수정'),
+    );
+    await tester.ensureVisible(listEdit);
+    await tester.pumpAndSettle();
+    await tester.tap(listEdit);
     await tester.pumpAndSettle();
     await tester.tap(find.text('검토·적용'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('초안 적용'));
     await tester.pumpAndSettle();
     expect(repo.find('r')!.status, 'applied');
-    await tester.ensureVisible(find.text('새 버전 초안'));
+    expect(find.byType(InputDialog), findsNothing);
+    await tester.ensureVisible(listEdit);
+    await tester.pumpAndSettle();
+    await tester.tap(listEdit);
     await tester.pumpAndSettle();
     await tester.tap(find.text('새 버전 초안'));
     await tester.pumpAndSettle();
@@ -673,11 +683,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(repo.records.where((r) => r.kind == AdminKind.rule).length, 2);
     expect(repo.find('r')!.status, 'applied');
-    await tester.ensureVisible(find.text('상세').first);
+    expect(find.byType(InputDialog), findsNothing);
+    await tester.tap(listEdit);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('상세').first);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('규칙 종류: 학점'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(InputDialog),
+        matching: find.text('규칙 종류 *'),
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
   testWidgets('admin flows delete shows references and preserves source', (
@@ -696,10 +711,20 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('삭제').first);
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('admin-row-school-a')),
+        matching: find.widgetWithText(FilledButton, '삭제'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.textContaining('연결된 항목'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilledButton, '삭제'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(FilledButton, '삭제'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('연결된 데이터가 있습니다. 참조를 먼저 정리하세요.'), findsOneWidget);
     expect(repo.find('school-a'), isNotNull);
@@ -779,7 +804,20 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('범위 회수'));
+    expect(find.text('범위 회수'), findsNothing);
+    await tester.ensureVisible(
+      find.descendant(
+        of: find.byKey(const ValueKey('admin-row-scope-a')),
+        matching: find.widgetWithText(TextButton, '수정'),
+      ),
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('admin-row-scope-a')),
+        matching: find.widgetWithText(TextButton, '수정'),
+      ),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('범위 회수'));
     await tester.pumpAndSettle();
     await setField(tester, 'reason', '합성 회수');

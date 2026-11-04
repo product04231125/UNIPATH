@@ -70,18 +70,73 @@ abstract class ApiGateway {
   ]);
 }
 
+bool _isLoopbackHost(String host) {
+  final value = host.toLowerCase();
+  return value == 'localhost' ||
+      value == '127.0.0.1' ||
+      value == '::1' ||
+      value == '[::1]';
+}
+
+bool _isLoopbackIp(String host) {
+  final value = host.toLowerCase();
+  return value == '127.0.0.1' || value == '::1' || value == '[::1]';
+}
+
+/// Cookie sessions are host-bound. `127.0.0.1` is not the same site as
+/// `localhost`, so a loopback API follows the page host.
+Uri resolveCookieApiBase(Uri api, {required bool cookieMode, Uri? pageUrl}) {
+  if (!cookieMode) return api;
+  final pageHost = (pageUrl ?? Uri.base).host;
+  if (pageHost.isEmpty) return api;
+  if (!_isLoopbackHost(pageHost) || !_isLoopbackHost(api.host)) return api;
+  if (pageHost.toLowerCase() == api.host.toLowerCase()) return api;
+  return api.replace(host: pageHost);
+}
+
 /// Browser: HttpOnly cookie. Native: opaque token in this process only.
 class AuthApi implements AuthGateway, ApiGateway {
-  AuthApi({http.Client? client, Uri? baseUrl, bool? cookieMode})
-    : _client = client ?? createAuthHttpClient(),
-      _base = resolveApiBaseUrl(baseUrl ?? configuredApiBaseUrl()),
-      _cookieMode = cookieMode ?? kIsWeb;
+  AuthApi({http.Client? client, Uri? baseUrl, bool? cookieMode, Uri? pageUrl})
+    : this._create(
+        client ?? createAuthHttpClient(),
+        cookieMode ?? kIsWeb,
+        baseUrl,
+        pageUrl,
+      );
+
+  AuthApi._create(this._client, bool cookieMode, Uri? baseUrl, Uri? pageUrl)
+    : _cookieMode = cookieMode,
+      _pageHost = (pageUrl ?? Uri.base).host.toLowerCase(),
+      _base = resolveCookieApiBase(
+        resolveApiBaseUrl(baseUrl ?? configuredApiBaseUrl()),
+        cookieMode: cookieMode,
+        pageUrl: pageUrl,
+      );
   final http.Client _client;
   final Uri _base;
   final bool _cookieMode;
+  final String _pageHost;
   String? _token;
   String? _ownerId;
   int _sessionEpoch = 0;
+
+  /// Cookie sessions are host-bound. `127.0.0.1` is not the same site as `localhost`.
+  bool get cookieHostMismatch {
+    if (!_cookieMode) return false;
+    final apiHost = _base.host.toLowerCase();
+    if (_pageHost.isEmpty) return _isLoopbackIp(apiHost);
+    return _isLoopbackHost(_pageHost) &&
+        _isLoopbackHost(apiHost) &&
+        _pageHost != apiHost;
+  }
+
+  String? get cookieHostHint => cookieHostMismatch
+      ? '웹 세션 쿠키는 localhost에서만 유지됩니다. API를 http://localhost:8010으로 맞춘 뒤 http://localhost:3000에서 다시 로그인하세요.'
+      : null;
+
+  String get missingSessionMessage => cookieHostMismatch
+      ? '세션을 확인하지 못했습니다. 웹은 페이지와 API가 같은 호스트여야 쿠키가 유지됩니다. API를 http://localhost:8010으로 맞춘 뒤 다시 로그인하세요.'
+      : '세션을 확인하지 못했습니다. 다시 로그인해 주세요.';
 
   /// Pin a workspace to this login. Server checks the owner as well, including
   /// cookies changed by a different browser tab before our next session poll.

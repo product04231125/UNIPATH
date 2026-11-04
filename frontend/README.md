@@ -28,7 +28,7 @@ docker compose -f compose.yaml -f compose.rag.yaml up --build -d
 ```bash
 cd frontend
 flutter pub get
-flutter run -d chrome --web-port 3000 --dart-define=API_BASE_URL=http://127.0.0.1:8010
+flutter run -d chrome --web-port 3000 --dart-define=API_BASE_URL=http://localhost:8010
 ```
 
 브라우저에서는 `http://localhost:3000` 또는 `http://127.0.0.1:3000`으로 연다.
@@ -60,6 +60,7 @@ LLM 생성기가 없으므로 `공식 근거 부족` 안내가 정상이다. 학
 ```bash
 flutter analyze
 flutter test
+flutter test test/bdd/student_journey_bdd_test.dart
 flutter build web --dart-define=API_BASE_URL=http://127.0.0.1:8010
 dart run tool/smoke_assistant_api.dart
 ```

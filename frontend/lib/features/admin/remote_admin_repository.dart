@@ -182,15 +182,17 @@ class RemoteAdminRepository extends AdminRepository {
         _records = [];
         _history = [];
         _notify();
-        throw StateError(
-          '로그인 세션을 확인하지 못했습니다. 같은 주소로 다시 로그인해 주세요.',
-        );
+        throw StateError('로그인 세션을 확인하지 못했습니다. 같은 주소로 다시 로그인해 주세요.');
       }
       if (identity.id != userId || identity.role == AppRole.user) {
         _records = [];
         _history = [];
         _notify();
-        throw StateError('관리 권한이 변경되었습니다. 다시 로그인해 주세요.');
+        throw StateError(
+          identity.id != userId
+              ? '계정이 변경되었습니다. 다시 로그인해 주세요.'
+              : '관리 권한이 변경되었습니다. 다시 로그인해 주세요.',
+        );
       }
       _identity = identity;
       final rows = <AdminRecord>[];

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_drafts_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
@@ -50,8 +49,11 @@ Future<void> selectSource(WidgetTester tester, String ref) async {
   await tester.pumpAndSettle();
 }
 
-Widget portfolioPage() =>
-    const MaterialApp(home: Scaffold(body: PortfolioPage()));
+Widget draftsPage({bool isDocument = false, bool active = true}) => MaterialApp(
+  home: Scaffold(
+    body: PortfolioDraftsPage(isDocument: isDocument, active: active),
+  ),
+);
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -327,9 +329,7 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1440, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await seedRecords();
-      await tester.pumpWidget(portfolioPage());
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('기존 구성'));
+      await tester.pumpWidget(draftsPage());
       await tester.pumpAndSettle();
       await tester.tap(find.text('포트폴리오 구성 추가'));
       await tester.pumpAndSettle();
@@ -366,9 +366,7 @@ void main() {
       ]);
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
-      await tester.pumpWidget(portfolioPage());
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('기존 구성'));
+      await tester.pumpWidget(draftsPage());
       await tester.pumpAndSettle();
       expect(find.text('합성 포트폴리오'), findsOneWidget);
       await tester.tap(find.text('수정'));
@@ -395,10 +393,12 @@ void main() {
       await tester.tap(find.text('삭제').last);
       await tester.pumpAndSettle();
       expect(find.text('수정된 포트폴리오'), findsNothing);
-      await tester.tap(find.text('성과 기록'));
-      await tester.pumpAndSettle();
-      expect(find.text('합성 성과 work-1'), findsOneWidget);
-      expect(find.text('합성 성과 work-2'), findsOneWidget);
+      final works = PersonalRecordRepository(PersonalRecordKind.portfolio);
+      await works.load();
+      expect(works.records.map((r) => r.value('title')), {
+        '합성 성과 work-1',
+        '합성 성과 work-2',
+      });
       expect(tester.takeException(), isNull);
     },
   );
@@ -425,9 +425,7 @@ void main() {
           null,
         ),
       );
-      await tester.pumpWidget(portfolioPage());
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('기존 지원 문서'));
+      await tester.pumpWidget(draftsPage(isDocument: true));
       await tester.pumpAndSettle();
       await tester.tap(find.text('지원 문서 초안 추가'));
       await tester.pumpAndSettle();
@@ -463,10 +461,6 @@ void main() {
       expect(body, contains('합성 경험 결과'));
       expect(body, isNot(contains('work-2')));
       await tester.tap(find.text('초안 저장'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('기존 구성'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('기존 지원 문서'));
       await tester.pumpAndSettle();
       expect(find.text('합성 지원 문서'), findsOneWidget);
       await tester.tap(find.text('수정'));
@@ -531,35 +525,34 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  for (final stage in ['기존 구성', '기존 지원 문서']) {
-    testWidgets('$stage remains usable at 480x520 with 200 percent text', (
-      tester,
-    ) async {
-      await tester.binding.setSurfaceSize(const Size(480, 520));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await seedRecords();
-      await tester.pumpWidget(
-        MaterialApp(
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context)
-                .copyWith(textScaler: const TextScaler.linear(2)),
-            child: child!,
+  for (final isDocument in [false, true]) {
+    testWidgets(
+      '${isDocument ? '지원 문서' : '구성'} remains usable at 480x520 with 200 percent text',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(480, 520));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await seedRecords();
+        await tester.pumpWidget(
+          MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: const TextScaler.linear(2)),
+              child: child!,
+            ),
+            home: Scaffold(body: PortfolioDraftsPage(isDocument: isDocument)),
           ),
-          home: const Scaffold(body: PortfolioPage()),
-        ),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text(stage));
-      await tester.pumpAndSettle();
-      final add = find.text(stage == '기존 구성' ? '포트폴리오 구성 추가' : '지원 문서 초안 추가');
-      await tester.ensureVisible(add);
-      await tester.tap(add);
-      await tester.pumpAndSettle();
-      await selectSource(tester, 'portfolio/work-1');
-      expect(find.text('초안 저장').hitTestable(), findsOneWidget);
-      await tester.tap(find.text('취소'));
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-    });
+        );
+        await tester.pumpAndSettle();
+        final add = find.text(isDocument ? '지원 문서 초안 추가' : '포트폴리오 구성 추가');
+        await tester.ensureVisible(add);
+        await tester.tap(add);
+        await tester.pumpAndSettle();
+        await selectSource(tester, 'portfolio/work-1');
+        expect(find.text('초안 저장').hitTestable(), findsOneWidget);
+        await tester.tap(find.text('취소'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 }

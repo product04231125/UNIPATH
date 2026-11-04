@@ -10,7 +10,8 @@ import 'package:university_path_frontend/features/records/course/course_page.dar
 import 'package:university_path_frontend/features/records/activity/activity_page.dart';
 import 'package:university_path_frontend/features/records/experience/experience_page.dart';
 import 'package:university_path_frontend/features/records/credential/credential_page.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_page.dart';
+import 'package:university_path_frontend/features/records/portfolio/job_analysis_page.dart';
+import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_drafts_page.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
@@ -57,6 +58,8 @@ void main() {
           SchedulePage(repository: repository),
           SettingsPage(repository: repository),
           const GraduationPage(),
+          const MaterialsPage(),
+          const JobAnalysisPage(),
         ]) {
           await tester.pumpWidget(host(page, scale: scale));
           await tester.pumpAndSettle();
@@ -71,45 +74,6 @@ void main() {
             greaterThanOrEqualTo(16),
           );
           expect(tester.takeException(), isNull, reason: '$page');
-        }
-
-        await tester.pumpWidget(host(const PortfolioPage(), scale: scale));
-        await tester.pumpAndSettle();
-        final tabs = ['성과 기록', '기존 구성', '기존 지원 문서'];
-        final titles = ['성과 기록', '포트폴리오 구성', '지원 문서'];
-        final anchor = tester.getTopLeft(find.byType(PageHeader));
-        final tabRow = find
-            .ancestor(of: find.text(tabs.first), matching: find.byType(Wrap))
-            .first;
-        expect(anchor.dx, 28);
-        expect(anchor.dy - tester.getBottomLeft(tabRow).dy, closeTo(12, .01));
-        for (var index = 0; index < tabs.length; index++) {
-          await tester.tap(find.text(tabs[index]));
-          await tester.pumpAndSettle();
-          expect(tester.getTopLeft(find.byType(PageHeader)), anchor);
-          expect(
-            find.descendant(
-              of: find.byType(PageHeader),
-              matching: find.text(titles[index]),
-            ),
-            findsOneWidget,
-          );
-          expect(find.textContaining('PORTFOLIO & OUTCOMES'), findsNothing);
-          if (index > 0) {
-            expect(
-              tester.getTopLeft(find.byType(FilledButton).first).dx,
-              anchor.dx,
-            );
-            expect(
-              find.textContaining(
-                index == 1
-                    ? '개인 성과 중 사용할 항목과 순서를 선택합니다.'
-                    : '지원처별 이력서·자기소개서 초안을 직접 편집합니다.',
-              ),
-              findsOneWidget,
-            );
-          }
-          expect(tester.takeException(), isNull);
         }
 
         await tester.pumpWidget(

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 import 'support/auth_fixture.dart';
 
@@ -6,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/app_navigation.dart';
+import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/auth/login_page.dart';
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 import 'package:university_path_frontend/shared/widgets/input_dialog.dart';
@@ -205,5 +208,28 @@ void main() {
     expect(find.byType(Workspace), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     provider.dispose();
+  });
+
+  testWidgets('login explains cookie host mismatch before sign-in', (
+    tester,
+  ) async {
+    final api = AuthApi(
+      client: MockClient(
+        (_) async => http.Response(
+          '{}',
+          401,
+          headers: {'content-type': 'application/json'},
+        ),
+      ),
+      baseUrl: Uri.parse('http://127.0.0.1:8010'),
+      cookieMode: true,
+      pageUrl: Uri(),
+    );
+    await tester.pumpWidget(UniversityPathApp(authGateway: api));
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginPage), findsOneWidget);
+    expect(find.textContaining('웹 세션 쿠키는 localhost에서만 유지됩니다'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    api.close();
   });
 }

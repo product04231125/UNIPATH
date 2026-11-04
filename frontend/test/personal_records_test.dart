@@ -7,7 +7,8 @@ import 'package:university_path_frontend/features/records/personal_record_fields
 import 'package:university_path_frontend/features/records/course/course_page.dart';
 import 'package:university_path_frontend/features/records/activity/activity_page.dart';
 import 'package:university_path_frontend/features/records/experience/experience_page.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_page.dart';
+
+import 'support/achievement_records_page.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -322,7 +323,7 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text(item.$1).first);
         await tester.pumpAndSettle();
-        expect(find.text(item.$3['title']!), findsOneWidget);
+        expect(find.textContaining(item.$3['title']!), findsOneWidget);
         await tester.ensureVisible(find.text('수정').first);
         await tester.tap(find.text('수정').first);
         await tester.pumpAndSettle();
@@ -331,14 +332,14 @@ void main() {
         await tester.enterText(name, '수정된 합성 기록');
         await tester.tap(find.text('내 기록에 저장'));
         await tester.pumpAndSettle();
-        expect(find.text('수정된 합성 기록'), findsOneWidget);
+        expect(find.textContaining('수정된 합성 기록'), findsOneWidget);
         await tester.ensureVisible(find.text('삭제').first);
         await tester.tap(find.text('삭제').first);
         await tester.pumpAndSettle();
         await tester.tap(find.text('삭제').last);
         await tester.pumpAndSettle();
-        expect(find.text(item.$3['title']!), findsNothing);
-        expect(find.text('수정된 합성 기록'), findsNothing);
+        expect(find.textContaining(item.$3['title']!), findsNothing);
+        expect(find.textContaining('수정된 합성 기록'), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );
@@ -381,10 +382,8 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1440, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(
-        const MaterialApp(home: Scaffold(body: PortfolioPage())),
+        MaterialApp(home: Scaffold(body: achievementRecordsPage())),
       );
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(OutlinedButton, '성과 기록'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('성과 직접 기록'));
       await tester.pumpAndSettle();

@@ -1,0 +1,65 @@
+{
+  "id": "00000000-0000-0000-0000-000000000001",
+  "official": true,
+  "context": {
+    "institution_id": "00000000-0000-0000-0000-000000000002",
+    "department_id": "00000000-0000-0000-0000-000000000003",
+    "curriculum_id": "00000000-0000-0000-0000-000000000004",
+    "admission_year": 2026,
+    "track": "single_major"
+  },
+  "evaluated_on": "2026-11-02",
+  "status": "not_satisfied",
+  "reason": "requirements_not_met",
+  "current_usable": true,
+  "catalog_complete": true,
+  "criteria": [
+    {
+      "id": "00000000-0000-0000-0000-000000000005",
+      "version": 1,
+      "rules": [
+        {
+          "rule_id": "00000000-0000-0000-0000-000000000006",
+          "condition": {
+            "kind": "minimum_credits",
+            "minimum": "130",
+            "category": null
+          },
+          "references": [],
+          "evidence": [
+            {
+              "chunk_id": "00000000-0000-0000-0000-000000000009",
+              "knowledge_document_id": "00000000-0000-0000-0000-00000000000a",
+              "knowledge_version": 1,
+              "document_id": "00000000-0000-0000-0000-00000000000b",
+              "document_version": 1,
+              "title": "합성 예시 졸업요건 (실제 학교 규정 아님)",
+              "source_url": "https://example.org/synthetic-regulation",
+              "page": 1,
+              "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "document_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "results": [
+    {
+      "rule_set_id": "00000000-0000-0000-0000-000000000005",
+      "rule_set_version": 1,
+      "rule_id": "00000000-0000-0000-0000-000000000006",
+      "title": "합성 예시: 총 이수학점",
+      "status": "not_satisfied",
+      "reason": "below_threshold",
+      "current": "120",
+      "required": "130",
+      "deficit": "10",
+      "missing_course_ids": [],
+      "uncertain_course_ids": [],
+      "evidence_record_ids": []
+    }
+  ],
+  "issues": [],
+  "current_issues": []
+}

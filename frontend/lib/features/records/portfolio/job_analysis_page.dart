@@ -126,7 +126,9 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
   }
 
   String get _unavailableReason {
-    final reasons = <String>['학생용 채용 분석 API가 아직 없습니다.'];
+    final reasons = <String>[
+      '학생용 채용 분석 API가 아직 없습니다. 공고 텍스트, 주소, PDF·캡처, 선택한 기록을 서버로 보내지 않았고 답변을 만들지 않았습니다.',
+    ];
     if (!_hasPostingInput) {
       reasons.add('공고 텍스트, 주소, PDF·캡처 중 하나가 필요합니다.');
     }
