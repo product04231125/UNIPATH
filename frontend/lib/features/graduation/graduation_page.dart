@@ -56,8 +56,27 @@ class GraduationPage extends StatelessWidget {
           );
         }
         final failed = repo.loadFailed;
-        final profile = failed ? null : repo.profile;
-        if (profile != null && profile.hasCatalogSchool) {
+        if (failed) {
+          return FeaturePage(
+            title: '졸업 요건',
+            description: '설정한 학업 기준으로 요건을 확인합니다.',
+            body: [
+              const Text('학업 프로필을 읽지 못했습니다. 다시 불러오거나 설정에서 확인하세요.'),
+              TextButton(
+                onPressed: repo.load,
+                child: const Text('학업 프로필 다시 불러오기'),
+              ),
+              if (onOpenSettings != null)
+                PlanningProfileSettingsCta(
+                  onOpenSettings: onOpenSettings!,
+                  need: PlanningProfileNeed.configured,
+                  profile: null,
+                ),
+            ],
+          );
+        }
+        final profile = repo.profile;
+        if (profile.hasCatalogSchool) {
           return OfficialGraduationPage(
             key: ValueKey((session.auth, session.identity.id, 'official')),
             auth: session.auth,
@@ -67,7 +86,7 @@ class GraduationPage extends StatelessWidget {
             onOpenSettings: onOpenSettings,
           );
         }
-        if (profile != null && profile.isConfigured) {
+        if (profile.isConfigured) {
           final calculations =
               PersonalRepositoryScope.read(context)?.calculations;
           if (calculations == null) {

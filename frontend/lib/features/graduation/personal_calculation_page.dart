@@ -66,10 +66,41 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
   @override
   void initState() {
     super.initState();
+    _loadInitialData();
+  }
+
+  @override
+  void didUpdateWidget(PersonalCalculationPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != c) _loadInitialData();
+  }
+
+  void _loadInitialData() {
     if (c.curricula.isEmpty && c.sources == null && !c.loading) {
       c.loadCurricula();
     }
     if (c.history.isEmpty && !c.historyLoading) c.loadHistory();
+  }
+
+  Future<void> _reloadSources() async {
+    if (c.locked) return;
+    final controller = c;
+    final selectedId = controller.sources?.curriculum.id;
+    if (controller.hasDraft &&
+        !await _confirm(
+          '조건을 다시 준비할까요?',
+          '현재 작성한 계산 조건을 비우고 교육과정 목록과 서버 자료를 다시 읽습니다. 저장된 기록과 계산 이력은 유지합니다.',
+          '다시 불러오기',
+        )) {
+      return;
+    }
+    if (!mounted || controller != c) return;
+    await controller.loadCurricula(preserveSelection: true);
+    if (!mounted || controller != c || controller.sourceError != null) return;
+    if (selectedId != null &&
+        controller.curricula.any((row) => row.id == selectedId)) {
+      await controller.select(selectedId);
+    }
   }
 
   Future<bool> _confirm(String title, String message, String action) async =>
@@ -139,11 +170,7 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
                 padTop: false,
                 padBottom: false,
                 trailing: FeatureLine.reload(
-                  onPressed: c.locked
-                      ? null
-                      : () => c.sources == null
-                            ? c.loadCurricula()
-                            : _select(c.sources!.curriculum.id),
+                  onPressed: c.locked ? null : _reloadSources,
                   label: '자료 다시 불러오기',
                 ),
               ),
@@ -195,7 +222,7 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
                       ),
               _error(c.sourceError),
               TextFormField(
-                key: const ValueKey('calculation-as-of'),
+                key: ValueKey((c, 'calculation-as-of')),
                 initialValue: c.asOf,
                 readOnly: c.locked,
                 decoration: InputDecoration(
