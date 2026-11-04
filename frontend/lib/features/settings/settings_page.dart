@@ -188,174 +188,187 @@ class _SettingsPageState extends State<SettingsPage> {
                                   PersonalWorkspaceImportSection(
                                     importer: importer,
                                   ),
-                              IgnorePointer(
-                                ignoring: _saving,
-                                child: ResponsiveColumns(
-                                  enabled: false,
-                                  first: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      if (_canUseCatalog) ...[
-                                        const FeatureLine.one(
-                                          text: '등록된 학교는 목록에서 고릅니다. 목록에 없으면 만들지 않습니다.',
-                                        ),
-                                      ],
-                                      if (_academicSourceLabel != null)
-                                        FeatureLine.one(
-                                          text: _academicSourceLabel!,
-                                        ),
-                                      if (_useCatalog &&
-                                          widget.studentApi != null)
-                                        SchoolContextForm(
-                                          key: _schoolForm,
-                                          api: widget.studentApi!.api,
-                                          disabled: _saving,
-                                          showStudy: false,
-                                          showDate: false,
-                                          initialInstitutionId:
-                                              _pendingInstitutionId,
-                                          initialDepartmentId:
-                                              _pendingDepartmentId,
-                                          initialCurriculumId:
-                                              _pendingCurriculumId,
-                                          onChanged: _captureCatalogSelection,
-                                        )
-                                      else ...[
-                                        TextFormField(
-                                          controller: _school,
-                                          maxLength: 128,
-                                          onChanged: (_) => setState(() {
-                                            _saved = false;
-                                            _dirty = true;
-                                          }),
-                                          decoration: const InputDecoration(
-                                            labelText: '학교',
-                                            hintText: '예: 경동대학교',
+                              ExcludeFocus(
+                                excluding: _saving,
+                                child: IgnorePointer(
+                                  ignoring: _saving,
+                                  child: ResponsiveColumns(
+                                    enabled: false,
+                                    first: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        if (_canUseCatalog) ...[
+                                          const FeatureLine.one(
+                                            text: '등록된 학교는 목록에서 고릅니다. 목록에 없으면 만들지 않습니다.',
                                           ),
-                                          textInputAction: TextInputAction.next,
-                                        ),
-                                        const SizedBox(height: 14),
-                                        TextFormField(
-                                          controller: _department,
-                                          maxLength: 128,
-                                          onChanged: (_) => setState(() {
-                                            _saved = false;
-                                            _dirty = true;
-                                          }),
-                                          decoration: const InputDecoration(
-                                            labelText: '학과',
-                                            hintText: '예: 컴퓨터공학과',
-                                          ),
-                                          textInputAction: TextInputAction.next,
-                                        ),
-                                      ],
-                                      const SizedBox(height: 14),
-                                      AnchoredSelectField<int?>(
-                                        key: const Key(
-                                          'settings-admission-year-select',
-                                        ),
-                                        searchable: true,
-                                        searchLabel: '입학연도 검색',
-                                        value: _admissionYear,
-                                        label: '입학연도',
-                                        options: [
-                                          const SelectOption<int?>(
-                                            null,
-                                            '미입력',
-                                          ),
-                                          for (final year in yearOptions(
-                                            maxYear: DateTime.now().year,
-                                            include: _admissionYear,
-                                          ))
-                                            SelectOption<int?>(year, '$year년'),
                                         ],
-                                        onChanged: (value) => setState(() {
-                                          _admissionYear = value;
-                                          _saved = false;
-                                          _dirty = true;
-                                        }),
-                                      ),
-                                    ],
-                                  ),
-                                  second: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      const FeatureLine.one(text: '개인 계획'),
-                                      AnchoredSelectField<String?>(
-                                        value: _track,
-                                        label: '이수경로',
-                                        options: [
-                                          const SelectOption(null, '미입력'),
-                                          const SelectOption(
-                                            'single_major',
-                                            '단일전공',
+                                        if (_academicSourceLabel != null)
+                                          FeatureLine.one(
+                                            text: _academicSourceLabel!,
                                           ),
-                                          const SelectOption(
-                                            'double_major',
-                                            '복수전공',
-                                          ),
-                                          if (_track != null &&
-                                              _track != 'single_major' &&
-                                              _track != 'double_major')
-                                            SelectOption(_track, _track!),
-                                        ],
-                                        onChanged: (value) => setState(() {
-                                          _track = value;
-                                          _saved = false;
-                                          _dirty = true;
-                                        }),
-                                      ),
-                                      const SizedBox(height: 18),
-                                      AnchoredSelectField<int?>(
-                                        value: _academicYearOverride,
-                                        label: '개인 계획 학년',
-                                        options: [
-                                          SelectOption<int?>(
-                                            null,
-                                            suggestedYear == null
-                                                ? '자동 계산 (입학연도 필요)'
-                                                : '자동 계산 ($suggestedYear학년 제안)',
-                                          ),
-                                          for (var year = 1; year <= 4; year++)
-                                            SelectOption<int?>(
-                                              year,
-                                              '$year학년으로 직접 설정',
+                                        if (_useCatalog &&
+                                            widget.studentApi != null)
+                                          SchoolContextForm(
+                                            key: _schoolForm,
+                                            api: widget.studentApi!.api,
+                                            disabled: _saving,
+                                            showStudy: false,
+                                            showDate: false,
+                                            initialInstitutionId:
+                                                _pendingInstitutionId,
+                                            initialDepartmentId:
+                                                _pendingDepartmentId,
+                                            initialCurriculumId:
+                                                _pendingCurriculumId,
+                                            onChanged: _captureCatalogSelection,
+                                          )
+                                        else ...[
+                                          TextFormField(
+                                            controller: _school,
+                                            maxLength: 128,
+                                            onChanged: (_) => setState(() {
+                                              _saved = false;
+                                              _dirty = true;
+                                            }),
+                                            decoration: const InputDecoration(
+                                              labelText: '학교',
+                                              hintText: '예: 경동대학교',
                                             ),
+                                            textInputAction:
+                                                TextInputAction.next,
+                                          ),
+                                          const SizedBox(height: 14),
+                                          TextFormField(
+                                            controller: _department,
+                                            maxLength: 128,
+                                            onChanged: (_) => setState(() {
+                                              _saved = false;
+                                              _dirty = true;
+                                            }),
+                                            decoration: const InputDecoration(
+                                              labelText: '학과',
+                                              hintText: '예: 컴퓨터공학과',
+                                            ),
+                                            textInputAction:
+                                                TextInputAction.next,
+                                          ),
                                         ],
-                                        onChanged: (value) => setState(() {
-                                          _academicYearOverride = value;
-                                          _saved = false;
-                                          _dirty = true;
-                                        }),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const FeatureLine.one(
-                                        text: '개인 계획을 위한 안내값입니다.',
-                                      ),
-                                      const SizedBox(height: 18),
-                                      AnchoredSelectField<WeekStartDay>(
-                                        key: const Key('week-start-select'),
-                                        value: _weekStartsOn,
-                                        label: '주 시작 요일',
-                                        options: [
-                                          for (final day in WeekStartDay.values)
-                                            SelectOption(day, day.label),
-                                        ],
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _weekStartsOn = value;
+                                        const SizedBox(height: 14),
+                                        AnchoredSelectField<int?>(
+                                          key: const Key(
+                                            'settings-admission-year-select',
+                                          ),
+                                          searchable: true,
+                                          searchLabel: '입학연도 검색',
+                                          value: _admissionYear,
+                                          label: '입학연도',
+                                          options: [
+                                            const SelectOption<int?>(
+                                              null,
+                                              '미입력',
+                                            ),
+                                            for (final year in yearOptions(
+                                              maxYear: DateTime.now().year,
+                                              include: _admissionYear,
+                                            ))
+                                              SelectOption<int?>(
+                                                year,
+                                                '$year년',
+                                              ),
+                                          ],
+                                          onChanged: (value) => setState(() {
+                                            _admissionYear = value;
                                             _saved = false;
                                             _dirty = true;
-                                          });
-                                        },
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const FeatureLine.one(
-                                        text: '홈과 일정의 7일 표 시작 요일입니다.',
-                                      ),
-                                    ],
+                                          }),
+                                        ),
+                                      ],
+                                    ),
+                                    second: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        const FeatureLine.one(text: '개인 계획'),
+                                        AnchoredSelectField<String?>(
+                                          value: _track,
+                                          label: '이수경로',
+                                          options: [
+                                            const SelectOption(null, '미입력'),
+                                            const SelectOption(
+                                              'single_major',
+                                              '단일전공',
+                                            ),
+                                            const SelectOption(
+                                              'double_major',
+                                              '복수전공',
+                                            ),
+                                            if (_track != null &&
+                                                _track != 'single_major' &&
+                                                _track != 'double_major')
+                                              SelectOption(_track, _track!),
+                                          ],
+                                          onChanged: (value) => setState(() {
+                                            _track = value;
+                                            _saved = false;
+                                            _dirty = true;
+                                          }),
+                                        ),
+                                        const SizedBox(height: 18),
+                                        AnchoredSelectField<int?>(
+                                          value: _academicYearOverride,
+                                          label: '개인 계획 학년',
+                                          options: [
+                                            SelectOption<int?>(
+                                              null,
+                                              suggestedYear == null
+                                                  ? '자동 계산 (입학연도 필요)'
+                                                  : '자동 계산 ($suggestedYear학년 제안)',
+                                            ),
+                                            for (
+                                              var year = 1;
+                                              year <= 4;
+                                              year++
+                                            )
+                                              SelectOption<int?>(
+                                                year,
+                                                '$year학년으로 직접 설정',
+                                              ),
+                                          ],
+                                          onChanged: (value) => setState(() {
+                                            _academicYearOverride = value;
+                                            _saved = false;
+                                            _dirty = true;
+                                          }),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const FeatureLine.one(
+                                          text: '개인 계획을 위한 안내값입니다.',
+                                        ),
+                                        const SizedBox(height: 18),
+                                        AnchoredSelectField<WeekStartDay>(
+                                          key: const Key('week-start-select'),
+                                          value: _weekStartsOn,
+                                          label: '주 시작 요일',
+                                          options: [
+                                            for (final day
+                                                in WeekStartDay.values)
+                                              SelectOption(day, day.label),
+                                          ],
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _weekStartsOn = value;
+                                              _saved = false;
+                                              _dirty = true;
+                                            });
+                                          },
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const FeatureLine.one(
+                                          text: '홈과 일정의 7일 표 시작 요일입니다.',
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -206,5 +208,37 @@ void main() {
     expect(repository.profile.school, '미등록 대학');
     expect(repository.profile.institutionId, isNull);
     repository.dispose();
+  });
+
+  testWidgets('saving settings releases keyboard focus from profile inputs', (
+    tester,
+  ) async {
+    final write = Completer<bool>();
+    final repository = PlanningRepository(writer: (_, _) => write.future);
+    addTearDown(repository.dispose);
+    await repository.load();
+    await tester.binding.setSurfaceSize(const Size(1200, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: SettingsPage(repository: repository)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, '검증 대학');
+    final input = tester.widget<EditableText>(find.byType(EditableText).first);
+    expect(input.focusNode.hasFocus, isTrue);
+
+    // Invoke the same save action without moving focus through a pointer tap.
+    tester
+        .widget<FilledButton>(find.widgetWithText(FilledButton, '저장'))
+        .onPressed!();
+    await tester.pump();
+    final focusedDuringSave = input.focusNode.hasFocus;
+    write.complete(true);
+    await tester.pumpAndSettle();
+    expect(focusedDuringSave, isFalse);
+    expect(repository.profile.school, '검증 대학');
+    expect(find.text('저장되었습니다.'), findsOneWidget);
   });
 }
