@@ -296,6 +296,10 @@ void main() {
   });
 
   testWidgets('saves a personal schedule on this device', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'university_path.personal_planning.v1':
+          '{"profile":{"school":"테스트대학교","department":"컴퓨터공학과","admissionYear":2025},"events":[]}',
+    });
     await tester.binding.setSurfaceSize(const Size(900, 768));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     await tester.pumpAndSettle();

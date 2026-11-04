@@ -216,6 +216,10 @@ void main() {
   testWidgets(
     'home add navigates and opens once while ordinary navigation does not',
     (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'university_path.personal_planning.v1':
+            '{"profile":{"school":"합성대학","department":"합성학과","admissionYear":2024},"events":[]}',
+      });
       await tester.binding.setSurfaceSize(const Size(1440, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(
@@ -256,13 +260,19 @@ void main() {
       expect(find.byType(InputDialog), findsNothing);
       await prefs.setString(
         'university_path.personal_planning.v1',
-        '{"profile":{},"events":[]}',
+        '{"profile":{"school":"합성대학","department":"합성학과","admissionYear":2024},"events":[]}',
       );
       await repo.load();
       await tester.pumpAndSettle();
       expect(find.byType(InputDialog), findsOneWidget);
       expect(request.isPending, isFalse);
-      await repo.saveProfile(const PlanningProfile(school: '합성 학교'));
+      await repo.saveProfile(
+        const PlanningProfile(
+          school: '합성 학교',
+          department: '합성 학과',
+          admissionYear: 2024,
+        ),
+      );
       await tester.pumpAndSettle();
       expect(find.byType(InputDialog), findsOneWidget);
       await tester.tap(find.text('취소'));
@@ -429,6 +439,13 @@ void main() {
     final repo = PlanningRepository();
     addTearDown(repo.dispose);
     await repo.load();
+    await repo.saveProfile(
+      const PlanningProfile(
+        school: '합성대학',
+        department: '합성학과',
+        admissionYear: 2024,
+      ),
+    );
     await tester.pumpWidget(host(SchedulePage(repository: repo)));
     await tester.ensureVisible(find.widgetWithText(FilledButton, '일정 추가'));
     await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));

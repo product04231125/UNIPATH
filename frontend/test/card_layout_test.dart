@@ -123,6 +123,13 @@ void main() {
       final repository = PlanningRepository();
       addTearDown(repository.dispose);
       await repository.load();
+      await repository.saveProfile(
+        const PlanningProfile(
+          school: '레이아웃 대학',
+          department: '레이아웃 학과',
+          admissionYear: 2024,
+        ),
+      );
       addTearDown(() => tester.binding.setSurfaceSize(null));
       for (final size in [const Size(900, 768), const Size(480, 520)]) {
         await tester.binding.setSurfaceSize(size);

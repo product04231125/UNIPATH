@@ -9,6 +9,7 @@ import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/surface_card.dart';
 import '../../shared/pending_ui_action.dart';
+import '../planning/planning_profile_cta.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
@@ -22,11 +23,13 @@ class SchedulePage extends StatefulWidget {
     required this.repository,
     this.initialDay,
     this.addRequest,
+    this.onOpenSettings,
   });
 
   final PlanningRepository repository;
   final DateTime? initialDay;
   final PendingUiAction? addRequest;
+  final VoidCallback? onOpenSettings;
 
   @override
   State<SchedulePage> createState() => _SchedulePageState();
@@ -67,7 +70,10 @@ class _SchedulePageState extends State<SchedulePage> {
               widget.repository.loadFailed) {
             return;
           }
-          if (request!.consume()) _editEvent();
+          if (request!.consume() &&
+              widget.repository.profile.isConfigured) {
+            _editEvent();
+          }
         });
       }
       return LayoutBuilder(
@@ -241,27 +247,40 @@ class _SchedulePageState extends State<SchedulePage> {
     );
   }
 
-  Widget _dayList(List<PlanningEvent> events) => SurfaceCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        FeatureLine.section(
-          text: '${_selectedDay.month}월 ${_selectedDay.day}일 일정',
-          padTop: false,
-          padBottom: false,
-          trailing: FilledButton.icon(
-            onPressed: () => _editEvent(),
-            icon: const Icon(Icons.add),
-            label: const Text('일정 추가'),
+  Widget _dayList(List<PlanningEvent> events) {
+    final canAdd = widget.repository.profile.isConfigured;
+    return SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FeatureLine.section(
+            text: '${_selectedDay.month}월 ${_selectedDay.day}일 일정',
+            padTop: false,
+            padBottom: false,
+            trailing: canAdd
+                ? FilledButton.icon(
+                    onPressed: () => _editEvent(),
+                    icon: const Icon(Icons.add),
+                    label: const Text('일정 추가'),
+                  )
+                : null,
           ),
-        ),
-        if (events.isEmpty)
-          const FeatureLine.one(text: '등록된 개인 일정이 없습니다.')
-        else
-          for (final event in events) _eventTile(event),
-      ],
-    ),
-  );
+          if (!canAdd && widget.onOpenSettings != null) ...[
+            const SizedBox(height: 12),
+            PlanningProfileSettingsCta(
+              need: PlanningProfileNeed.configured,
+              profile: widget.repository.profile,
+              onOpenSettings: widget.onOpenSettings!,
+            ),
+          ],
+          if (events.isEmpty)
+            const FeatureLine.one(text: '등록된 개인 일정이 없습니다.')
+          else
+            for (final event in events) _eventTile(event),
+        ],
+      ),
+    );
+  }
 
   Widget _eventTile(
     PlanningEvent event, {

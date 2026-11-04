@@ -194,6 +194,13 @@ void main() {
             fail ? false : prefs.setString(key, value),
       );
       await repo.load();
+      await repo.saveProfile(
+        const PlanningProfile(
+          school: '합성 대학',
+          department: '합성 학과',
+          admissionYear: 2024,
+        ),
+      );
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(

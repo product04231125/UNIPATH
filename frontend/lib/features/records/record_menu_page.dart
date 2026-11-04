@@ -16,6 +16,8 @@ import '../auth/auth_api.dart';
 import '../api/student_api.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/external_link_button.dart';
+import '../planning/planning_profile_cta.dart';
+import '../planning/planning_repository.dart';
 
 /// Temporary shared presentation only. Each feature entry owns its own
 /// configuration and mounted local input state.
@@ -36,6 +38,8 @@ class RecordMenuPage extends StatefulWidget {
     this.guideActions = const [],
     this.studentApi,
     this.institutionId,
+    this.planning,
+    this.onOpenSettings,
   });
 
   final PersonalRecordKind kind;
@@ -52,6 +56,8 @@ class RecordMenuPage extends StatefulWidget {
   final List<Widget> guideActions;
   final StudentApi? studentApi;
   final String? institutionId;
+  final PlanningRepository? planning;
+  final VoidCallback? onOpenSettings;
 
   @override
   State<RecordMenuPage> createState() => _RecordMenuPageState();
@@ -243,6 +249,12 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         ),
       );
     }
+    final planning = widget.planning;
+    if (planning == null) return _loadedPage();
+    return AnimatedBuilder(animation: planning, builder: (context, _) => _loadedPage());
+  }
+
+  Widget _loadedPage() {
     final personal = _repository.records.where((r) {
       if (widget.kind != PersonalRecordKind.course) return true;
       final period = CourseTerm.parse(r.value('term'));
@@ -250,6 +262,11 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           (_term.isEmpty || period.semester == _term);
     }).toList();
     final isCourse = widget.kind == PersonalRecordKind.course;
+    final profile = widget.planning?.profile;
+    final canAdd =
+        !isCourse ||
+        widget.planning == null ||
+        (profile?.isConfigured ?? false);
     return FeaturePage(
       title: widget.title,
       contextLabel: widget.contextLabel,
@@ -267,6 +284,14 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                     ? FeatureLine.reload(onPressed: _loading ? null : _load)
                     : null,
               ),
+              if (isCourse && !canAdd && widget.onOpenSettings != null) ...[
+                const SizedBox(height: 16),
+                PlanningProfileSettingsCta(
+                  need: PlanningProfileNeed.configured,
+                  profile: profile,
+                  onOpenSettings: widget.onOpenSettings!,
+                ),
+              ],
               if (widget.kind == PersonalRecordKind.course) ...[
                 const SizedBox(height: 24),
                 Wrap(
@@ -341,11 +366,12 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         ),
       ],
       actions: [
-        FilledButton.icon(
-          onPressed: _showForm,
-          icon: const Icon(Icons.add),
-          label: Text(widget.addLabel),
-        ),
+        if (canAdd)
+          FilledButton.icon(
+            onPressed: _showForm,
+            icon: const Icon(Icons.add),
+            label: Text(widget.addLabel),
+          ),
       ],
       below: [
         ExpansionTile(

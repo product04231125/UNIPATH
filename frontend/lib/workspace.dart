@@ -388,10 +388,12 @@ class _WorkspaceState extends State<Workspace> {
           repository: _planningRepository,
           initialDay: _scheduleInitialDay,
           addRequest: _scheduleAddRequest,
+          onOpenSettings: () => _selectPage(settingsPage - 1),
         ),
         2 => CoursePage(
           studentApi: widget.studentApi,
           planning: _planningRepository,
+          onOpenSettings: () => _selectPage(settingsPage - 1),
         ),
         3 => GraduationPage(
           planning: _planningRepository,

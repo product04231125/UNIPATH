@@ -6,9 +6,15 @@ import '../record_menu_page.dart';
 import '../personal_record_repository.dart';
 
 class CoursePage extends StatelessWidget {
-  const CoursePage({super.key, this.studentApi, this.planning});
+  const CoursePage({
+    super.key,
+    this.studentApi,
+    this.planning,
+    this.onOpenSettings,
+  });
   final StudentApi? studentApi;
   final PlanningRepository? planning;
+  final VoidCallback? onOpenSettings;
   @override
   Widget build(BuildContext context) => RecordMenuPage(
     key: const ValueKey(PersonalRecordKind.course),
@@ -22,5 +28,7 @@ class CoursePage extends StatelessWidget {
     detailLabel: '구분 · 학점',
     studentApi: studentApi,
     institutionId: planning?.profile.institutionId,
+    planning: planning,
+    onOpenSettings: onOpenSettings,
   );
 }
