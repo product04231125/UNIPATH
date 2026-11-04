@@ -51,7 +51,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('overview keeps tonal create separate from outlined navigate', (
+  testWidgets('overview uses filled create with shared min size', (
     tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -72,6 +72,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('확인할 초안'), findsNothing);
+    expect(find.textContaining('확인할 초안'), findsNothing);
+    expect(find.text('바로가기'), findsOneWidget);
+    expect(find.text('자료 등록'), findsOneWidget);
     expect(find.text('학과 등록'), findsOneWidget);
     expect(find.text('졸업요건 확인'), findsOneWidget);
     expect(find.text('관리자 범위 관리'), findsOneWidget);
@@ -79,16 +83,21 @@ void main() {
 
     final create = find.widgetWithText(FilledButton, '학과 등록');
     expect(create, findsOneWidget);
+    expect(find.byType(FilledButton), findsWidgets);
     expect(
       find.descendant(of: create, matching: find.byIcon(Icons.add)),
       findsOneWidget,
     );
+    final createStyle = tester.widget<FilledButton>(create).style;
+    expect(createStyle?.minimumSize?.resolve({}), const Size(148, 40));
+    final navigate = find.widgetWithText(OutlinedButton, '졸업요건 확인');
     expect(
-      find.descendant(
-        of: find.widgetWithText(OutlinedButton, '졸업요건 확인'),
-        matching: find.byIcon(Icons.arrow_forward),
-      ),
+      find.descendant(of: navigate, matching: find.byIcon(Icons.arrow_forward)),
       findsOneWidget,
+    );
+    expect(
+      tester.widget<OutlinedButton>(navigate).style?.minimumSize?.resolve({}),
+      const Size(148, 40),
     );
     expect(find.widgetWithText(OutlinedButton, '관리자 범위 관리'), findsOneWidget);
     expect(tester.takeException(), isNull);

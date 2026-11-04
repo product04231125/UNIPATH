@@ -442,7 +442,7 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
-  testWidgets('overview scopes drafts and recent changes and opens next task', (
+  testWidgets('overview scopes recent changes and opens registration', (
     tester,
   ) async {
     final repo = FakeAdminRepository();
@@ -475,8 +475,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('확인할 초안 1개'), findsOneWidget);
-    expect(find.text('검토 문서 a'), findsNWidgets(2));
+    expect(find.textContaining('확인할 초안'), findsNothing);
+    expect(find.text('바로가기'), findsOneWidget);
+    expect(find.text('최근 변경'), findsOneWidget);
+    expect(find.text('검토 문서 a'), findsOneWidget);
     expect(find.text('검토 문서 b'), findsNothing);
     tester
         .widget<AnchoredSelectField<String>>(
@@ -485,9 +487,7 @@ void main() {
         .onChanged('school-b');
     await tester.pumpAndSettle();
     expect(find.text('검토 문서 a'), findsNothing);
-    expect(find.text('검토 문서 b'), findsNWidgets(2));
-    await tester.tap(find.text('검토 문서 b').first);
-    expect(target, '/admin/documents/doc-b');
+    expect(find.text('검토 문서 b'), findsOneWidget);
     final register = find.text('공식 문서 등록');
     await tester.ensureVisible(register);
     await tester.pumpAndSettle();
@@ -1087,7 +1087,8 @@ void main() {
     await tester.tap(find.text('다시 읽기'));
     await tester.pumpAndSettle();
     expect(find.text('최근 변경'), findsOneWidget);
-    expect(find.text('확인할 초안 0개'), findsOneWidget);
+    expect(find.text('바로가기'), findsOneWidget);
+    expect(find.textContaining('확인할 초안'), findsNothing);
     expect(find.text('학교 문서 검색·근거'), findsNothing);
     expect(find.text('학교 발급 원본 검토'), findsNothing);
     expect(find.text('학교 확인 학생 기록 검토'), findsNothing);

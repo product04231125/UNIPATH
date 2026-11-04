@@ -840,17 +840,17 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 _repo.canRead(_actor, _find(entry.targetId)!)),
   );
 
+  static const _overviewActionMin = Size(148, 40);
+
+  ButtonStyle get _overviewOutlinedStyle => OutlinedButton.styleFrom(
+    minimumSize: _overviewActionMin,
+  );
+
+  ButtonStyle get _overviewFilledStyle => FilledButton.styleFrom(
+    minimumSize: _overviewActionMin,
+  );
+
   Widget _overview() {
-    final drafts = _repo.records
-        .where(
-          (r) =>
-              r.kind.versioned &&
-              r.status == 'draft' &&
-              r.value('ruleSetId').isEmpty &&
-              _repo.school(r) == _schoolId &&
-              _repo.canRead(_actor, r),
-        )
-        .toList();
     final recent = _schoolHistory.take(5).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -874,31 +874,19 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             first: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                FeatureLine.section(text: '확인할 초안 ${drafts.length}개'),
-                if (drafts.isEmpty)
-                  const FeatureLine.one(text: '확인할 초안이 없습니다. 필요한 자료부터 등록하세요.'),
-                for (final r in drafts.take(5))
-                  InkWell(
-                    onTap: _busy
-                        ? null
-                        : () =>
-                              widget.onNavigate('${_routeFor(r.kind)}/${r.id}'),
-                    child: FeatureLine.two(
-                      primary: r.name,
-                      secondary: '${r.kind.label} · v${r.revision} · 초안',
-                      trailing: const Icon(Icons.chevron_right),
-                    ),
-                  ),
+                const FeatureLine.section(text: '바로가기'),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
                     OutlinedButton.icon(
+                      style: _overviewOutlinedStyle,
                       onPressed: _busy ? null : () => _navigate('/admin/rules'),
                       icon: const Icon(Icons.arrow_forward, size: 18),
                       label: const Text('졸업요건 확인'),
                     ),
                     OutlinedButton.icon(
+                      style: _overviewOutlinedStyle,
                       onPressed: _busy
                           ? null
                           : () => _navigate('/admin/documents'),
@@ -907,6 +895,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     ),
                     if (_role == AppRole.superAdmin)
                       OutlinedButton.icon(
+                        style: _overviewOutlinedStyle,
                         onPressed: _busy
                             ? null
                             : () => _navigate('/admin/accounts'),
@@ -914,6 +903,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                         label: const Text('관리자 범위 관리'),
                       ),
                     OutlinedButton.icon(
+                      style: _overviewOutlinedStyle,
                       onPressed: _busy
                           ? null
                           : () => _navigate('/admin/history'),
@@ -923,6 +913,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     if (widget.onEnterStudentPreview != null)
                       OutlinedButton.icon(
                         key: const ValueKey('admin-student-preview'),
+                        style: _overviewOutlinedStyle,
                         onPressed: _busy
                             ? null
                             : widget.onEnterStudentPreview,
@@ -936,7 +927,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             second: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                FeatureLine.section(text: '자료 등록'),
+                const FeatureLine.section(text: '자료 등록'),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -948,7 +939,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                       AdminKind.document,
                     ])
                       if (_canCreate(kind))
-                        FilledButton.tonalIcon(
+                        FilledButton.icon(
+                          style: _overviewFilledStyle,
                           onPressed: _busy ? null : () => _edit(kind),
                           icon: const Icon(Icons.add, size: 18),
                           label: Text('${kind.label} 등록'),
