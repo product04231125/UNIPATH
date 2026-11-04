@@ -6,6 +6,7 @@ import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/surface_card.dart';
 
+import '../auth/guest_preview_scope.dart';
 import '../planning/planning_dates.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
@@ -164,7 +165,13 @@ class HomePage extends StatelessWidget {
             ],
           ),
     trailing: FilledButton.icon(
-      onPressed: onAddSchedule,
+      onPressed: () {
+        if (GuestPreviewScope.isActive(context) || repository.writesBlocked) {
+          GuestPreviewScope.showBlockedMessage(context);
+          return;
+        }
+        onAddSchedule();
+      },
       icon: const Icon(Icons.add),
       label: const Text('일정 추가'),
     ),
