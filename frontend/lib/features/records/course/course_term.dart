@@ -16,6 +16,16 @@ class CourseTerm {
   final String year;
   final String semester;
   static const unspecified = 'unspecified';
+
+  /// Closed semester choices for new course records. Odd stored values stay
+  /// selectable when editing so they are not silently overwritten.
+  static const standardSemesters = [
+    '1학기',
+    '2학기',
+    '여름 계절학기',
+    '겨울 계절학기',
+  ];
+
   String get yearFilter => year.isEmpty ? unspecified : year;
   String get label => year.isEmpty ? '연도 미지정 · $semester' : '$year년 $semester';
 
@@ -28,6 +38,11 @@ class CourseTerm {
     if (year.isEmpty && !required) return null;
     if (!RegExp(r'^[1-9]\d{3}$').hasMatch(year)) {
       return '수강 연도를 네 자리 숫자로 입력하세요.';
+    }
+    final parsed = int.parse(year);
+    final maxYear = DateTime.now().year + 1;
+    if (parsed < 1900 || parsed > maxYear) {
+      return '1900년부터 $maxYear년 사이의 연도를 선택해 주세요.';
     }
     return null;
   }
