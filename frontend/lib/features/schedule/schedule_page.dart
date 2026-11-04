@@ -16,6 +16,7 @@ import '../../shared/widgets/anchored_select_field.dart';
 import '../planning/planning_dates.dart';
 import '../planning/remote_planning_repository.dart';
 import '../auth/auth_api.dart';
+import '../auth/guest_preview_scope.dart';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({
@@ -308,14 +309,36 @@ class _SchedulePageState extends State<SchedulePage> {
       eventsOnDay(widget.repository.events, day);
 
   Future<void> _editEvent([PlanningEvent? existing]) async {
+    if (!_allowWrite()) return;
+    if (existing == null && !widget.repository.profile.isConfigured) return;
     await showInputDialog<void>(
       context: context,
       builder: (context) => _EventEditor(
         event: existing,
         initialDay: _selectedDay,
         repository: widget.repository,
+        allowWrite: _allowWrite,
       ),
     );
+  }
+
+  bool _allowWrite() {
+    if (!mounted) return false;
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return false;
+    }
+    if (widget.repository.writesBlocked) {
+      try {
+        widget.repository.ensureWritable();
+      } on StateError catch (error) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(error.message)));
+      }
+      return false;
+    }
+    return true;
   }
 }
 
@@ -324,10 +347,12 @@ class _EventEditor extends StatefulWidget {
     this.event,
     required this.initialDay,
     required this.repository,
+    required this.allowWrite,
   });
   final PlanningEvent? event;
   final DateTime initialDay;
   final PlanningRepository repository;
+  final bool Function() allowWrite;
 
   @override
   State<_EventEditor> createState() => _EventEditorState();
@@ -510,6 +535,7 @@ class _EventEditorState extends State<_EventEditor> {
   );
 
   Future<void> _delete() async {
+    if (!widget.allowWrite()) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -541,6 +567,7 @@ class _EventEditorState extends State<_EventEditor> {
   }
 
   Future<void> _persist(Future<void> Function() write) async {
+    if (!widget.allowWrite()) return;
     setState(() {
       _saving = true;
       _error = null;
@@ -562,6 +589,7 @@ class _EventEditorState extends State<_EventEditor> {
   }
 
   Future<void> _save() async {
+    if (!widget.allowWrite()) return;
     if (!_formKey.currentState!.validate()) return;
     if (!_end.isAfter(_start)) {
       ScaffoldMessenger.of(

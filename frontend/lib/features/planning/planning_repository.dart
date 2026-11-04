@@ -55,7 +55,10 @@ class PlanningRepository extends ChangeNotifier {
     if (_disposed) {
       return Future.error(StateError('Planning repository is closed'));
     }
-    final result = _pendingOperation.then((_) => operation());
+    final result = _pendingOperation.then((_) {
+      if (_disposed) throw StateError('Planning repository is closed');
+      return operation();
+    });
     _pendingOperation = result.then<void>(
       (_) {},
       onError: (Object _, StackTrace _) {},
