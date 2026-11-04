@@ -73,14 +73,12 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
     PersonalRecordKind.activity,
     PersonalRecordKind.experience,
     PersonalRecordKind.credential,
-    PersonalRecordKind.course,
     PersonalRecordKind.portfolio,
   ];
   static const _kindLabels = {
     PersonalRecordKind.activity: '활동',
     PersonalRecordKind.experience: '경험',
     PersonalRecordKind.credential: '자격',
-    PersonalRecordKind.course: '수강',
     PersonalRecordKind.portfolio: '성과',
   };
 
@@ -318,7 +316,7 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
               const FeatureLine.one(text: '개인 기록을 읽지 못했습니다. 선택한 항목은 유지합니다.')
             else if (_records.values.every((list) => list.isEmpty))
               const FeatureLine.one(
-                text: '선택할 개인 기록이 없습니다. 활동·수강·자격 메뉴에서 기록을 추가한 뒤 다시 열어 주세요.',
+                text: '선택할 개인 기록이 없습니다. 활동·경험·자격·성과 메뉴에서 기록을 추가한 뒤 다시 열어 주세요.',
               )
             else
               for (final kind in _kinds)

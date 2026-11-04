@@ -21,12 +21,23 @@ void main() {
       await activities.save(
         PersonalRecord(id: 'job-act', values: {'title': '선택한 봉사'}),
       );
+      final courses = PersonalRecordRepository(PersonalRecordKind.course);
+      await courses.load();
+      await courses.save(
+        PersonalRecord(id: 'job-course', values: {'title': '수강만 있는 과목'}),
+      );
       await tester.pumpWidget(
         const UniversityPathApp(startAuthenticated: true),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('채용공고 분석'));
       await tester.pumpAndSettle();
+      expect(find.text('수강'), findsNothing);
+      expect(find.text('수강만 있는 과목'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('job-record-course/job-course')),
+        findsNothing,
+      );
       expect(find.textContaining('학생용 채용 분석 API가 아직 없습니다'), findsOneWidget);
       expect(
         find.textContaining('공고 텍스트, 주소, PDF·캡처 중 하나가 필요합니다'),
@@ -92,6 +103,24 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('job analysis empty copy guides activity experience credential portfolio', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(home: Scaffold(body: JobAnalysisPage())),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('활동·경험·자격·성과 메뉴에서 기록을 추가한 뒤 다시 열어 주세요'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('활동·수강·자격'), findsNothing);
+    expect(find.text('수강'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'a screenshot or pdf alone is enough and other files are refused',
