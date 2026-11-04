@@ -32,7 +32,7 @@ class _PersonalGraduationWorkspaceState
     PersonalRecordKind.personalDepartment: '학과',
     PersonalRecordKind.personalCurriculum: '교육과정',
     PersonalRecordKind.personalCurriculumCourse: '교육과정 과목',
-    PersonalRecordKind.personalGraduationRule: '개인 규칙',
+    PersonalRecordKind.personalGraduationRule: '규칙',
   };
   Future<void> _select(
     PersonalRecordKind kind, {

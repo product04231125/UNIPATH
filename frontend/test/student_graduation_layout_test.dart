@@ -53,7 +53,7 @@ void main() {
         '학과': PersonalRecordKind.personalDepartment,
         '교육과정': PersonalRecordKind.personalCurriculum,
         '교육과정 과목': PersonalRecordKind.personalCurriculumCourse,
-        '개인 규칙': PersonalRecordKind.personalGraduationRule,
+        '규칙': PersonalRecordKind.personalGraduationRule,
       }.entries) {
         await tester.tap(find.widgetWithText(OutlinedButton, entry.key));
         await tester.pumpAndSettle();

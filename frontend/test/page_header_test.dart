@@ -118,11 +118,13 @@ void main() {
         await tester.pumpAndSettle();
         final personalAnchor = tester.getTopLeft(find.byType(PageHeader));
         expect(personalAnchor.dx, 28);
-        for (final label in ['교육과정', '교육과정 과목', '개인 규칙']) {
+        for (final label in ['교육과정', '교육과정 과목', '규칙']) {
           await tester.tap(find.text(label).first);
           await tester.pumpAndSettle();
           expect(tester.getTopLeft(find.byType(PageHeader)), personalAnchor);
           expect(find.textContaining('개인 학업 정보'), findsOneWidget);
+          expect(find.text('개인 $label'), findsOneWidget);
+          expect(find.text('개인 개인 규칙'), findsNothing);
           expect(tester.takeException(), isNull);
         }
       });

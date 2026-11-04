@@ -271,7 +271,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('등록'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('개인 규칙'));
+      await tester.tap(find.text('규칙'));
       await tester.pumpAndSettle();
       await tester.pumpAndSettle();
       await fill(tester, {
@@ -343,7 +343,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('등록'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('개인 규칙'));
+      await tester.tap(find.text('규칙'));
       await tester.pumpAndSettle();
       expect(find.text('합성 규칙'), findsOneWidget);
       expect(find.textContaining('수정된 교육과정'), findsOneWidget);
@@ -367,7 +367,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('삭제').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('개인 규칙'));
+      await tester.tap(find.text('규칙'));
       await tester.pumpAndSettle();
       expect(find.text('수정된 규칙'), findsOneWidget);
       expect(find.textContaining('연결할 개인 교육과정: 연결 대상 없음'), findsOneWidget);

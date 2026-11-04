@@ -170,7 +170,7 @@ void main() {
         scope(gateway, PersonalGraduationWorkspace(onBack: () {})),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(OutlinedButton, '개인 규칙'));
+      await tester.tap(find.widgetWithText(OutlinedButton, '규칙'));
       await tester.pumpAndSettle();
       expect(find.text('합성 personalGraduationRule'), findsOneWidget);
       expect(
