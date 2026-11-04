@@ -13,6 +13,7 @@ import '../../../shared/widgets/field_requirement.dart';
 import '../../../shared/widgets/surface_card.dart';
 import '../../../shared/widgets/input_dialog.dart';
 import '../../../shared/widgets/responsive_columns.dart';
+import '../../auth/guest_preview_scope.dart';
 import 'material_repository.dart';
 
 class MaterialsPage extends StatefulWidget {
@@ -129,6 +130,10 @@ class MaterialsPageState extends State<MaterialsPage> {
   }
 
   Future<void> _save() async {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     if (_busy || !_form.currentState!.validate()) return;
     setState(() {
       _busy = true;
@@ -169,6 +174,10 @@ class MaterialsPageState extends State<MaterialsPage> {
   }
 
   Future<void> _delete(PersonalMaterial record) async {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     if (_busy || !await allowLeave() || !mounted) return;
     final yes = await showDialog<bool>(
       context: context,
@@ -208,7 +217,13 @@ class MaterialsPageState extends State<MaterialsPage> {
     }
   }
 
-  static const _rowHeight = 72.0;
+  static const _rowHeight = 64.0;
+  static const _actionHeight = 36.0;
+
+  double get _rowExtent {
+    final scaled = MediaQuery.textScalerOf(context).scale(_rowHeight);
+    return scaled < _rowHeight ? _rowHeight : scaled;
+  }
   static const _visibleRows = 3;
 
   List<PersonalMaterial> get _filtered {
@@ -227,9 +242,10 @@ class MaterialsPageState extends State<MaterialsPage> {
     final rows = _filtered;
     final visible = rows.length < _visibleRows ? rows.length : _visibleRows;
     final overflowing = rows.length > _visibleRows;
+    final extent = _rowExtent;
     return SizedBox(
       key: const ValueKey('material-catalog'),
-      height: _rowHeight * visible,
+      height: extent * visible,
       child: ScrollConfiguration(
         behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
         child: Scrollbar(
@@ -243,10 +259,24 @@ class MaterialsPageState extends State<MaterialsPage> {
                 : EdgeInsets.zero,
             primary: false,
             itemCount: rows.length,
-            itemExtent: _rowHeight,
+            itemExtent: extent,
             itemBuilder: (context, index) => _materialRow(rows[index]),
           ),
         ),
+      ),
+    );
+  }
+
+  ButtonStyle _rowActionStyle({bool danger = false}) {
+    final base = danger
+        ? destructiveButtonStyle(context)
+        : OutlinedButton.styleFrom();
+    return base.copyWith(
+      visualDensity: VisualDensity.compact,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      minimumSize: const WidgetStatePropertyAll(Size(0, _actionHeight)),
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: 12, vertical: 0),
       ),
     );
   }
@@ -259,74 +289,84 @@ class MaterialsPageState extends State<MaterialsPage> {
       else
         '내용 설명 기록',
     ].join(' · ');
-    return Padding(
+    final colors = Theme.of(context).colorScheme;
+    return DecoratedBox(
       key: ValueKey('material-row-${r.id}'),
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  r.type.isEmpty ? r.title : '${r.type} · ${r.title}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                if (subtitle.isNotEmpty)
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: colors.outlineVariant)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                   Text(
-                    subtitle,
+                    r.type.isEmpty ? r.title : '${r.type} · ${r.title}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: Theme.of(context).textTheme.titleSmall,
                   ),
-              ],
-            ),
-          ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              OutlinedButton(
-                onPressed: _busy
-                    ? null
-                    : () async {
-                        if (await allowLeave() && mounted) _reset(r);
-                      },
-                child: const Text('수정'),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ],
               ),
-              if (r.pdf != null)
-                OutlinedButton.icon(
+            ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton(
+                  style: _rowActionStyle(),
                   onPressed: _busy
                       ? null
                       : () async {
-                          setState(() => _busy = true);
-                          try {
-                            await (widget.exportPdf ?? exportMaterialPdf)(r);
-                          } catch (_) {
-                            if (mounted) {
-                              setState(
-                                () =>
-                                    _error = 'PDF를 내보내지 못했습니다. 보관 자료는 유지했습니다.',
-                              );
-                            }
-                          } finally {
-                            if (mounted) setState(() => _busy = false);
-                          }
+                          if (await allowLeave() && mounted) _reset(r);
                         },
-                  icon: const Icon(Icons.download_outlined),
-                  label: const Text('PDF 내보내기'),
+                  child: const Text('수정'),
                 ),
-              FilledButton(
-                style: destructiveButtonStyle(context),
-                onPressed: _busy ? null : () => _delete(r),
-                child: const Text('삭제'),
-              ),
-            ],
-          ),
-        ],
+                if (r.pdf != null)
+                  OutlinedButton.icon(
+                    style: _rowActionStyle(),
+                    onPressed: _busy
+                        ? null
+                        : () async {
+                            setState(() => _busy = true);
+                            try {
+                              await (widget.exportPdf ?? exportMaterialPdf)(r);
+                            } catch (_) {
+                              if (mounted) {
+                                setState(
+                                  () => _error =
+                                      'PDF를 내보내지 못했습니다. 보관 자료는 유지했습니다.',
+                                );
+                              }
+                            } finally {
+                              if (mounted) setState(() => _busy = false);
+                            }
+                          },
+                    icon: const Icon(Icons.download_outlined, size: 18),
+                    label: const Text('PDF 내보내기'),
+                  ),
+                FilledButton(
+                  style: _rowActionStyle(danger: true),
+                  onPressed: _busy ? null : () => _delete(r),
+                  child: const Text('삭제'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

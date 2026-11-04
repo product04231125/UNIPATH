@@ -30,6 +30,7 @@ import 'features/records/portfolio/job_analysis_page.dart';
 import 'features/records/portfolio/materials_page.dart';
 import 'features/settings/settings_page.dart';
 import 'features/schedule/schedule_page.dart';
+import 'features/auth/guest_preview_scope.dart';
 
 /// Coordinates navigation, mock-data visibility, and the assistant window.
 /// Feature pages own their own mock state and input interactions.
@@ -46,6 +47,8 @@ class Workspace extends StatefulWidget {
     this.integratedTitleBar = false,
     this.beforeSignedOut,
     this.studentApi,
+    this.guestPreview = false,
+    this.previewInstitutionId,
   });
 
   final VoidCallback onSignedOut;
@@ -57,6 +60,8 @@ class Workspace extends StatefulWidget {
   final ValueChanged<int>? onPageChanged;
   final AssistantGateway Function()? assistantFactory;
   final bool sidebarVisible, integratedTitleBar;
+  final bool guestPreview;
+  final String? previewInstitutionId;
 
   @override
   State<Workspace> createState() => _WorkspaceState();
@@ -103,10 +108,15 @@ class _WorkspaceState extends State<Workspace> {
   late final _assistantConversation = AssistantConversation(
     api: widget.assistantFactory?.call(),
   );
-  late final PlanningRepository _planningRepository = widget.studentApi == null
-      ? PlanningRepository()
-      : RemotePlanningRepository(widget.studentApi!);
-  late final StudentApi? _personalApi = widget.studentApi;
+  late final PlanningRepository _planningRepository = () {
+    final base = widget.studentApi == null
+        ? PlanningRepository()
+        : RemotePlanningRepository(widget.studentApi!);
+    if (widget.guestPreview) base.blockWrites(GuestPreviewScope.blockedMessage);
+    return base;
+  }();
+  late final StudentApi? _personalApi =
+      widget.guestPreview ? null : widget.studentApi;
   late final PersonalCalculationController? _personalCalculations =
       _personalApi == null
       ? null
@@ -397,6 +407,7 @@ class _WorkspaceState extends State<Workspace> {
               ? _chatPreferences
               : null,
           studentApi: widget.studentApi,
+          previewInstitutionId: widget.previewInstitutionId,
         ),
         _ => const SizedBox.shrink(),
       };

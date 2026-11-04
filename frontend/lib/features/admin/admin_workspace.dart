@@ -16,6 +16,7 @@ import '../../shared/widgets/anchored_select_field.dart';
 import 'admin_models.dart';
 import 'admin_repository.dart';
 import 'admin_editor.dart';
+import 'admin_school_chrome.dart';
 import 'admin_shell.dart';
 import 'graduation_certification_page.dart';
 import 'graduation_credit_grid_page.dart';
@@ -32,6 +33,9 @@ class AdminWorkspace extends StatefulWidget {
     this.sidebarVisible = true,
     this.actorId,
     this.beforeSignedOut,
+    this.schoolChrome,
+    this.phoneChrome = false,
+    this.onEnterStudentPreview,
   });
   final AppRole role;
   final String path;
@@ -41,6 +45,9 @@ class AdminWorkspace extends StatefulWidget {
   final bool sidebarVisible;
   final String? actorId;
   final Future<void> Function()? beforeSignedOut;
+  final AdminSchoolChrome? schoolChrome;
+  final bool phoneChrome;
+  final VoidCallback? onEnterStudentPreview;
   static const menus = <String, String>{
     '/admin/overview': '관리 현황',
     '/admin/schools': '학교·학과',
@@ -116,6 +123,9 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   String _accountRole = '';
   final _queries = <AdminKind, String>{};
   final _statuses = <AdminKind, String>{};
+  final _historyQuery = TextEditingController();
+  String _historyKind = '';
+  String _historyAction = '';
   String get _actor =>
       widget.actorId ??
       (widget.role == AppRole.superAdmin ? 'super-admin' : 'school-admin');
@@ -148,6 +158,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     for (final controller in _catalogScroll.values) {
       controller.dispose();
     }
+    _historyQuery.dispose();
+    widget.schoolChrome?.clear();
     super.dispose();
   }
 
@@ -511,6 +523,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         children: [
           FeatureLine.section(
             text: framed ? '${kind.label} 목록' : '목록',
+            padTop: !framed,
+            padBottom: framed,
             trailing: Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -628,8 +642,28 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     );
   }
 
-  static const _catalogRowHeight = 72.0;
+  static const _catalogRowHeight = 64.0;
   static const _catalogVisibleRows = 3;
+  static const _catalogActionHeight = 36.0;
+
+  double get _catalogExtent {
+    final scaled = MediaQuery.textScalerOf(context).scale(_catalogRowHeight);
+    return scaled < _catalogRowHeight ? _catalogRowHeight : scaled;
+  }
+
+  ButtonStyle _catalogActionStyle({bool danger = false}) {
+    final base = danger
+        ? _dangerStyle()
+        : OutlinedButton.styleFrom();
+    return base.copyWith(
+      visualDensity: VisualDensity.compact,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      minimumSize: const WidgetStatePropertyAll(Size(0, _catalogActionHeight)),
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+      ),
+    );
+  }
 
   bool _canEdit(AdminRecord r) =>
       _repo.canWrite(_actor, r) && r.id != _actor && r.status != 'revoked';
@@ -657,9 +691,10 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         : _catalogVisibleRows;
     final overflowing = rows.length > _catalogVisibleRows;
     final controller = _catalogScroll.putIfAbsent(kind, ScrollController.new);
+    final extent = _catalogExtent;
     return SizedBox(
       key: ValueKey('admin-catalog-${kind.name}'),
-      height: _catalogRowHeight * visible,
+      height: extent * visible,
       child: ScrollConfiguration(
         behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
         child: Scrollbar(
@@ -673,7 +708,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 : EdgeInsets.zero,
             primary: false,
             itemCount: rows.length,
-            itemExtent: _catalogRowHeight,
+            itemExtent: extent,
             itemBuilder: (context, index) => _catalogRow(rows[index]),
           ),
         ),
@@ -683,48 +718,65 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
 
   Widget _catalogRow(AdminRecord r) {
     final subtitle = _catalogSubtitle(r);
-    return Padding(
+    final colors = Theme.of(context).colorScheme;
+    return DecoratedBox(
       key: ValueKey('admin-row-${r.id}'),
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  r.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                if (subtitle.isNotEmpty)
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: colors.outlineVariant)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Text(
-                    subtitle,
+                    r.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (_canEdit(r))
+                  OutlinedButton(
+                    style: _catalogActionStyle(),
+                    onPressed: _busy ? null : () => _edit(r.kind, r),
+                    child: const Text('수정'),
+                  ),
+                if (_canDelete(r))
+                  FilledButton(
+                    style: _catalogActionStyle(danger: true),
+                    onPressed: _busy
+                        ? null
+                        : () => _confirmAction(r, '삭제', () async {
+                            await _repo.remove(_actor, r.id);
+                          }),
+                    child: const Text('삭제'),
                   ),
               ],
             ),
-          ),
-          if (_canEdit(r))
-            OutlinedButton(
-              onPressed: _busy ? null : () => _edit(r.kind, r),
-              child: const Text('수정'),
-            ),
-          if (_canDelete(r))
-            FilledButton(
-              style: _dangerStyle(),
-              onPressed: _busy
-                  ? null
-                  : () => _confirmAction(r, '삭제', () async {
-                      await _repo.remove(_actor, r.id);
-                    }),
-              child: const Text('삭제'),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -832,24 +884,47 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                       trailing: const Icon(Icons.chevron_right),
                     ),
                   ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    onPressed: _busy ? null : () => _navigate('/admin/rules'),
-                    icon: const Icon(Icons.arrow_forward, size: 18),
-                    label: const Text('졸업요건 확인'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    onPressed: _busy
-                        ? null
-                        : () => _navigate('/admin/documents'),
-                    icon: const Icon(Icons.arrow_forward, size: 18),
-                    label: const Text('공식 문서 확인'),
-                  ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : () => _navigate('/admin/rules'),
+                      icon: const Icon(Icons.arrow_forward, size: 18),
+                      label: const Text('졸업요건 확인'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _busy
+                          ? null
+                          : () => _navigate('/admin/documents'),
+                      icon: const Icon(Icons.arrow_forward, size: 18),
+                      label: const Text('공식 문서 확인'),
+                    ),
+                    if (_role == AppRole.superAdmin)
+                      OutlinedButton.icon(
+                        onPressed: _busy
+                            ? null
+                            : () => _navigate('/admin/accounts'),
+                        icon: const Icon(Icons.arrow_forward, size: 18),
+                        label: const Text('관리자 범위 관리'),
+                      ),
+                    OutlinedButton.icon(
+                      onPressed: _busy
+                          ? null
+                          : () => _navigate('/admin/history'),
+                      icon: const Icon(Icons.arrow_forward, size: 18),
+                      label: const Text('관리 이력 보기'),
+                    ),
+                    if (widget.onEnterStudentPreview != null)
+                      OutlinedButton.icon(
+                        key: const ValueKey('admin-student-preview'),
+                        onPressed: _busy
+                            ? null
+                            : widget.onEnterStudentPreview,
+                        icon: const Icon(Icons.visibility_outlined, size: 18),
+                        label: const Text('학생 화면 미리보기'),
+                      ),
+                  ],
                 ),
               ],
             ),
@@ -873,14 +948,6 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                           icon: const Icon(Icons.add, size: 18),
                           label: Text('${kind.label} 등록'),
                         ),
-                    if (_role == AppRole.superAdmin)
-                      OutlinedButton.icon(
-                        onPressed: _busy
-                            ? null
-                            : () => _navigate('/admin/accounts'),
-                        icon: const Icon(Icons.arrow_forward, size: 18),
-                        label: const Text('관리자 범위 관리'),
-                      ),
                   ],
                 ),
               ],
@@ -909,30 +976,51 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     : '삭제되었거나 볼 수 없는 항목',
               ),
             ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: _busy ? null : () => _navigate('/admin/history'),
-              icon: const Icon(Icons.arrow_forward, size: 18),
-              label: const Text('관리 이력 보기'),
-            ),
-          ),
         ],
       ],
     );
   }
 
+  bool _historyInScope(AdminAuditEntry entry) {
+    if (_role == AppRole.superAdmin) {
+      return _schoolId.isEmpty || entry.institutionId == _schoolId;
+    }
+    return entry.institutionId == _schoolId &&
+        (entry.actorId == _actor ||
+            _find(entry.targetId) != null &&
+                _repo.canRead(_actor, _find(entry.targetId)!));
+  }
+
+  Iterable<AdminAuditEntry> _filteredHistory(Iterable<AdminAuditEntry> scoped) {
+    final query = _historyQuery.text.trim().toLowerCase();
+    return scoped.where((entry) {
+      if (_historyKind.isNotEmpty && entry.kind.name != _historyKind) {
+        return false;
+      }
+      if (_historyAction.isNotEmpty && entry.action != _historyAction) {
+        return false;
+      }
+      if (query.isEmpty) return true;
+      final target = _relationName(entry.targetId);
+      final actor = _actorName(entry.actorId);
+      final action = _actionLabel(entry.action);
+      final haystack =
+          '${entry.kind.label} $target $actor $action ${entry.action}'
+              .toLowerCase();
+      return haystack.contains(query);
+    });
+  }
+
   Widget _history() {
-    final entries = _repo.history.reversed
-        .where(
-          (entry) =>
-              _role == AppRole.superAdmin ||
-              entry.institutionId == _schoolId &&
-                  (entry.actorId == _actor ||
-                      _find(entry.targetId) != null &&
-                          _repo.canRead(_actor, _find(entry.targetId)!)),
-        )
-        .toList();
+    final allScoped =
+        _repo.history.reversed.where(_historyInScope).toList();
+    final entries = _filteredHistory(allScoped).toList();
+    final kindOptions = {
+      for (final entry in allScoped) entry.kind.name: entry.kind.label,
+    };
+    final actionOptions = {
+      for (final entry in allScoped) entry.action: _actionLabel(entry.action),
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -944,24 +1032,62 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 )
               : null,
         ),
-        if (entries.isEmpty)
-          const FeatureLine.one(text: '관리 이력이 없습니다. 등록·수정 후 확인하세요.'),
-        for (final entry in entries) ...[
-          FeatureLine.two(
-            primary:
-                '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
-            secondary:
-                '${_timeLabel(entry.at)} · ${_actorName(entry.actorId)} · ${_relationName(entry.targetId).isEmpty ? '삭제되었거나 볼 수 없는 항목' : _relationName(entry.targetId)}',
+        TextFormField(
+          key: const ValueKey('admin-history-search'),
+          controller: _historyQuery,
+          decoration: const InputDecoration(
+            labelText: '대상·수행자·행동 검색',
+            prefixIcon: Icon(Icons.search),
           ),
-          ExpansionTile(
-            title: const Text('기술 식별자'),
-            children: [
-              SelectableText(
-                '요청 ID: ${entry.requestId}\n대상 ID: ${entry.targetId}',
-              ),
-            ],
-          ),
-        ],
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 8),
+        AnchoredSelectField<String>(
+          key: const ValueKey('admin-history-kind'),
+          externalLabel: true,
+          value: _historyKind,
+          label: '종류',
+          options: [
+            const SelectOption('', '전체 종류'),
+            for (final entry in kindOptions.entries)
+              SelectOption(entry.key, entry.value),
+          ],
+          onChanged: (value) => setState(() => _historyKind = value),
+        ),
+        const SizedBox(height: 8),
+        AnchoredSelectField<String>(
+          key: const ValueKey('admin-history-action'),
+          externalLabel: true,
+          value: _historyAction,
+          label: '행동',
+          options: [
+            const SelectOption('', '전체 행동'),
+            for (final entry in actionOptions.entries)
+              SelectOption(entry.key, entry.value),
+          ],
+          onChanged: (value) => setState(() => _historyAction = value),
+        ),
+        if (allScoped.isEmpty)
+          const FeatureLine.one(text: '관리 이력이 없습니다. 등록·수정 후 확인하세요.')
+        else if (entries.isEmpty)
+          const FeatureLine.one(text: '검색·필터에 맞는 이력이 없습니다.')
+        else
+          for (final entry in entries) ...[
+            FeatureLine.two(
+              primary:
+                  '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
+              secondary:
+                  '${_timeLabel(entry.at)} · ${_actorName(entry.actorId)} · ${_relationName(entry.targetId).isEmpty ? '삭제되었거나 볼 수 없는 항목' : _relationName(entry.targetId)}',
+            ),
+            ExpansionTile(
+              title: const Text('기술 식별자'),
+              children: [
+                SelectableText(
+                  '요청 ID: ${entry.requestId}\n대상 ID: ${entry.targetId}',
+                ),
+              ],
+            ),
+          ],
       ],
     );
   }
@@ -987,6 +1113,67 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         ),
     ],
   );
+
+  Future<void> _changeSchool(String v) async {
+    if (v == _schoolId || !await _allowLeave()) return;
+    setState(() {
+      _schoolId = v;
+      _editorKeys.clear();
+      _error = null;
+      _accountRole = '';
+      _queries.clear();
+      _statuses.clear();
+      _historyQuery.clear();
+      _historyKind = '';
+      _historyAction = '';
+    });
+    // The old detail cannot remain under the new school.
+    if (_detailId != null) widget.onNavigate(_section);
+  }
+
+  Widget _schoolSelector({required bool compactHeader}) => Align(
+    alignment: Alignment.centerLeft,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 440),
+      child: AnchoredSelectField<String>(
+        externalLabel: !compactHeader,
+        key: const ValueKey('admin-school-selector'),
+        searchable: true,
+        searchLabel: '학교 이름 검색',
+        value: _schoolId,
+        label: '현재 학교',
+        options: [
+          for (final school in _schools) SelectOption(school.id, school.name),
+        ],
+        onChanged: _changeSchool,
+      ),
+    ),
+  );
+
+  void _publishSchoolChrome({required bool allowed}) {
+    final chrome = widget.schoolChrome;
+    if (chrome == null) return;
+    final showInTitle =
+        allowed &&
+        !widget.phoneChrome &&
+        _schools.isNotEmpty &&
+        _section != '/admin/applications';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.schoolChrome != chrome) return;
+      if (!showInTitle) {
+        chrome.clear();
+        return;
+      }
+      chrome.publish(
+        schoolId: _schoolId,
+        schools: [
+          for (final school in _schools) (id: school.id, name: school.name),
+        ],
+        visible: true,
+        onChanged: _changeSchool,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1025,6 +1212,12 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             detail != null &&
                 sectionKinds[_section]?.contains(detail.kind) == true &&
                 _repo.canRead(_actor, detail));
+    _publishSchoolChrome(allowed: allowed);
+    final showBodySchool =
+        _schools.isNotEmpty &&
+        allowed &&
+        _section != '/admin/applications' &&
+        (widget.schoolChrome == null || widget.phoneChrome);
     return AdminShell(
       sidebarVisible: widget.sidebarVisible,
       menus: {
@@ -1051,40 +1244,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 ? AdminWorkspace.menuDescriptions[_section]
                 : null,
             body: [
-              if (_schools.isNotEmpty &&
-                  allowed &&
-                  _section != '/admin/applications')
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 440),
-                    child: AnchoredSelectField<String>(
-                      externalLabel: !compactHeader,
-                      key: const ValueKey('admin-school-selector'),
-                      searchable: true,
-                      searchLabel: '학교 이름 검색',
-                      value: _schoolId,
-                      label: '현재 학교',
-                      options: [
-                        for (final school in _schools)
-                          SelectOption(school.id, school.name),
-                      ],
-                      onChanged: (v) async {
-                        if (v == _schoolId || !await _allowLeave()) return;
-                        setState(() {
-                          _schoolId = v;
-                          _editorKeys.clear();
-                          _error = null;
-                          _accountRole = '';
-                          _queries.clear();
-                          _statuses.clear();
-                        });
-                        // The old detail cannot remain under the new school.
-                        if (_detailId != null) widget.onNavigate(_section);
-                      },
-                    ),
-                  ),
-                ),
+              if (showBodySchool)
+                _schoolSelector(compactHeader: compactHeader),
               if (_repo.live && _repo.warning != null) Text(_repo.warning!),
               if (_loading)
                 const LinearProgressIndicator()

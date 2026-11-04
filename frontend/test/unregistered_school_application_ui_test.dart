@@ -105,7 +105,7 @@ void main() {
         expect(tester.widget<FilledButton>(submit).onPressed, isNotNull);
         expect(writes, 0);
         expect(find.textContaining('신청이 접수됐습니다.'), findsNothing);
-        expect(find.text('신청 내역이 없습니다.'), findsOneWidget);
+        expect(find.textContaining('신청 내역이 없습니다.'), findsOneWidget);
         await tapVisible(tester, find.text('닫기'));
         expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
         await tester.tap(find.text('계속 작성'));

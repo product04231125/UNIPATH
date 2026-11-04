@@ -105,14 +105,21 @@ class RemoteAdminRepository extends AdminRepository {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _pages(String path) async {
+  Future<List<Map<String, dynamic>>> _pages(
+    String path, {
+    Map<String, String>? query,
+  }) async {
     final result = <Map<String, dynamic>>[];
     final seen = <String>{};
     String? cursor;
     do {
-      final query = Uri(queryParameters: {'limit': '100', 'cursor': ?cursor})
-          .query;
-      final response = (await _request('GET', '$path?$query'))!;
+      final params = <String, String>{
+        'limit': '100',
+        'cursor': ?cursor,
+        ...?query,
+      };
+      final encoded = Uri(queryParameters: params).query;
+      final response = (await _request('GET', '$path?$encoded'))!;
       result.addAll(List<Map<String, dynamic>>.from(response['items'] as List));
       cursor = response['next_cursor'] as String?;
       if (cursor != null && !seen.add(cursor)) {

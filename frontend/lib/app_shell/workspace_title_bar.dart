@@ -12,6 +12,8 @@ class WorkspaceTitleBar extends StatelessWidget {
     this.onToggleSidebar,
     this.sidebarVisible = true,
     this.statusLabel,
+    this.center,
+    this.trailingActions,
 
     /// Phone portrait: hide back/forward/sidebar/status; keep window controls only.
     this.phoneChrome = false,
@@ -21,6 +23,12 @@ class WorkspaceTitleBar extends StatelessWidget {
 
   /// Account role / current status shown trailing (before OS window controls).
   final String? statusLabel;
+
+  /// Center slot inside the drag region; only the child receives pointer hits.
+  final Widget? center;
+
+  /// Optional actions before [statusLabel] (e.g. guest-preview exit).
+  final List<Widget>? trailingActions;
   final bool phoneChrome;
 
   bool get native => !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
@@ -37,6 +45,7 @@ class WorkspaceTitleBar extends StatelessWidget {
     if (phoneChrome && !native) return const SizedBox.shrink();
     final status = statusLabel?.trim();
     final showStatus = !phoneChrome && status != null && status.isNotEmpty;
+    final actions = trailingActions ?? const <Widget>[];
     return Material(
       color: titleBarColor(Theme.of(context).colorScheme),
       child: SafeArea(
@@ -61,15 +70,34 @@ class WorkspaceTitleBar extends StatelessWidget {
               ),
             ],
             Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onPanStart: native
-                    ? (_) => windowManager.startDragging()
-                    : null,
-                onDoubleTap: native ? _maximize : null,
-                child: const SizedBox(height: 48),
+              child: SizedBox(
+                height: 48,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onPanStart: native
+                          ? (_) => windowManager.startDragging()
+                          : null,
+                      onDoubleTap: native ? _maximize : null,
+                      child: const SizedBox.expand(),
+                    ),
+                    if (!phoneChrome && center != null)
+                      Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 440),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
+            if (!phoneChrome) ...actions,
             if (showStatus)
               Padding(
                 padding: const EdgeInsets.only(right: 12),

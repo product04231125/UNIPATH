@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../auth/auth_api.dart';
+import '../auth/guest_preview_scope.dart';
 import '../api/graduation_api.dart';
 import '../planning/planning_profile_cta.dart';
 import '../planning/planning_repository.dart';
@@ -167,6 +168,10 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
   }
 
   Future<void> _run() async {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     if (_busy) return;
     _fields = [];
     final selected = _context;
@@ -297,7 +302,12 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
       FeatureActions(
         children: [
           FilledButton(
-            onPressed: _busy || _loading || !_ready ? null : _run,
+            onPressed: _busy ||
+                    _loading ||
+                    !_ready ||
+                    GuestPreviewScope.isActive(context)
+                ? null
+                : _run,
             child: Text(_busy ? '처리 중…' : '졸업요건 감사 실행'),
           ),
         ],

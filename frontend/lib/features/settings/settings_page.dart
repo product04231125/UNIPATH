@@ -3,6 +3,7 @@ import '../../shared/widgets/responsive_columns.dart';
 import 'package:flutter/material.dart';
 
 import '../auth/auth_api.dart';
+import '../auth/guest_preview_scope.dart';
 import '../planning/planning_import_section.dart';
 import '../records/personal_repository_scope.dart';
 import '../records/personal_workspace_import_section.dart';
@@ -28,11 +29,13 @@ class SettingsPage extends StatefulWidget {
     required this.repository,
     this.chatPreferences,
     this.studentApi,
+    this.previewInstitutionId,
   });
 
   final PlanningRepository repository;
   final ChatPreferences? chatPreferences;
   final StudentApi? studentApi;
+  final String? previewInstitutionId;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -72,7 +75,8 @@ class _SettingsPageState extends State<SettingsPage> {
     _weekStartsOn = profile.weekStartsOn;
     _track = profile.track;
     _displayedProfile = profile;
-    _pendingInstitutionId = profile.institutionId;
+    _pendingInstitutionId =
+        widget.previewInstitutionId ?? profile.institutionId;
     _pendingDepartmentId = profile.departmentId;
     _pendingCurriculumId = profile.curriculumId;
     _useCatalog = widget.studentApi != null;
@@ -168,16 +172,18 @@ class _SettingsPageState extends State<SettingsPage> {
                                 text: '학업과 계획',
                                 padTop: false,
                               ),
-                              if (widget.repository.isServerBacked)
+                              if (widget.repository.isServerBacked &&
+                                  !GuestPreviewScope.isActive(context))
                                 PlanningImportSection(
                                   repository: widget.repository,
                                 ),
-                              if (PersonalRepositoryScope.read(context)
-                                      ?.importer
-                                  case final importer?)
-                                PersonalWorkspaceImportSection(
-                                  importer: importer,
-                                ),
+                              if (!GuestPreviewScope.isActive(context))
+                                if (PersonalRepositoryScope.read(context)
+                                        ?.importer
+                                    case final importer?)
+                                  PersonalWorkspaceImportSection(
+                                    importer: importer,
+                                  ),
                               IgnorePointer(
                                 ignoring: _saving,
                                 child: ResponsiveColumns(
@@ -372,7 +378,11 @@ class _SettingsPageState extends State<SettingsPage> {
                               FeatureActions(
                                 children: [
                                   FilledButton(
-                                    onPressed: _saving ? null : _save,
+                                    onPressed:
+                                        _saving ||
+                                            GuestPreviewScope.isActive(context)
+                                        ? null
+                                        : _save,
                                     child: Text(_saving ? '저장 중…' : '저장'),
                                   ),
                                 ],
@@ -444,6 +454,10 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _save() async {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
     final catalog = _useCatalog ? _schoolForm.currentState : null;
     if (_useCatalog && (catalog == null || !catalog.isReady)) {

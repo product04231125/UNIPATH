@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/widgets/external_link_button.dart';
+import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/responsive_columns.dart';
 import '../../shared/widgets/responsive_panels.dart';
@@ -472,15 +473,23 @@ class AdminEditorState extends State<AdminEditor> {
           ),
   );
 
-  Widget _panel(String title, Widget content, {Key? key}) => Column(
+  Widget _panel(
+    String title,
+    Widget content, {
+    Key? key,
+    bool alignWithList = false,
+  }) => Column(
     key: key,
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Semantics(
-        header: true,
-        child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-      ),
-      const SizedBox(height: 16),
+      if (alignWithList)
+        FeatureLine.section(text: title, padTop: false, padBottom: false)
+      else
+        Semantics(
+          header: true,
+          child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+        ),
+      SizedBox(height: alignWithList ? 8 : 16),
       content,
     ],
   );
@@ -530,6 +539,7 @@ class AdminEditorState extends State<AdminEditor> {
                 children: [for (final field in basic) _field(field)],
               ),
               key: ValueKey('admin-basic-${widget.kind.name}'),
+              alignWithList: true,
             ),
           ),
           const Divider(height: 40),
