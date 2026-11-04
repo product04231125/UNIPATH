@@ -11,6 +11,23 @@ import 'package:university_path_frontend/features/records/portfolio/job_analysis
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  test('posting PNG validation checks the complete signature', () {
+    expect(
+      () => validateJobPostingFile(
+        'notice.png',
+        Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0, 0, 0, 0]),
+      ),
+      throwsStateError,
+    );
+    expect(
+      () => validateJobPostingFile(
+        'notice.png',
+        Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+      ),
+      returnsNormally,
+    );
+  });
+
   testWidgets(
     'job analysis keeps posting text and selected records without inventing results',
     (tester) async {
@@ -135,7 +152,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       next = XFile.fromData(
-        Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0, 0, 0, 0]),
+        Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
         name: 'notice.png',
         path: 'notice.png',
         mimeType: 'image/png',
