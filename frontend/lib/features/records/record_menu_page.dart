@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:university_path_frontend/shared/app_typography.dart';
 
+import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/page_header.dart';
@@ -239,12 +240,13 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     }).toList();
     final entries = [if (widget.showMockData) ...widget.fixture];
     final isCourse = widget.kind == PersonalRecordKind.course;
+    final phone = PhoneChromeScope.of(context);
     return ContentScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _header(),
-          if (!isCourse)
+          if (!isCourse && !phone)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -263,7 +265,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                 ),
               ),
             ),
-          if (!isCourse) const SizedBox(height: 14),
+          if (!isCourse && !phone) const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
               final records = SurfaceCard(
@@ -277,8 +279,8 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    if (!isCourse) const SizedBox(height: 4),
-                    if (!isCourse)
+                    if (!isCourse && !phone) const SizedBox(height: 4),
+                    if (!isCourse && !phone)
                       Text(
                         '학교에서 확인한 정보가 없으면 내 기록을 직접 추가할 수 있습니다.',
                         style: TextStyle(
@@ -349,18 +351,21 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점 · 공식 이수학점 아님',
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        widget.notice,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 12),
+                      if (!phone) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점 · 공식 이수학점 아님',
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          widget.notice,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 12),
+                      ] else
+                        const SizedBox(height: 12),
                     ],
-                    if (widget.kind == PersonalRecordKind.activity)
+                    if (widget.kind == PersonalRecordKind.activity && !phone)
                       Text(
                         '사용자가 승인됨으로 기록한 봉사 시간 합계 ${personal.where((r) => r.value('approval') == 'approved').fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('approvedHours')) ?? 0))}시간 · 학교 검증 아님',
                       ),
@@ -411,19 +416,22 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     );
   }
 
-  Widget _header() => PageHeader(
-    title: widget.title,
-    contextLabel: widget.contextLabel,
-    description: widget.description,
-    actions: [
-      if (_repository.isServerBacked)
-        TextButton.icon(
-          onPressed: _loading ? null : _load,
-          icon: const Icon(Icons.refresh),
-          label: const Text('서버 기록 다시 불러오기'),
-        ),
-    ],
-  );
+  Widget _header() {
+    final phone = PhoneChromeScope.of(context);
+    return PageHeader(
+      title: widget.title,
+      contextLabel: widget.contextLabel,
+      description: phone ? null : widget.description,
+      actions: [
+        if (_repository.isServerBacked)
+          TextButton.icon(
+            onPressed: _loading ? null : _load,
+            icon: const Icon(Icons.refresh),
+            label: const Text('서버 기록 다시 불러오기'),
+          ),
+      ],
+    );
+  }
 
   Widget _statePage({required Widget child}) => ContentScrollView(
     child: Column(

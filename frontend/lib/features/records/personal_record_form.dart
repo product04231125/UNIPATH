@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../auth/auth_api.dart';
@@ -86,12 +87,14 @@ Future<void> showPersonalRecordForm({
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                repository.isServerBacked
-                    ? '계정 서버 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드는 하지 않습니다.'
-                    : '기기 로컬 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드·서버 전송은 하지 않습니다.',
-              ),
-              const SizedBox(height: 16),
+              if (!PhoneChromeScope.of(context)) ...[
+                Text(
+                  repository.isServerBacked
+                      ? '계정 서버 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드는 하지 않습니다.'
+                      : '기기 로컬 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드·서버 전송은 하지 않습니다.',
+                ),
+                const SizedBox(height: 16),
+              ],
               for (final field in fields) ...[
                 if (isCourse && field.key == 'term') ...[
                   TextFormField(

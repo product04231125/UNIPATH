@@ -14,11 +14,17 @@ import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  for (final width in [480.0, 900.0, 1000.0]) {
+  for (final size in [
+    // 480×520 (Windows min) and exact 480×768 stay left icon rail, not phone.
+    const Size(480, 520),
+    const Size(480, 768),
+    const Size(900, 768),
+    const Size(1000, 768),
+  ]) {
     testWidgets(
-      'compact startup navigation stays compact after home actions at $width',
+      'compact startup navigation stays compact after home actions at ${size.width}',
       (tester) async {
-        await tester.binding.setSurfaceSize(Size(width, 768));
+        await tester.binding.setSurfaceSize(size);
         addTearDown(() => tester.binding.setSurfaceSize(null));
         await tester.pumpWidget(
           const UniversityPathApp(startAuthenticated: true),
@@ -385,13 +391,20 @@ void main() {
       tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
       greaterThan(0),
     );
-    // Entering/leaving the outer Web fallback must preserve the active tab.
+    // Phone portrait (450×900, ratio 2.0) skips the 480 fallback and mock table.
     await tester.binding.setSurfaceSize(const Size(450, 900));
     await tester.pumpAndSettle();
-    expect(find.byType(Table), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(
+      find.byKey(const Key('workspace-horizontal-scrollbar')),
+      findsNothing,
+    );
+    expect(find.byType(Table), findsNothing);
+    // Leaving phone chrome restores the left rail and the active curriculum tab.
     await tester.binding.setSurfaceSize(const Size(1061, 900));
     await tester.pumpAndSettle();
     expect(find.byTooltip('홈'), findsOneWidget);
+    expect(find.byType(Table), findsOneWidget);
     expect(
       tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
       greaterThan(0),
@@ -421,7 +434,7 @@ void main() {
     tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.binding.setSurfaceSize(const Size(320, 900));
+    await tester.binding.setSurfaceSize(const Size(320, 400));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     await tester.pumpAndSettle();
     expect(find.byTooltip('홈'), findsOneWidget);
@@ -437,7 +450,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(widget.controller!.offset, greaterThan(0));
-    await tester.binding.setSurfaceSize(const Size(480, 900));
+    await tester.binding.setSurfaceSize(const Size(480, 520));
     await tester.pumpAndSettle();
     expect(scrollbar, findsNothing);
     expect(find.byType(WorkspaceShell), findsOneWidget);
