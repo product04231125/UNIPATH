@@ -802,16 +802,6 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     return '${local.year}.${two(local.month)}.${two(local.day)} ${two(local.hour)}:${two(local.minute)}';
   }
 
-  String _routeFor(AdminKind kind) => switch (kind) {
-    AdminKind.institution || AdminKind.department => '/admin/schools',
-    AdminKind.curriculum ||
-    AdminKind.course ||
-    AdminKind.curriculumCourse => '/admin/curricula',
-    AdminKind.ruleSet || AdminKind.rule => '/admin/rules',
-    AdminKind.document => '/admin/documents',
-    AdminKind.account || AdminKind.scope => '/admin/accounts',
-  };
-
   String _actionLabel(String action) => switch (action) {
     'role_changed' => '역할 변경',
     'account_status_changed' => '계정 상태 변경',

@@ -80,9 +80,10 @@ Rule Engine, RAG의 책임을 바꾸지 않으며, **현재 구현된 정책**�
   중복하지 않고, 휴대폰 홈에서는 제목 아래 한 줄만 둘 수 있다. 데이터가 없을 때 임의로
   생성하지 않는다.
 - 본문 목록·설정 행·상태 한 줄은 `FeatureLine.one`/`FeatureLine.two`를 쓰고, 섹션 제목은
-  `FeatureLine.section`이다. 주 동작(등록·실행·저장)은 카드/폼 아래 왼쪽
-  `FeatureActions`의 `FilledButton`이다. `다시 읽기`는 섹션 제목 오른쪽 `OutlinedButton`이며
-  페이지 제목 줄에 두지 않는다. Filled/Outlined 높이는 48, 패딩 16×12, 라벨 14 `height: 1.0`,
+  `FeatureLine.section`이다. 학생·관리자 `FeaturePage` 본문 섹션은 `SurfaceCard`다(섹션 사이
+  `FeatureLine.slotGap`). 이미 바깥 등록 틀·설정 섹션 카드 안을 다시 감싸지 않는다. 주 동작(등록·실행·저장)은 카드/폼 아래 왼쪽
+  `FeatureActions`의 `FilledButton`이다. `다시 읽기`는 섹션 제목 오른쪽 compact(~36)
+  `OutlinedButton`이며 페이지 제목 줄에 두지 않는다. 전역 Filled/Outlined 높이는 48, 패딩 16×12, 라벨 14 `height: 1.0`,
   아이콘 18이다. 메뉴마다 `SizedBox`로 맞추지 않고 아래 간격은 틀이 가진다.
 - 제목은 공통 26px, 설명 14px, 문맥 13px 스타일과 시스템 글자 확대를 따른다. 없는 문구의
   공간은 예약하지 않는다. `FeaturePage`는 헤더 뒤 본문에 추가 여백을 넣지 않는다. 본문이
