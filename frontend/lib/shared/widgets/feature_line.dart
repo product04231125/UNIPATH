@@ -15,7 +15,9 @@ class FeatureLine extends StatelessWidget {
     this.divided = false,
   }) : variant = FeatureLineVariant.one,
        primary = text,
-       secondary = null;
+       secondary = null,
+       padTop = false,
+       padBottom = false;
 
   const FeatureLine.two({
     super.key,
@@ -24,13 +26,19 @@ class FeatureLine extends StatelessWidget {
     this.leading,
     this.trailing,
     this.divided = true,
-  }) : variant = FeatureLineVariant.two;
+  }) : variant = FeatureLineVariant.two,
+       padTop = false,
+       padBottom = false;
 
   const FeatureLine.section({
     super.key,
     required String text,
     this.trailing,
     this.divided = false,
+    /// Slot above when another block exists. Skip if PageHeader or card padding owns it.
+    this.padTop = true,
+    /// Slot below when another block exists.
+    this.padBottom = true,
   }) : variant = FeatureLineVariant.section,
        primary = text,
        secondary = null,
@@ -42,6 +50,12 @@ class FeatureLine extends StatelessWidget {
   final Widget? leading;
   final Widget? trailing;
   final bool divided;
+  final bool padTop;
+  final bool padBottom;
+
+  /// Body slot between neighboring blocks: 16 wide, 12 on phone.
+  static double slotGap(BuildContext context) =>
+      phoneAwareGap(context, wide: 16, phone: 12);
 
   static Widget reload({
     Key? key,
@@ -81,7 +95,7 @@ class FeatureLine extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               title,
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 secondary!,
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -91,13 +105,20 @@ class FeatureLine extends StatelessWidget {
             ],
           )
         : title;
+    final slot = slotGap(context);
+    final padding = variant == FeatureLineVariant.section
+        ? EdgeInsets.only(
+            top: padTop ? slot : 0,
+            bottom: padBottom ? slot : 0,
+          )
+        : EdgeInsets.symmetric(vertical: phone ? phoneListGap : 0);
     return Container(
       constraints: BoxConstraints(
         minHeight: phone || variant == FeatureLineVariant.section
             ? 0
             : phoneMinTapTarget,
       ),
-      padding: EdgeInsets.symmetric(vertical: phone ? phoneListGap : 0),
+      padding: padding,
       decoration: BoxDecoration(
         border: divided
             ? Border(bottom: BorderSide(color: colors.outlineVariant))

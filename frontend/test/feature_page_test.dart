@@ -60,6 +60,31 @@ void main() {
     );
   });
 
+  testWidgets('FeaturePage does not add a gap beyond PageHeader bottom', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      host(
+        const FeaturePage(
+          title: '수강 관리',
+          description: '학기별 수강 계획과 개인 이수 기록을 정리합니다.',
+          body: [
+            SurfaceCard(
+              child: FeatureLine.one(text: '개인 기록이 없습니다. 직접 입력해 주세요.'),
+            ),
+          ],
+        ),
+        size: const Size(390, 844),
+        phone: true,
+      ),
+    );
+    final header = tester.getRect(find.byType(PageHeader));
+    final card = tester.getRect(find.byType(SurfaceCard));
+    expect(card.top, closeTo(header.bottom, 0.5));
+  });
+
   testWidgets('filled and outlined buttons use the shared 48 metrics', (
     tester,
   ) async {
