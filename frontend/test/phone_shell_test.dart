@@ -279,6 +279,26 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'phone size without PhoneChromeScope does not activate chrome',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      late bool phone;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              phone = PhoneChromeScope.of(context);
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+      expect(phone, isFalse);
+    },
+  );
+
   testWidgets('admin 1440 and 480x520 keep the left rail', (tester) async {
     await pumpAdmin(tester, const Size(1440, 900));
     expect(find.byType(NavigationBar), findsNothing);

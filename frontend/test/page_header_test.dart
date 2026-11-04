@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/app_shell/phone_shell.dart';
+import 'package:university_path_frontend/shared/app_typography.dart';
 import 'package:university_path_frontend/shared/widgets/page_header.dart';
 import 'package:university_path_frontend/shared/widgets/content_scroll_view.dart';
 import 'package:university_path_frontend/features/records/course/course_page.dart';
@@ -272,4 +273,22 @@ void main() {
       closeTo(titleRect.height + phonePageHeaderBottomGap, .01),
     );
   });
+
+  testWidgets(
+    'phone size without PhoneChromeScope keeps the wide page title',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: universityPathTheme(),
+          home: const Scaffold(body: PageHeader(title: '제목')),
+        ),
+      );
+      expect(
+        tester.widget<Text>(find.text('제목')).style?.fontSize,
+        AppTypography.page,
+      );
+    },
+  );
 }

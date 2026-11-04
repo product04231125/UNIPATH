@@ -17,9 +17,11 @@ class PhoneChromeScope extends InheritedWidget {
 
   final bool active;
 
+  /// Density follows the published [active] flag only. A missing scope is not
+  /// inferred from viewport size.
   static bool of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<PhoneChromeScope>()?.active ??
-      isPhonePortraitShell(MediaQuery.sizeOf(context));
+      false;
 
   @override
   bool updateShouldNotify(PhoneChromeScope oldWidget) =>
