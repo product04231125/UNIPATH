@@ -233,6 +233,12 @@ class AppNavigation extends RouterDelegate<AppLocation>
         _identity = null;
         authenticated = false;
         _role = AppRole.user;
+        _studentGuestPreview = false;
+        _previewInstitutionId = null;
+        _previewInstitutionName = null;
+        _previewReturnPath = null;
+        _restoreAdminSchoolId = null;
+        _adminSchoolChrome.clear();
         LocalDataOwner.currentUserId = null;
         _sessionTimer?.cancel();
         _location = const AppLocation('/login');
@@ -251,6 +257,8 @@ class AppNavigation extends RouterDelegate<AppLocation>
           _previewInstitutionId = null;
           _previewInstitutionName = null;
           _previewReturnPath = null;
+          _restoreAdminSchoolId = null;
+          _adminSchoolChrome.clear();
         }
         if (accountChanged) {
           _loginNotice = null;
@@ -442,6 +450,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
     _previewInstitutionId = null;
     _previewInstitutionName = null;
     _previewReturnPath = null;
+    _restoreAdminSchoolId = null;
     _adminSchoolChrome.clear();
     _location = const AppLocation('/login');
     _history.clear();

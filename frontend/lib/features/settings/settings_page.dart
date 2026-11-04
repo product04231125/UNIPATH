@@ -144,7 +144,8 @@ class _SettingsPageState extends State<SettingsPage> {
           _weekStartsOn = profile.weekStartsOn;
           _track = profile.track;
           _displayedProfile = profile;
-          _pendingInstitutionId = profile.institutionId;
+          _pendingInstitutionId =
+              widget.previewInstitutionId ?? profile.institutionId;
           _pendingDepartmentId = profile.departmentId;
           _pendingCurriculumId = profile.curriculumId;
           _useCatalog = widget.studentApi != null;
@@ -199,11 +200,11 @@ class _SettingsPageState extends State<SettingsPage> {
                                         const FeatureLine.one(
                                           text: '등록된 학교는 목록에서 고릅니다. 목록에 없으면 만들지 않습니다.',
                                         ),
-                                        if (_academicSourceLabel != null)
-                                          FeatureLine.one(
-                                            text: _academicSourceLabel!,
-                                          ),
                                       ],
+                                      if (_academicSourceLabel != null)
+                                        FeatureLine.one(
+                                          text: _academicSourceLabel!,
+                                        ),
                                       if (_useCatalog &&
                                           widget.studentApi != null)
                                         SchoolContextForm(

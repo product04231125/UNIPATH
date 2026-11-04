@@ -10,6 +10,7 @@ import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../api/student_api.dart';
 import '../auth/auth_api.dart';
+import '../auth/guest_preview_scope.dart';
 import 'course/course_pick_options.dart';
 import 'course/course_term.dart';
 import 'personal_record_fields.dart';
@@ -35,6 +36,10 @@ Future<void> showPersonalRecordForm({
   StudentApi? studentApi,
   String? institutionId,
 }) async {
+  if (GuestPreviewScope.isActive(context)) {
+    GuestPreviewScope.showBlockedMessage(context);
+    return;
+  }
   List<PersonalRecordField> fields;
   try {
     fields =

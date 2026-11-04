@@ -354,6 +354,10 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                         onPressed: _saving
                             ? null
                             : () async {
+                                if (GuestPreviewScope.isActive(context)) {
+                                  GuestPreviewScope.showBlockedMessage(context);
+                                  return;
+                                }
                                 setState(() => _saving = true);
                                 try {
                                   await widget.onUse!(r);
