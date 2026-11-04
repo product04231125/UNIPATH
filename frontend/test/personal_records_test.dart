@@ -45,6 +45,7 @@ Future<void> _pumpActivityReview(
 }) async {
   await tester.binding.setSurfaceSize(const Size(1440, 900));
   addTearDown(() => tester.binding.setSurfaceSize(null));
+  final experience = PersonalRecordRepository(PersonalRecordKind.experience);
   await tester.pumpWidget(
     ValueListenableBuilder<bool>(
       valueListenable: guest,
@@ -52,7 +53,11 @@ Future<void> _pumpActivityReview(
         active: active,
         child: MaterialApp(
           home: PersonalRepositoryScope(
-            records: (_) => repository,
+            records: (kind) => switch (kind) {
+              PersonalRecordKind.activity => repository,
+              PersonalRecordKind.experience => experience,
+              _ => PersonalRecordRepository(kind),
+            },
             portfolio: () => throw UnimplementedError(),
             child: Scaffold(body: page),
           ),
@@ -61,6 +66,19 @@ Future<void> _pumpActivityReview(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+Future<void> _chooseActivityAdd(
+  WidgetTester tester, {
+  String choice = '봉사',
+}) async {
+  await tester.tap(find.text('활동 직접 기록'));
+  await tester.pumpAndSettle();
+  final option = find.text(choice);
+  if (option.evaluate().isNotEmpty) {
+    await tester.tap(option.last);
+    await tester.pumpAndSettle();
+  }
 }
 
 RecordMenuPage _activityMenu({
@@ -112,8 +130,7 @@ void main() {
     final guest = ValueNotifier(false);
     addTearDown(guest.dispose);
     await _pumpActivityReview(tester, repository: repository, guest: guest);
-    await tester.tap(find.text('활동 직접 기록'));
-    await tester.pumpAndSettle();
+    await _chooseActivityAdd(tester);
     final title = find.byKey(const ValueKey('record-field-title'));
     await tester.enterText(title, '보존할 활동');
     guest.value = true;
@@ -209,8 +226,7 @@ void main() {
       final guest = ValueNotifier(false);
       addTearDown(guest.dispose);
       await _pumpActivityReview(tester, repository: repository, guest: guest);
-      await tester.tap(find.text('활동 직접 기록'));
-      await tester.pumpAndSettle();
+      await _chooseActivityAdd(tester);
       final title = find.byKey(const ValueKey('record-field-title'));
       await tester.enterText(title, '다시 저장할 활동');
       await tester.tap(find.text('내 기록에 저장'));
@@ -224,7 +240,7 @@ void main() {
       expect(repository.records.single.value('title'), '다시 저장할 활동');
       expect(repository.submitted, hasLength(2));
       expect(repository.submitted.first.id, repository.submitted.last.id);
-      expect(find.text('다시 저장할 활동'), findsOneWidget);
+      expect(find.textContaining('활동 · 다시 저장할 활동'), findsOneWidget);
     },
   );
 
@@ -439,6 +455,71 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'activity add chooses volunteer other or experience and lists both kinds',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final activity = PersonalRecordRepository(PersonalRecordKind.activity);
+      final experience = PersonalRecordRepository(PersonalRecordKind.experience);
+      await activity.load();
+      await experience.load();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PersonalRepositoryScope(
+            records: (kind) => switch (kind) {
+              PersonalRecordKind.activity => activity,
+              PersonalRecordKind.experience => experience,
+              _ => PersonalRecordRepository(kind),
+            },
+            portfolio: () => throw UnimplementedError(),
+            child: const Scaffold(body: ActivityPage()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _chooseActivityAdd(tester);
+      await tester.enterText(
+        find.byKey(const ValueKey('record-field-title')),
+        '통합 봉사',
+      );
+      await tester.tap(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
+
+      await _chooseActivityAdd(tester, choice: '그 밖의 활동');
+      await tester.enterText(
+        find.byKey(const ValueKey('record-field-title')),
+        '통합 기타',
+      );
+      await tester.tap(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
+
+      await _chooseActivityAdd(tester, choice: '프로젝트·인턴·동아리');
+      await tester.enterText(
+        find.byKey(const ValueKey('record-field-title')),
+        '통합 프로젝트',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('record-field-type')),
+        '프로젝트',
+      );
+      await tester.tap(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('활동 · 통합 봉사'), findsOneWidget);
+      expect(find.textContaining('활동 · 통합 기타'), findsOneWidget);
+      expect(find.textContaining('경험 · 통합 프로젝트'), findsOneWidget);
+      expect(activity.records.map((r) => r.value('title')), [
+        '통합 봉사',
+        '통합 기타',
+      ]);
+      expect(experience.records.single.value('title'), '통합 프로젝트');
+      expect(experience.records.single.value('type'), '프로젝트');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final scale in [1.0, 2.0]) {
     testWidgets(
       'course shows personal records without example rows scale=$scale',
@@ -643,8 +724,7 @@ void main() {
       await tester.tap(find.byTooltip('활동'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('활동 직접 기록'));
-      await tester.tap(find.text('활동 직접 기록'));
-      await tester.pumpAndSettle();
+      await _chooseActivityAdd(tester);
       final title = find.byKey(const ValueKey('record-field-title'));
       await tester.ensureVisible(title);
       await tester.enterText(title, '합성 봉사');
@@ -741,6 +821,10 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text(item.$2));
         await tester.pumpAndSettle();
+        if (item.$1 == '활동') {
+          await tester.tap(find.text('봉사').last);
+          await tester.pumpAndSettle();
+        }
         for (final field in item.$3.entries) {
           final input = find.byKey(ValueKey('record-field-${field.key}'));
           await tester.ensureVisible(input);
