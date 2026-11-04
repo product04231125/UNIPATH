@@ -257,7 +257,7 @@ void main() {
     for (final menu in [
       ('수강 관리', '내 수강 과목'),
       ('일정', '개인 계획을 이 기기에 저장합니다.'),
-      ('졸업 요건', '기준 선택'),
+      ('졸업 요건', '기준일'),
       ('활동', '등록한 활동'),
       ('자격', '등록한 자격'),
       ('자료', '내 자료'),
@@ -298,9 +298,10 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
 
-    await tester.tap(find.text('졸업 요건'));
+    await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('내 학교·학과 기준 설정'));
+    await tester.ensureVisible(find.text('개인 교육과정 작업'));
+    await tester.tap(find.text('개인 교육과정 작업'));
     await tester.pumpAndSettle();
     await tester.pumpAndSettle();
     for (final entry in {

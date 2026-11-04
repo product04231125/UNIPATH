@@ -12,9 +12,11 @@ class PersonalGraduationWorkspace extends StatefulWidget {
     super.key,
     required this.onBack,
     this.planning,
+    this.backLabel = '설정으로 돌아가기',
   });
   final VoidCallback onBack;
   final PlanningRepository? planning;
+  final String backLabel;
   @override
   State<PersonalGraduationWorkspace> createState() =>
       _PersonalGraduationWorkspaceState();
@@ -100,7 +102,7 @@ class _PersonalGraduationWorkspaceState
                   widget.onBack();
                 }
               },
-              child: const Text('졸업 요건으로 돌아가기'),
+              child: Text(widget.backLabel),
             ),
           ],
         ),

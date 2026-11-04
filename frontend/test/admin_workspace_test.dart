@@ -980,6 +980,10 @@ void main() {
     await tester.tap(find.text('다시 읽기'));
     await tester.pumpAndSettle();
     expect(find.text('관리 가능한 학교 2개'), findsOneWidget);
+    expect(find.text('학교 문서 검색·근거'), findsNothing);
+    expect(find.text('학교 발급 원본 검토'), findsNothing);
+    expect(find.text('학교 확인 학생 기록 검토'), findsNothing);
+    expect(find.text('학교 문서 근거 검토'), findsNothing);
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     expect(FocusManager.instance.primaryFocus, isNotNull);
   });

@@ -2,16 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../auth/auth_api.dart';
 import '../api/graduation_api.dart';
+import '../planning/planning_profile_cta.dart';
 import '../planning/planning_repository.dart';
 import '../records/personal_record_repository.dart';
-import 'school_context_form.dart';
-import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/external_link_button.dart';
 import '../../shared/widgets/feature_actions.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/feature_page.dart';
-import '../auth/school_workflow_actions.dart';
-import '../../shared/widgets/input_dialog.dart';
+import '../../shared/widgets/surface_card.dart';
 
 String auditStatus(String value) => switch (value) {
   'satisfied' => '충족',
@@ -31,54 +29,111 @@ String auditIssueLabel(AuditIssue issue) =>
     }[issue.reason] ??
     '${const {'catalog': '적용 규정', 'records': '승인 기록', 'academics': '성적', 'volunteers': '봉사', 'certificates': '자격', 'theses': '논문'}[issue.kind] ?? '근거'} 검토가 필요합니다.';
 
+String officialAuditTrackLabel(String? track) => switch (track) {
+  'single_major' => '단일전공',
+  'double_major' => '복수전공',
+  null || '' => '미입력',
+  _ => track,
+};
+
+String officialAuditProfileSummary(PlanningProfile? profile) {
+  if (profile == null) return '학업 프로필이 없습니다.';
+  final school = profile.school.trim();
+  final department = profile.department.trim();
+  if (school.isEmpty && department.isEmpty && profile.admissionYear == null) {
+    return '학업 프로필이 없습니다.';
+  }
+  return [
+    if (school.isNotEmpty) school else '학교 미입력',
+    if (department.isNotEmpty) department else '학과 미입력',
+    if (profile.admissionYear != null)
+      '${profile.admissionYear}'
+    else
+      '입학연도 미입력',
+    officialAuditTrackLabel(profile.track),
+  ].join(' · ');
+}
+
+GraduationContext? officialAuditContext(PlanningProfile? profile) {
+  if (profile == null || !profile.hasCatalogSchool) return null;
+  final departmentId = profile.departmentId;
+  final curriculumId = profile.curriculumId;
+  final year = profile.admissionYear;
+  final track = profile.track?.trim();
+  if (departmentId == null ||
+      departmentId.isEmpty ||
+      curriculumId == null ||
+      curriculumId.isEmpty ||
+      year == null ||
+      year < 1000 ||
+      year > 9999 ||
+      track == null ||
+      track.isEmpty ||
+      track.length > 64) {
+    return null;
+  }
+  return GraduationContext(
+    institutionId: profile.institutionId!,
+    departmentId: departmentId,
+    curriculumId: curriculumId,
+    admissionYear: year,
+    track: track,
+  );
+}
+
+String? officialAuditAsOf(String raw) {
+  final value = raw.trim();
+  final parsed = DateTime.tryParse(value);
+  final today = DateTime.now();
+  if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value) ||
+      parsed == null ||
+      parsed.toIso8601String().split('T').first != value ||
+      parsed.isAfter(DateTime(today.year, today.month, today.day))) {
+    return null;
+  }
+  return value;
+}
+
 class OfficialGraduationPage extends StatefulWidget {
   const OfficialGraduationPage({
     super.key,
     required this.auth,
     required this.ownerId,
-    required this.onPersonal,
     this.profile,
+    this.onOpenSettings,
   });
   final AuthApi auth;
   final String ownerId;
-  final VoidCallback onPersonal;
   final PlanningProfile? profile;
+  final VoidCallback? onOpenSettings;
   @override
   State<OfficialGraduationPage> createState() => _OfficialGraduationState();
 }
 
 class _OfficialGraduationState extends State<OfficialGraduationPage> {
   late final _api = GraduationApi.forOwner(widget.auth, widget.ownerId);
-  late final _gateway = widget.auth.forOwner(widget.ownerId);
-  final _context = GlobalKey<SchoolContextFormState>();
+  final _date = TextEditingController(
+    text: DateTime.now().toIso8601String().split('T').first,
+  );
   List<GraduationAuditHeader> _history = [];
   GraduationAuditView? _result;
   String? _cursor, _error, _fingerprint;
   String _clientId = PersonalRecord.newId();
+  List<String> _fields = [];
   bool _busy = false, _loading = true, _uncertain = false;
-  bool get _savedSchool => widget.profile?.hasCatalogSchool ?? false;
-
-  String get _profileNotice => _savedSchool
-      ? '설정에 저장한 등록 학교를 불러왔습니다. 기준일은 이 감사 실행에서 입력합니다.'
-      : '목록에 없는 학교 이름은 이 감사의 학교 ID가 아닙니다.';
-
-  Future<void> _personal() async {
-    if (_busy) return;
-    final form = _context.currentState;
-    final hasDraft =
-        form != null &&
-        (form.hasSelection ||
-            form.year.text.isNotEmpty ||
-            form.track.text.isNotEmpty ||
-            form.hasEditedDate);
-    if (hasDraft && !await confirmInputDiscard(context)) return;
-    if (mounted) widget.onPersonal();
-  }
+  GraduationContext? get _context => officialAuditContext(widget.profile);
+  bool get _ready => _context != null;
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _date.dispose();
+    super.dispose();
   }
 
   Future<void> _load({bool more = false}) async {
@@ -113,11 +168,15 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
 
   Future<void> _run() async {
     if (_busy) return;
-    _context.currentState?.showErrors([]);
-    final selected = _context.currentState?.value;
-    final date = _context.currentState?.asOf;
+    _fields = [];
+    final selected = _context;
+    final date = officialAuditAsOf(_date.text);
     if (selected == null || date == null) {
-      setState(() => _error = '학교·학과·교육과정·입학연도·이수 경로와 올바른 기준일을 확인하세요.');
+      setState(
+        () => _error = selected == null
+            ? '설정에서 등록 학교·학과·교육과정·입학연도·이수 경로를 확인하세요.'
+            : '올바른 기준일을 확인하세요.',
+      );
       return;
     }
     final fingerprint = '${selected.toJson()}|$date';
@@ -153,9 +212,9 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
       });
       await _load();
     } catch (e) {
-      if (e is AuthFailure) _context.currentState?.showErrors(e.fields);
       if (mounted) {
         setState(() {
+          if (e is AuthFailure) _fields = e.fields;
           _uncertain =
               e is! AuthFailure || e.status == null || e.status! >= 500;
           _error = e is AuthFailure
@@ -193,49 +252,48 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
 
   @override
   Widget build(BuildContext context) => FeaturePage(
-    title: '학교 검토 자료 기준 졸업요건 감사',
+    title: '졸업 요건',
     description: '학교가 검토한 규정과 승인 기록을 비교합니다.',
     body: [
-      Align(
-        alignment: Alignment.centerLeft,
-        child: OutlinedButton(
-          onPressed: _busy ? null : _personal,
-          child: const Text('내 학교·학과 기준 설정'),
-        ),
-      ),
-      const SchoolWorkflowActions(),
-      Card(
-        child: Padding(
-          padding: phoneAwarePadding(context, wide: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(_profileNotice),
-              const SizedBox(height: 12),
-              SchoolContextForm(
-                key: _context,
-                api: _gateway,
-                disabled: _busy,
-                initialInstitutionId: _savedSchool
-                    ? widget.profile?.institutionId
-                    : null,
-                initialDepartmentId: _savedSchool
-                    ? widget.profile?.departmentId
-                    : null,
-                initialCurriculumId: _savedSchool
-                    ? widget.profile?.curriculumId
-                    : null,
-                initialAdmissionYear: widget.profile?.admissionYear,
-                initialTrack: widget.profile?.track,
+      SurfaceCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const FeatureLine.section(text: '학업 프로필'),
+            FeatureLine.two(
+              primary: officialAuditProfileSummary(widget.profile),
+              secondary: _ready
+                  ? '이수 경로를 포함한 감사 기준은 설정 프로필입니다. 기준일만 이 화면에서 입력합니다.'
+                  : '설정에서 등록 학교와 이수 경로를 저장하면 감사를 실행할 수 있습니다.',
+            ),
+            if (widget.onOpenSettings != null)
+              PlanningProfileSettingsCta(
+                onOpenSettings: widget.onOpenSettings!,
+                need: PlanningProfileNeed.catalogSchool,
+                profile: widget.profile,
               ),
-            ],
-          ),
+            const FeatureLine.section(text: '기준일'),
+            TextField(
+              controller: _date,
+              enabled: !_busy,
+              decoration: InputDecoration(
+                labelText: '기준일 (YYYY-MM-DD)',
+                errorText:
+                    _fields.any(
+                      (field) => field == 'as_of' || field.endsWith('.as_of'),
+                    )
+                    ? '이 입력을 확인하세요.'
+                    : null,
+                helperText: '미래 날짜는 사용할 수 없습니다.',
+              ),
+            ),
+          ],
         ),
       ),
       FeatureActions(
         children: [
           FilledButton(
-            onPressed: _busy || _loading ? null : _run,
+            onPressed: _busy || _loading || !_ready ? null : _run,
             child: Text(_busy ? '처리 중…' : '졸업요건 감사 실행'),
           ),
         ],
@@ -249,7 +307,7 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         Text(
-          '기준일 ${r.evaluatedOn} · 입학연도 ${r.context.admissionYear} · ${r.context.track}',
+          '기준일 ${r.evaluatedOn} · 입학연도 ${r.context.admissionYear} · ${officialAuditTrackLabel(r.context.track)}',
         ),
         Text(
           r.catalogComplete ? '전체 적용 규정 검토 확인됨' : '전체 적용 규정 검토가 완료되지 않았습니다.',

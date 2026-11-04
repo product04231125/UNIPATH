@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../app_shell/phone_shell.dart';
+import '../../shared/widgets/feature_line.dart';
+import '../../shared/widgets/surface_card.dart';
 
 /// Provides account-security and school-application callbacks to settings pages.
 class AccountSettingsActions extends InheritedWidget {
@@ -51,47 +53,35 @@ class AccountSettingsSection extends StatelessWidget {
     }
     return Padding(
       padding: EdgeInsets.only(top: phoneAwareGap(context, wide: 24)),
-      child: Card(
-        child: Padding(
-          padding: phoneAwarePadding(context),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('계정·정보', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Text(
-                '비밀번호 변경과 모든 기기 로그아웃은 별도 보안 화면에서만 입력합니다. 제목표시줄에는 두지 않습니다.',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  height: 1.45,
+      child: SurfaceCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const FeatureLine.section(text: '계정·정보'),
+            if (security != null) ...[
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  key: const Key('settings-account-security'),
+                  onPressed: security,
+                  icon: const Icon(Icons.manage_accounts_outlined, size: 18),
+                  label: const Text('계정 보안'),
                 ),
               ),
-              if (security != null) ...[
-                const SizedBox(height: 14),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    key: const Key('settings-account-security'),
-                    onPressed: security,
-                    icon: const Icon(Icons.manage_accounts_outlined, size: 18),
-                    label: const Text('계정 보안'),
-                  ),
-                ),
-              ],
-              if (applications != null) ...[
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    key: const Key('settings-school-applications'),
-                    onPressed: applications,
-                    icon: const Icon(Icons.school_outlined, size: 18),
-                    label: Text(label),
-                  ),
-                ),
-              ],
             ],
-          ),
+            if (applications != null) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  key: const Key('settings-school-applications'),
+                  onPressed: applications,
+                  icon: const Icon(Icons.school_outlined, size: 18),
+                  label: Text(label),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );

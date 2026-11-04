@@ -157,8 +157,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField).first, '새 합성 학교');
-      await tester.ensureVisible(find.text('기기에 저장'));
-      await tester.tap(find.text('기기에 저장'));
+      await tester.ensureVisible(find.text('저장'));
+      await tester.tap(find.text('저장'));
       await tester.pumpAndSettle();
       expect(find.textContaining('기기에 저장하지 못했습니다.'), findsOneWidget);
       expect(find.text('저장되었습니다.'), findsNothing);
@@ -171,8 +171,8 @@ void main() {
         '새 합성 학교',
       );
       fail = false;
-      await tester.ensureVisible(find.text('기기에 저장'));
-      await tester.tap(find.text('기기에 저장'));
+      await tester.ensureVisible(find.text('저장'));
+      await tester.tap(find.text('저장'));
       await tester.pumpAndSettle();
       expect(find.text('저장되었습니다.'), findsOneWidget);
       expect(repo.profile.school, '새 합성 학교');

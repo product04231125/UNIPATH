@@ -381,7 +381,10 @@ class _WorkspaceState extends State<Workspace> {
           addRequest: _scheduleAddRequest,
         ),
         2 => const CoursePage(),
-        3 => GraduationPage(planning: _planningRepository),
+        3 => GraduationPage(
+          planning: _planningRepository,
+          onOpenSettings: () => _selectPage(settingsPage - 1),
+        ),
         4 => const ActivityPage(),
         5 => const CredentialPage(),
         6 => MaterialsPage(key: _materials),

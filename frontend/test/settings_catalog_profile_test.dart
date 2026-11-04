@@ -74,7 +74,7 @@ Future<void> choose(WidgetTester tester, String from, String to) async {
 }
 
 Future<void> saveSettings(WidgetTester tester) async {
-  final save = find.text('서버에 저장');
+  final save = find.text('저장');
   await tester.ensureVisible(save);
   await tester.tap(save);
   await tester.pumpAndSettle();
@@ -108,7 +108,7 @@ void main() {
     tester,
   ) async {
     final repository = await pumpSettings(tester, SettingsCatalogServer());
-    expect(find.textContaining('목록에 없으면 학교를 만들지 않습니다'), findsOneWidget);
+    expect(find.textContaining('목록에 없으면 만들지 않습니다'), findsOneWidget);
     expect(find.text('학교 선택'), findsOneWidget);
     expect(find.text('목록에 없는 학교 직접 입력'), findsNothing);
     repository.dispose();
