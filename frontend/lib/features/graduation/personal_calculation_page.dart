@@ -14,8 +14,19 @@ import 'personal_calculation_draft.dart';
 import 'personal_condition_fields.dart';
 
 class PersonalCalculationPage extends StatefulWidget {
-  const PersonalCalculationPage({super.key, required this.controller});
+  const PersonalCalculationPage({
+    super.key,
+    required this.controller,
+    this.title = '개인 기준 계산',
+    this.description = '본인 자료와 직접 정한 조건으로 계산합니다.',
+    this.onOpenSettings,
+  });
   final PersonalCalculationController controller;
+  final String title;
+  final String description;
+
+  /// When set (e.g. 졸업 요건 메뉴), empty curricula point to Settings workbench.
+  final VoidCallback? onOpenSettings;
   @override
   State<PersonalCalculationPage> createState() =>
       _PersonalCalculationPageState();
@@ -116,8 +127,8 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: c,
     builder: (context, _) => FeaturePage(
-      title: '개인 기준 계산',
-      description: '본인 자료와 직접 정한 조건으로 계산합니다.',
+      title: widget.title,
+      description: widget.description,
       body: [
         SurfaceCard(
           child: Column(
@@ -165,7 +176,23 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
                   ),
                 ),
               if (!c.loading && c.curricula.isEmpty && c.sourceError == null)
-                const Text('계산할 교육과정이 없습니다. 교육과정 탭에서 먼저 등록하세요.'),
+                widget.onOpenSettings == null
+                    ? const Text(
+                        '계산할 교육과정이 없습니다. 교육과정 탭에서 먼저 등록하세요.',
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '계산할 교육과정이 없습니다. 설정 · 개인 교육과정 작업에서 먼저 등록하세요.',
+                          ),
+                          const SizedBox(height: 12),
+                          FilledButton.tonal(
+                            onPressed: widget.onOpenSettings,
+                            child: const Text('설정 · 개인 교육과정 작업'),
+                          ),
+                        ],
+                      ),
               _error(c.sourceError),
               TextFormField(
                 key: const ValueKey('calculation-as-of'),
