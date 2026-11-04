@@ -7,11 +7,7 @@ import 'materials_page.dart';
 import 'material_repository.dart';
 
 class PortfolioPage extends StatefulWidget {
-  const PortfolioPage({
-    super.key,
-    this.active = true,
-    this.materialRepository,
-  });
+  const PortfolioPage({super.key, this.active = true, this.materialRepository});
 
   final bool active;
   final MaterialRepository? materialRepository;
@@ -81,7 +77,6 @@ class _PortfolioPageState extends State<PortfolioPage> {
     kind: PersonalRecordKind.portfolio,
     title: '성과 기록',
     description: '프로젝트, 논문, 수상과 산출물을 포트폴리오로 구성합니다.',
-    notice: '내 프로젝트·논문·수상과 산출물을 직접 기록합니다. 완성 파일이나 짧은 설명은 내 자료에 등록할 수 있습니다.',
     listTitle: '성과 목록',
     guideTitle: '성과 구성',
     guides: const [

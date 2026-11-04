@@ -231,17 +231,7 @@ class MaterialsPageState extends State<MaterialsPage> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const PageHeader(
-          title: '내 자료',
-          description: '어떤 파일인지, 어떤 내용이 담겼는지 간단히 기록하거나 PDF를 보관하세요.',
-        ),
-        const Text(
-          '이 기기에만 보관합니다. PDF 최대 10MB · 전체 PDF 50MB. 브라우저 데이터 삭제 또는 앱 데이터 삭제 시 사라질 수 있습니다. 민감한 정보가 포함됐는지 확인하세요.',
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'AI 자료 분석은 아직 연결되지 않았습니다. 등록만으로 서버에 전송되거나 AI 분석·학교 공식 판정에 사용되지 않습니다.',
-        ),
+        const PageHeader(title: '내 자료', description: 'PDF와 설명을 이 기기에 보관합니다.'),
         SizedBox(height: phoneAwareGap(context, wide: 16)),
         if (_loading)
           const LinearProgressIndicator()
@@ -361,6 +351,8 @@ class MaterialsPageState extends State<MaterialsPage> {
                         lines: 4,
                       ),
                       const Text('파일을 첨부하지 않을 때는 어떤 내용인지 설명을 입력하세요.'),
+                      const SizedBox(height: 8),
+                      const Text('PDF 최대 10MB · 전체 50MB.'),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,

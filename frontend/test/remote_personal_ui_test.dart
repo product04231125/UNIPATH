@@ -51,7 +51,10 @@ void main() {
           );
           await tester.pumpAndSettle();
           expect(find.text('합성 course'), findsOneWidget);
-          expect(find.textContaining('계정 서버 개인 기록'), findsWidgets);
+          expect(
+            find.textContaining('학기별 수강 계획과 개인 이수 기록을 정리합니다.'),
+            findsOneWidget,
+          );
           final edit = find.widgetWithText(TextButton, '수정');
           await tester.ensureVisible(edit);
           await tester.tap(edit);
@@ -94,9 +97,7 @@ void main() {
       final gateway = CoursePeriodGateway()
         ..empty = true
         ..failWrites = true;
-      await tester.pumpWidget(
-        scope(gateway, const CoursePage()),
-      );
+      await tester.pumpWidget(scope(gateway, const CoursePage()));
       await tester.pumpAndSettle();
       await tester.tap(find.text('수강 과목 직접 입력'));
       await tester.pumpAndSettle();

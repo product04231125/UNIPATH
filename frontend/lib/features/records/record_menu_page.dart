@@ -28,7 +28,6 @@ class RecordMenuPage extends StatefulWidget {
     required this.kind,
     required this.title,
     required this.description,
-    required this.notice,
     required this.listTitle,
     required this.guideTitle,
     required this.guides,
@@ -43,7 +42,6 @@ class RecordMenuPage extends StatefulWidget {
   final String? contextLabel;
   final String title;
   final String description;
-  final String notice;
   final String listTitle;
   final String guideTitle;
   final List<String> guides;
@@ -186,14 +184,6 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (!PhoneChromeScope.of(context)) ...[
-                  Text(
-                    _repository.isServerBacked
-                        ? '계정 서버 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드는 하지 않습니다.'
-                        : '기기 로컬 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드·서버 전송은 하지 않습니다.',
-                  ),
-                  const SizedBox(height: 16),
-                ],
                 for (final field in fields) ...[
                   if (isCourse && field.key == 'term') ...[
                     TextFormField(
@@ -499,32 +489,11 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           (_term.isEmpty || period.semester == _term);
     }).toList();
     final isCourse = widget.kind == PersonalRecordKind.course;
-    final phone = PhoneChromeScope.of(context);
     return ContentScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _header(),
-          if (!isCourse && !phone)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.secondaryContainer,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                ),
-              ),
-              child: Text(
-                widget.notice,
-                style: TextStyle(
-                  fontSize: AppTypography.caption,
-                  color: Theme.of(context).colorScheme.onSecondaryContainer,
-                ),
-              ),
-            ),
-          if (!isCourse && !phone) const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
               final records = SurfaceCard(
@@ -538,15 +507,6 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    if (!isCourse && !phone) const SizedBox(height: 4),
-                    if (!isCourse && !phone)
-                      Text(
-                        '학교에서 확인한 정보가 없으면 내 기록을 직접 추가할 수 있습니다.',
-                        style: TextStyle(
-                          fontSize: AppTypography.caption,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
                     const SizedBox(height: 12),
                     FilledButton.icon(
                       onPressed: _showForm,
@@ -610,23 +570,15 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                           ),
                         ],
                       ),
-                      if (!phone) ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점 · 공식 이수학점 아님',
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          widget.notice,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        const SizedBox(height: 12),
-                      ] else
-                        const SizedBox(height: 12),
-                    ],
-                    if (widget.kind == PersonalRecordKind.activity && !phone)
+                      const SizedBox(height: 10),
                       Text(
-                        '사용자가 승인됨으로 기록한 봉사 시간 합계 ${personal.where((r) => r.value('approval') == 'approved').fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('approvedHours')) ?? 0))}시간 · 학교 검증 아님',
+                        '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점',
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (widget.kind == PersonalRecordKind.activity)
+                      Text(
+                        '사용자가 승인됨으로 기록한 봉사 시간 합계 ${personal.where((r) => r.value('approval') == 'approved').fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('approvedHours')) ?? 0))}시간',
                       ),
                     if (personal.isEmpty)
                       Text(
@@ -670,11 +622,10 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
   }
 
   Widget _header() {
-    final phone = PhoneChromeScope.of(context);
     return PageHeader(
       title: widget.title,
       contextLabel: widget.contextLabel,
-      description: phone ? null : widget.description,
+      description: widget.description,
       actions: [
         if (_repository.isServerBacked)
           TextButton.icon(

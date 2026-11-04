@@ -256,10 +256,6 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              '${widget.repository.isServerBacked ? '계정 서버' : '기기 로컬'} 초안 · 온라인 게시·제출·파일 업로드·AI 생성은 하지 않습니다.',
-            ),
-            const SizedBox(height: 16),
             _field(
               _title,
               'title',

@@ -470,7 +470,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.textContaining('계정 서버 저장'), findsOneWidget);
+      expect(find.textContaining('개인 일정을 주간으로 보고 추가합니다.'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       local.dispose();

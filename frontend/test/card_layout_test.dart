@@ -93,7 +93,6 @@ void main() {
                   kind: kind,
                   title: '기록',
                   description: '개인 기록',
-                  notice: '학교 공식 판정 아님',
                   listTitle: '등록 기록',
                   guideTitle: '준비',
                   guides: ['긴 안내 문구 ' * 15],

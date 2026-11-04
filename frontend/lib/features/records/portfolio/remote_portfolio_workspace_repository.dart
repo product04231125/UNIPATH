@@ -231,7 +231,7 @@ class RemotePortfolioWorkspaceRepository extends PortfolioWorkspaceRepository {
   @override
   String compositionText(PortfolioComposition composition) => [
     composition.title,
-    '계정 서버 구성 · ${audienceLabel(composition.audience)} · 게시되지 않음',
+    '${audienceLabel(composition.audience)} · 게시되지 않음',
     if (composition.description.isNotEmpty) composition.description,
     for (final ref in composition.sources)
       sources[ref]?.text ?? '원본 기록 없음 · 연결 확인 필요',

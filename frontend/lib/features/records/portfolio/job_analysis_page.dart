@@ -127,9 +127,7 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
   }
 
   String get _unavailableReason {
-    final reasons = <String>[
-      '학생용 채용 분석 API가 아직 없습니다. 공고 텍스트, 주소, PDF·캡처, 선택한 기록을 서버로 보내지 않았고 답변을 만들지 않았습니다.',
-    ];
+    final reasons = <String>['학생용 채용 분석 API가 아직 없습니다.'];
     if (!_hasPostingInput) {
       reasons.add('공고 텍스트, 주소, PDF·캡처 중 하나가 필요합니다.');
     }
@@ -219,8 +217,7 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
       children: [
         const PageHeader(
           title: '채용공고 분석',
-          description:
-              '공고 텍스트, 주소, PDF·캡처 중 하나를 준비합니다. 분석을 할 수 없으면 그 이유를 표시합니다.',
+          description: '공고와 고른 기록으로 분석을 준비합니다.',
         ),
         SizedBox(height: phoneAwareGap(context, wide: 16)),
         FieldLabel(
@@ -254,9 +251,7 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                '텍스트, 주소, PDF·캡처 중 하나만 있어도 됩니다. 파일은 이 화면에만 두고 서버로 보내지 않습니다.',
-              ),
+              const Text('텍스트, 주소, PDF·캡처 중 하나만 있어도 됩니다.'),
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerLeft,
@@ -276,7 +271,7 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
               if (_fileBytes != null) ...[
                 const SizedBox(height: 8),
                 Text(
-                  '$_fileName · ${(_fileBytes!.length / 1024).ceil()}KB · 이 화면에만 보관',
+                  '$_fileName · ${(_fileBytes!.length / 1024).ceil()}KB',
                   key: const ValueKey('job-posting-file-name'),
                 ),
                 Align(
@@ -305,7 +300,7 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 4),
-              const Text('학생이 고른 항목만 포함합니다. 기록을 자동으로 넣거나 분석하지 않습니다.'),
+              const Text('고른 항목만 포함합니다.'),
               const SizedBox(height: 12),
               if (_loading)
                 const LinearProgressIndicator()
@@ -378,7 +373,7 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
           ),
         ),
         const SizedBox(height: 12),
-        const FilledButton(onPressed: null, child: Text('분석 실행 불가 · 연결 전')),
+        const FilledButton(onPressed: null, child: Text('분석 실행 불가')),
       ],
     ),
   );

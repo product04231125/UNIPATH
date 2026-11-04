@@ -36,7 +36,6 @@ class HomePage extends StatelessWidget {
       final profile = repository.profile;
       final now = DateTime.now();
       final year = profile.academicYearFor(now);
-      final todayEvents = eventsOnDay(repository.events, now);
       final upcoming = repository.events
           .where((e) => e.end.isAfter(now))
           .take(3)
@@ -90,14 +89,12 @@ class HomePage extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (!phone) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          '오늘 일정 ${todayEvents.length}개 · ${year == null ? '개인 계획 미설정' : '개인 계획 $year학년'} · ${repository.storageLabel}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                      if (profile.isConfigured)
+                      const SizedBox(height: 6),
+                      Text(
+                        '오늘 일정과 다음 기록을 한눈에 봅니다.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      if (phone && profile.isConfigured)
                         Text(
                           '${profile.school} · ${profile.department}',
                           style: Theme.of(context).textTheme.bodySmall,
@@ -197,13 +194,6 @@ class HomePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('앞으로 예정된 개인 일정이 없습니다.'),
-              if (!PhoneChromeScope.of(context)) ...[
-                const SizedBox(height: 4),
-                Text(
-                  '과제 마감이나 참여할 활동을 기록해 이번 주 계획을 채워보세요.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () => onOpenPage(1),
@@ -376,11 +366,6 @@ class HomePage extends StatelessWidget {
                 ),
             ],
           ),
-          if (year != null && !PhoneChromeScope.of(context))
-            Text(
-              '$year학년 개인 계획 링크 · 공식 학적 판정이나 서버 추천이 아닙니다.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
         ],
       ),
     );

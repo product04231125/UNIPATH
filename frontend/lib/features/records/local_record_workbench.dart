@@ -530,10 +530,7 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        PageHeader(
-          title: widget.title,
-          description: '내가 직접 관리하는 개인 학업 정보 · 학교 공식 데이터나 졸업 판정이 아닙니다.',
-        ),
+        PageHeader(title: widget.title, description: '내가 직접 관리하는 개인 학업 정보입니다.'),
         if (_loading)
           const LinearProgressIndicator()
         else if (_fields.isEmpty) ...[

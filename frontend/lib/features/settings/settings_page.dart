@@ -110,7 +110,7 @@ class _SettingsPageState extends State<SettingsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const PageHeader(title: '설정', contextLabel: '일반'),
+              const PageHeader(title: '설정', description: '학업 프로필과 화면을 관리합니다.'),
               PlanningStorageState(repository: widget.repository),
               const AppearanceSettingsSection(),
               const AccountSettingsSection(),
@@ -151,18 +151,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 first: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const PageHeader(title: '설정', contextLabel: '일반'),
+                    const PageHeader(
+                      title: '설정',
+                      description: '학업 프로필과 화면을 관리합니다.',
+                    ),
                     Text(
                       '학업과 계획',
                       style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '이 정보와 개인 일정은 ${widget.repository.isServerBacked ? '본인 계정 서버에' : '현재 기기에만'} 저장됩니다. 학교 공식 학적이나 졸업 판정을 변경하지 않습니다.',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        height: 1.45,
-                      ),
                     ),
                     const SizedBox(height: 18),
                     if (widget.repository.isServerBacked)
@@ -326,7 +321,7 @@ class _SettingsPageState extends State<SettingsPage> {
                               Align(
                                 alignment: Alignment.centerLeft,
                                 child: Text(
-                                  '개인 계획을 위한 안내값입니다. 공식 학적 상태나 서버 추천이 아닙니다.',
+                                  '개인 계획을 위한 안내값입니다.',
                                   style: TextStyle(
                                     color: Theme.of(context)
                                         .colorScheme

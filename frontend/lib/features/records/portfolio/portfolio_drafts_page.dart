@@ -165,7 +165,7 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
 
   String _documentText(ApplicationDocument document) => [
     document.title,
-    '${_repository.isServerBacked ? '계정 서버' : '기기 로컬'} 지원 문서 초안 · 미제출',
+    '지원 문서 초안 · 미제출',
     '${document.type} · ${document.target} · ${document.role}',
     document.body,
     if (document.sources.any((ref) => !_repository.sources.containsKey(ref)))
@@ -317,8 +317,8 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
         ),
     ],
     description: widget.isDocument
-        ? '지원처별 이력서·자기소개서 초안을 직접 편집합니다. 개인 경험·성과를 선택하여 본문에 가져올 수 있습니다. AI가 작성하거나 지원처로 제출하지 않습니다.'
-        : '개인 성과 중 사용할 항목과 순서를 선택합니다. 나만 보기·제출 검토용·공개 검토용은 ${_repository.isServerBacked ? '개인' : '기기 로컬'} 사용 의도이며 실제 게시·권한 설정이 아닙니다.',
+        ? '지원처별 이력서·자기소개서 초안을 직접 편집합니다.'
+        : '개인 성과 중 사용할 항목과 순서를 선택합니다.',
   );
 
   Widget _statePage(Widget child) => ContentScrollView(

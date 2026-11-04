@@ -35,7 +35,7 @@ void main() {
       expect(find.text('답변: 받은 답변 없음'), findsOneWidget);
       expect(find.text('근거: 받은 근거 없음'), findsOneWidget);
       expect(find.text('불확실한 부분: 받은 내용 없음'), findsOneWidget);
-      expect(find.text('분석 실행 불가 · 연결 전'), findsOneWidget);
+      expect(find.text('분석 실행 불가'), findsOneWidget);
       await tester.enterText(
         find.byKey(const ValueKey('job-posting-text')),
         '합성 채용공고 본문',
