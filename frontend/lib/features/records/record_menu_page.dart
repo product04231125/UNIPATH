@@ -13,6 +13,7 @@ import 'personal_record_fields.dart';
 import 'personal_record_form.dart';
 import 'personal_repository_scope.dart';
 import '../auth/auth_api.dart';
+import '../auth/guest_preview_scope.dart';
 import '../api/student_api.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/external_link_button.dart';
@@ -138,11 +139,16 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         if (mounted) setState(() {});
       },
       studentApi: widget.studentApi,
-      institutionId: widget.institutionId,
+      institutionId:
+          widget.planning?.profile.institutionId ?? widget.institutionId,
     );
   }
 
   Future<void> _delete(PersonalRecord record) async {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -163,7 +169,11 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     try {
       await _repository.delete(record.id, expectedVersion: record.version);
       if (mounted) setState(() {});

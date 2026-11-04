@@ -71,14 +71,27 @@ Future<void> showPersonalRecordForm({
   String? selectedCourseId;
   if (isCourse) {
     final scope = PersonalRepositoryScope.read(context);
-    courseOptions = await loadCoursePickOptions(
-      courseRepository: repository,
-      curriculumCourseRepository: scope?.records(
-        PersonalRecordKind.personalCurriculumCourse,
-      ),
-      studentApi: studentApi,
-      institutionId: institutionId,
-    );
+    try {
+      courseOptions = await loadCoursePickOptions(
+        courseRepository: repository,
+        curriculumCourseRepository: scope?.records(
+          PersonalRecordKind.personalCurriculumCourse,
+        ),
+        studentApi: studentApi,
+        institutionId: institutionId,
+      );
+    } catch (_) {
+      year.dispose();
+      for (final controller in controllers.values) {
+        controller.dispose();
+      }
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('과목 후보를 읽지 못했습니다. 다시 시도하세요.')),
+        );
+      }
+      return;
+    }
     if (!context.mounted) {
       year.dispose();
       for (final controller in controllers.values) {
@@ -258,7 +271,6 @@ Future<void> showPersonalRecordForm({
                         builder: (state) {
                           final currentYear = DateTime.now().year;
                           final selected = year.text.trim();
-                          final selectedInt = int.tryParse(selected);
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -283,7 +295,7 @@ Future<void> showPersonalRecordForm({
                                       const SelectOption('', '연도 미지정'),
                                     for (final optionYear in yearOptions(
                                       maxYear: currentYear + 1,
-                                      include: selectedInt,
+                                      include: int.tryParse(period.year),
                                     ))
                                       SelectOption(
                                         '$optionYear',
