@@ -24,11 +24,13 @@ class GraduationPage extends StatelessWidget {
         );
       }
       return OfficialGraduationPage(
+        key: ValueKey((session.auth, session.identity.id)),
         auth: session.auth,
         ownerId: session.identity.id,
         profile: planning == null || planning!.loadFailed
             ? null
             : planning!.profile,
+        profileLoadFailed: planning?.loadFailed ?? false,
         onOpenSettings: onOpenSettings,
       );
     }

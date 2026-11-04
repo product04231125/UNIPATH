@@ -54,9 +54,17 @@ class SchoolContextFormState extends State<SchoolContextForm> {
   String? get selectedInstitutionId => _school;
   String? get selectedDepartmentId => _department;
   String? get selectedCurriculumId => _curriculum;
-  String? get institutionId => isReady ? _school : null;
-  String? get departmentId => _department;
-  String? get curriculumId => _curriculum;
+  String? get institutionId =>
+      isReady && _schools.any((item) => item.id == _school) ? _school : null;
+  String? get departmentId =>
+      institutionId != null &&
+          _departments.any((item) => item.id == _department)
+      ? _department
+      : null;
+  String? get curriculumId =>
+      departmentId != null && _curricula.any((item) => item.id == _curriculum)
+      ? _curriculum
+      : null;
   String? get institutionName =>
       _nameOf(_schools.map((item) => (item.id, item.name)), _school);
   String? get departmentName =>
@@ -88,9 +96,9 @@ class SchoolContextFormState extends State<SchoolContextForm> {
     final y = int.tryParse(year.text);
     if (_loading ||
         _error != null ||
-        _school == null ||
-        _department == null ||
-        _curriculum == null ||
+        institutionId == null ||
+        departmentId == null ||
+        curriculumId == null ||
         y == null ||
         y < 1000 ||
         y > 9999 ||

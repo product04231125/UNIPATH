@@ -8,6 +8,7 @@ import '../../shared/widgets/surface_card.dart';
 import '../api/personal_evaluation_api.dart';
 import '../api/student_api.dart';
 import '../api/student_api_models.dart';
+import '../auth/guest_preview_scope.dart';
 import 'personal_calculation_controller.dart';
 import 'personal_calculation_draft.dart';
 import 'personal_condition_fields.dart';
@@ -38,6 +39,10 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
   }
 
   Future<void> _calculate() async {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     await c.calculate();
     await _revealResult();
   }
@@ -244,7 +249,10 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
                 FeatureActions(
                   children: [
                     FilledButton.icon(
-                      onPressed: c.busy || c.loading || c.sourceError != null
+                      onPressed: c.busy ||
+                              c.loading ||
+                              c.sourceError != null ||
+                              GuestPreviewScope.isActive(context)
                           ? null
                           : () {
                               if (c.pending != null ||
@@ -420,15 +428,23 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
                       child: const Text('결과 보기'),
                     ),
                     TextButton(
-                      onPressed: c.busy
+                      onPressed: c.busy || GuestPreviewScope.isActive(context)
                           ? null
                           : () async {
+                              if (GuestPreviewScope.isActive(context)) {
+                                GuestPreviewScope.showBlockedMessage(context);
+                                return;
+                              }
                               if (await _confirm(
                                     '이 계산 결과를 삭제할까요?',
                                     '${row.curriculumTitle} · ${row.evaluatedOn}의 저장된 결과만 삭제합니다. 원본 기록은 유지합니다.',
                                     '결과 삭제',
                                   ) &&
                                   mounted) {
+                                if (GuestPreviewScope.isActive(context)) {
+                                  GuestPreviewScope.showBlockedMessage(context);
+                                  return;
+                                }
                                 await c.remove(row);
                               }
                             },

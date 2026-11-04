@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../auth/guest_preview_scope.dart';
 import '../records/personal_record_repository.dart';
 import '../records/personal_repository_scope.dart';
 import '../records/local_record_workbench.dart';
@@ -50,6 +51,10 @@ class _PersonalGraduationWorkspaceState
   }
 
   Future<void> _useProfile(PersonalRecord record) {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return Future.value();
+    }
     final planning = widget.planning!;
     final current = planning.profile;
     return planning.saveProfile(
@@ -126,7 +131,8 @@ class _PersonalGraduationWorkspaceState
                   ),
                   onUse:
                       _kind == PersonalRecordKind.personalCurriculum &&
-                          widget.planning != null
+                          widget.planning != null &&
+                          !GuestPreviewScope.isActive(context)
                       ? _useProfile
                       : null,
                 ),

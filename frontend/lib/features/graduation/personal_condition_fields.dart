@@ -43,7 +43,9 @@ class _PersonalConditionFieldsState extends State<PersonalConditionFields> {
   }) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 6),
     child: TextFormField(
-      key: ValueKey('${identityHashCode(values)}-$key'),
+      key: ValueKey(
+        '${widget.identity}-${widget.draft.kind}-${identityHashCode(values)}-$key',
+      ),
       initialValue: values[key] ?? '',
       readOnly: widget.locked,
       maxLength: number ? 32 : maxLength,

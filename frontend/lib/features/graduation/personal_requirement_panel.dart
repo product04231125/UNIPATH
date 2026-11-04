@@ -7,6 +7,7 @@ import '../../shared/widgets/feature_actions.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../api/personal_evaluation_api.dart';
+import '../auth/guest_preview_scope.dart';
 import '../records/personal_record_repository.dart';
 import '../records/personal_repository_scope.dart';
 import 'personal_calculation_controller.dart';
@@ -60,7 +61,10 @@ class PersonalRequirementPanelState extends State<PersonalRequirementPanel> {
     return _form.currentState?.validate() ?? false;
   }
 
-  bool get locked => _loading || (_controller?.pending != null);
+  bool get locked =>
+      GuestPreviewScope.isActive(context) ||
+      _loading ||
+      (_controller?.pending != null);
   @override
   void initState() {
     super.initState();
@@ -71,9 +75,21 @@ class PersonalRequirementPanelState extends State<PersonalRequirementPanel> {
   @override
   void didUpdateWidget(PersonalRequirementPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.curriculumId != widget.curriculumId && !locked) {
-      Future.microtask(_load);
+    final ruleChanged = oldWidget.rule?.id != widget.rule?.id;
+    final curriculumChanged = oldWidget.curriculumId != widget.curriculumId;
+    if (!ruleChanged && !curriculumChanged) return;
+    _revision++;
+    // 규칙 전환 시에만 초안을 비운다. 요건 작성 중 curriculumId만 바뀌면
+    // 입력 중인 계산 조건(최소 학점 등)을 유지하고 소스만 다시 읽는다.
+    if (ruleChanged) {
+      draft = PersonalCalculationDraft();
+      _drafts.clear();
+      _restored = false;
+      _initial = _fingerprint;
+    } else {
+      _restored = false;
     }
+    Future.microtask(_load);
   }
 
   @override
@@ -84,12 +100,21 @@ class PersonalRequirementPanelState extends State<PersonalRequirementPanel> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     final scope = PersonalRepositoryScope.read(context);
     final shared = scope?.calculations;
-    if (shared == null || widget.curriculumId.isEmpty) return;
+    final curriculumId = widget.curriculumId;
     final revision = ++_revision;
     _controller?.dispose();
     _controller = null;
+    if (shared == null || curriculumId.isEmpty) {
+      setState(() {
+        _loading = false;
+        _error = null;
+      });
+      widget.onBusy(false);
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
@@ -100,14 +125,26 @@ class PersonalRequirementPanelState extends State<PersonalRequirementPanel> {
       ensureOpen: shared.ensureOpen,
     );
     try {
-      await c.select(widget.curriculumId);
+      await c.select(curriculumId);
+      if (!mounted || revision != _revision) {
+        c.dispose();
+        return;
+      }
       if (c.sourceError != null) throw StateError(c.sourceError!);
       final history = await c.evaluations.list(
-        curriculumId: widget.curriculumId,
+        curriculumId: curriculumId,
         limit: 1,
       );
+      if (!mounted || revision != _revision) {
+        c.dispose();
+        return;
+      }
       if (history.items.isNotEmpty) {
         final last = await c.evaluations.get(history.items.first.id);
+        if (!mounted || revision != _revision) {
+          c.dispose();
+          return;
+        }
         for (final item in last.results) {
           final saved = c.sources!.rules
               .where(
@@ -151,9 +188,15 @@ class PersonalRequirementPanelState extends State<PersonalRequirementPanel> {
   }
 
   Future<void> _calculate() async {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     final c = _controller;
     final rule = widget.rule;
     if (c == null || rule == null || _loading) return;
+    final revision = _revision;
+    final curriculumId = widget.curriculumId;
     if (c.pending == null && !(_form.currentState?.validate() ?? false)) return;
     setState(() {
       _loading = true;
@@ -165,7 +208,8 @@ class PersonalRequirementPanelState extends State<PersonalRequirementPanel> {
         // Reload rule/source versions after the metadata save, preserving the user's criterion.
         final retained = Map.of(c.drafts);
         final versions = {for (final r in c.sources!.rules) r.id: r.version};
-        await c.select(widget.curriculumId);
+        await c.select(curriculumId);
+        if (!mounted || revision != _revision) return;
         if (c.sourceError != null) throw StateError(c.sourceError!);
         for (final entry in retained.entries) {
           if (c.sources!.rules.any(
@@ -187,17 +231,22 @@ class PersonalRequirementPanelState extends State<PersonalRequirementPanel> {
         if (draft.kind == 'none') throw StateError('계산할 조건 종류를 선택하세요.');
         c.drafts[rule.id] = draft;
       }
+      if (GuestPreviewScope.isActive(context)) {
+        GuestPreviewScope.showBlockedMessage(context);
+        return;
+      }
       await c.calculate();
+      if (!mounted || revision != _revision) return;
       if (c.actionError != null) throw StateError(c.actionError!);
       _initial = _fingerprint;
     } catch (e) {
-      if (mounted) {
+      if (mounted && revision == _revision) {
         _error = e is StateError
             ? e.message
             : PersonalCalculationController.message(e);
       }
     } finally {
-      if (mounted) {
+      if (mounted && revision == _revision) {
         setState(() => _loading = false);
         widget.onBusy(false);
       }
@@ -258,6 +307,7 @@ class PersonalRequirementPanelState extends State<PersonalRequirementPanel> {
               TextFormField(
                 key: ValueKey('requirement-minimum-${draft.kind}'),
                 initialValue: draft.values['minimum'],
+                readOnly: locked,
                 decoration: InputDecoration(
                   labelText: draft.kind == 'minimum_credits'
                       ? '최소 학점'
@@ -294,7 +344,8 @@ class PersonalRequirementPanelState extends State<PersonalRequirementPanel> {
             children: [
               FilledButton(
                 onPressed:
-                    _loading ||
+                    GuestPreviewScope.isActive(context) ||
+                        _loading ||
                         c == null ||
                         widget.rule == null ||
                         widget.metadataDirty

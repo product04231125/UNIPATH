@@ -129,7 +129,7 @@ Future<String?> validatePersonalGraduationLinks(
   final create = repositoryFactory ?? PersonalRecordRepository.new;
   final fields = await personalGraduationFields(
     kind,
-    repositoryFactory: create,
+    repositoryFactory: repositoryFactory,
   );
   for (final field in fields.where((f) => f.options.isNotEmpty)) {
     final value = values[field.key]?.trim() ?? '';
@@ -154,7 +154,10 @@ Future<String?> validatePersonalGraduationLinks(
   if (courseId.isNotEmpty) {
     final repo = create(PersonalRecordKind.personalCurriculumCourse);
     await repo.load();
-    final course = repo.records.where((r) => r.id == courseId).first;
+    final course = repo.records.where((r) => r.id == courseId).firstOrNull;
+    if (course == null) {
+      return '관련 개인 교육과정 과목을 다시 선택하세요. 연결 대상이 변경되었을 수 있습니다.';
+    }
     if (course.value('curriculumId') != values['curriculumId']) {
       return '관련 과목과 규칙의 개인 교육과정을 같게 선택하세요.';
     }

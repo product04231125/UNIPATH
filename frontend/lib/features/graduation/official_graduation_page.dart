@@ -101,11 +101,13 @@ class OfficialGraduationPage extends StatefulWidget {
     required this.auth,
     required this.ownerId,
     this.profile,
+    this.profileLoadFailed = false,
     this.onOpenSettings,
   });
   final AuthApi auth;
   final String ownerId;
   final PlanningProfile? profile;
+  final bool profileLoadFailed;
   final VoidCallback? onOpenSettings;
   @override
   State<OfficialGraduationPage> createState() => _OfficialGraduationState();
@@ -122,8 +124,9 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
   String _clientId = PersonalRecord.newId();
   List<String> _fields = [];
   bool _busy = false, _loading = true, _uncertain = false;
+  bool _historyFailed = false;
   GraduationContext? get _context => officialAuditContext(widget.profile);
-  bool get _ready => _context != null;
+  bool get _ready => !widget.profileLoadFailed && _context != null;
 
   @override
   void initState() {
@@ -140,6 +143,7 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
   Future<void> _load({bool more = false}) async {
     setState(() {
       _loading = true;
+      _historyFailed = false;
       _error = null;
     });
     try {
@@ -153,11 +157,13 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
+          _historyFailed = true;
           _error = e is AuthFailure
               ? e.message
               : '감사 이력을 읽지 못했습니다. 다시 읽기를 눌러 확인하세요.';
           if (e is AuthFailure && {401, 403, 404}.contains(e.status)) {
             _history = [];
+            _cursor = null;
             _result = null;
           }
         });
@@ -270,7 +276,9 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
               padBottom: false,
             ),
             FeatureLine.two(
-              primary: officialAuditProfileSummary(widget.profile),
+              primary: widget.profileLoadFailed
+                  ? '학업 프로필을 읽지 못했습니다. 설정에서 다시 확인하세요.'
+                  : officialAuditProfileSummary(widget.profile),
               secondary: _ready
                   ? '이수 경로를 포함한 감사 기준은 설정 프로필입니다. 기준일만 이 화면에서 입력합니다.'
                   : '설정에서 등록 학교와 이수 경로를 저장하면 감사를 실행할 수 있습니다.',
@@ -404,7 +412,7 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
                 onPressed: _busy || _loading ? null : _load,
               ),
             ),
-            if (!_loading && _history.isEmpty)
+            if (!_loading && !_historyFailed && _history.isEmpty)
               const FeatureLine.one(text: '저장된 감사 이력이 없습니다.'),
             for (final row in _history)
               InkWell(
