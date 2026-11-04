@@ -6,6 +6,8 @@ import 'package:university_path_frontend/features/records/personal_record_reposi
 import 'package:university_path_frontend/features/records/personal_record_fields.dart';
 import 'package:university_path_frontend/features/records/course/course_page.dart';
 import 'package:university_path_frontend/features/records/activity/activity_page.dart';
+import 'package:university_path_frontend/features/records/experience/experience_page.dart';
+import 'package:university_path_frontend/features/records/portfolio/portfolio_page.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -290,13 +292,7 @@ void main() {
       },
     ),
     ('활동', '활동 직접 기록', {'title': '합성 활동'}),
-    ('경험', '경험 직접 기록', {'title': '합성 경험', 'type': '프로젝트'}),
     ('자격', '자격 직접 등록', {'title': '합성 자격'}),
-    (
-      '포트폴리오·성과',
-      '성과 직접 기록',
-      {'title': '합성 성과', 'type': '프로젝트', 'role': '설계', 'result': '시연 완료'},
-    ),
   ]) {
     testWidgets(
       '${item.$1} supports structured input, remount and confirmed delete',
@@ -309,10 +305,6 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text(item.$1).first);
         await tester.pumpAndSettle();
-        if (item.$1 == '포트폴리오·성과') {
-          await tester.tap(find.widgetWithText(OutlinedButton, '성과 기록'));
-          await tester.pumpAndSettle();
-        }
         await tester.tap(find.text(item.$2));
         await tester.pumpAndSettle();
         for (final field in item.$3.entries) {
@@ -347,4 +339,70 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'unused experience page still supports structured input and confirmed delete',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: ExperiencePage())),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('경험 직접 기록'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('record-field-title')),
+        '합성 경험',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('record-field-type')),
+        '프로젝트',
+      );
+      await tester.tap(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
+      expect(find.text('합성 경험'), findsOneWidget);
+      await tester.tap(find.text('삭제').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('삭제').last);
+      await tester.pumpAndSettle();
+      expect(find.text('합성 경험'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'unused portfolio achievements still support structured input and confirmed delete',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: PortfolioPage())),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(OutlinedButton, '성과 기록'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('성과 직접 기록'));
+      await tester.pumpAndSettle();
+      for (final field in {
+        'title': '합성 성과',
+        'type': '프로젝트',
+        'role': '설계',
+        'result': '시연 완료',
+      }.entries) {
+        final input = find.byKey(ValueKey('record-field-${field.key}'));
+        await tester.ensureVisible(input);
+        await tester.enterText(input, field.value);
+      }
+      await tester.tap(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
+      expect(find.text('합성 성과'), findsOneWidget);
+      await tester.tap(find.text('삭제').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('삭제').last);
+      await tester.pumpAndSettle();
+      expect(find.text('합성 성과'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

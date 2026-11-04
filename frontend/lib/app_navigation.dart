@@ -36,9 +36,9 @@ class AppLocation {
     '/courses',
     '/graduation',
     '/activities',
-    '/experiences',
     '/credentials',
     '/portfolio',
+    '/job-postings',
     settingsPath,
   ];
 
@@ -54,7 +54,12 @@ class AppLocation {
 
   final String path;
   int? get menu {
-    final index = menuPaths.indexOf(path == '/' ? '/home' : path);
+    final normalized = path == '/'
+        ? '/home'
+        : path == '/experiences'
+        ? '/activities'
+        : path;
+    final index = menuPaths.indexOf(normalized);
     return index < 0 ? null : index;
   }
 }

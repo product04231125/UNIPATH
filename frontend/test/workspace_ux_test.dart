@@ -499,9 +499,9 @@ void main() {
         '수강 관리',
         '졸업 요건',
         '활동',
-        '경험',
         '자격',
-        '포트폴리오·성과',
+        '자료',
+        '채용공고 분석',
         '설정',
       ]) {
         final navigation = find.byTooltip(name).evaluate().isNotEmpty

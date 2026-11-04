@@ -89,7 +89,7 @@ void main() {
     await tester.tap(find.byKey(const Key('phone-nav-more')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('phone-nav-more-sheet')), findsOneWidget);
-    for (final label in ['졸업 요건', '경험', '자격', '포트폴리오·성과', '설정']) {
+    for (final label in ['졸업 요건', '자격', '자료', '채용공고 분석', '설정']) {
       expect(
         find.descendant(
           of: find.byKey(const Key('phone-nav-more-sheet')),
@@ -215,11 +215,7 @@ void main() {
   testWidgets('school admin phone more sheet omits super-only menus', (
     tester,
   ) async {
-    await pumpAdmin(
-      tester,
-      const Size(390, 844),
-      role: AppRole.schoolAdmin,
-    );
+    await pumpAdmin(tester, const Size(390, 844), role: AppRole.schoolAdmin);
     await tester.tap(find.byKey(const Key('phone-nav-more')));
     await tester.pumpAndSettle();
     final sheet = find.byKey(const Key('phone-nav-more-sheet'));

@@ -48,9 +48,10 @@ OpenAPI(`/api/v1/docs`)가 기준이다.
 | 학교 발급 자료 | [official-records](features/official-records.md) | 본인 PDF 제출·이력, 관리자 원본/학생 기록 검토·승인 |
 | 학교 문서 검색 | [school-document-search](features/school-document-search.md) | 등록 학교 문맥 검색·발췌·출처·근거 부족 |
 | 활동 | [activity](features/activity.md) | 실제 계정 서버 개인 활동·봉사 CRUD |
-| 경험 | [experience](features/experience.md) | 실제 계정 서버 개인 경험 CRUD |
+| 경험 | [experience](features/experience.md) | 학생 메뉴에서 제외. 페이지 파일과 서버 경험 CRUD는 유지 |
 | 자격 | [credential](features/credential.md) | 실제 계정 서버 개인 자격 CRUD |
-| 포트폴리오·성과 | [portfolio](features/portfolio.md) | 서버 성과 CRUD·구성/지원 문서 초안, 별도 계정별 기기 PDF 보관 |
+| 자료 | [portfolio](features/portfolio.md) | 종류·이름·설명 또는 PDF를 기기에 보관 |
+| 채용공고 분석 | [portfolio](features/portfolio.md) | 텍스트·주소·PDF/캡처 중 하나. 불가 이유만 표시하고 결과는 계약 대기 |
 | AI 도우미 | [assistant](features/assistant.md) | 학교 질의 API·상태/인용 표시·창별 메모리 대화 |
 | 설정 | [settings](features/settings.md) | 실제 계정 서버 학업과 계획·기기 원본 보존 |
 | 외부 링크 | [external-links](features/external-links.md) | 1365·Q-Net·개인 증빙 URL 확인·열기·복사 |

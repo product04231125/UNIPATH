@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_drafts_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
@@ -76,35 +75,42 @@ void main() {
           sources: ['experience/experience-1'],
         ),
       );
+      var active = true;
+      late void Function(void Function()) setPage;
       await tester.pumpWidget(
-        const UniversityPathApp(startAuthenticated: true),
+        MaterialApp(
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              setPage = setState;
+              return Scaffold(
+                body: PortfolioDraftsPage(isDocument: true, active: active),
+              );
+            },
+          ),
+        ),
       );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('포트폴리오·성과'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('기존 지원 문서'));
       await tester.pumpAndSettle();
       expect(find.textContaining('합성 경험'), findsOneWidget);
       final experiences = PersonalRecordRepository(
         PersonalRecordKind.experience,
       );
       await experiences.load();
-      await tester.tap(find.text('경험').first);
-      await tester.pumpAndSettle();
       await experiences.save(
         PersonalRecord(
           id: 'experience-1',
           values: {'title': '수정된 경험', 'role': '수정 역할'},
         ),
       );
-      await tester.tap(find.text('포트폴리오·성과'));
+      setPage(() => active = false);
+      await tester.pumpAndSettle();
+      setPage(() => active = true);
       await tester.pumpAndSettle();
       expect(find.textContaining('수정된 경험'), findsOneWidget);
       expect(find.textContaining('합성 경험'), findsNothing);
-      await tester.tap(find.text('경험').first);
-      await tester.pumpAndSettle();
       await experiences.delete('experience-1');
-      await tester.tap(find.text('포트폴리오·성과'));
+      setPage(() => active = false);
+      await tester.pumpAndSettle();
+      setPage(() => active = true);
       await tester.pumpAndSettle();
       expect(find.textContaining('원본 기록 삭제됨'), findsOneWidget);
       await tester.tap(find.text('미리보기'));
