@@ -57,6 +57,10 @@ class FeatureLine extends StatelessWidget {
   static double slotGap(BuildContext context) =>
       phoneAwareGap(context, wide: 16, phone: 12);
 
+  /// Section-trailing reload; compact ~36 so it fits beside search fields.
+  /// Keeps the global OutlinedButton height of 48 elsewhere.
+  static const double reloadHeight = 36;
+
   static Widget reload({
     Key? key,
     required VoidCallback? onPressed,
@@ -64,7 +68,13 @@ class FeatureLine extends StatelessWidget {
   }) => OutlinedButton.icon(
     key: key,
     onPressed: onPressed,
-    icon: const Icon(Icons.refresh),
+    style: OutlinedButton.styleFrom(
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      minimumSize: const Size(0, reloadHeight),
+      maximumSize: const Size(double.infinity, reloadHeight),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+    ),
+    icon: const Icon(Icons.refresh, size: 18),
     label: Text(label),
   );
 

@@ -52,7 +52,14 @@ void main() {
       ),
     );
     expect(find.text('내 수강 과목'), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, '다시 읽기'), findsOneWidget);
+    final reload = find.widgetWithText(OutlinedButton, '다시 읽기');
+    expect(reload, findsOneWidget);
+    final reloadButton = tester.widget<OutlinedButton>(reload);
+    expect(
+      reloadButton.style?.minimumSize?.resolve({}),
+      const Size(0, FeatureLine.reloadHeight),
+    );
+    expect(tester.getSize(reload).height, closeTo(FeatureLine.reloadHeight, 2));
     expect(
       tester.getTopLeft(find.text('내 수강 과목')).dx,
       lessThan(tester.getTopLeft(find.text('다시 읽기')).dx),
