@@ -366,6 +366,10 @@ void main() {
             find.text(PersonalEvaluationSummary.personalDisplayLabel),
             findsWidgets,
           );
+          expect(
+            find.text(PersonalEvaluationSummary.personalLabel),
+            findsNothing,
+          );
           expect(find.text('계산 결과'), findsOneWidget);
           expect(g.posted.map((b) => b['client_id']).toSet().length, 1);
           expect(tester.takeException(), isNull);

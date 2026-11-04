@@ -2,13 +2,10 @@ import '../../shared/app_style.dart';
 
 import 'package:flutter/material.dart';
 
-import 'package:university_path_frontend/shared/app_typography.dart';
-
-import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/input_dialog.dart';
-import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/status_badge.dart';
-import '../../shared/widgets/page_header.dart';
+import '../../shared/widgets/feature_line.dart';
+import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/surface_card.dart';
 import 'fixtures/record_mock_entry.dart';
 import 'course/course_term.dart';
@@ -428,26 +425,33 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     }
   }
 
-  Widget _personalEntry(PersonalRecord record) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      _entry(
-        RecordMockEntry(
-          title: record.value('title'),
-          detail: _fields
-              .where((f) => f.key != 'title' && record.value(f.key).isNotEmpty)
-              .map(
-                (f) =>
-                    f.key == 'term' && widget.kind == PersonalRecordKind.course
-                    ? '수강 기간: ${CourseTerm.parse(record.value('term')).label}'
-                    : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
-              )
-              .join(' · '),
-          status: '개인 기록',
-        ),
+  Widget _personalEntry(PersonalRecord record) {
+    final entry = RecordMockEntry(
+      title: record.value('title'),
+      detail: _fields
+          .where((f) => f.key != 'title' && record.value(f.key).isNotEmpty)
+          .map(
+            (f) => f.key == 'term' && widget.kind == PersonalRecordKind.course
+                ? '수강 기간: ${CourseTerm.parse(record.value('term')).label}'
+                : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
+          )
+          .join(' · '),
+      status: '개인 기록',
+    );
+    return FeatureLine.two(
+      primary: entry.title,
+      secondary: entry.detail,
+      leading: Icon(
+        Icons.description_outlined,
+        size: 19,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
-      Wrap(
+      trailing: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
+          StatusBadge(status: entry.status),
           for (final field in _fields.where(
             (f) =>
                 f.type == PersonalFieldType.url &&
@@ -465,8 +469,8 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           ),
         ],
       ),
-    ],
-  );
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -475,9 +479,12 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       return _statePage(
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('개인 기록을 읽지 못했습니다. 기존 저장 내용은 덮어쓰지 않습니다.'),
-            TextButton(onPressed: _load, child: Text('다시 시도')),
+            const FeatureLine.one(
+              text: '개인 기록을 읽지 못했습니다. 기존 저장 내용은 덮어쓰지 않습니다.',
+            ),
+            FeatureLine.reload(onPressed: _load, label: '다시 시도'),
           ],
         ),
       );
@@ -489,201 +496,122 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           (_term.isEmpty || period.semester == _term);
     }).toList();
     final isCourse = widget.kind == PersonalRecordKind.course;
-    return ContentScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _header(),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final records = SurfaceCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.listTitle,
-                      style: TextStyle(
-                        fontSize: AppTypography.section,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: _showForm,
-                      icon: Icon(Icons.add),
-                      label: Text(widget.addLabel),
-                    ),
-                    const SizedBox(height: 10),
-                    if (widget.kind == PersonalRecordKind.course) ...[
-                      Wrap(
-                        spacing: 16,
-                        runSpacing: 12,
-                        children: [
-                          SizedBox(
-                            width: 240,
-                            child: AnchoredSelectField<String>(
-                              key: const ValueKey('record-course-year-filter'),
-                              value: _year,
-                              label: '수강 연도 필터',
-                              options: [
-                                const SelectOption('', '전체 연도'),
-                                for (final year in {
-                                  ..._repository.records.map(
-                                    (r) =>
-                                        CourseTerm.parse(r.value('term'))
-                                            .yearFilter,
-                                  ),
-                                  if (_year.isNotEmpty) _year,
-                                }.toList()..sort((a, b) => b.compareTo(a)))
-                                  SelectOption(
-                                    year,
-                                    year == CourseTerm.unspecified
-                                        ? '연도 미지정'
-                                        : '$year년',
-                                  ),
-                              ],
-                              onChanged: (value) =>
-                                  setState(() => _year = value),
-                            ),
-                          ),
-                          SizedBox(
-                            width: 240,
-                            child: AnchoredSelectField<String>(
-                              key: const ValueKey('record-course-term-filter'),
-                              value: _term,
-                              label: '학기 필터',
-                              options: [
-                                const SelectOption('', '전체 학기'),
-                                for (final term in {
-                                  ..._repository.records.map(
-                                    (r) =>
-                                        CourseTerm.parse(r.value('term'))
-                                            .semester,
-                                  ),
-                                  if (_term.isNotEmpty) _term,
-                                }.toList()..sort())
-                                  SelectOption(term, term),
-                              ],
-                              onChanged: (value) =>
-                                  setState(() => _term = value),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점',
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    if (widget.kind == PersonalRecordKind.activity)
-                      Text(
-                        '사용자가 승인됨으로 기록한 봉사 시간 합계 ${personal.where((r) => r.value('approval') == 'approved').fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('approvedHours')) ?? 0))}시간',
-                      ),
-                    if (personal.isEmpty)
-                      Text(
-                        isCourse && (_year.isNotEmpty || _term.isNotEmpty)
-                            ? '선택한 연도·학기에 맞는 개인 기록이 없습니다. 필터를 변경해 주세요.'
-                            : '개인 기록이 없습니다. 직접 입력해 주세요.',
-                      ),
-                    for (final record in personal) _personalEntry(record),
-                  ],
-                ),
-              );
-              {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    records,
-                    SizedBox(height: phoneAwareGap(context, wide: 12)),
-                    ExpansionTile(
-                      title: Text(widget.guideTitle),
-                      childrenPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
-                      expandedCrossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (final line in widget.guides)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Text('• $line'),
-                          ),
-                      ],
-                    ),
-                    ...widget.guideActions,
-                  ],
-                );
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _header() {
-    return PageHeader(
+    return FeaturePage(
       title: widget.title,
       contextLabel: widget.contextLabel,
       description: widget.description,
-      actions: [
-        if (_repository.isServerBacked)
-          TextButton.icon(
-            onPressed: _loading ? null : _load,
-            icon: const Icon(Icons.refresh),
-            label: const Text('서버 기록 다시 불러오기'),
+      body: [
+        SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FeatureLine.section(
+                text: widget.listTitle,
+                trailing: _repository.isServerBacked
+                    ? FeatureLine.reload(onPressed: _loading ? null : _load)
+                    : null,
+              ),
+              if (widget.kind == PersonalRecordKind.course) ...[
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 12,
+                  children: [
+                    SizedBox(
+                      width: 240,
+                      child: AnchoredSelectField<String>(
+                        key: const ValueKey('record-course-year-filter'),
+                        value: _year,
+                        label: '수강 연도 필터',
+                        options: [
+                          const SelectOption('', '전체 연도'),
+                          for (final year in {
+                            ..._repository.records.map(
+                              (r) =>
+                                  CourseTerm.parse(r.value('term')).yearFilter,
+                            ),
+                            if (_year.isNotEmpty) _year,
+                          }.toList()..sort((a, b) => b.compareTo(a)))
+                            SelectOption(
+                              year,
+                              year == CourseTerm.unspecified
+                                  ? '연도 미지정'
+                                  : '$year년',
+                            ),
+                        ],
+                        onChanged: (value) => setState(() => _year = value),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 240,
+                      child: AnchoredSelectField<String>(
+                        key: const ValueKey('record-course-term-filter'),
+                        value: _term,
+                        label: '학기 필터',
+                        options: [
+                          const SelectOption('', '전체 학기'),
+                          for (final term in {
+                            ..._repository.records.map(
+                              (r) => CourseTerm.parse(r.value('term')).semester,
+                            ),
+                            if (_term.isNotEmpty) _term,
+                          }.toList()..sort())
+                            SelectOption(term, term),
+                        ],
+                        onChanged: (value) => setState(() => _term = value),
+                      ),
+                    ),
+                  ],
+                ),
+                FeatureLine.one(
+                  text:
+                      '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점',
+                ),
+              ],
+              if (widget.kind == PersonalRecordKind.activity)
+                FeatureLine.one(
+                  text:
+                      '사용자가 승인됨으로 기록한 봉사 시간 합계 ${personal.where((r) => r.value('approval') == 'approved').fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('approvedHours')) ?? 0))}시간',
+                ),
+              if (personal.isEmpty)
+                FeatureLine.one(
+                  text: isCourse && (_year.isNotEmpty || _term.isNotEmpty)
+                      ? '선택한 연도·학기에 맞는 개인 기록이 없습니다. 필터를 변경해 주세요.'
+                      : '개인 기록이 없습니다. 직접 입력해 주세요.',
+                ),
+              for (final record in personal) _personalEntry(record),
+            ],
           ),
+        ),
+      ],
+      actions: [
+        FilledButton.icon(
+          onPressed: _showForm,
+          icon: const Icon(Icons.add),
+          label: Text(widget.addLabel),
+        ),
+      ],
+      below: [
+        ExpansionTile(
+          title: Text(widget.guideTitle),
+          childrenPadding: const EdgeInsets.symmetric(horizontal: 16),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final line in widget.guides)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text('• $line'),
+              ),
+          ],
+        ),
+        ...widget.guideActions,
       ],
     );
   }
 
-  Widget _statePage({required Widget child}) => ContentScrollView(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [_header(), child],
-    ),
-  );
-
-  Widget _entry(RecordMockEntry entry) => Container(
-    padding: EdgeInsets.symmetric(vertical: phoneAwareGap(context, wide: 11)),
-    decoration: BoxDecoration(
-      border: Border(
-        bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-    ),
-    child: Row(
-      children: [
-        Icon(
-          Icons.description_outlined,
-          size: 19,
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                entry.title,
-                style: TextStyle(
-                  fontSize: AppTypography.body,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                entry.detail,
-                style: TextStyle(
-                  fontSize: AppTypography.caption,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        StatusBadge(status: entry.status),
-      ],
-    ),
+  Widget _statePage({required Widget child}) => FeaturePage(
+    title: widget.title,
+    contextLabel: widget.contextLabel,
+    description: widget.description,
+    body: [child],
   );
 }

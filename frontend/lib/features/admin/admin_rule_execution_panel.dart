@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/feature_actions.dart';
+import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/responsive_panels.dart';
 import '../../shared/widgets/field_label.dart';
@@ -620,11 +622,15 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Divider(height: 24),
-          const Text(
-            '종류별 계산 조건',
-            style: TextStyle(fontWeight: FontWeight.w700),
+          FeatureLine.section(
+            text: '종류별 계산 조건',
+            trailing: _gateway == null
+                ? null
+                : FeatureLine.reload(
+                    onPressed: _busy ? null : _load,
+                    label: '근거·초안 다시 읽기',
+                  ),
           ),
-          const SizedBox(height: 12),
           if (widget.ruleType == 'credits' || widget.ruleType == 'volunteer')
             ResponsivePanels(
               children: [
@@ -720,8 +726,6 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
               (v) => draft.approval = v,
             ),
           ],
-          if (widget.ruleType == 'custom')
-            const Text('한 줄 요건 설명을 수동 확인 조건으로 저장합니다. 자동 충족으로 계산하지 않습니다.'),
           if (_gateway == null)
             const Text('계산 조건 서버 저장은 로그인한 관리자 계정에서 사용할 수 있습니다.'),
           if (rule == null || widget.metadataDirty)
@@ -744,10 +748,6 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
               ],
             ),
             _text(_values, 'tracks', '이수 경로 (쉼표 구분)'),
-            OutlinedButton(
-              onPressed: _busy ? null : _load,
-              child: const Text('근거·초안 다시 읽기'),
-            ),
             if (_busy) const LinearProgressIndicator(),
             AnchoredSelectField<String>(
               externalLabel: true,
@@ -839,18 +839,21 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
                 child: const Text('저장 목록 확인 후 새 초안 준비'),
               ),
             ],
-            FilledButton(
-              onPressed:
-                  _busy ||
-                      !ready ||
-                      widget.metadataDirty ||
-                      _uncertain ||
-                      _conflict
-                  ? null
-                  : _save,
-              child: const Text('계산 조건 초안 저장'),
+            FeatureActions(
+              children: [
+                FilledButton(
+                  onPressed:
+                      _busy ||
+                          !ready ||
+                          widget.metadataDirty ||
+                          _uncertain ||
+                          _conflict
+                      ? null
+                      : _save,
+                  child: const Text('계산 조건 초안 저장'),
+                ),
+              ],
             ),
-            const Text('이 저장은 실행 초안 저장입니다.'),
           ],
           if (_error != null)
             Semantics(

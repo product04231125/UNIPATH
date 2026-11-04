@@ -110,12 +110,18 @@ class AdminShell extends StatelessWidget {
               constraints.maxWidth < 760 ||
               MediaQuery.textScalerOf(context).scale(14) >= 21);
       final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+      final padded = Padding(
+        padding: phone
+            ? const EdgeInsets.all(phoneBodyPadding)
+            : EdgeInsets.fromLTRB(compact ? 16 : 28, 26, compact ? 16 : 28, 30),
+        child: child,
+      );
       final scaffold = Scaffold(
         resizeToAvoidBottomInset: true,
         body: SafeArea(
           bottom: !phone,
           child: phone
-              ? child
+              ? padded
               : Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -129,7 +135,7 @@ class AdminShell extends StatelessWidget {
                       ),
                     ),
                     const VerticalDivider(width: 1),
-                    Expanded(child: child),
+                    Expanded(child: padded),
                   ],
                 ),
         ),

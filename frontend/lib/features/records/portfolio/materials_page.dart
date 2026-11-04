@@ -5,10 +5,11 @@ import 'package:flutter/material.dart';
 
 import '../../../app_shell/phone_shell.dart';
 import '../../../shared/app_style.dart';
-import '../../../shared/widgets/content_scroll_view.dart';
+import '../../../shared/widgets/feature_actions.dart';
+import '../../../shared/widgets/feature_line.dart';
+import '../../../shared/widgets/feature_page.dart';
 import '../../../shared/widgets/field_label.dart';
 import '../../../shared/widgets/input_dialog.dart';
-import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/responsive_columns.dart';
 import 'material_repository.dart';
 
@@ -227,197 +228,172 @@ class MaterialsPageState extends State<MaterialsPage> {
     ),
   );
   @override
-  Widget build(BuildContext context) => ContentScrollView(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const PageHeader(title: '내 자료', description: 'PDF와 설명을 이 기기에 보관합니다.'),
-        SizedBox(height: phoneAwareGap(context, wide: 16)),
-        if (_loading)
-          const LinearProgressIndicator()
-        else if (_failed) ...[
-          const Text('자료 목록을 읽지 못했습니다. 저장된 자료를 덮어쓰지 않습니다.'),
-          TextButton(
-            onPressed: _busy ? null : _load,
-            child: const Text('다시 읽기'),
-          ),
-        ] else
-          ResponsiveColumns(
-            enabled: true,
-            first: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  '자료 ${_records.length}개',
-                  style: Theme.of(context).textTheme.titleMedium,
+  Widget build(BuildContext context) => FeaturePage(
+    title: '내 자료',
+    description: 'PDF와 설명을 이 기기에 보관합니다.',
+    body: [
+      if (_loading)
+        const LinearProgressIndicator()
+      else if (_failed) ...[
+        const FeatureLine.one(text: '자료 목록을 읽지 못했습니다. 저장된 자료를 덮어쓰지 않습니다.'),
+        FeatureLine.reload(onPressed: _busy ? null : _load),
+      ] else
+        ResponsiveColumns(
+          enabled: true,
+          first: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FeatureLine.section(text: '자료 ${_records.length}개'),
+              if (_records.isEmpty)
+                const FeatureLine.one(
+                  text: '등록한 자료가 없습니다. 설명만 기록하거나 PDF를 선택해 등록하세요.',
                 ),
-                if (_records.isEmpty)
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      vertical: phoneAwareGap(context, wide: 16),
-                    ),
-                    child: Text('등록한 자료가 없습니다. 설명만 기록하거나 PDF를 선택해 등록하세요.'),
-                  ),
-                for (final r in _records)
-                  Card(
-                    child: Padding(
-                      padding: phoneAwarePadding(context, wide: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            r.title,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          if (r.type.isNotEmpty) Text('종류: ${r.type}'),
-                          if (r.description.isNotEmpty) Text(r.description),
-                          if (r.pdf != null)
-                            Text(
-                              '${r.fileName} · ${(r.pdf!.length / 1024).ceil()}KB · 기기 보관',
-                            )
-                          else
-                            const Text('내용 설명 기록'),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              OutlinedButton(
-                                onPressed: _busy
-                                    ? null
-                                    : () async {
-                                        if (await allowLeave() && mounted) {
-                                          _reset(r);
-                                        }
-                                      },
-                                child: const Text('수정'),
-                              ),
-                              if (r.pdf != null)
-                                OutlinedButton.icon(
-                                  onPressed: _busy
-                                      ? null
-                                      : () async {
-                                          setState(() => _busy = true);
-                                          try {
-                                            await (widget.exportPdf ??
-                                                exportMaterialPdf)(r);
-                                          } catch (_) {
-                                            if (mounted) {
-                                              setState(
-                                                () => _error = 'PDF를 내보내지 못했습니다. 보관 자료는 유지했습니다.',
-                                              );
-                                            }
-                                          } finally {
-                                            if (mounted) {
-                                              setState(() => _busy = false);
-                                            }
-                                          }
-                                        },
-                                  icon: const Icon(Icons.download_outlined),
-                                  label: const Text('PDF 내보내기'),
-                                ),
-                              FilledButton(
-                                style: destructiveButtonStyle(context),
-                                onPressed: _busy ? null : () => _delete(r),
-                                child: const Text('삭제'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            second: Card(
-              child: Padding(
-                padding: phoneAwarePadding(context, wide: 20),
-                child: Form(
-                  key: _form,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+              for (final r in _records)
+                FeatureLine.two(
+                  primary: r.title,
+                  secondary: [
+                    if (r.type.isNotEmpty) '종류: ${r.type}',
+                    if (r.description.isNotEmpty) r.description,
+                    if (r.pdf != null)
+                      '${r.fileName} · ${(r.pdf!.length / 1024).ceil()}KB · 기기 보관'
+                    else
+                      '내용 설명 기록',
+                  ].join(' · '),
+                  trailing: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Text(
-                        _editing == null ? '자료 등록' : '자료 수정',
-                        style: Theme.of(context).textTheme.titleMedium,
+                      OutlinedButton(
+                        onPressed: _busy
+                            ? null
+                            : () async {
+                                if (await allowLeave() && mounted) {
+                                  _reset(r);
+                                }
+                              },
+                        child: const Text('수정'),
                       ),
-                      const SizedBox(height: 16),
-                      _field('title', '자료 이름 *', _title, required: true),
-                      _field('type', '파일 종류 · 용도 (선택)', _type),
-                      _field(
-                        'description',
-                        '담긴 내용 · 핵심 성과',
-                        _description,
-                        lines: 4,
-                      ),
-                      const Text('파일을 첨부하지 않을 때는 어떤 내용인지 설명을 입력하세요.'),
-                      const SizedBox(height: 8),
-                      const Text('PDF 최대 10MB · 전체 50MB.'),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: _busy ? null : _pick,
-                            icon: const Icon(Icons.attach_file),
-                            label: const Text('PDF 선택'),
-                          ),
-                          if (_pdf != null)
-                            TextButton(
-                              onPressed: _busy
-                                  ? null
-                                  : () => setState(() {
-                                      _pdf = null;
-                                      _fileName = '';
-                                    }),
-                              child: const Text('첨부 제외'),
-                            ),
-                        ],
-                      ),
-                      if (_pdf != null)
-                        Text(
-                          '$_fileName · ${(_pdf!.length / 1024).ceil()}KB · 등록 후 기기 보관',
+                      if (r.pdf != null)
+                        OutlinedButton.icon(
+                          onPressed: _busy
+                              ? null
+                              : () async {
+                                  setState(() => _busy = true);
+                                  try {
+                                    await (widget.exportPdf ??
+                                        exportMaterialPdf)(r);
+                                  } catch (_) {
+                                    if (mounted) {
+                                      setState(
+                                        () => _error =
+                                            'PDF를 내보내지 못했습니다. 보관 자료는 유지했습니다.',
+                                      );
+                                    }
+                                  } finally {
+                                    if (mounted) {
+                                      setState(() => _busy = false);
+                                    }
+                                  }
+                                },
+                          icon: const Icon(Icons.download_outlined),
+                          label: const Text('PDF 내보내기'),
                         ),
-                      if (_error != null)
-                        Semantics(
-                          liveRegion: true,
-                          child: Text(
-                            _error!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                          ),
-                        ),
-                      if (_message != null)
-                        Semantics(liveRegion: true, child: Text(_message!)),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        alignment: WrapAlignment.end,
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          TextButton(
-                            onPressed: _busy
-                                ? null
-                                : () async {
-                                    if (await allowLeave() && mounted) _reset();
-                                  },
-                            child: const Text('취소'),
-                          ),
-                          FilledButton(
-                            onPressed: _busy ? null : _save,
-                            child: Text(_busy ? '처리 중…' : '자료 등록'),
-                          ),
-                        ],
+                      FilledButton(
+                        style: destructiveButtonStyle(context),
+                        onPressed: _busy ? null : () => _delete(r),
+                        child: const Text('삭제'),
                       ),
                     ],
                   ),
                 ),
+            ],
+          ),
+          second: Card(
+            child: Padding(
+              padding: phoneAwarePadding(context, wide: 20),
+              child: Form(
+                key: _form,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    FeatureLine.section(
+                      text: _editing == null ? '자료 등록' : '자료 수정',
+                    ),
+                    _field('title', '자료 이름 *', _title, required: true),
+                    _field('type', '파일 종류 · 용도 (선택)', _type),
+                    _field(
+                      'description',
+                      '담긴 내용 · 핵심 성과',
+                      _description,
+                      lines: 4,
+                    ),
+                    const FeatureLine.one(
+                      text: '파일을 첨부하지 않을 때는 어떤 내용인지 설명을 입력하세요.',
+                    ),
+                    const FeatureLine.one(text: 'PDF 최대 10MB · 전체 50MB.'),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _busy ? null : _pick,
+                          icon: const Icon(Icons.attach_file),
+                          label: const Text('PDF 선택'),
+                        ),
+                        if (_pdf != null)
+                          TextButton(
+                            onPressed: _busy
+                                ? null
+                                : () => setState(() {
+                                    _pdf = null;
+                                    _fileName = '';
+                                  }),
+                            child: const Text('첨부 제외'),
+                          ),
+                      ],
+                    ),
+                    if (_pdf != null)
+                      FeatureLine.one(
+                        text:
+                            '$_fileName · ${(_pdf!.length / 1024).ceil()}KB · 등록 후 기기 보관',
+                      ),
+                    if (_error != null)
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    if (_message != null)
+                      Semantics(liveRegion: true, child: Text(_message!)),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () async {
+                                if (await allowLeave() && mounted) _reset();
+                              },
+                        child: const Text('취소'),
+                      ),
+                    ),
+                    FeatureActions(
+                      children: [
+                        FilledButton(
+                          onPressed: _busy ? null : _save,
+                          child: Text(_busy ? '처리 중…' : '자료 등록'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-      ],
-    ),
+        ),
+    ],
   );
 }

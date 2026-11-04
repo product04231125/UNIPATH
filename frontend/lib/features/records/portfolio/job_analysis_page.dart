@@ -3,10 +3,9 @@ import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
-import '../../../app_shell/phone_shell.dart';
-import '../../../shared/widgets/content_scroll_view.dart';
+import '../../../shared/widgets/feature_line.dart';
+import '../../../shared/widgets/feature_page.dart';
 import '../../../shared/widgets/field_label.dart';
-import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/surface_card.dart';
 import '../personal_record_repository.dart';
 import '../personal_repository_scope.dart';
@@ -211,170 +210,141 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
       '${kind.name}/${record.id}';
 
   @override
-  Widget build(BuildContext context) => ContentScrollView(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const PageHeader(
-          title: '채용공고 분석',
-          description: '공고와 고른 기록으로 분석을 준비합니다.',
+  Widget build(BuildContext context) => FeaturePage(
+    title: '채용공고 분석',
+    description: '공고와 고른 기록으로 분석을 준비합니다.',
+    body: [
+      FieldLabel(
+        label: '채용공고 텍스트',
+        child: TextFormField(
+          key: const ValueKey('job-posting-text'),
+          controller: _posting,
+          minLines: 6,
+          maxLines: 12,
+          decoration: const InputDecoration(hintText: '비교할 공고 본문을 붙여 넣으세요.'),
         ),
-        SizedBox(height: phoneAwareGap(context, wide: 16)),
-        FieldLabel(
-          label: '채용공고 텍스트',
-          child: TextFormField(
-            key: const ValueKey('job-posting-text'),
-            controller: _posting,
-            minLines: 6,
-            maxLines: 12,
-            decoration: const InputDecoration(hintText: '비교할 공고 본문을 붙여 넣으세요.'),
+      ),
+      const SizedBox(height: 16),
+      FieldLabel(
+        label: '채용공고 주소',
+        child: TextFormField(
+          key: const ValueKey('job-posting-url'),
+          controller: _url,
+          keyboardType: TextInputType.url,
+          decoration: InputDecoration(
+            hintText: 'https://',
+            errorText: _urlInvalid
+                ? 'http:// 또는 https:// 로 시작하는 주소를 입력하세요.'
+                : null,
           ),
         ),
-        const SizedBox(height: 16),
-        FieldLabel(
-          label: '채용공고 주소',
-          child: TextFormField(
-            key: const ValueKey('job-posting-url'),
-            controller: _url,
-            keyboardType: TextInputType.url,
-            decoration: InputDecoration(
-              hintText: 'https://',
-              errorText: _urlInvalid
-                  ? 'http:// 또는 https:// 로 시작하는 주소를 입력하세요.'
-                  : null,
+      ),
+      const SizedBox(height: 16),
+      FieldLabel(
+        label: '공고 PDF·캡처',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('텍스트, 주소, PDF·캡처 중 하나만 있어도 됩니다.'),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton(
+                key: const ValueKey('job-posting-file'),
+                onPressed: _fileBusy ? null : _pickFile,
+                child: Text(_fileBusy ? '파일 읽는 중…' : 'PDF·캡처 선택'),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        FieldLabel(
-          label: '공고 PDF·캡처',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('텍스트, 주소, PDF·캡처 중 하나만 있어도 됩니다.'),
+            if (_fileError != null) ...[
               const SizedBox(height: 8),
+              Text(_fileError!, key: const ValueKey('job-posting-file-error')),
+            ],
+            if (_fileBytes != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                '$_fileName · ${(_fileBytes!.length / 1024).ceil()}KB',
+                key: const ValueKey('job-posting-file-name'),
+              ),
               Align(
                 alignment: Alignment.centerLeft,
-                child: OutlinedButton(
-                  key: const ValueKey('job-posting-file'),
-                  onPressed: _fileBusy ? null : _pickFile,
-                  child: Text(_fileBusy ? '파일 읽는 중…' : 'PDF·캡처 선택'),
+                child: TextButton(
+                  key: const ValueKey('job-posting-file-clear'),
+                  onPressed: () => setState(() {
+                    _fileBytes = null;
+                    _fileName = '';
+                    _fileError = null;
+                  }),
+                  child: const Text('첨부 제외'),
                 ),
               ),
-              if (_fileError != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  _fileError!,
-                  key: const ValueKey('job-posting-file-error'),
-                ),
-              ],
-              if (_fileBytes != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  '$_fileName · ${(_fileBytes!.length / 1024).ceil()}KB',
-                  key: const ValueKey('job-posting-file-name'),
-                ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton(
-                    key: const ValueKey('job-posting-file-clear'),
-                    onPressed: () => setState(() {
-                      _fileBytes = null;
-                      _fileName = '';
-                      _fileError = null;
-                    }),
-                    child: const Text('첨부 제외'),
-                  ),
-                ),
-              ],
             ],
-          ),
+          ],
         ),
-        const SizedBox(height: 16),
-        SurfaceCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                '비교에 넣을 개인 기록',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 4),
-              const Text('고른 항목만 포함합니다.'),
-              const SizedBox(height: 12),
-              if (_loading)
-                const LinearProgressIndicator()
-              else if (_failed) ...[
-                const Text('개인 기록을 읽지 못했습니다. 선택한 항목은 유지합니다.'),
-                TextButton(onPressed: _load, child: const Text('다시 읽기')),
-              ] else if (_records.values.every((list) => list.isEmpty))
-                const Text(
-                  '선택할 개인 기록이 없습니다. 활동·수강·자격 메뉴에서 기록을 추가한 뒤 다시 열어 주세요.',
-                )
-              else
-                for (final kind in _kinds)
-                  if ((_records[kind] ?? const []).isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8, bottom: 4),
-                      child: Text(
-                        _kindLabels[kind]!,
-                        style: Theme.of(context).textTheme.titleSmall,
+      ),
+      const SizedBox(height: 16),
+      SurfaceCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            FeatureLine.section(
+              text: '비교에 넣을 개인 기록',
+              trailing: _failed ? FeatureLine.reload(onPressed: _load) : null,
+            ),
+            const FeatureLine.one(text: '고른 항목만 포함합니다.'),
+            if (_loading)
+              const LinearProgressIndicator()
+            else if (_failed)
+              const FeatureLine.one(text: '개인 기록을 읽지 못했습니다. 선택한 항목은 유지합니다.')
+            else if (_records.values.every((list) => list.isEmpty))
+              const FeatureLine.one(
+                text: '선택할 개인 기록이 없습니다. 활동·수강·자격 메뉴에서 기록을 추가한 뒤 다시 열어 주세요.',
+              )
+            else
+              for (final kind in _kinds)
+                if ((_records[kind] ?? const []).isNotEmpty) ...[
+                  FeatureLine.section(text: _kindLabels[kind]!),
+                  for (final record in _records[kind]!)
+                    FeatureLine.one(
+                      text: record.value('title'),
+                      leading: Checkbox(
+                        key: ValueKey('job-record-${_key(kind, record)}'),
+                        value: _selected.contains(_key(kind, record)),
+                        onChanged: (value) {
+                          setState(() {
+                            final key = _key(kind, record);
+                            if (value == true) {
+                              _selected.add(key);
+                            } else {
+                              _selected.remove(key);
+                            }
+                          });
+                        },
                       ),
                     ),
-                    for (final record in _records[kind]!)
-                      Row(
-                        children: [
-                          Checkbox(
-                            key: ValueKey('job-record-${_key(kind, record)}'),
-                            value: _selected.contains(_key(kind, record)),
-                            onChanged: (value) {
-                              setState(() {
-                                final key = _key(kind, record);
-                                if (value == true) {
-                                  _selected.add(key);
-                                } else {
-                                  _selected.remove(key);
-                                }
-                              });
-                            },
-                          ),
-                          Expanded(child: Text(record.value('title'))),
-                        ],
-                      ),
-                  ],
-              if (_selected.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text('선택한 기록 ${_selected.length}개'),
-                ),
-            ],
-          ),
+                ],
+            if (_selected.isNotEmpty)
+              FeatureLine.one(text: '선택한 기록 ${_selected.length}개'),
+          ],
         ),
-        const SizedBox(height: 16),
-        SurfaceCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('분석 상태', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              const Text('상태: 분석할 수 없음'),
-              const SizedBox(height: 8),
-              Text(
-                '이유: $_unavailableReason',
-                key: const ValueKey('job-analysis-reason'),
-              ),
-              const SizedBox(height: 8),
-              const Text('답변: 받은 답변 없음'),
-              const SizedBox(height: 8),
-              const Text('근거: 받은 근거 없음'),
-              const SizedBox(height: 8),
-              const Text('불확실한 부분: 받은 내용 없음'),
-            ],
-          ),
+      ),
+      const SizedBox(height: 16),
+      SurfaceCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const FeatureLine.section(text: '분석 상태'),
+            const FeatureLine.one(text: '상태: 분석할 수 없음'),
+            FeatureLine.one(
+              key: const ValueKey('job-analysis-reason'),
+              text: '이유: $_unavailableReason',
+            ),
+            const FeatureLine.one(text: '답변: 받은 답변 없음'),
+            const FeatureLine.one(text: '근거: 받은 근거 없음'),
+            const FeatureLine.one(text: '불확실한 부분: 받은 내용 없음'),
+          ],
         ),
-        const SizedBox(height: 12),
-        const FilledButton(onPressed: null, child: Text('분석 실행 불가')),
-      ],
-    ),
+      ),
+    ],
+    actions: const [FilledButton(onPressed: null, child: Text('분석 실행 불가'))],
   );
 }

@@ -102,7 +102,11 @@ void main() {
         expect(find.text('내 과목'), findsOneWidget);
         expect(find.text('자료구조'), findsNothing);
         expect(find.textContaining('개인 입력 합계 2.0학점'), findsOneWidget);
-        expect(find.textContaining('졸업 반영은 학교의 확정 기록'), findsOneWidget);
+        expect(
+          find.textContaining('학기별 수강 계획과 개인 이수 기록을 정리합니다.'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('졸업 반영은 학교의 확정 기록'), findsNothing);
         expect(find.textContaining('학교에서 확인한 정보가 없으면'), findsNothing);
         await tester.ensureVisible(find.text('교육과정 확인'));
         await tester.pumpAndSettle();

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/school_knowledge_api.dart';
 import '../api/school_knowledge_models.dart';
 import '../auth/auth_api.dart';
+import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 
@@ -115,8 +116,6 @@ class _ListState extends State<SchoolKnowledgeReviewDialog> {
     content: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('문서 적용과 검색 근거 승인은 별도입니다.'),
-        const SizedBox(height: 12),
         AnchoredSelectField<String>(
           value: _filter,
           label: '검토 상태',
@@ -134,10 +133,12 @@ class _ListState extends State<SchoolKnowledgeReviewDialog> {
             }
           },
         ),
-        TextButton.icon(
-          onPressed: _loading || _opening ? null : _load,
-          icon: const Icon(Icons.refresh),
-          label: const Text('문서 목록 다시 읽기'),
+        FeatureLine.section(
+          text: '문서 목록',
+          trailing: FeatureLine.reload(
+            onPressed: _loading || _opening ? null : _load,
+            label: '문서 목록 다시 읽기',
+          ),
         ),
         if (_loading) const LinearProgressIndicator(),
         if (_error != null) Semantics(liveRegion: true, child: Text(_error!)),
@@ -397,9 +398,6 @@ class _ReviewState extends State<_ReviewDialog> {
             ),
             Text(
               '출처 확인일: ${document.sourceCheckedOn} · 추출기: ${document.extractorVersion}',
-            ),
-            const Text(
-              '공식 원본을 별도로 열어 본문·페이지·적용 범위와 대조하세요. 원본 해시를 확인한 검토자가 직접 승인합니다.',
             ),
             ExpansionTile(
               title: const Text('원본 해시·문서 식별 정보'),

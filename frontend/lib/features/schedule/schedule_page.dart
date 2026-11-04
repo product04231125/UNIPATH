@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 
 import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/equal_height_row.dart';
-import '../../shared/widgets/content_scroll_view.dart';
+import '../../shared/widgets/feature_line.dart';
+import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/pending_ui_action.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
-import '../../shared/widgets/page_header.dart';
 import '../planning/planning_dates.dart';
 import '../planning/remote_planning_repository.dart';
 import '../auth/auth_api.dart';
@@ -48,14 +48,10 @@ class _SchedulePageState extends State<SchedulePage> {
     animation: widget.repository,
     builder: (context, _) {
       if (widget.repository.isLoading || widget.repository.loadFailed) {
-        return ContentScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _header(),
-              PlanningStorageState(repository: widget.repository),
-            ],
-          ),
+        return FeaturePage(
+          title: '일정',
+          description: '개인 일정을 주간으로 보고 추가합니다.',
+          body: [PlanningStorageState(repository: widget.repository)],
         );
       }
       final selectedEvents = _eventsForDay(_selectedDay);
@@ -74,57 +70,49 @@ class _SchedulePageState extends State<SchedulePage> {
         });
       }
       return LayoutBuilder(
-        builder: (context, constraints) => ContentScrollView(
+        builder: (context, constraints) => FeaturePage(
           padding: EdgeInsets.only(
             bottom: PhoneChromeScope.of(context)
                 ? phoneListGap
                 : (constraints.maxHeight < 620 ? 28 : 8),
           ),
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1100),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _header(
-                    actions: [
-                      FilledButton.icon(
-                        onPressed: () => _editEvent(),
-                        icon: Icon(Icons.add),
-                        label: Text('일정 추가'),
+          title: '일정',
+          description: '개인 일정을 주간으로 보고 추가합니다.',
+          body: [
+            Align(
+              alignment: Alignment.topLeft,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1100),
+                child: constraints.maxWidth >= 820
+                    ? EqualHeightRow(
+                        children: [
+                          Expanded(flex: 3, child: _calendar()),
+                          const SizedBox(width: 18),
+                          Expanded(flex: 2, child: _dayList(selectedEvents)),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _calendar(),
+                          SizedBox(height: phoneAwareGap(context, wide: 18)),
+                          _dayList(selectedEvents),
+                        ],
                       ),
-                    ],
-                  ),
-                  if (constraints.maxWidth >= 820)
-                    EqualHeightRow(
-                      children: [
-                        Expanded(flex: 3, child: _calendar()),
-                        const SizedBox(width: 18),
-                        Expanded(flex: 2, child: _dayList(selectedEvents)),
-                      ],
-                    )
-                  else ...[
-                    _calendar(),
-                    SizedBox(height: phoneAwareGap(context, wide: 18)),
-                    _dayList(selectedEvents),
-                  ],
-                ],
               ),
             ),
-          ),
+          ],
+          actions: [
+            FilledButton.icon(
+              onPressed: () => _editEvent(),
+              icon: const Icon(Icons.add),
+              label: const Text('일정 추가'),
+            ),
+          ],
         ),
       );
     },
   );
-
-  Widget _header({List<Widget> actions = const []}) {
-    return PageHeader(
-      title: '일정',
-      description: '개인 일정을 주간으로 보고 추가합니다.',
-      actions: actions,
-    );
-  }
 
   Widget _calendar() => Card(
     clipBehavior: Clip.antiAlias,
@@ -269,18 +257,11 @@ class _SchedulePageState extends State<SchedulePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '${_selectedDay.month}월 ${_selectedDay.day}일 일정',
-            style: Theme.of(context).textTheme.titleMedium,
+          FeatureLine.section(
+            text: '${_selectedDay.month}월 ${_selectedDay.day}일 일정',
           ),
-          const SizedBox(height: 10),
           if (events.isEmpty)
-            Text(
-              '등록된 개인 일정이 없습니다.',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            )
+            const FeatureLine.one(text: '등록된 개인 일정이 없습니다.')
           else
             for (final event in events) _eventTile(event),
         ],
@@ -288,8 +269,13 @@ class _SchedulePageState extends State<SchedulePage> {
     ),
   );
 
-  Widget _eventTile(PlanningEvent event, {bool showDate = false}) => ListTile(
-    contentPadding: EdgeInsets.zero,
+  Widget _eventTile(
+    PlanningEvent event, {
+    bool showDate = false,
+  }) => FeatureLine.two(
+    primary: event.title,
+    secondary:
+        '${showDate ? '${event.start.month}.${event.start.day} · ' : ''}${_time(event.start)}–${_time(event.end)} · ${event.category.label}${event.memo.isEmpty ? '' : '\n${event.memo}'}',
     leading: Container(
       width: 4,
       height: 42,
@@ -298,13 +284,9 @@ class _SchedulePageState extends State<SchedulePage> {
         borderRadius: BorderRadius.circular(4),
       ),
     ),
-    title: Text(event.title),
-    subtitle: Text(
-      '${showDate ? '${event.start.month}.${event.start.day} · ' : ''}${_time(event.start)}–${_time(event.end)} · ${event.category.label}${event.memo.isEmpty ? '' : '\n${event.memo}'}',
-    ),
     trailing: IconButton(
       tooltip: '${event.title} 수정',
-      icon: Icon(Icons.edit_outlined),
+      icon: const Icon(Icons.edit_outlined),
       onPressed: () => _editEvent(event),
     ),
   );

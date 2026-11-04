@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../shared/widgets/page_header.dart';
+import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/surface_card.dart';
-import '../../shared/widgets/content_scroll_view.dart';
 import 'personal_graduation_workspace.dart';
 import '../planning/planning_repository.dart';
 import '../auth/school_workflow_session.dart';
@@ -30,17 +29,10 @@ class _GraduationPageState extends State<GraduationPage> {
     if (session != null) {
       final planning = widget.planning;
       if (planning != null && planning.isLoading) {
-        return const ContentScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              PageHeader(
-                title: '학교 검토 자료 기준 졸업요건 감사',
-                description: '학교가 검토한 규정과 승인 기록을 비교합니다.',
-              ),
-              LinearProgressIndicator(),
-            ],
-          ),
+        return const FeaturePage(
+          title: '학교 검토 자료 기준 졸업요건 감사',
+          description: '학교가 검토한 규정과 승인 기록을 비교합니다.',
+          body: [LinearProgressIndicator()],
         );
       }
       return OfficialGraduationPage(
@@ -52,24 +44,20 @@ class _GraduationPageState extends State<GraduationPage> {
         onPersonal: () => setState(() => _personal = true),
       );
     }
-    return ContentScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          PageHeader(
-            title: '졸업 요건',
-            description: '학교 기준과 내 기록을 비교합니다.',
-            actions: [
-              OutlinedButton.icon(
-                onPressed: () => setState(() => _personal = true),
-                icon: const Icon(Icons.tune, size: 18),
-                label: const Text('내 학교·학과 기준 설정'),
-              ),
-            ],
+    return FeaturePage(
+      title: '졸업 요건',
+      description: '학교 기준과 내 기록을 비교합니다.',
+      body: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed: () => setState(() => _personal = true),
+            icon: const Icon(Icons.tune, size: 18),
+            label: const Text('내 학교·학과 기준 설정'),
           ),
-          const SurfaceCard(child: Text('학교 기준을 가져오는 API가 아직 연결되지 않았습니다.')),
-        ],
-      ),
+        ),
+        const SurfaceCard(child: Text('학교 기준을 가져오는 API가 아직 연결되지 않았습니다.')),
+      ],
     );
   }
 }

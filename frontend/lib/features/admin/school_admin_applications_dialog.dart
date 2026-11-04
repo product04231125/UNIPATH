@@ -6,6 +6,7 @@ import '../api/student_api_models.dart';
 import '../auth/auth_api.dart';
 import '../auth/app_role.dart';
 import '../records/personal_record_repository.dart';
+import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import 'unregistered_school_application_form.dart';
@@ -323,15 +324,6 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
           ),
         ],
         if (_loading) const LinearProgressIndicator(),
-        if (_review)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: _busy || _loading ? null : _load,
-              icon: const Icon(Icons.refresh),
-              label: const Text('접수 목록 새로고침'),
-            ),
-          ),
         if (!_review) ...[
           const SizedBox(height: 12),
           Wrap(
@@ -440,12 +432,13 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
             _error == null)
           const Text('신청 가능한 학교가 없습니다. 미등록 학교 유형에서 정보를 작성할 수 있습니다.'),
         const SizedBox(height: 20),
-        Text(
-          _review ? '접수 목록' : '내 신청 이력',
-          style: Theme.of(context).textTheme.titleMedium,
+        FeatureLine.section(
+          text: _review ? '접수 목록' : '내 신청 이력',
+          trailing: FeatureLine.reload(
+            onPressed: _busy || _loading ? null : _load,
+            label: _review ? '접수 목록 새로고침' : '신청 이력 다시 읽기',
+          ),
         ),
-        if (!_review)
-          const Text('서버에 접수된 신청만 표시합니다. 미등록 학교 작성 내용은 이력에 포함되지 않습니다.'),
         if (_review)
           AnchoredSelectField(
             value: _filter,

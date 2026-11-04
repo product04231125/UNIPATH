@@ -92,7 +92,11 @@ class FeatureLine extends StatelessWidget {
           )
         : title;
     return Container(
-      constraints: BoxConstraints(minHeight: phone ? 0 : phoneMinTapTarget),
+      constraints: BoxConstraints(
+        minHeight: phone || variant == FeatureLineVariant.section
+            ? 0
+            : phoneMinTapTarget,
+      ),
       padding: EdgeInsets.symmetric(vertical: phone ? phoneListGap : 0),
       decoration: BoxDecoration(
         border: divided
@@ -104,7 +108,12 @@ class FeatureLine extends StatelessWidget {
         children: [
           if (leading != null) ...[leading!, const SizedBox(width: 10)],
           Expanded(child: text),
-          if (trailing != null) ...[const SizedBox(width: 10), trailing!],
+          if (trailing != null) ...[
+            const SizedBox(width: 10),
+            Flexible(
+              child: Align(alignment: Alignment.centerRight, child: trailing!),
+            ),
+          ],
         ],
       ),
     );

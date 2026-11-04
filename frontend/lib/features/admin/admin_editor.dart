@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/feature_actions.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/responsive_columns.dart';
 import '../../shared/widgets/responsive_panels.dart';
@@ -487,15 +488,15 @@ class AdminEditorState extends State<AdminEditor> {
                     ),
                   ),
                 const Divider(height: 24),
-                Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 8,
-                  runSpacing: 8,
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: saving ? null : _cancel,
+                    child: const Text('취소'),
+                  ),
+                ),
+                FeatureActions(
                   children: [
-                    TextButton(
-                      onPressed: saving ? null : _cancel,
-                      child: const Text('취소'),
-                    ),
                     FilledButton(
                       onPressed: saving || _metadataLocked ? null : _save,
                       child: Text(

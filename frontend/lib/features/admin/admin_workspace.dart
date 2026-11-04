@@ -8,9 +8,10 @@ import 'package:flutter/material.dart';
 
 import '../auth/app_role.dart';
 import '../auth/school_workflow_actions.dart';
-import '../../app_shell/phone_shell.dart';
-import '../../shared/widgets/content_scroll_view.dart';
-import '../../shared/widgets/page_header.dart';
+import '../../shared/widgets/feature_actions.dart';
+import '../../shared/widgets/feature_line.dart';
+import '../../shared/widgets/feature_page.dart';
+import '../../shared/widgets/surface_card.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/external_link_button.dart';
@@ -400,42 +401,29 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
 
   Widget _records(AdminKind kind) {
     if (!_canCreate(kind)) return _recordList(kind);
-    return Card(
+    return SurfaceCard(
       key: ValueKey('admin-frame-${kind.name}'),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Semantics(
-              header: true,
-              child: Text(
-                kind.label,
-                style: Theme.of(context).textTheme.titleLarge,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FeatureLine.section(text: kind.label),
+          const SizedBox(height: 20),
+          KeyedSubtree(
+            key: ValueKey('admin-registration-${kind.name}-$_schoolId'),
+            child: AdminEditor(
+              key: _editorKeys.putIfAbsent(
+                kind,
+                () => GlobalKey<AdminEditorState>(),
               ),
+              repository: _repo,
+              actorId: _actor,
+              kind: kind,
+              schoolId: _schoolId,
+              inline: true,
+              list: _recordList(kind, framed: false),
             ),
-            const SizedBox(height: 20),
-            KeyedSubtree(
-              key: ValueKey('admin-registration-${kind.name}-$_schoolId'),
-              child: AdminEditor(
-                key: _editorKeys.putIfAbsent(
-                  kind,
-                  () => GlobalKey<AdminEditorState>(),
-                ),
-                repository: _repo,
-                actorId: _actor,
-                kind: kind,
-                schoolId: _schoolId,
-                inline: true,
-                list: _recordList(kind, framed: false),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -447,28 +435,22 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              Semantics(
-                header: true,
-                child: Text(
-                  framed ? '${kind.label} 목록' : '목록',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              Text('${_rows(kind).length}개'),
-            ],
-          ),
-          const Divider(height: 32),
-          if (kind == AdminKind.account) ...[
-            const Text(
-              '사용자 목록은 전체 학교 기준입니다. 부여된 관리 범위만 표시하며 학생 개인 기록은 열람하지 않습니다.',
+          FeatureLine.section(
+            text: framed ? '${kind.label} 목록' : '목록',
+            trailing: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text('${_rows(kind).length}개'),
+                if (_repo.live)
+                  FeatureLine.reload(
+                    onPressed: _busy || _loading ? null : _load,
+                  ),
+              ],
             ),
-            const SizedBox(height: 12),
+          ),
+          if (kind == AdminKind.account) ...[
             AnchoredSelectField<String>(
               key: const ValueKey('admin-account-role'),
               externalLabel: true,
@@ -520,7 +502,9 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
               ),
             ),
             if (_filteredRows(kind).isEmpty)
-              const Text('검색·필터에 맞는 항목이 없습니다. 검색어와 상태를 바꿔보세요.'),
+              const FeatureLine.one(
+                text: '검색·필터에 맞는 항목이 없습니다. 검색어와 상태를 바꿔보세요.',
+              ),
           ],
           if (_rows(kind).isEmpty)
             ConstrainedBox(
@@ -562,59 +546,63 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             enabled: kind == AdminKind.document,
             children: [
               for (final r in _filteredRows(kind))
-                Card(
-                  margin: const EdgeInsets.symmetric(vertical: 6),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(
-                      color: Theme.of(context).colorScheme.outlineVariant,
+                if (kind == AdminKind.document)
+                  Card(
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
                     ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          r.name,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        if (_recordContext(r).isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              _recordContext(r),
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ),
-                        if (kind.versioned)
-                          Text('v${r.revision} · ${_statusLabel(r.status)}'),
-                        if (kind == AdminKind.scope)
-                          Text(_statusLabel(r.status)),
-                        if (kind == AdminKind.account)
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
                           Text(
-                            '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}',
+                            r.name,
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
-                        if (kind == AdminKind.account && _repo.live)
-                          Text(r.value('email')),
-                        const SizedBox(height: 16),
-                        _recordActions(r),
-                      ],
+                          if (_recordContext(r).isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                _recordContext(r),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          if (kind.versioned)
+                            Text('v${r.revision} · ${_statusLabel(r.status)}'),
+                          const SizedBox(height: 16),
+                          _recordActions(r),
+                        ],
+                      ),
                     ),
+                  )
+                else
+                  FeatureLine.two(
+                    primary: r.name,
+                    secondary: [
+                      if (_recordContext(r).isNotEmpty) _recordContext(r),
+                      if (kind.versioned)
+                        'v${r.revision} · ${_statusLabel(r.status)}',
+                      if (kind == AdminKind.scope) _statusLabel(r.status),
+                      if (kind == AdminKind.account)
+                        '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}',
+                      if (kind == AdminKind.account && _repo.live)
+                        r.value('email'),
+                    ].where((s) => s.isNotEmpty).join(' · '),
+                    trailing: _recordActions(r),
                   ),
-                ),
             ],
           ),
         ],
       ),
     );
     if (!framed) return content;
-    return Card(
+    return SurfaceCard(
       key: ValueKey('admin-frame-${kind.name}'),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
       child: content,
     );
   }
@@ -841,15 +829,17 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         Text('관리 가능한 학교 ${_schools.length}개'),
         const SchoolWorkflowActions(),
         if (_schoolId.isEmpty) ...[
-          const SizedBox(height: 12),
-          const Text('관리 가능한 학교가 없습니다. 학교 등록 또는 범위 부여가 필요합니다.'),
+          const FeatureLine.one(
+            text: '관리 가능한 학교가 없습니다. 학교 등록 또는 범위 부여가 필요합니다.',
+          ),
           if (_role == AppRole.superAdmin)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: FilledButton(
-                onPressed: _busy ? null : () => _edit(AdminKind.institution),
-                child: const Text('학교 등록'),
-              ),
+            FeatureActions(
+              children: [
+                FilledButton(
+                  onPressed: _busy ? null : () => _edit(AdminKind.institution),
+                  child: const Text('학교 등록'),
+                ),
+              ],
             ),
         ] else ...[
           const SizedBox(height: 24),
@@ -858,22 +848,20 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             first: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  '확인할 초안 ${drafts.length}개',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                if (drafts.isEmpty) const Text('확인할 초안이 없습니다. 필요한 자료부터 등록하세요.'),
+                FeatureLine.section(text: '확인할 초안 ${drafts.length}개'),
+                if (drafts.isEmpty)
+                  const FeatureLine.one(text: '확인할 초안이 없습니다. 필요한 자료부터 등록하세요.'),
                 for (final r in drafts.take(5))
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(r.name),
-                    subtitle: Text('${r.kind.label} · v${r.revision} · 초안'),
-                    trailing: const Icon(Icons.chevron_right),
+                  InkWell(
                     onTap: _busy
                         ? null
                         : () =>
                               widget.onNavigate('${_routeFor(r.kind)}/${r.id}'),
+                    child: FeatureLine.two(
+                      primary: r.name,
+                      secondary: '${r.kind.label} · v${r.revision} · 초안',
+                      trailing: const Icon(Icons.chevron_right),
+                    ),
                   ),
                 Align(
                   alignment: Alignment.centerLeft,
@@ -929,22 +917,28 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                   ],
                 ),
                 const Divider(height: 32),
-                Text('최근 변경', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 8),
-                if (recent.isEmpty) const Text('현재 학교의 변경 이력이 없습니다.'),
+                FeatureLine.section(
+                  text: '최근 변경',
+                  trailing: _repo.live
+                      ? FeatureLine.reload(
+                          onPressed: _busy || _loading ? null : _load,
+                        )
+                      : null,
+                ),
+                if (recent.isEmpty)
+                  const FeatureLine.one(text: '현재 학교의 변경 이력이 없습니다.'),
                 for (final entry in recent)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
-                    ),
-                    subtitle: Text(
-                      _find(entry.targetId) != null &&
+                  InkWell(
+                    onTap: () => _navigate('/admin/history'),
+                    child: FeatureLine.two(
+                      primary:
+                          '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
+                      secondary:
+                          _find(entry.targetId) != null &&
                               _repo.canRead(_actor, _find(entry.targetId)!)
                           ? _find(entry.targetId)!.name
                           : '삭제되었거나 볼 수 없는 항목',
                     ),
-                    onTap: () => _navigate('/admin/history'),
                   ),
                 Align(
                   alignment: Alignment.centerLeft,
@@ -976,44 +970,30 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('관리자 변경 메타데이터 · 학생 개인 기록 원문 없음'),
-        if (entries.isEmpty) const Text('관리 이력이 없습니다. 등록·수정 후 확인하세요.'),
-        ResponsivePanels(
-          children: [
-            for (final entry in entries)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(
-                        '${_timeLabel(entry.at)} · ${_actorName(entry.actorId)}',
-                      ),
-                      Text(
-                        '학교: ${_relationName(entry.institutionId).isEmpty ? '학교 공통 또는 접근 불가' : _relationName(entry.institutionId)}',
-                      ),
-                      Text(
-                        '대상: ${_relationName(entry.targetId).isEmpty ? '삭제되었거나 볼 수 없는 항목' : _relationName(entry.targetId)}',
-                      ),
-                      ExpansionTile(
-                        title: const Text('기술 식별자'),
-                        children: [
-                          SelectableText(
-                            '요청 ID: ${entry.requestId}\n대상 ID: ${entry.targetId}',
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
+        FeatureLine.section(
+          text: '관리 이력',
+          trailing: _repo.live
+              ? FeatureLine.reload(onPressed: _busy || _loading ? null : _load)
+              : null,
         ),
+        if (entries.isEmpty)
+          const FeatureLine.one(text: '관리 이력이 없습니다. 등록·수정 후 확인하세요.'),
+        for (final entry in entries) ...[
+          FeatureLine.two(
+            primary:
+                '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
+            secondary:
+                '${_timeLabel(entry.at)} · ${_actorName(entry.actorId)} · ${_relationName(entry.targetId).isEmpty ? '삭제되었거나 볼 수 없는 항목' : _relationName(entry.targetId)}',
+          ),
+          ExpansionTile(
+            title: const Text('기술 식별자'),
+            children: [
+              SelectableText(
+                '요청 ID: ${entry.requestId}\n대상 ID: ${entry.targetId}',
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
@@ -1075,131 +1055,105 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           final title = allowed
               ? AdminWorkspace.menus[_section]!
               : '접근할 수 없습니다.';
-          return ContentScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(
-                PhoneChromeScope.of(context)
-                    ? phoneBodyPadding
-                    : (compactHeader ? 16 : 24),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  PageHeader(
-                    title: title,
-                    description: allowed
-                        ? AdminWorkspace.menuDescriptions[_section]
-                        : null,
+          return FeaturePage(
+            title: title,
+            description: allowed
+                ? AdminWorkspace.menuDescriptions[_section]
+                : null,
+            body: [
+              if (_schools.isNotEmpty &&
+                  allowed &&
+                  _section != '/admin/applications')
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    child: AnchoredSelectField<String>(
+                      externalLabel: !compactHeader,
+                      key: const ValueKey('admin-school-selector'),
+                      searchable: true,
+                      searchLabel: '학교 이름 검색',
+                      value: _schoolId,
+                      label: '현재 학교',
+                      options: [
+                        for (final school in _schools)
+                          SelectOption(school.id, school.name),
+                      ],
+                      onChanged: (v) async {
+                        if (v == _schoolId || !await _allowLeave()) return;
+                        setState(() {
+                          _schoolId = v;
+                          _editorKeys.clear();
+                          _error = null;
+                          _accountRole = '';
+                          _queries.clear();
+                          _statuses.clear();
+                        });
+                        // The old detail cannot remain under the new school.
+                        if (_detailId != null) widget.onNavigate(_section);
+                      },
+                    ),
                   ),
-                  if (!compactHeader) ...[
-                    Text('${_role.label} · 관리자 작업 공간'),
-                    const SizedBox(height: 12),
-                  ],
-                  if (_schools.isNotEmpty &&
-                      allowed &&
-                      _section != '/admin/applications')
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 440),
-                        child: AnchoredSelectField<String>(
-                          externalLabel: !compactHeader,
-                          key: const ValueKey('admin-school-selector'),
-                          searchable: true,
-                          searchLabel: '학교 이름 검색',
-                          value: _schoolId,
-                          label: '현재 학교',
-                          options: [
-                            for (final school in _schools)
-                              SelectOption(school.id, school.name),
-                          ],
-                          onChanged: (v) async {
-                            if (v == _schoolId || !await _allowLeave()) return;
-                            setState(() {
-                              _schoolId = v;
-                              _editorKeys.clear();
-                              _error = null;
-                              _accountRole = '';
-                              _queries.clear();
-                              _statuses.clear();
-                            });
-                            // The old detail cannot remain under the new school.
-                            if (_detailId != null) widget.onNavigate(_section);
-                          },
-                        ),
-                      ),
+                ),
+              if (widget.role != AppRole.user)
+                FeatureLine.one(
+                  text: _role == AppRole.superAdmin
+                      ? '관리 범위: 전체 학교'
+                      : '관리 범위: ${_repo.records.where((r) => r.kind == AdminKind.scope && r.status == 'active' && r.value('userId') == _actor && r.value('institutionId') == _schoolId).map(_scopeSummary).toSet().join(', ')}',
+                ),
+              if (_repo.live && _repo.warning != null) Text(_repo.warning!),
+              if (_loading)
+                const LinearProgressIndicator()
+              else if (_loadError != null) ...[
+                FeatureLine.one(text: _loadError!),
+                FeatureLine.reload(onPressed: _load),
+              ] else if (!allowed) ...[
+                const FeatureLine.one(
+                  text: '현재 계정 상태·역할·관리 범위로 이 화면에 접근할 수 없습니다.',
+                ),
+                TextButton(
+                  onPressed: () => _navigate('/admin/overview'),
+                  child: const Text('관리 현황으로'),
+                ),
+              ] else if (_detailId != null)
+                _detail(detail!)
+              else ...[
+                if (_error != null)
+                  Text(
+                    _error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
                     ),
-                  if (widget.role != AppRole.user)
-                    Text(
-                      _role == AppRole.superAdmin
-                          ? '관리 범위: 전체 학교'
-                          : '관리 범위: ${_repo.records.where((r) => r.kind == AdminKind.scope && r.status == 'active' && r.value('userId') == _actor && r.value('institutionId') == _schoolId).map(_scopeSummary).toSet().join(', ')}',
-                    ),
-                  const SizedBox(height: 12),
-                  if (_repo.live) ...[
-                    if (_repo.warning != null) Text(_repo.warning!),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: _busy || _loading ? null : _load,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('다시 읽기'),
-                      ),
-                    ),
-                  ],
-                  if (_loading)
-                    const LinearProgressIndicator()
-                  else if (_loadError != null) ...[
-                    Text(_loadError!),
-                    TextButton(onPressed: _load, child: const Text('다시 읽기')),
-                  ] else if (!allowed) ...[
-                    const Text('현재 계정 상태·역할·관리 범위로 이 화면에 접근할 수 없습니다.'),
-                    TextButton(
-                      onPressed: () => _navigate('/admin/overview'),
-                      child: const Text('관리 현황으로'),
-                    ),
-                  ] else if (_detailId != null)
-                    _detail(detail!)
-                  else ...[
-                    if (_error != null)
-                      Text(
-                        _error!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    if (_section == '/admin/overview') _overview(),
-                    for (final kind
-                        in sectionKinds[_section] ?? <AdminKind>[]) ...[
-                      _records(kind),
-                      const SizedBox(height: 24),
+                  ),
+                if (_section == '/admin/overview') _overview(),
+                for (final kind in sectionKinds[_section] ?? <AdminKind>[]) ...[
+                  _records(kind),
+                  const SizedBox(height: 24),
+                ],
+                if (_section == '/admin/history') _history(),
+                if (_section == '/admin/applications')
+                  SchoolAdminApplicationInbox(
+                    schools: [
+                      for (final school in _schools)
+                        SelectOption(school.id, school.name),
                     ],
-                    if (_section == '/admin/history') _history(),
-                    if (_section == '/admin/applications')
-                      SchoolAdminApplicationInbox(
-                        schools: [
-                          for (final school in _schools)
-                            SelectOption(school.id, school.name),
+                  ),
+                if (_section == '/admin/settings')
+                  const Align(
+                    alignment: Alignment.topLeft,
+                    child: SizedBox(
+                      width: 548,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          AppearanceSettingsSection(),
+                          AccountSettingsSection(),
                         ],
                       ),
-                    if (_section == '/admin/settings')
-                      const Align(
-                        alignment: Alignment.topLeft,
-                        child: SizedBox(
-                          width: 548,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              AppearanceSettingsSection(),
-                              AccountSettingsSection(),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ],
-              ),
-            ),
+                    ),
+                  ),
+              ],
+            ],
           );
         },
       ),
