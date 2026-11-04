@@ -51,6 +51,17 @@ class AdminWorkspace extends StatefulWidget {
     '/admin/applications': '학교관리자 신청 접수',
     '/admin/settings': '설정',
   };
+  static const menuDescriptions = <String, String>{
+    '/admin/overview': '학교 자료와 최근 작업을 확인합니다.',
+    '/admin/schools': '학교와 학과를 등록하고 관리합니다.',
+    '/admin/curricula': '교육과정과 과목을 등록하고 관리합니다.',
+    '/admin/rules': '졸업 요건과 실행 조건을 관리합니다.',
+    '/admin/documents': '학교 문서를 등록하고 적용합니다.',
+    '/admin/history': '관리 작업 이력을 확인합니다.',
+    '/admin/accounts': '관리자 계정과 권한을 관리합니다.',
+    '/admin/applications': '학교관리자 가입 신청을 검토합니다.',
+    '/admin/settings': '화면과 계정 보안을 관리합니다.',
+  };
   @override
   State<AdminWorkspace> createState() => _AdminWorkspaceState();
 }
@@ -1074,9 +1085,13 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (compactHeader)
-                    PageHeader(title: title)
-                  else ...[
+                  PageHeader(
+                    title: title,
+                    description: allowed
+                        ? AdminWorkspace.menuDescriptions[_section]
+                        : null,
+                  ),
+                  if (!compactHeader) ...[
                     Text('${_role.label} · 관리자 작업 공간'),
                     const SizedBox(height: 12),
                   ],
@@ -1122,9 +1137,6 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     ),
                   const SizedBox(height: 12),
                   if (_repo.live) ...[
-                    const Text(
-                      '서버에 저장되는 관리 데이터 · 문서 적용은 RAG 승인이나 졸업 판정이 아닙니다.',
-                    ),
                     if (_repo.warning != null) Text(_repo.warning!),
                     Align(
                       alignment: Alignment.centerLeft,
@@ -1135,7 +1147,6 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                       ),
                     ),
                   ],
-                  if (!compactHeader) PageHeader(title: title),
                   if (_loading)
                     const LinearProgressIndicator()
                   else if (_loadError != null) ...[

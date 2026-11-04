@@ -397,8 +397,8 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
         title: const Text('요건을 검토·적용할까요?'),
         content: Text(
           parent!.kind == AdminKind.ruleSet
-              ? '이 규칙 묶음의 모든 요건을 함께 적용합니다. 실행 조건 승인과 졸업 판정은 별도입니다.'
-              : '저장한 요건 설명을 적용합니다. 실행 조건 승인과 졸업 판정은 별도입니다.',
+              ? '이 규칙 묶음의 모든 요건을 함께 적용합니다.'
+              : '저장한 요건 설명을 적용합니다.',
         ),
         actions: [
           TextButton(
@@ -850,7 +850,7 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
                   : _save,
               child: const Text('계산 조건 초안 저장'),
             ),
-            const Text('이 저장은 실행 초안 저장입니다. 실행 조건 승인과 학생 졸업 판정은 별도입니다.'),
+            const Text('이 저장은 실행 초안 저장입니다.'),
           ],
           if (_error != null)
             Semantics(

@@ -115,9 +115,7 @@ class _ListState extends State<SchoolKnowledgeReviewDialog> {
     content: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          '문서 적용과 검색 근거 승인은 별도입니다. 이 화면의 승인은 졸업 판정이나 LLM 답변 생성을 뜻하지 않습니다.',
-        ),
+        const Text('문서 적용과 검색 근거 승인은 별도입니다.'),
         const SizedBox(height: 12),
         AnchoredSelectField<String>(
           value: _filter,
