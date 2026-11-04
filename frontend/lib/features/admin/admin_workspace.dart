@@ -12,7 +12,6 @@ import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/surface_card.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/anchored_select_field.dart';
-import '../../shared/widgets/external_link_button.dart';
 import 'admin_models.dart';
 import 'admin_repository.dart';
 import 'admin_editor.dart';
@@ -75,6 +74,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   bool _busy = false;
   final _editorKeys = <AdminKind, GlobalKey<AdminEditorState>>{};
   final _catalogScroll = <AdminKind, ScrollController>{};
+  String? _scheduledDetailId;
   var _ruleView = 'line';
   final _creditGrid = GlobalKey<GraduationCreditGridPageState>();
   final _certification = GlobalKey<GraduationCertificationPageState>();
@@ -181,7 +181,33 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           ? error.message.toString()
           : '관리 데이터를 읽지 못했습니다.';
     }
-    if (mounted) setState(() => _loading = false);
+    if (mounted) {
+      setState(() => _loading = false);
+      _scheduleDetailConsume();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant AdminWorkspace oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.path != widget.path) _scheduleDetailConsume();
+  }
+
+  void _scheduleDetailConsume() {
+    if (_loading || _loadError != null) return;
+    final id = _detailId;
+    if (id == null) {
+      _scheduledDetailId = null;
+      return;
+    }
+    if (id == _scheduledDetailId) return;
+    final record = _find(id);
+    if (record == null || !_repo.canRead(_actor, record)) return;
+    _scheduledDetailId = id;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _detailId != id) return;
+      _edit(record.kind, record);
+    });
   }
 
   Iterable<AdminRecord> get _schools => _repo.records.where(
@@ -203,34 +229,44 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     AdminRecord? record,
     bool revoke = false,
   ]) async {
-    if (record == null && !revoke) {
-      final path = _pathFor(kind);
-      if (_section != path || _detailId != null) await _navigate(path);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final target = _editorKeys[kind]?.currentContext;
-        if (target != null) {
-          Scrollable.ensureVisible(
-            target,
-            duration: const Duration(milliseconds: 200),
-          );
-        }
-      });
+    if (revoke) {
+      final result = await showInputDialog<String>(
+        context: context,
+        builder: (_) => AdminEditor(
+          repository: _repo,
+          actorId: _actor,
+          kind: kind,
+          schoolId: _schoolId,
+          record: record,
+          revoke: true,
+        ),
+      );
+      if (result == 'revoke' && record != null) {
+        await _edit(kind, record, true);
+        return;
+      }
+      if (record != null && _find(record.id)?.status == 'revoked') {
+        _editorKeys[kind]?.currentState?.abandonToCreate();
+      }
       return;
     }
-    final result = await showInputDialog<String>(
-      context: context,
-      builder: (_) => AdminEditor(
-        repository: _repo,
-        actorId: _actor,
-        kind: kind,
-        schoolId: _schoolId,
-        record: record,
-        revoke: revoke,
-      ),
-    );
-    if (result == 'revoke' && record != null && !revoke) {
-      await _edit(kind, record, true);
-    }
+    final path = _pathFor(kind);
+    if (_section != path || _detailId != null) await _navigate(path);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final editor = _editorKeys[kind]?.currentState;
+      if (record != null) {
+        await editor?.loadRecord(record);
+      }
+      if (!mounted) return;
+      final target = _editorKeys[kind]?.currentContext;
+      if (target != null && target.mounted) {
+        Scrollable.ensureVisible(
+          target,
+          duration: const Duration(milliseconds: 200),
+        );
+      }
+    });
   }
 
   Future<void> _confirmAction(
@@ -439,6 +475,10 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
               schoolId: _schoolId,
               inline: true,
               list: _recordList(kind, framed: false),
+              onRevokeRequested: () {
+                final current = _editorKeys[kind]?.currentState?.activeRecord;
+                if (current != null) _edit(kind, current, true);
+              },
             ),
           ),
         ],
@@ -584,14 +624,14 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       r.status != 'applied';
 
   String _catalogSubtitle(AdminRecord r) {
-    final context = _recordContext(r);
-    if (context.isNotEmpty) return context;
-    if (r.kind.versioned) return 'v${r.revision} · ${_statusLabel(r.status)}';
-    if (r.kind == AdminKind.account) {
-      return '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}';
-    }
-    if (r.kind == AdminKind.scope) return _statusLabel(r.status);
-    return '';
+    final parts = [
+      _recordContext(r),
+      if (r.kind.versioned) 'v${r.revision} · ${_statusLabel(r.status)}',
+      if (r.kind == AdminKind.account)
+        '${roleFromRecord(r).label} · ${_statusLabel(r.value('accountStatus'))}',
+      if (r.kind == AdminKind.scope) _statusLabel(r.status),
+    ].where((s) => s.isNotEmpty);
+    return parts.join(' · ');
   }
 
   Widget _cappedCatalogList(AdminKind kind) {
@@ -673,146 +713,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     );
   }
 
-  Widget _recordActions(AdminRecord r, {bool detail = false}) => Wrap(
-    spacing: 8,
-    runSpacing: 8,
-    children: [
-      if (_canEdit(r) && r.kind == AdminKind.rule && r.status == 'applied')
-        FilledButton.tonalIcon(
-          onPressed: _busy ? null : () => _edit(r.kind, r),
-          icon: const Icon(Icons.rule_outlined, size: 18),
-          label: const Text('계산 조건'),
-        ),
-      if (_canEdit(r) && r.status != 'applied')
-        FilledButton.tonalIcon(
-          style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-            foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-          ),
-          onPressed: _busy ? null : () => _edit(r.kind, r),
-          icon: const Icon(Icons.edit_outlined, size: 18),
-          label: const Text('수정'),
-        ),
-      if (_repo.canWrite(_actor, r) &&
-          r.kind.versioned &&
-          r.value('ruleSetId').isEmpty &&
-          r.status == 'draft')
-        FilledButton.tonal(
-          onPressed: _busy
-              ? null
-              : () =>
-                    _confirmAction(r, '초안 적용', () => _repo.apply(_actor, r.id)),
-          child: const Text('검토·적용'),
-        ),
-      if (_repo.canWrite(_actor, r) &&
-          r.kind.versioned &&
-          r.value('ruleSetId').isEmpty &&
-          r.status == 'applied')
-        FilledButton.tonal(
-          onPressed: _busy
-              ? null
-              : () => _confirmAction(r, '새 버전 초안', () async {
-                  await _repo.newVersion(_actor, r.id);
-                }),
-          child: const Text('새 버전 초안'),
-        ),
-      if (_repo.canWrite(_actor, r) &&
-          r.kind == AdminKind.scope &&
-          r.status == 'active')
-        OutlinedButton.icon(
-          style: _dangerStyle(),
-          icon: const Icon(Icons.remove_circle_outline, size: 18),
-          onPressed: _busy ? null : () => _edit(r.kind, r, true),
-          label: const Text('범위 회수'),
-        ),
-      if (_repo.canWrite(_actor, r) &&
-          ![AdminKind.scope, AdminKind.account].contains(r.kind) &&
-          r.status != 'applied')
-        OutlinedButton.icon(
-          style: _dangerStyle(),
-          icon: const Icon(Icons.delete_outline, size: 18),
-          onPressed: _busy
-              ? null
-              : () => _confirmAction(r, '삭제', () async {
-                  await _repo.remove(_actor, r.id);
-                  if (mounted && detail) widget.onNavigate(_section);
-                }),
-          label: const Text('삭제'),
-        ),
-    ],
-  );
-
   ButtonStyle _dangerStyle() => destructiveButtonStyle(context);
 
-  Widget _detail(AdminRecord r) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      TextButton(
-        onPressed: () => _navigate(_section),
-        child: const Text('목록으로'),
-      ),
-      Text(r.name, style: Theme.of(context).textTheme.titleLarge),
-      Text(_recordContext(r), style: Theme.of(context).textTheme.bodySmall),
-      const SizedBox(height: 12),
-      _recordActions(r, detail: true),
-      if (_error != null)
-        Text(
-          _error!,
-          style: TextStyle(color: Theme.of(context).colorScheme.error),
-        ),
-      const Divider(height: 24),
-      ResponsiveColumns(
-        enabled: true,
-        first: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final f in _repo.fields(r.kind))
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  '${f.label}: ${f.relation != null ? (_relationName(r.value(f.key)).isEmpty ? '미연결 또는 접근 불가' : _relationName(r.value(f.key))) : f.options[r.value(f.key)] ?? (r.value(f.key).isEmpty ? '미입력' : r.value(f.key))}',
-                ),
-              ),
-            const Divider(height: 24),
-          ],
-        ),
-        second: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('변경 정보', style: Theme.of(context).textTheme.titleMedium),
-            Text(
-              '생성: ${_actorName(r.createdBy)} · 수정: ${_actorName(r.updatedBy)}',
-            ),
-            Text('마지막 변경: ${_timeLabel(r.updatedAt)}'),
-            if (r.kind.versioned) ...[
-              Text('버전 ${r.revision} · ${_statusLabel(r.status)}'),
-              Text(
-                '적용: ${_actorName(r.appliedBy)} · ${_timeLabel(r.appliedAt, empty: '미적용')}',
-              ),
-            ],
-            if (r.kind == AdminKind.scope) ...[
-              if (_repo.live && r.value('revocationReason').isNotEmpty)
-                Text('회수 사유: ${r.value('revocationReason')}'),
-              Text(
-                '부여: ${_actorName(r.value('grantedBy'))} · ${_timeLabel(DateTime.tryParse(r.value('grantedAt')))}',
-              ),
-              Text(
-                '회수: ${_actorName(r.value('revokedBy'))} · ${_timeLabel(DateTime.tryParse(r.value('revokedAt')), empty: '회수되지 않음')}',
-              ),
-            ],
-            ExpansionTile(
-              title: const Text('기술 식별자'),
-              children: [
-                SelectableText('대상 ID: ${r.id}\n버전 묶음 ID: ${r.lineage}'),
-              ],
-            ),
-            if (r.value('sourceUrl').isNotEmpty)
-              ExternalLinkButton(url: r.value('sourceUrl'), label: '원문 열기'),
-          ],
-        ),
-      ),
-    ],
-  );
   String _actorName(String id) {
     if (id.isEmpty) return '기록 없음';
     if (id == _actor) return '나';
@@ -1190,9 +1092,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                   onPressed: () => _navigate('/admin/overview'),
                   child: const Text('관리 현황으로'),
                 ),
-              ] else if (_detailId != null)
-                _detail(detail!)
-              else ...[
+              ] else ...[
                 if (_error != null)
                   Text(
                     _error!,

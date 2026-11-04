@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../shared/widgets/feature_actions.dart';
+import '../../shared/widgets/external_link_button.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/responsive_columns.dart';
 import '../../shared/widgets/responsive_panels.dart';
@@ -24,6 +24,7 @@ class AdminEditor extends StatefulWidget {
     this.revoke = false,
     this.inline = false,
     this.list,
+    this.onRevokeRequested,
   });
   final AdminRepository repository;
   final String actorId, schoolId;
@@ -32,6 +33,7 @@ class AdminEditor extends StatefulWidget {
   final bool revoke;
   final bool inline;
   final Widget? list;
+  final VoidCallback? onRevokeRequested;
   @override
   State<AdminEditor> createState() => AdminEditorState();
 }
@@ -42,10 +44,14 @@ class AdminEditorState extends State<AdminEditor> {
   late final Map<String, TextEditingController> _controllers;
   late final Map<String, String> _initial;
   bool _saving = false, _panelBusy = false;
+  AdminRecord? _editingRecord;
   AdminRecord? _savedRecord;
   var _executionKey = GlobalKey<AdminRuleExecutionPanelState>();
   final _conditionChanges = ValueNotifier<int>(0);
   bool get _isRule => widget.kind == AdminKind.rule && !widget.revoke;
+  AdminRecord? get _activeRecord => _editingRecord ?? widget.record;
+  AdminRecord? get activeRecord => _activeRecord;
+  bool get _isEditing => _activeRecord != null;
   AdminRecord? get _rule =>
       widget.repository.records
           .where((r) => r.id == _savedRecord?.id)
@@ -63,31 +69,59 @@ class AdminEditorState extends State<AdminEditor> {
     return !dirty || await confirmInputDiscard(context);
   }
 
-  void _reset() {
+  String _defaultValue(AdminField field) {
+    if (field.key == 'institutionId') return widget.schoolId;
+    if (field.key == 'scopeType') return 'institution';
+    return '';
+  }
+
+  void _fill(AdminRecord? record) {
     for (final f in _fields) {
-      _initial[f.key] =
-          widget.record?.value(f.key) ??
-          (f.key == 'institutionId'
-              ? widget.schoolId
-              : f.key == 'scopeType'
-              ? 'institution'
-              : '');
-    }
-    _savedRecord = widget.record;
-    _executionKey = GlobalKey<AdminRuleExecutionPanelState>();
-    for (final f in _fields) {
+      _initial[f.key] = record?.value(f.key) ?? _defaultValue(f);
       _controllers[f.key]!.text = _initial[f.key] ?? '';
     }
-    _form.currentState?.reset();
+    _savedRecord = record;
+    _executionKey = GlobalKey<AdminRuleExecutionPanelState>();
+  }
+
+  Future<void> loadRecord(AdminRecord record) async {
+    if (!mounted) return;
+    if (_activeRecord?.id == record.id) {
+      _editingRecord = record;
+      _savedRecord = record;
+      if (!dirty) _fill(record);
+      setState(() {});
+      return;
+    }
+    if (!await allowLeave() || !mounted) return;
+    _editingRecord = record;
+    _fill(record);
     setState(() {
       _saving = false;
       _error = null;
+      _message = null;
     });
+  }
+
+  void abandonToCreate() {
+    _editingRecord = null;
+    _fill(null);
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      _error = null;
+      _message = null;
+    });
+  }
+
+  Future<void> clearToCreate() async {
+    if (!await allowLeave() || !mounted) return;
+    abandonToCreate();
   }
 
   Future<void> _cancel() async {
     if (widget.inline) {
-      if (await allowLeave() && mounted) _reset();
+      await clearToCreate();
     } else {
       if (mounted) await InputDialog.cancel<String>(context);
     }
@@ -181,7 +215,7 @@ class AdminEditorState extends State<AdminEditor> {
         );
       } else {
         final values = {
-          ...?(_isRule ? _rule : widget.record)?.values,
+          ...?(_isRule ? _rule : _activeRecord)?.values,
           for (final f in _fields) f.key: _value(f.key).trim(),
           if (widget.repository.live && widget.kind != AdminKind.institution)
             'institutionId': _controllers.containsKey('institutionId')
@@ -189,7 +223,7 @@ class AdminEditorState extends State<AdminEditor> {
                 : widget.schoolId,
         };
         final record =
-            (_isRule ? _rule : widget.record)?.copy(values: values) ??
+            (_isRule ? _rule : _activeRecord)?.copy(values: values) ??
             AdminRecord(
               id: 'mock-${PersonalRecord.newId()}',
               kind: widget.kind,
@@ -217,8 +251,15 @@ class AdminEditorState extends State<AdminEditor> {
             _message = '요건 설명을 저장했습니다. 아래에서 계산 조건을 이어서 저장하세요.';
           });
         } else if (widget.inline) {
-          _reset();
-          setState(() => _message = '등록했습니다. 다음 내용을 입력할 수 있습니다.');
+          final edited = _isEditing;
+          _editingRecord = null;
+          _fill(null);
+          setState(() {
+            _saving = false;
+            _message = edited
+                ? '저장했습니다. 다음 내용을 입력할 수 있습니다.'
+                : '등록했습니다. 다음 내용을 입력할 수 있습니다.';
+          });
         } else {
           Navigator.pop(context);
         }
@@ -240,14 +281,14 @@ class AdminEditorState extends State<AdminEditor> {
     if (widget.inline && widget.list != null) return _mixedLayout();
     return _shell(
       changes: Listenable.merge([..._controllers.values, _conditionChanges]),
-      editing: widget.record != null,
+      editing: _isEditing,
       saving: saving,
       hasContent: () => dirty,
       hasUnsavedChanges: () => dirty,
       title: Text(
         widget.revoke
             ? '관리 범위 회수'
-            : '${widget.kind.label} ${widget.record == null ? '등록' : '수정'}',
+            : '${widget.kind.label} ${_isEditing ? '수정' : '등록'}',
       ),
       content: Form(
         key: _form,
@@ -479,7 +520,7 @@ class AdminEditorState extends State<AdminEditor> {
             // Keep search/filter fields outside the registration FormState.
             first: Form(child: widget.list!),
             second: _panel(
-              '등록 기본 정보',
+              _isEditing ? '수정 기본 정보' : '등록 기본 정보',
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [for (final field in basic) _field(field)],
@@ -493,6 +534,22 @@ class AdminEditorState extends State<AdminEditor> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (_lifecycleButtons().isNotEmpty) ...[
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _lifecycleButtons(),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (_isEditing && _activeRecord!.value('sourceUrl').isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: ExternalLinkButton(
+                      url: _activeRecord!.value('sourceUrl'),
+                      label: '원문 열기',
+                    ),
+                  ),
                 _compactDetails([
                   for (final group in adminFieldGroups(remaining).values)
                     ...group,
@@ -511,15 +568,14 @@ class AdminEditorState extends State<AdminEditor> {
                     ),
                   ),
                 const Divider(height: 24),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton(
-                    onPressed: saving ? null : _cancel,
-                    child: const Text('취소'),
-                  ),
-                ),
-                FeatureActions(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
+                    TextButton(
+                      onPressed: saving ? null : _cancel,
+                      child: const Text('취소'),
+                    ),
                     FilledButton(
                       onPressed: saving || _metadataLocked ? null : _save,
                       child: Text(
@@ -527,6 +583,8 @@ class AdminEditorState extends State<AdminEditor> {
                             ? '저장 중…'
                             : _isRule
                             ? '요건 설명 저장'
+                            : _isEditing
+                            ? '저장'
                             : '등록',
                       ),
                     ),
@@ -542,10 +600,10 @@ class AdminEditorState extends State<AdminEditor> {
   }
 
   AdminRecord? get _targetRecord {
-    final id = widget.record?.id;
-    if (id == null) return widget.record;
+    final id = _activeRecord?.id;
+    if (id == null) return _activeRecord;
     return widget.repository.records.where((r) => r.id == id).firstOrNull ??
-        widget.record;
+        _activeRecord;
   }
 
   Future<void> _confirmLifecycle(
@@ -583,7 +641,17 @@ class AdminEditorState extends State<AdminEditor> {
     });
     try {
       await run();
-      if (mounted) Navigator.pop(context);
+      if (!mounted) return;
+      if (widget.inline) {
+        final updated = _targetRecord;
+        if (updated != null) {
+          _editingRecord = updated;
+          _savedRecord = updated;
+        }
+        setState(() => _saving = false);
+      } else {
+        Navigator.pop(context);
+      }
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -598,7 +666,7 @@ class AdminEditorState extends State<AdminEditor> {
 
   List<Widget> _lifecycleButtons() {
     final record = _targetRecord;
-    if (record == null || widget.inline || widget.revoke) return const [];
+    if (record == null || widget.revoke) return const [];
     return [
       if (record.kind.versioned &&
           record.value('ruleSetId').isEmpty &&
@@ -628,7 +696,13 @@ class AdminEditorState extends State<AdminEditor> {
         OutlinedButton(
           onPressed: saving
               ? null
-              : () => InputDialog.cancel<String>(context, 'revoke'),
+              : () {
+                  if (widget.inline) {
+                    widget.onRevokeRequested?.call();
+                  } else {
+                    InputDialog.cancel<String>(context, 'revoke');
+                  }
+                },
           child: const Text('범위 회수'),
         ),
     ];

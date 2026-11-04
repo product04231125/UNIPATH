@@ -10,6 +10,7 @@ import 'package:university_path_frontend/features/admin/admin_workspace.dart';
 import 'package:university_path_frontend/features/auth/app_role.dart';
 import 'package:university_path_frontend/shared/widgets/input_dialog.dart';
 import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
+import 'package:university_path_frontend/shared/widgets/content_scroll_view.dart';
 
 Widget host(Widget child, {double scale = 1}) => MaterialApp(
   builder: (context, child) => MediaQuery(
@@ -18,6 +19,18 @@ Widget host(Widget child, {double scale = 1}) => MaterialApp(
   ),
   home: Scaffold(body: child),
 );
+
+Finder pageScrollable() => find
+    .descendant(
+      of: find.byType(ContentScrollView),
+      matching: find.byType(Scrollable),
+    )
+    .first;
+
+Future<void> showInPage(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(finder, 240, scrollable: pageScrollable());
+  await tester.pumpAndSettle();
+}
 
 Future<void> setField(WidgetTester tester, String key, String value) async {
   final all = find.byKey(ValueKey('admin-field-$key'));
@@ -328,6 +341,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('상세'), findsNothing);
     expect(find.text('수정'), findsOneWidget);
+    await showInPage(tester, find.text('검토·적용'));
     await tester.tap(find.text('검토·적용'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('초안 적용'));
@@ -335,13 +349,15 @@ void main() {
     expect(find.text('합성 적용 실패'), findsOneWidget);
     expect(repo.find('detail-doc')!.status, 'draft');
     failApply = false;
+    await showInPage(tester, find.text('검토·적용'));
     await tester.tap(find.text('검토·적용'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('초안 적용'));
     await tester.pumpAndSettle();
-    expect(find.text('수정'), findsNothing);
+    expect(find.text('수정'), findsOneWidget);
     expect(find.text('합성 적용 실패'), findsNothing);
-    expect(find.text('버전 1 · 적용됨'), findsOneWidget);
+    expect(find.textContaining('v1 · 적용됨'), findsWidgets);
+    await showInPage(tester, find.text('새 버전 초안'));
     await tester.tap(find.text('새 버전 초안'));
     await tester.pumpAndSettle();
     await tester.tap(
@@ -611,16 +627,71 @@ void main() {
       );
       await tester.pumpAndSettle();
       final school = tester.widget<AnchoredSelectField<String>>(
-        find.byType(AnchoredSelectField<String>),
+        find.byKey(const ValueKey('admin-school-selector')),
       );
       expect(school.options.map((o) => o.value).toList(), ['school-a']);
-      await tester.ensureVisible(find.text('원문 열기 · 외부 열기'));
+      await showInPage(tester, find.text('원문 열기 · 외부 열기'));
       await tester.tap(find.text('원문 열기 · 외부 열기'));
       await tester.pumpAndSettle();
-      expect(find.text('https://example.org/document'), findsOneWidget);
+      expect(find.text('https://example.org/document'), findsWidgets);
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('list edit loads the inline form and keeps cancel next to save', (
+    tester,
+  ) async {
+    final repo = FakeAdminRepository();
+    addTearDown(repo.dispose);
+    await tester.pumpWidget(
+      host(
+        AdminWorkspace(
+          repository: repo,
+          role: AppRole.superAdmin,
+          path: '/admin/schools',
+          onNavigate: (_) {},
+          onSignedOut: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('상세'), findsNothing);
+    final listEdit = find.descendant(
+      of: find.byKey(const ValueKey('admin-row-school-a-dept')),
+      matching: find.widgetWithText(TextButton, '수정'),
+    );
+    await showInPage(tester, listEdit);
+    await tester.tap(listEdit);
+    await tester.pumpAndSettle();
+    expect(find.byType(InputDialog), findsNothing);
+    expect(find.text('수정 기본 정보'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.descendant(
+              of: find.byKey(const ValueKey('admin-basic-department')),
+              matching: find.byKey(const ValueKey('admin-field-name')),
+            ),
+          )
+          .controller!
+          .text,
+      '합성 학과',
+    );
+    final form = find.byKey(const ValueKey('admin-details-department'));
+    final cancel = find.descendant(
+      of: form,
+      matching: find.widgetWithText(TextButton, '취소'),
+    );
+    final save = find.descendant(
+      of: form,
+      matching: find.widgetWithText(FilledButton, '저장'),
+    );
+    await showInPage(tester, cancel);
+    expect(
+      (tester.getCenter(cancel).dy - tester.getCenter(save).dy).abs(),
+      lessThan(8),
+    );
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('admin flows apply draft, preserve version and show details', (
     tester,
   ) async {
@@ -658,20 +729,20 @@ void main() {
       of: find.byKey(const ValueKey('admin-row-r')),
       matching: find.widgetWithText(TextButton, '수정'),
     );
-    await tester.ensureVisible(listEdit);
-    await tester.pumpAndSettle();
+    await showInPage(tester, listEdit);
     await tester.tap(listEdit);
     await tester.pumpAndSettle();
+    await showInPage(tester, find.text('검토·적용'));
     await tester.tap(find.text('검토·적용'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('초안 적용'));
     await tester.pumpAndSettle();
     expect(repo.find('r')!.status, 'applied');
     expect(find.byType(InputDialog), findsNothing);
-    await tester.ensureVisible(listEdit);
-    await tester.pumpAndSettle();
+    await showInPage(tester, listEdit);
     await tester.tap(listEdit);
     await tester.pumpAndSettle();
+    await showInPage(tester, find.text('새 버전 초안'));
     await tester.tap(find.text('새 버전 초안'));
     await tester.pumpAndSettle();
     await tester.tap(
@@ -684,15 +755,12 @@ void main() {
     expect(repo.records.where((r) => r.kind == AdminKind.rule).length, 2);
     expect(repo.find('r')!.status, 'applied');
     expect(find.byType(InputDialog), findsNothing);
+    await showInPage(tester, listEdit);
     await tester.tap(listEdit);
     await tester.pumpAndSettle();
-    expect(
-      find.descendant(
-        of: find.byType(InputDialog),
-        matching: find.text('규칙 종류 *'),
-      ),
-      findsOneWidget,
-    );
+    expect(find.byType(InputDialog), findsNothing);
+    expect(find.text('수정 기본 정보'), findsOneWidget);
+    expect(find.text('규칙 종류 *'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
   testWidgets('admin flows delete shows references and preserves source', (
@@ -818,6 +886,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await showInPage(tester, find.text('범위 회수'));
     await tester.tap(find.text('범위 회수'));
     await tester.pumpAndSettle();
     await setField(tester, 'reason', '합성 회수');
