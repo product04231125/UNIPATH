@@ -5,6 +5,7 @@ import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/responsive_columns.dart';
 import '../../shared/widgets/responsive_panels.dart';
 import '../../shared/widgets/field_label.dart';
+import '../../shared/widgets/field_requirement.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../records/personal_record_repository.dart';
 import 'admin_models.dart';
@@ -398,7 +399,7 @@ class AdminEditorState extends State<AdminEditor> {
     padding: const EdgeInsets.only(bottom: 14),
     child: !_isSelect(field)
         ? FieldLabel(
-            label: '${field.label}${field.required ? ' *' : ' (선택)'}',
+            label: fieldRequirementLabel(field.label, required: field.required),
             child: Semantics(
               label: field.label,
               child: TextFormField(
@@ -428,7 +429,10 @@ class AdminEditorState extends State<AdminEditor> {
                     externalLabel: true,
                     key: ValueKey('admin-field-${field.key}'),
                     value: _value(field.key),
-                    label: '${field.label}${field.required ? ' *' : ' (선택)'}',
+                    label: fieldRequirementLabel(
+                      field.label,
+                      required: field.required,
+                    ),
                     searchable: true,
                     searchLabel: field.key == 'year' ? '연도 검색' : '검색',
                     options: _selectOptions(field),

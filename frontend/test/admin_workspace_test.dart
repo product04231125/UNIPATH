@@ -98,7 +98,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('슈퍼관리자 · 관리자 작업 공간'), findsNothing);
-      expect(find.text('관리 범위: 전체 학교'), findsOneWidget);
+      expect(find.text('관리 범위: 전체 학교'), findsNothing);
       expect(
         find.byKey(const ValueKey('admin-school-selector')),
         findsOneWidget,
@@ -231,7 +231,7 @@ void main() {
     final repo = FakeAdminRepository();
     await openEditor(tester, repo, AdminKind.department);
     final input = find.byKey(const ValueKey('admin-field-name'));
-    final label = find.text('이름 *');
+    final label = find.text('이름 (필수)');
     expect(
       tester.getBottomLeft(label).dy,
       lessThan(tester.getTopLeft(input).dy),
@@ -593,7 +593,7 @@ void main() {
       expect(path, '/admin/schools');
       expect(selector().value, 'school-a');
       expect(find.text('목록으로'), findsNothing);
-      expect(find.text('합성 대학 B'), findsNothing);
+      expect(find.byKey(const ValueKey('admin-row-school-b')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -657,7 +657,7 @@ void main() {
     expect(find.text('상세'), findsNothing);
     final listEdit = find.descendant(
       of: find.byKey(const ValueKey('admin-row-school-a-dept')),
-      matching: find.widgetWithText(TextButton, '수정'),
+      matching: find.widgetWithText(OutlinedButton, '수정'),
     );
     await showInPage(tester, listEdit);
     await tester.tap(listEdit);
@@ -727,7 +727,7 @@ void main() {
     expect(find.text('상세'), findsNothing);
     final listEdit = find.descendant(
       of: find.byKey(const ValueKey('admin-row-r')),
-      matching: find.widgetWithText(TextButton, '수정'),
+      matching: find.widgetWithText(OutlinedButton, '수정'),
     );
     await showInPage(tester, listEdit);
     await tester.tap(listEdit);
@@ -760,7 +760,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(InputDialog), findsNothing);
     expect(find.text('수정 기본 정보'), findsOneWidget);
-    expect(find.text('규칙 종류 *'), findsOneWidget);
+    expect(find.text('규칙 종류 (필수)'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
   testWidgets('admin flows delete shows references and preserves source', (
@@ -876,13 +876,13 @@ void main() {
     await tester.ensureVisible(
       find.descendant(
         of: find.byKey(const ValueKey('admin-row-scope-a')),
-        matching: find.widgetWithText(TextButton, '수정'),
+        matching: find.widgetWithText(OutlinedButton, '수정'),
       ),
     );
     await tester.tap(
       find.descendant(
         of: find.byKey(const ValueKey('admin-row-scope-a')),
-        matching: find.widgetWithText(TextButton, '수정'),
+        matching: find.widgetWithText(OutlinedButton, '수정'),
       ),
     );
     await tester.pumpAndSettle();
@@ -1086,12 +1086,131 @@ void main() {
     fail = false;
     await tester.tap(find.text('다시 읽기'));
     await tester.pumpAndSettle();
-    expect(find.text('관리 가능한 학교 2개'), findsOneWidget);
+    expect(find.text('최근 변경'), findsOneWidget);
+    expect(find.text('확인할 초안 0개'), findsOneWidget);
     expect(find.text('학교 문서 검색·근거'), findsNothing);
     expect(find.text('학교 발급 원본 검토'), findsNothing);
     expect(find.text('학교 확인 학생 기록 검토'), findsNothing);
     expect(find.text('학교 문서 근거 검토'), findsNothing);
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     expect(FocusManager.instance.primaryFocus, isNotNull);
+  });
+  testWidgets(
+    'school list shows every readable school not just the current one',
+    (tester) async {
+      final repo = FakeAdminRepository();
+      addTearDown(repo.dispose);
+      await tester.pumpWidget(
+        host(
+          AdminWorkspace(
+            repository: repo,
+            role: AppRole.superAdmin,
+            path: '/admin/schools',
+            onNavigate: (_) {},
+            onSignedOut: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('admin-row-school-a')), findsOneWidget);
+      expect(find.byKey(const ValueKey('admin-row-school-b')), findsOneWidget);
+      final selector = tester.widget<AnchoredSelectField<String>>(
+        find.byKey(const ValueKey('admin-school-selector')),
+      );
+      expect(selector.options.map((o) => o.value), ['school-a', 'school-b']);
+      final form = find.byKey(
+        const ValueKey('admin-registration-institution-school-a'),
+      );
+      await tester.enterText(
+        find.descendant(
+          of: form,
+          matching: find.byKey(const ValueKey('admin-field-name')),
+        ),
+        '합성 신규 대학',
+      );
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      final register = find.descendant(
+        of: find.byKey(const ValueKey('admin-details-institution')),
+        matching: find.widgetWithText(FilledButton, '등록'),
+      );
+      await tester.ensureVisible(register);
+      await tester.pumpAndSettle();
+      await tester.tap(register);
+      await tester.pumpAndSettle();
+      expect(find.text('합성 신규 대학'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets('course catalog shows trimmed credits before the code', (
+    tester,
+  ) async {
+    final repo = FakeAdminRepository();
+    addTearDown(repo.dispose);
+    await repo.save(
+      'super-admin',
+      AdminRecord(
+        id: 'course-credits',
+        kind: AdminKind.course,
+        values: {
+          'name': '자료구조',
+          'institutionId': 'school-a',
+          'code': 'CS101',
+          'credits': '3.0',
+        },
+      ),
+    );
+    await tester.pumpWidget(
+      host(
+        AdminWorkspace(
+          repository: repo,
+          role: AppRole.superAdmin,
+          path: '/admin/curricula',
+          onNavigate: (_) {},
+          onSignedOut: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('3학점 · 코드 CS101'), findsOneWidget);
+    expect(find.textContaining('3.0학점'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('reload keeps catalog body and only marks the list as loading', (
+    tester,
+  ) async {
+    var hold = Completer<void>()..complete();
+    final repo = FakeAdminRepository(
+      live: true,
+      beforeOperation: (operation) async {
+        if (operation == 'load') await hold.future;
+      },
+    );
+    addTearDown(repo.dispose);
+    await tester.pumpWidget(
+      host(
+        AdminWorkspace(
+          repository: repo,
+          role: AppRole.superAdmin,
+          path: '/admin/curricula',
+          onNavigate: (_) {},
+          onSignedOut: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('교육과정'), findsWidgets);
+    expect(find.text('등록 기본 정보'), findsWidgets);
+    hold = Completer<void>();
+    await tester.tap(find.text('다시 읽기').first);
+    await tester.pump();
+    expect(find.text('교육과정'), findsWidgets);
+    expect(find.text('등록 기본 정보'), findsWidgets);
+    expect(find.byType(LinearProgressIndicator), findsWidgets);
+    hold.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('교육과정'), findsWidgets);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 }

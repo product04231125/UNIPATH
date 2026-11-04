@@ -11,14 +11,16 @@ class WorkspaceTitleBar extends StatelessWidget {
     this.onForward,
     this.onToggleSidebar,
     this.sidebarVisible = true,
-    this.title = 'UniversityPath',
+    this.statusLabel,
 
-    /// Phone portrait: hide back/forward/sidebar/title; keep window controls only.
+    /// Phone portrait: hide back/forward/sidebar/status; keep window controls only.
     this.phoneChrome = false,
   });
   final VoidCallback? onBack, onForward, onToggleSidebar;
   final bool sidebarVisible;
-  final String title;
+
+  /// Account role / current status shown trailing (before OS window controls).
+  final String? statusLabel;
   final bool phoneChrome;
 
   bool get native => !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
@@ -33,6 +35,8 @@ class WorkspaceTitleBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (phoneChrome && !native) return const SizedBox.shrink();
+    final status = statusLabel?.trim();
+    final showStatus = !phoneChrome && status != null && status.isNotEmpty;
     return Material(
       color: titleBarColor(Theme.of(context).colorScheme),
       child: SafeArea(
@@ -63,23 +67,21 @@ class WorkspaceTitleBar extends StatelessWidget {
                     ? (_) => windowManager.startDragging()
                     : null,
                 onDoubleTap: native ? _maximize : null,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 14,
-                  ),
-                  child: phoneChrome
-                      ? const SizedBox.shrink()
-                      : Text(
-                          title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                ),
+                child: const SizedBox(height: 48),
               ),
             ),
+            if (showStatus)
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Text(
+                  status,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             if (native) ...[
               IconButton(
                 tooltip: '최소화',

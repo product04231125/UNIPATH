@@ -559,7 +559,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
                   onAccountSecurity: canAccount
                       ? () => _openAccountSecurity(frameContext)
                       : null,
-                  onApplications: canAccount
+                  onApplications: canAccount && _role != AppRole.user
                       ? () => _openApplications(frameContext)
                       : null,
                   applicationLabel: _role == AppRole.superAdmin
@@ -572,9 +572,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
                         child: TaskFocusGroup(
                           child: WorkspaceTitleBar(
                             phoneChrome: phone,
-                            title: _role == AppRole.user
-                                ? 'UniversityPath'
-                                : '${_role.label} · UniversityPath',
+                            statusLabel: _role.label,
                             sidebarVisible: _sidebarVisible,
                             onToggleSidebar: authenticated
                                 ? () {

@@ -379,7 +379,10 @@ class _WorkspaceState extends State<Workspace> {
           initialDay: _scheduleInitialDay,
           addRequest: _scheduleAddRequest,
         ),
-        2 => const CoursePage(),
+        2 => CoursePage(
+          studentApi: widget.studentApi,
+          planning: _planningRepository,
+        ),
         3 => GraduationPage(
           planning: _planningRepository,
           onOpenSettings: () => _selectPage(settingsPage - 1),

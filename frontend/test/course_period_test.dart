@@ -43,6 +43,40 @@ Future<void> open(WidgetTester tester, {double scale = 1}) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> seedCurriculumCourse({
+  String title = '합성 교육과정 과목',
+  String credits = '3',
+  String category = '전공',
+  String code = 'CS101',
+}) async {
+  final repo = PersonalRecordRepository(
+    PersonalRecordKind.personalCurriculumCourse,
+  );
+  await repo.load();
+  await repo.save(
+    PersonalRecord(
+      id: PersonalRecord.newId(),
+      values: {
+        'title': title,
+        'courseCode': code,
+        'credits': credits,
+        'category': category,
+        'requiredCourse': '필수',
+      },
+    ),
+  );
+}
+
+Future<void> pickCourse(WidgetTester tester, String title) async {
+  await tester.ensureVisible(
+    find.byKey(const ValueKey('record-select-course')),
+  );
+  await tester.tap(find.byKey(const ValueKey('record-select-course')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.textContaining(title).last);
+  await tester.pumpAndSettle();
+}
+
 Future<PersonalRecordRepository> seed(Map<String, String> periods) async {
   final repo = PersonalRecordRepository(PersonalRecordKind.course);
   await repo.load();
@@ -111,11 +145,44 @@ void main() {
     },
   );
   testWidgets(
+    'course form asks to register a subject when none can be picked',
+    (tester) async {
+      for (final kind in [
+        PersonalRecordKind.course,
+        PersonalRecordKind.personalCurriculumCourse,
+      ]) {
+        final repo = PersonalRecordRepository(kind);
+        await repo.load();
+        for (final record in [...repo.records]) {
+          await repo.delete(record.id);
+        }
+      }
+      await open(tester);
+      await tester.tap(find.text('수강 과목 추가'));
+      await tester.pumpAndSettle();
+      expect(find.text('설정·교육과정에서 과목을 먼저 등록하세요'), findsOneWidget);
+      expect(find.byKey(const ValueKey('record-field-title')), findsNothing);
+      expect(find.byKey(const ValueKey('record-field-credits')), findsNothing);
+      expect(find.byKey(const ValueKey('record-field-detail')), findsNothing);
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, '내 기록에 저장'))
+            .onPressed,
+        isNull,
+      );
+      expect(find.text('설정·교육과정에서 과목을 먼저 등록하세요'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
     'new course validates split period and saves past seasonal term after reload',
     (tester) async {
+      await seedCurriculumCourse(title: '과거 계절 과목');
       await open(tester);
-      await tester.tap(find.text('수강 과목 직접 입력'));
+      await tester.tap(find.text('수강 과목 추가'));
       await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('record-field-title')), findsNothing);
+      expect(find.byKey(const ValueKey('record-field-credits')), findsNothing);
       expect(
         tester
             .widget<TextFormField>(
@@ -125,11 +192,9 @@ void main() {
             .text,
         '${DateTime.now().year}',
       );
-      await enter(tester, 'title', '과거 계절 과목');
+      await pickCourse(tester, '과거 계절 과목');
       await enter(tester, 'course-year', '26');
       await enter(tester, 'term', '여름 계절학기');
-      await enter(tester, 'category', '전공');
-      await enter(tester, 'credits', '3');
       await save(tester);
       expect(find.text('수강 연도를 네 자리 숫자로 입력하세요.'), findsOneWidget);
       await enter(tester, 'course-year', '2024');
@@ -167,7 +232,7 @@ void main() {
             .text,
         isEmpty,
       );
-      await enter(tester, 'title', '이름만 수정');
+      await enter(tester, 'section', 'A');
       await save(tester);
       final repo = PersonalRecordRepository(PersonalRecordKind.course);
       await repo.load();
@@ -217,7 +282,7 @@ void main() {
     tester,
   ) async {
     await open(tester);
-    await tester.tap(find.text('수강 과목 직접 입력'));
+    await tester.tap(find.text('수강 과목 추가'));
     await tester.pumpAndSettle();
     await enter(tester, 'course-year', '  ');
     await enter(tester, 'term', '  ');
@@ -230,13 +295,13 @@ void main() {
     'default new year is empty content but changed year requires discard',
     (tester) async {
       await open(tester);
-      await tester.tap(find.text('수강 과목 직접 입력'));
+      await tester.tap(find.text('수강 과목 추가'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, '취소'));
       await tester.pumpAndSettle();
       expect(find.text('작성한 내용을 폐기할까요?'), findsNothing);
       expect(find.byType(TextFormField), findsNothing);
-      await tester.tap(find.text('수강 과목 직접 입력'));
+      await tester.tap(find.text('수강 과목 추가'));
       await tester.pumpAndSettle();
       await enter(tester, 'course-year', '2031');
       await tester.tap(find.widgetWithText(TextButton, '취소'));

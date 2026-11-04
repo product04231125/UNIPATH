@@ -10,6 +10,7 @@ import 'package:university_path_frontend/features/assistant/assistant_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
+import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/main.dart';
 
 void main() {
@@ -227,27 +228,44 @@ void main() {
 
   testWidgets('adds a personal record from the course menu', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final curriculum = PersonalRecordRepository(
+      PersonalRecordKind.personalCurriculumCourse,
+    );
+    await curriculum.load();
+    await curriculum.save(
+      PersonalRecord(
+        id: PersonalRecord.newId(),
+        values: {
+          'title': '운영체제',
+          'courseCode': 'CS300',
+          'credits': '3',
+          'category': '전공선택',
+        },
+      ),
+    );
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
-
-    await tester.tap(find.text('수강 관리'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('수강 과목 직접 입력'));
+    await tester.tap(find.text('수강 관리').first);
     await tester.pumpAndSettle();
-    for (final entry in {
-      'title': '운영체제',
-      'term': '2026-2',
-      'category': '전공선택',
-      'credits': '3',
-    }.entries) {
-      final field = find.byKey(ValueKey('record-field-${entry.key}'));
-      await tester.ensureVisible(field);
-      await tester.enterText(field, entry.value);
-    }
+    await tester.tap(find.text('수강 과목 추가'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('record-field-title')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('record-select-course')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('운영체제').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('record-field-course-year')),
+      '2026',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('record-field-term')),
+      '2학기',
+    );
     await tester.tap(find.text('내 기록에 저장'));
     await tester.pumpAndSettle();
-
     expect(find.text('운영체제'), findsOneWidget);
-    await tester.binding.setSurfaceSize(null);
   });
 
   testWidgets('opens every workspace menu', (tester) async {

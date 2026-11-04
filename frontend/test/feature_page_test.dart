@@ -41,7 +41,7 @@ void main() {
               child: FeatureLine.one(text: '개인 기록이 없습니다. 직접 입력해 주세요.'),
             ),
           ],
-          actions: [FilledButton(onPressed: null, child: Text('수강 과목 직접 입력'))],
+          actions: [FilledButton(onPressed: null, child: Text('수강 과목 추가'))],
         ),
       ),
     );
@@ -54,7 +54,7 @@ void main() {
     expect(card.top, closeTo(header.bottom, 0.5));
     expect(find.byType(FeatureActions), findsOneWidget);
     expect(
-      tester.getTopLeft(find.widgetWithText(FilledButton, '수강 과목 직접 입력')).dy -
+      tester.getTopLeft(find.widgetWithText(FilledButton, '수강 과목 추가')).dy -
           tester.getBottomLeft(find.byType(SurfaceCard)).dy,
       16,
     );

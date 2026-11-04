@@ -1,5 +1,6 @@
 import '../../shared/widgets/responsive_columns.dart';
 import '../../shared/app_style.dart';
+import '../../shared/credits_format.dart';
 import '../settings/account_settings_section.dart';
 import '../settings/appearance_settings_section.dart';
 
@@ -69,6 +70,8 @@ class AdminWorkspace extends StatefulWidget {
 class _AdminWorkspaceState extends State<AdminWorkspace> {
   late final AdminRepository _repo;
   bool _loading = true;
+  bool _refreshing = false;
+  bool _hasLoaded = false;
   String? _loadError, _error;
   String _schoolId = '';
   bool _busy = false;
@@ -170,19 +173,28 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   }
 
   Future<void> _load() async {
+    final refresh = _hasLoaded;
     setState(() {
-      _loading = true;
+      if (refresh) {
+        _refreshing = true;
+      } else {
+        _loading = true;
+      }
       _loadError = null;
     });
     try {
       await _repo.load();
+      _hasLoaded = true;
     } catch (error) {
       _loadError = error is StateError
           ? error.message.toString()
           : '관리 데이터를 읽지 못했습니다.';
     }
     if (mounted) {
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _refreshing = false;
+      });
       _scheduleDetailConsume();
     }
   }
@@ -222,6 +234,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         _repo.canRead(_actor, r) &&
         (kind == AdminKind.account ||
             kind == AdminKind.scope ||
+            kind == AdminKind.institution ||
             _repo.school(r) == _schoolId),
   );
   Future<void> _edit(
@@ -419,28 +432,32 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     return labels.isEmpty ? '부여된 관리 범위 없음' : labels.join(' / ');
   }
 
-  String _recordContext(AdminRecord r) => [
-    if (r.kind == AdminKind.account) '관리 범위: ${_accountScopeText(r)}',
-    if (_repo.school(r) != r.id) _relationName(_repo.school(r)),
-    for (final key in [
-      'departmentId',
-      'curriculumId',
-      'courseId',
-      'ruleSetId',
-      'userId',
-    ])
-      _relationName(r.value(key)),
-    if (r.value('year').isNotEmpty) '${r.value('year')}년 적용',
-    if (r.value('code').isNotEmpty) '코드 ${r.value('code')}',
-    if (r.value('credits').isNotEmpty) '${r.value('credits')}학점',
-    if (r.kind == AdminKind.scope)
-      switch (r.value('scopeType')) {
-        'institution' => '학교 전체',
-        'department' => '학과 범위',
-        'curriculum' => '교육과정 범위',
-        _ => '범위 유형 확인 필요',
-      },
-  ].where((s) => s.isNotEmpty).toSet().join(' · ');
+  String _recordContext(AdminRecord r) {
+    final parts = [
+      if (r.kind == AdminKind.account) '관리 범위: ${_accountScopeText(r)}',
+      if (_repo.school(r) != r.id) _relationName(_repo.school(r)),
+      for (final key in [
+        'departmentId',
+        'curriculumId',
+        'courseId',
+        'ruleSetId',
+        'userId',
+      ])
+        _relationName(r.value(key)),
+      if (r.value('year').isNotEmpty) '${r.value('year')}년 적용',
+      if (r.value('credits').isNotEmpty) formatCreditsLabel(r.value('credits')),
+      if (r.value('code').isNotEmpty) '코드 ${r.value('code')}',
+      if (r.kind == AdminKind.scope)
+        switch (r.value('scopeType')) {
+          'institution' => '학교 전체',
+          'department' => '학과 범위',
+          'curriculum' => '교육과정 범위',
+          _ => '범위 유형 확인 필요',
+        },
+    ].where((s) => s.isNotEmpty);
+    final seen = <String>{};
+    return parts.where(seen.add).join(' · ');
+  }
   Iterable<AdminRecord> _filteredRows(AdminKind kind) => _rows(kind).where((r) {
     if (kind == AdminKind.institution) return true;
     final query = (_queries[kind] ?? '').trim().toLowerCase();
@@ -461,7 +478,6 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           FeatureLine.section(text: kind.label),
-          const SizedBox(height: 20),
           KeyedSubtree(
             key: ValueKey('admin-registration-${kind.name}-$_schoolId'),
             child: AdminEditor(
@@ -503,11 +519,12 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 Text('${_rows(kind).length}개'),
                 if (_repo.live)
                   FeatureLine.reload(
-                    onPressed: _busy || _loading ? null : _load,
+                    onPressed: _busy || _loading || _refreshing ? null : _load,
                   ),
               ],
             ),
           ),
+          if (_refreshing) const LinearProgressIndicator(),
           if (kind == AdminKind.account) ...[
             AnchoredSelectField<String>(
               key: const ValueKey('admin-account-role'),
@@ -524,7 +541,6 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             ),
           ],
           if (kind != AdminKind.institution && _rows(kind).isNotEmpty) ...[
-            const SizedBox(height: 12),
             TextFormField(
               key: ValueKey('admin-search-$_schoolId-${kind.name}'),
               initialValue: _queries[kind] ?? '',
@@ -694,7 +710,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             ),
           ),
           if (_canEdit(r))
-            TextButton(
+            OutlinedButton(
               onPressed: _busy ? null : () => _edit(r.kind, r),
               child: const Text('수정'),
             ),
@@ -782,7 +798,6 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('관리 가능한 학교 ${_schools.length}개'),
         if (_schoolId.isEmpty) ...[
           const FeatureLine.one(
             text: '관리 가능한 학교가 없습니다. 학교 등록 또는 범위 부여가 필요합니다.',
@@ -797,7 +812,6 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
               ],
             ),
         ] else ...[
-          const SizedBox(height: 24),
           ResponsiveColumns(
             enabled: true,
             first: Column(
@@ -837,16 +851,14 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     label: const Text('공식 문서 확인'),
                   ),
                 ),
-                const Divider(height: 32),
               ],
             ),
             second: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('자료 등록', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 8),
+                FeatureLine.section(text: '자료 등록'),
                 Wrap(
-                  spacing: 12,
+                  spacing: 8,
                   runSpacing: 8,
                   children: [
                     for (final kind in [
@@ -871,39 +883,38 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                       ),
                   ],
                 ),
-                const Divider(height: 32),
-                FeatureLine.section(
-                  text: '최근 변경',
-                  trailing: _repo.live
-                      ? FeatureLine.reload(
-                          onPressed: _busy || _loading ? null : _load,
-                        )
-                      : null,
-                ),
-                if (recent.isEmpty)
-                  const FeatureLine.one(text: '현재 학교의 변경 이력이 없습니다.'),
-                for (final entry in recent)
-                  InkWell(
-                    onTap: () => _navigate('/admin/history'),
-                    child: FeatureLine.two(
-                      primary:
-                          '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
-                      secondary:
-                          _find(entry.targetId) != null &&
-                              _repo.canRead(_actor, _find(entry.targetId)!)
-                          ? _find(entry.targetId)!.name
-                          : '삭제되었거나 볼 수 없는 항목',
-                    ),
-                  ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    onPressed: _busy ? null : () => _navigate('/admin/history'),
-                    icon: const Icon(Icons.arrow_forward, size: 18),
-                    label: const Text('관리 이력 보기'),
-                  ),
-                ),
               ],
+            ),
+          ),
+          FeatureLine.section(
+            text: '최근 변경',
+            trailing: _repo.live
+                ? FeatureLine.reload(
+                    onPressed: _busy || _loading || _refreshing ? null : _load,
+                  )
+                : null,
+          ),
+          if (recent.isEmpty)
+            const FeatureLine.one(text: '현재 학교의 변경 이력이 없습니다.'),
+          for (final entry in recent)
+            InkWell(
+              onTap: () => _navigate('/admin/history'),
+              child: FeatureLine.two(
+                primary:
+                    '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
+                secondary:
+                    _find(entry.targetId) != null &&
+                        _repo.canRead(_actor, _find(entry.targetId)!)
+                    ? _find(entry.targetId)!.name
+                    : '삭제되었거나 볼 수 없는 항목',
+              ),
+            ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: _busy ? null : () => _navigate('/admin/history'),
+              icon: const Icon(Icons.arrow_forward, size: 18),
+              label: const Text('관리 이력 보기'),
             ),
           ),
         ],
@@ -928,7 +939,9 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         FeatureLine.section(
           text: '관리 이력',
           trailing: _repo.live
-              ? FeatureLine.reload(onPressed: _busy || _loading ? null : _load)
+              ? FeatureLine.reload(
+                  onPressed: _busy || _loading || _refreshing ? null : _load,
+                )
               : null,
         ),
         if (entries.isEmpty)
@@ -1072,16 +1085,10 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     ),
                   ),
                 ),
-              if (widget.role != AppRole.user)
-                FeatureLine.one(
-                  text: _role == AppRole.superAdmin
-                      ? '관리 범위: 전체 학교'
-                      : '관리 범위: ${_repo.records.where((r) => r.kind == AdminKind.scope && r.status == 'active' && r.value('userId') == _actor && r.value('institutionId') == _schoolId).map(_scopeSummary).toSet().join(', ')}',
-                ),
               if (_repo.live && _repo.warning != null) Text(_repo.warning!),
               if (_loading)
                 const LinearProgressIndicator()
-              else if (_loadError != null) ...[
+              else if (_loadError != null && !_hasLoaded) ...[
                 FeatureLine.one(text: _loadError!),
                 FeatureLine.reload(onPressed: _load),
               ] else if (!allowed) ...[
@@ -1093,6 +1100,14 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                   child: const Text('관리 현황으로'),
                 ),
               ] else ...[
+                if (_refreshing && _section == '/admin/overview')
+                  const LinearProgressIndicator(),
+                if (_loadError != null) ...[
+                  FeatureLine.one(text: _loadError!),
+                  FeatureLine.reload(
+                    onPressed: _busy || _refreshing ? null : _load,
+                  ),
+                ],
                 if (_error != null)
                   Text(
                     _error!,
@@ -1109,7 +1124,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                   for (final kind
                       in sectionKinds[_section] ?? <AdminKind>[]) ...[
                     _records(kind),
-                    const SizedBox(height: 24),
+                    SizedBox(height: FeatureLine.slotGap(context)),
                   ]
                 else if (_ruleView == 'grid')
                   GraduationCreditGridPage(

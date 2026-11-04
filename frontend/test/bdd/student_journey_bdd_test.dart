@@ -761,7 +761,7 @@ Future<void> _saveCourseAndCredential(
   await world.pumpMenu(tester, const CoursePage());
   await world.addNamedRecord(
     tester,
-    addLabel: '수강 과목 직접 입력',
+    addLabel: '수강 과목 추가',
     values: {
       'title': world.lastCourseTitle,
       'course-year': '2026',

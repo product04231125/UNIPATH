@@ -443,7 +443,8 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Wrap(
-          spacing: 4,
+          spacing: 8,
+          runSpacing: 8,
           children: [
             _kindChip(row, column, GraduationCreditCellKind.empty, '비어 있음'),
             _kindChip(row, column, GraduationCreditCellKind.number, '숫자'),

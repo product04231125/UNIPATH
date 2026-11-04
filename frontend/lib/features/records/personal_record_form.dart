@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
 
 import '../../app_shell/phone_shell.dart';
+import '../../shared/credits_format.dart';
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/field_requirement.dart';
+import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/input_dialog.dart';
+import '../api/student_api.dart';
 import '../auth/auth_api.dart';
+import 'course/course_pick_options.dart';
 import 'course/course_term.dart';
 import 'personal_record_fields.dart';
 import 'personal_record_repository.dart';
+import 'personal_repository_scope.dart';
+
+const _courseIdentityKeys = {'title', 'courseCode', 'credits', 'category'};
+// Plan: course form shows searchable pick + term/grade/completion/section only.
+// Keep `detail` in field schema/wire as empty (or existing) value; hide free-text UI.
+const _courseHiddenInputKeys = {..._courseIdentityKeys, 'detail'};
 
 Future<void> showPersonalRecordForm({
   required BuildContext context,
@@ -19,6 +30,8 @@ Future<void> showPersonalRecordForm({
   Future<String?> Function(Map<String, String>)? validateValues,
   ValueChanged<List<PersonalRecordField>>? onFieldsReady,
   VoidCallback? onSaved,
+  StudentApi? studentApi,
+  String? institutionId,
 }) async {
   List<PersonalRecordField> fields;
   try {
@@ -47,6 +60,52 @@ Future<void> showPersonalRecordForm({
   final year = TextEditingController(text: initialYear);
   if (isCourse) controllers['term']!.text = period.semester;
   final initialSemester = controllers['term']?.text ?? '';
+  var courseOptions = const <CoursePickOption>[];
+  String? selectedCourseId;
+  if (isCourse) {
+    final scope = PersonalRepositoryScope.read(context);
+    courseOptions = await loadCoursePickOptions(
+      courseRepository: repository,
+      curriculumCourseRepository: scope?.records(
+        PersonalRecordKind.personalCurriculumCourse,
+      ),
+      studentApi: studentApi,
+      institutionId: institutionId,
+    );
+    if (!context.mounted) {
+      year.dispose();
+      for (final controller in controllers.values) {
+        controller.dispose();
+      }
+      return;
+    }
+    if (record != null) {
+      selectedCourseId = courseOptions
+          .where((option) => option.matches(record))
+          .firstOrNull
+          ?.id;
+      if (selectedCourseId == null && record.value('title').isNotEmpty) {
+        final current = CoursePickOption(
+          id: 'current:${record.id}',
+          title: record.value('title'),
+          courseCode: record.value('courseCode'),
+          credits: record.value('credits'),
+          category: record.value('category'),
+          sourceLabel: '현재 기록',
+        );
+        courseOptions = [...courseOptions, current];
+        selectedCourseId = current.id;
+      }
+    }
+  }
+  final initialCourseId = selectedCourseId;
+  void applyCourse(CoursePickOption option) {
+    controllers['title']?.text = option.title;
+    controllers['courseCode']?.text = option.courseCode;
+    controllers['credits']?.text = option.credits;
+    controllers['category']?.text = option.category;
+  }
+
   bool periodChanged() =>
       isCourse &&
       (year.text != initialYear ||
@@ -63,6 +122,7 @@ Future<void> showPersonalRecordForm({
         editing: record != null,
         saving: saving,
         hasUnsavedChanges: () =>
+            selectedCourseId != initialCourseId ||
             (isCourse &&
                 year.text.trim() != initialYear.trim() &&
                 (record != null || year.text.trim().isNotEmpty)) ||
@@ -76,6 +136,7 @@ Future<void> showPersonalRecordForm({
                       controllers[field.key]!.text.trim().isNotEmpty),
             ),
         hasContent: () =>
+            selectedCourseId != null ||
             controllers.values.any((c) => c.text.trim().isNotEmpty) ||
             (isCourse &&
                 year.text.trim().isNotEmpty &&
@@ -95,120 +156,210 @@ Future<void> showPersonalRecordForm({
                 ),
                 const SizedBox(height: 16),
               ],
-              for (final field in fields) ...[
-                if (isCourse && field.key == 'term') ...[
-                  TextFormField(
-                    key: const ValueKey('record-field-course-year'),
-                    controller: year,
-                    enabled: !saving,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText:
-                          '수강 연도 (학년도)${record == null || period.year.isNotEmpty ? ' *' : ' (선택)'}',
-                      helperText: record != null && period.year.isEmpty
-                          ? '기존 기록은 연도 미지정입니다. 확인한 연도만 입력하세요.'
-                          : '예: 2026 · 과거·계획 연도도 입력할 수 있습니다.',
-                    ),
-                    validator: (value) => CourseTerm.validateYear(
-                      value,
-                      required: record == null || period.year.isNotEmpty,
+              if (isCourse) ...[
+                if (courseOptions.isEmpty)
+                  const FeatureLine.one(text: '설정·교육과정에서 과목을 먼저 등록하세요')
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: FormField<String>(
+                      initialValue: selectedCourseId ?? '',
+                      validator: (value) => (value == null || value.isEmpty)
+                          ? '과목을 선택하세요.'
+                          : null,
+                      builder: (state) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          IgnorePointer(
+                            ignoring: saving,
+                            child: AnchoredSelectField<String>(
+                              key: const ValueKey('record-select-course'),
+                              searchable: true,
+                              searchLabel: '과목 이름·코드 검색',
+                              value: selectedCourseId ?? '',
+                              label: fieldRequirementLabel(
+                                '과목',
+                                required: true,
+                              ),
+                              options: [
+                                const SelectOption('', '선택하세요'),
+                                for (final option in courseOptions)
+                                  SelectOption(option.id, option.label),
+                              ],
+                              onChanged: (value) {
+                                final option = courseOptions
+                                    .where((item) => item.id == value)
+                                    .firstOrNull;
+                                updateDialog(() {
+                                  selectedCourseId = value.isEmpty
+                                      ? null
+                                      : value;
+                                  if (option != null) applyCourse(option);
+                                });
+                                state.didChange(value);
+                              },
+                            ),
+                          ),
+                          if (selectedCourseId != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                [
+                                  controllers['title']?.text ?? '',
+                                  if ((controllers['courseCode']?.text ?? '')
+                                      .isNotEmpty)
+                                    controllers['courseCode']!.text,
+                                  if ((controllers['credits']?.text ?? '')
+                                      .isNotEmpty)
+                                    formatCreditsLabel(
+                                      controllers['credits']!.text,
+                                    ),
+                                  if ((controllers['category']?.text ?? '')
+                                      .isNotEmpty)
+                                    controllers['category']!.text,
+                                ].where((part) => part.isNotEmpty).join(' · '),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          if (state.hasError)
+                            Text(
+                              state.errorText!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                ],
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: field.options.isEmpty
-                      ? TextFormField(
-                          key: ValueKey('record-field-${field.key}'),
-                          controller: controllers[field.key],
-                          enabled: !saving,
-                          maxLines: field.multiline ? 3 : 1,
-                          keyboardType: field.type == PersonalFieldType.number
-                              ? const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                )
-                              : TextInputType.text,
-                          decoration: InputDecoration(
-                            labelText:
-                                '${field.label}${field.required ? ' *' : ' (선택)'}',
-                            helperText: isCourse && field.key == 'term'
-                                ? '예: 1학기, 2학기, 여름 계절학기 · 연도는 위 칸에 입력하세요.'
-                                : null,
-                          ),
-                          validator: (value) {
-                            final error = field.validate(value);
-                            if (error != null ||
-                                !isCourse ||
-                                field.key != 'term') {
-                              return error;
-                            }
-                            if (periodChanged() || record == null) {
-                              if (CourseTerm.parse(value ?? '')
-                                  .year
-                                  .isNotEmpty) {
-                                return '연도는 수강 연도 칸에, 학기는 이 칸에 나눠 입력하세요.';
-                              }
-                              if (CourseTerm.encode(
-                                    year.text,
-                                    value ?? '',
-                                  ).length >
-                                  128) {
-                                return '연도와 학기를 합쳐 128자 이내로 입력하세요.';
-                              }
-                            }
-                            return null;
-                          },
-                        )
-                      : FormField<String>(
-                          initialValue: controllers[field.key]!.text,
-                          validator: field.validate,
-                          builder: (state) => Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              IgnorePointer(
-                                ignoring: saving,
-                                child: AnchoredSelectField<String>(
-                                  key: ValueKey('record-select-${field.key}'),
-                                  value: controllers[field.key]!.text,
-                                  label: field.label,
-                                  options: [
-                                    const SelectOption('', '미선택'),
-                                    for (final option in field.options.where(
-                                      (o) => o.isNotEmpty,
-                                    ))
-                                      SelectOption(
-                                        option,
-                                        field.optionLabels[option] ?? option,
-                                      ),
-                                    if (controllers[field.key]!
-                                            .text
-                                            .isNotEmpty &&
-                                        !field.options.contains(
-                                          controllers[field.key]!.text,
-                                        ))
-                                      SelectOption(
-                                        controllers[field.key]!.text,
-                                        '연결 대상 없음 · 다시 선택하세요',
-                                      ),
-                                  ],
-                                  onChanged: (value) {
-                                    controllers[field.key]!.text = value;
-                                    state.didChange(value);
-                                  },
-                                ),
+              ],
+              for (final field in fields) ...[
+                if (isCourse && _courseHiddenInputKeys.contains(field.key))
+                  const SizedBox.shrink()
+                else ...[
+                  if (isCourse && field.key == 'term') ...[
+                    TextFormField(
+                      key: const ValueKey('record-field-course-year'),
+                      controller: year,
+                      enabled: !saving,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: fieldRequirementLabel(
+                          '수강 연도 (학년도)',
+                          required: record == null || period.year.isNotEmpty,
+                        ),
+                        helperText: record != null && period.year.isEmpty
+                            ? '기존 기록은 연도 미지정입니다. 확인한 연도만 입력하세요.'
+                            : '예: 2026 · 과거·계획 연도도 입력할 수 있습니다.',
+                      ),
+                      validator: (value) => CourseTerm.validateYear(
+                        value,
+                        required: record == null || period.year.isNotEmpty,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: field.options.isEmpty
+                        ? TextFormField(
+                            key: ValueKey('record-field-${field.key}'),
+                            controller: controllers[field.key],
+                            enabled: !saving,
+                            maxLines: field.multiline ? 3 : 1,
+                            keyboardType: field.type == PersonalFieldType.number
+                                ? const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  )
+                                : TextInputType.text,
+                            decoration: InputDecoration(
+                              labelText: fieldRequirementLabel(
+                                field.label,
+                                required: field.required,
                               ),
-                              if (state.hasError)
-                                Text(
-                                  state.errorText!,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
+                              helperText: isCourse && field.key == 'term'
+                                  ? '예: 1학기, 2학기, 여름 계절학기 · 연도는 위 칸에 입력하세요.'
+                                  : null,
+                            ),
+                            validator: (value) {
+                              final error = field.validate(value);
+                              if (error != null ||
+                                  !isCourse ||
+                                  field.key != 'term') {
+                                return error;
+                              }
+                              if (periodChanged() || record == null) {
+                                if (CourseTerm.parse(value ?? '')
+                                    .year
+                                    .isNotEmpty) {
+                                  return '연도는 수강 연도 칸에, 학기는 이 칸에 나눠 입력하세요.';
+                                }
+                                if (CourseTerm.encode(
+                                      year.text,
+                                      value ?? '',
+                                    ).length >
+                                    128) {
+                                  return '연도와 학기를 합쳐 128자 이내로 입력하세요.';
+                                }
+                              }
+                              return null;
+                            },
+                          )
+                        : FormField<String>(
+                            initialValue: controllers[field.key]!.text,
+                            validator: field.validate,
+                            builder: (state) => Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                IgnorePointer(
+                                  ignoring: saving,
+                                  child: AnchoredSelectField<String>(
+                                    key: ValueKey('record-select-${field.key}'),
+                                    value: controllers[field.key]!.text,
+                                    label: fieldRequirementLabel(
+                                      field.label,
+                                      required: field.required,
+                                    ),
+                                    options: [
+                                      const SelectOption('', '미선택'),
+                                      for (final option in field.options.where(
+                                        (o) => o.isNotEmpty,
+                                      ))
+                                        SelectOption(
+                                          option,
+                                          field.optionLabels[option] ?? option,
+                                        ),
+                                      if (controllers[field.key]!
+                                              .text
+                                              .isNotEmpty &&
+                                          !field.options.contains(
+                                            controllers[field.key]!.text,
+                                          ))
+                                        SelectOption(
+                                          controllers[field.key]!.text,
+                                          '연결 대상 없음 · 다시 선택하세요',
+                                        ),
+                                    ],
+                                    onChanged: (value) {
+                                      controllers[field.key]!.text = value;
+                                      state.didChange(value);
+                                    },
                                   ),
                                 ),
-                            ],
+                                if (state.hasError)
+                                  Text(
+                                    state.errorText!,
+                                    style: TextStyle(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .error,
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
-                ),
+                  ),
+                ],
               ],
               if (error != null)
                 Text(
@@ -226,7 +377,7 @@ Future<void> showPersonalRecordForm({
             child: const Text('취소'),
           ),
           FilledButton(
-            onPressed: saving
+            onPressed: saving || (isCourse && courseOptions.isEmpty)
                 ? null
                 : () async {
                     if (!form.currentState!.validate()) return;

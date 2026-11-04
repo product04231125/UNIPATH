@@ -297,10 +297,10 @@ Future<GlobalKey<AdminEditorState>> open(
 }
 
 Future<void> criteria(WidgetTester t) async {
-  await text(t, '최소 필요 학점 *', '120');
-  await text(t, '적용 입학연도 시작 *', '2026');
-  await text(t, '적용 입학연도 종료 *', '2026');
-  await text(t, '이수 경로 (쉼표 구분) *', 'single_major');
+  await text(t, '최소 필요 학점 (필수)', '120');
+  await text(t, '적용 입학연도 시작 (필수)', '2026');
+  await text(t, '적용 입학연도 종료 (필수)', '2026');
+  await text(t, '이수 경로 (쉼표 구분) (필수)', 'single_major');
   await tap(t, find.text('근거·초안 다시 읽기'));
   await select(t, '검토된 근거 문서', knowledge.document);
   await select<int?>(t, '근거 페이지', 1);
@@ -315,17 +315,17 @@ void main() {
       final server = RequirementServer(empty: true);
       final key = await open(t, server);
       await t.enterText(find.byKey(const ValueKey('admin-field-name')), '총 학점');
-      await select(t, '규칙 종류 *', 'credits');
+      await select(t, '규칙 종류 (필수)', 'credits');
       await t.enterText(
         find.byKey(const ValueKey('admin-field-definition')),
         '졸업에 필요한 학점',
       );
-      await text(t, '최소 필요 학점 *', '120');
+      await text(t, '최소 필요 학점 (필수)', '120');
       await tap(t, find.text('요건 설명 저장'));
       expect(server.data['rules'], hasLength(1));
       expect(server.writes, isEmpty);
       expect(find.byType(AdminRuleExecutionPanel), findsOneWidget);
-      expect(t.widget<TextFormField>(input('최소 필요 학점 *')).initialValue, '120');
+      expect(t.widget<TextFormField>(input('최소 필요 학점 (필수)')).initialValue, '120');
       await tap(t, find.text('요건 검토·적용'));
       await tap(t, find.widgetWithText(FilledButton, '검토·적용'));
       await criteria(t);
@@ -347,7 +347,7 @@ void main() {
       expect(body['admission_year_from'], 2026);
       expect(body['tracks'], ['single_major']);
       expect(key.currentState!.dirty, isFalse);
-      await text(t, '최소 필요 학점 *', '130');
+      await text(t, '최소 필요 학점 (필수)', '130');
       await tap(t, find.text('계산 조건 초안 저장'));
       expect(server.writes.last.method, 'PUT');
       expect(jsonDecode(server.writes.last.body)['expected_version'], 1);
@@ -379,7 +379,7 @@ void main() {
     await open(t, server);
     await tap(t, find.text('근거·초안 다시 읽기'));
     await select(t, '저장할 실행 초안', programId);
-    await text(t, '최소 필요 학점 *', '120');
+    await text(t, '최소 필요 학점 (필수)', '120');
     await tap(t, find.text('계산 조건 초안 저장'));
     final body = jsonDecode(server.writes.single.body) as Map;
     expect(server.writes.single.method, 'PUT');
@@ -392,7 +392,7 @@ void main() {
     });
     expect(rules.last['condition']['minimum'], '120');
     server.fail = 409;
-    await text(t, '최소 필요 학점 *', '125');
+    await text(t, '최소 필요 학점 (필수)', '125');
     await tap(t, find.text('계산 조건 초안 저장'));
     expect(
       t
@@ -414,7 +414,7 @@ void main() {
           .onPressed,
       isNotNull,
     );
-    expect(t.widget<TextFormField>(input('최소 필요 학점 *')).initialValue, '120');
+    expect(t.widget<TextFormField>(input('최소 필요 학점 (필수)')).initialValue, '120');
     expect(t.takeException(), isNull);
   });
   for (final status in [422, 409, 503]) {
@@ -437,7 +437,7 @@ void main() {
           findsOneWidget,
         );
         expect(
-          t.widget<TextFormField>(input('최소 필요 학점 *')).initialValue,
+          t.widget<TextFormField>(input('최소 필요 학점 (필수)')).initialValue,
           '120',
         );
         final button = t.widget<FilledButton>(
@@ -458,7 +458,7 @@ void main() {
               t,
               find.text('내용 폐기'),
             ); // Explicitly replace the local draft with the saved response.
-            await text(t, '최소 필요 학점 *', '125');
+            await text(t, '최소 필요 학점 (필수)', '125');
             await tap(t, find.text('계산 조건 초안 저장'));
             expect(server.writes.last.method, 'PUT');
             expect(
@@ -477,12 +477,12 @@ void main() {
       final server = RequirementServer(empty: true);
       final key = await open(t, server);
       expect(key.currentState!.dirty, isFalse);
-      await select(t, '규칙 종류 *', 'credits');
-      await text(t, '최소 필요 학점 *', '120');
-      await select(t, '규칙 종류 *', 'volunteer');
-      await text(t, '최소 필요 봉사시간 *', '30');
-      await select(t, '규칙 종류 *', 'credits');
-      expect(t.widget<TextFormField>(input('최소 필요 학점 *')).initialValue, '120');
+      await select(t, '규칙 종류 (필수)', 'credits');
+      await text(t, '최소 필요 학점 (필수)', '120');
+      await select(t, '규칙 종류 (필수)', 'volunteer');
+      await text(t, '최소 필요 봉사시간 (필수)', '30');
+      await select(t, '규칙 종류 (필수)', 'credits');
+      expect(t.widget<TextFormField>(input('최소 필요 학점 (필수)')).initialValue, '120');
       await tap(t, find.text('취소'));
       await tap(t, find.text('계속 작성'));
       expect(key.currentState!.dirty, isTrue);

@@ -4,6 +4,7 @@ import '../../shared/app_style.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/field_label.dart';
+import '../../shared/widgets/field_requirement.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/feature_actions.dart';
 import '../../shared/widgets/page_header.dart';
@@ -196,8 +197,10 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
       padding: const EdgeInsets.only(bottom: 16),
       child: f.options.isEmpty
           ? FieldLabel(
-              label:
-                  '${_isRule && f.key == 'condition' ? '요건 설명' : f.label}${f.required ? ' *' : ' (선택)'}',
+              label: fieldRequirementLabel(
+                _isRule && f.key == 'condition' ? '요건 설명' : f.label,
+                required: f.required,
+              ),
               child: Semantics(
                 label: f.label,
                 child: TextFormField(
@@ -226,8 +229,10 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                     externalLabel: true,
                     key: ValueKey('record-select-${f.key}'),
                     value: c.text,
-                    label:
-                        '${_isRule && f.key == 'condition' ? '요건 설명' : f.label}${f.required ? ' *' : ' (선택)'}',
+                    label: fieldRequirementLabel(
+                      _isRule && f.key == 'condition' ? '요건 설명' : f.label,
+                      required: f.required,
+                    ),
                     options: [
                       const SelectOption('', '미선택'),
                       for (final value in f.options.where((v) => v.isNotEmpty))
@@ -424,97 +429,97 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
     return SurfaceCard(
       key: ValueKey('personal-frame-${widget.kind.name}'),
       child: Form(
-          key: _form,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ResponsiveColumns(
-                enabled: true,
-                first: _list(),
-                second: _section(
-                  '등록 기본 정보',
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [for (final f in basic) _input(f)],
-                  ),
-                  key: ValueKey('personal-basic-${widget.kind.name}'),
-                ),
-              ),
-              const Divider(height: 40),
-              _section(
-                '적용 범위·상세',
+        key: _form,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ResponsiveColumns(
+              enabled: true,
+              first: _list(),
+              second: _section(
+                '등록 기본 정보',
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _details(details),
-                    if (_isRule)
-                      PersonalRequirementPanel(
-                        key: _rulePanel,
-                        curriculumId: _controllers['curriculumId']?.text ?? '',
-                        rule: _editing,
-                        metadataDirty: _metadataDirty,
-                        onBusy: (busy) {
-                          if (mounted) setState(() => _saving = busy);
-                        },
-                        onChanged: (draft) {
-                          _controllers['requiredValue']!.text =
-                              draft.values['minimum'] ?? '';
-                          _controllers['unit']!.text =
-                              draft.kind == 'minimum_credits'
-                              ? '학점'
-                              : draft.kind == 'minimum_volunteer_hours'
-                              ? '시간'
-                              : '';
-                        },
-                      ),
-                    if (_message != null)
-                      Semantics(liveRegion: true, child: Text(_message!)),
-                    if (_error != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Semantics(
-                          liveRegion: true,
-                          child: Text(
-                            _error!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                          ),
-                        ),
-                      ),
-                    const Divider(height: 24),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton(
-                        onPressed: _saving
-                            ? null
-                            : () async {
-                                if (await allowLeave() && mounted) _reset();
-                              },
-                        child: const Text('취소'),
-                      ),
-                    ),
-                    FeatureActions(
-                      children: [
-                        FilledButton(
-                          onPressed: _saving ? null : _save,
-                          child: Text(
-                            _saving
-                                ? '저장 중…'
-                                : _isRule
-                                ? '요건 설명 저장'
-                                : '등록',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  children: [for (final f in basic) _input(f)],
                 ),
-                key: ValueKey('personal-details-${widget.kind.name}'),
+                key: ValueKey('personal-basic-${widget.kind.name}'),
               ),
-            ],
-          ),
+            ),
+            const Divider(height: 40),
+            _section(
+              '적용 범위·상세',
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _details(details),
+                  if (_isRule)
+                    PersonalRequirementPanel(
+                      key: _rulePanel,
+                      curriculumId: _controllers['curriculumId']?.text ?? '',
+                      rule: _editing,
+                      metadataDirty: _metadataDirty,
+                      onBusy: (busy) {
+                        if (mounted) setState(() => _saving = busy);
+                      },
+                      onChanged: (draft) {
+                        _controllers['requiredValue']!.text =
+                            draft.values['minimum'] ?? '';
+                        _controllers['unit']!.text =
+                            draft.kind == 'minimum_credits'
+                            ? '학점'
+                            : draft.kind == 'minimum_volunteer_hours'
+                            ? '시간'
+                            : '';
+                      },
+                    ),
+                  if (_message != null)
+                    Semantics(liveRegion: true, child: Text(_message!)),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    ),
+                  const Divider(height: 24),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      onPressed: _saving
+                          ? null
+                          : () async {
+                              if (await allowLeave() && mounted) _reset();
+                            },
+                      child: const Text('취소'),
+                    ),
+                  ),
+                  FeatureActions(
+                    children: [
+                      FilledButton(
+                        onPressed: _saving ? null : _save,
+                        child: Text(
+                          _saving
+                              ? '저장 중…'
+                              : _isRule
+                              ? '요건 설명 저장'
+                              : '등록',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              key: ValueKey('personal-details-${widget.kind.name}'),
+            ),
+          ],
         ),
+      ),
     );
   }
 

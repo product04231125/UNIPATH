@@ -13,6 +13,7 @@ import 'personal_record_fields.dart';
 import 'personal_record_form.dart';
 import 'personal_repository_scope.dart';
 import '../auth/auth_api.dart';
+import '../api/student_api.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/external_link_button.dart';
 
@@ -33,6 +34,8 @@ class RecordMenuPage extends StatefulWidget {
     this.fieldsLoader,
     this.validateValues,
     this.guideActions = const [],
+    this.studentApi,
+    this.institutionId,
   });
 
   final PersonalRecordKind kind;
@@ -47,6 +50,8 @@ class RecordMenuPage extends StatefulWidget {
   final Future<List<PersonalRecordField>> Function()? fieldsLoader;
   final Future<String?> Function(Map<String, String>)? validateValues;
   final List<Widget> guideActions;
+  final StudentApi? studentApi;
+  final String? institutionId;
 
   @override
   State<RecordMenuPage> createState() => _RecordMenuPageState();
@@ -126,6 +131,8 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       onSaved: () {
         if (mounted) setState(() {});
       },
+      studentApi: widget.studentApi,
+      institutionId: widget.institutionId,
     );
   }
 

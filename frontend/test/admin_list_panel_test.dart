@@ -340,7 +340,7 @@ void main() {
     final name = find.descendant(of: row, matching: find.text('합성 대학 A'));
     final edit = find.descendant(
       of: row,
-      matching: find.widgetWithText(TextButton, '수정'),
+      matching: find.widgetWithText(OutlinedButton, '수정'),
     );
     final remove = find.descendant(
       of: row,

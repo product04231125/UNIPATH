@@ -7,6 +7,7 @@ import 'package:university_path_frontend/app_shell/workspace_shell.dart';
 import 'package:university_path_frontend/features/admin/admin_repository.dart';
 import 'package:university_path_frontend/features/admin/admin_workspace.dart';
 import 'package:university_path_frontend/features/auth/app_role.dart';
+import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -142,7 +143,7 @@ void main() {
 
     await tester.tap(find.descendant(of: sheet, matching: find.text('수강 관리')));
     await tester.pumpAndSettle();
-    expect(find.text('수강 과목 직접 입력'), findsOneWidget);
+    expect(find.text('수강 과목 추가'), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -187,6 +188,22 @@ void main() {
   });
 
   testWidgets('student phone can add a course record', (tester) async {
+    final curriculum = PersonalRecordRepository(
+      PersonalRecordKind.personalCurriculumCourse,
+    );
+    await curriculum.load();
+    await curriculum.save(
+      PersonalRecord(
+        id: PersonalRecord.newId(),
+        values: {
+          'title': '운영체제',
+          'courseCode': 'CS300',
+          'credits': '3',
+          'category': '전공선택',
+          'requiredCourse': '필수',
+        },
+      ),
+    );
     await pumpApp(tester, const Size(390, 844));
     await tester.tap(find.byKey(const Key('phone-nav-more')));
     await tester.pumpAndSettle();
@@ -197,18 +214,18 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('수강 과목 직접 입력'));
+    await tester.tap(find.text('수강 과목 추가'));
     await tester.pumpAndSettle();
-    for (final entry in {
-      'title': '운영체제',
-      'term': '2026-2',
-      'category': '전공선택',
-      'credits': '3',
-    }.entries) {
-      final field = find.byKey(ValueKey('record-field-${entry.key}'));
-      await tester.ensureVisible(field);
-      await tester.enterText(field, entry.value);
-    }
+    expect(find.byKey(const ValueKey('record-field-title')), findsNothing);
+    expect(find.byKey(const ValueKey('record-field-detail')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('record-select-course')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('운영체제').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('record-field-term')),
+      '2학기',
+    );
     await tester.tap(find.text('내 기록에 저장'));
     await tester.pumpAndSettle();
     expect(find.text('운영체제'), findsOneWidget);

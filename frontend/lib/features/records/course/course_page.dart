@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../api/student_api.dart';
+import '../../planning/planning_repository.dart';
 import '../record_menu_page.dart';
 import '../personal_record_repository.dart';
 
 class CoursePage extends StatelessWidget {
-  const CoursePage({super.key});
+  const CoursePage({super.key, this.studentApi, this.planning});
+  final StudentApi? studentApi;
+  final PlanningRepository? planning;
   @override
   Widget build(BuildContext context) => RecordMenuPage(
     key: const ValueKey(PersonalRecordKind.course),
@@ -14,7 +18,9 @@ class CoursePage extends StatelessWidget {
     listTitle: '내 수강 과목',
     guideTitle: '교육과정 확인',
     guides: const ['인정 영역과 학점 분류 확인', '다음 학기 수강 계획 정리', '학과 공지의 변경 사항 확인'],
-    addLabel: '수강 과목 직접 입력',
+    addLabel: '수강 과목 추가',
     detailLabel: '구분 · 학점',
+    studentApi: studentApi,
+    institutionId: planning?.profile.institutionId,
   );
 }

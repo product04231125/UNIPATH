@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../shared/widgets/field_requirement.dart';
 import '../../../shared/widgets/input_dialog.dart';
 
 import '../../../shared/widgets/anchored_select_field.dart';
@@ -95,7 +96,7 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
       maxLines: maxLines,
       onChanged: (_) => _changed(),
       decoration: InputDecoration(
-        labelText: '$label${required ? ' *' : ' (선택)'}',
+        labelText: fieldRequirementLabel(label, required: required),
       ),
       validator: required
           ? (value) =>

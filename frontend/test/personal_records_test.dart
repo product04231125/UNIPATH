@@ -188,13 +188,13 @@ void main() {
   );
 
   testWidgets(
-    'course validation retains input and filters personal semester totals',
+    'course pick copies name and credits then filters personal semester totals',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1440, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
-      final repo = PersonalRecordRepository(PersonalRecordKind.course);
-      await repo.load();
-      await repo.save(
+      final courses = PersonalRecordRepository(PersonalRecordKind.course);
+      await courses.load();
+      await courses.save(
         PersonalRecord(
           id: PersonalRecord.newId(),
           values: {
@@ -205,35 +205,44 @@ void main() {
           },
         ),
       );
+      final curriculum = PersonalRecordRepository(
+        PersonalRecordKind.personalCurriculumCourse,
+      );
+      await curriculum.load();
+      await curriculum.save(
+        PersonalRecord(
+          id: PersonalRecord.newId(),
+          values: {
+            'title': '수정할 합성 과목',
+            'courseCode': 'CS101',
+            'credits': '3',
+            'category': '전공',
+            'requiredCourse': '필수',
+          },
+        ),
+      );
       await tester.pumpWidget(
         const UniversityPathApp(startAuthenticated: true),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('수강 관리').first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('수강 과목 직접 입력'));
+      await tester.tap(find.text('수강 과목 추가'));
       await tester.pumpAndSettle();
-      for (final field in {
-        'title': '수정할 합성 과목',
-        'course-year': '2026',
-        'term': '2학기',
-        'category': '전공',
-        'credits': '-3',
-      }.entries) {
-        final input = find.byKey(ValueKey('record-field-${field.key}'));
-        await tester.ensureVisible(input);
-        await tester.enterText(input, field.value);
-      }
-      await tester.tap(find.text('내 기록에 저장'));
+      expect(find.byKey(const ValueKey('record-field-title')), findsNothing);
+      expect(find.byKey(const ValueKey('record-field-credits')), findsNothing);
+      expect(find.byKey(const ValueKey('record-field-detail')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('record-select-course')));
       await tester.pumpAndSettle();
-      expect(find.text('0보다 큰 학점을 입력하세요.'), findsOneWidget);
-      final title = tester.widget<TextFormField>(
-        find.byKey(const ValueKey('record-field-title')),
-      );
-      expect(title.controller!.text, '수정할 합성 과목');
+      await tester.tap(find.textContaining('수정할 합성 과목').last);
+      await tester.pumpAndSettle();
       await tester.enterText(
-        find.byKey(const ValueKey('record-field-credits')),
-        '3',
+        find.byKey(const ValueKey('record-field-course-year')),
+        '2026',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('record-field-term')),
+        '2학기',
       );
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
@@ -284,18 +293,72 @@ void main() {
     },
   );
 
+  testWidgets(
+    'course searchable pick saves bound identity and deletes after remount',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final curriculum = PersonalRecordRepository(
+        PersonalRecordKind.personalCurriculumCourse,
+      );
+      await curriculum.load();
+      await curriculum.save(
+        PersonalRecord(
+          id: PersonalRecord.newId(),
+          values: {
+            'title': '합성 과목',
+            'courseCode': 'CS101',
+            'credits': '3',
+            'category': '전공',
+            'requiredCourse': '필수',
+          },
+        ),
+      );
+      await tester.pumpWidget(
+        const UniversityPathApp(startAuthenticated: true),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('수강 관리').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('수강 과목 추가'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('record-select-course')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('합성 과목').last);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('record-field-term')),
+        '2학기',
+      );
+      await tester.tap(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('홈').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('수강 관리').first);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('합성 과목'), findsWidgets);
+      await tester.ensureVisible(find.text('수정').first);
+      await tester.tap(find.text('수정').first);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('record-field-title')), findsNothing);
+      await tester.enterText(
+        find.byKey(const ValueKey('record-field-section')),
+        'A',
+      );
+      await tester.tap(find.text('내 기록에 저장'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('합성 과목'), findsWidgets);
+      await tester.ensureVisible(find.text('삭제').first);
+      await tester.tap(find.text('삭제').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('삭제').last);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('합성 과목'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final item in [
-    (
-      '수강 관리',
-      '수강 과목 직접 입력',
-      {
-        'title': '합성 과목',
-        'course-year': '2026',
-        'term': '2학기',
-        'category': '개인 전공',
-        'credits': '3',
-      },
-    ),
     ('활동', '활동 직접 기록', {'title': '합성 활동'}),
     ('자격', '자격 직접 등록', {'title': '합성 자격'}),
   ]) {

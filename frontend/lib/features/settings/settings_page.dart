@@ -167,7 +167,6 @@ class _SettingsPageState extends State<SettingsPage> {
                               const FeatureLine.section(
                                 text: '학업과 계획',
                                 padTop: false,
-                                padBottom: false,
                               ),
                               if (widget.repository.isServerBacked)
                                 PlanningImportSection(

@@ -156,6 +156,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('settings-account-security')), findsNothing);
     expect(find.byKey(const Key('settings-school-applications')), findsNothing);
+    expect(find.text('학교 관리 권한·신청 이력'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('title bar shows role status trailing without UniversityPath', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: WorkspaceTitleBar(
+            statusLabel: '학교관리자',
+            onToggleSidebar: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final bar = tester.getRect(find.byType(WorkspaceTitleBar));
+    final status = tester.getRect(find.text('학교관리자'));
+    final menu = tester.getRect(find.byTooltip('사이드바 축소'));
+    expect(status.left, greaterThan(menu.right));
+    expect(status.right, lessThanOrEqualTo(bar.right));
+    expect(find.textContaining('UniversityPath'), findsNothing);
+    expect(find.textContaining('·'), findsNothing);
   });
 }

@@ -8,6 +8,7 @@ import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/responsive_panels.dart';
 import '../../shared/widgets/field_label.dart';
+import '../../shared/widgets/field_requirement.dart';
 import '../api/rule_program_api.dart';
 import '../api/rule_program_models.dart';
 import '../api/school_knowledge_api.dart';
@@ -541,7 +542,7 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 14),
     child: FieldLabel(
-      label: '$label${required ? ' *' : ' (선택)'}',
+      label: fieldRequirementLabel(label, required: required),
       child: Semantics(
         label: label,
         child: TextFormField(
