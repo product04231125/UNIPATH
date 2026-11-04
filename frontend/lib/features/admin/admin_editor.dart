@@ -477,22 +477,51 @@ class AdminEditorState extends State<AdminEditor> {
     String title,
     Widget content, {
     Key? key,
-    bool alignWithList = false,
   }) => Column(
     key: key,
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      if (alignWithList)
-        FeatureLine.section(text: title, padTop: false, padBottom: false)
-      else
-        Semantics(
-          header: true,
-          child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-        ),
-      SizedBox(height: alignWithList ? 8 : 16),
+      FeatureLine.section(text: title, padTop: false, padBottom: false),
+      const SizedBox(height: 8),
       content,
     ],
   );
+
+  /// List column only: ㄷ (top/left/bottom) when beside the form; full border when stacked.
+  Widget _listRail({required bool sideBySide, required Widget child}) {
+    final color = Theme.of(context).colorScheme.outlineVariant;
+    final radius = sideBySide
+        ? const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            bottomLeft: Radius.circular(20),
+          )
+        : BorderRadius.circular(20);
+    return DecoratedBox(
+      key: ValueKey(
+        sideBySide
+            ? 'admin-list-rail-${widget.kind.name}'
+            : 'admin-list-panel-${widget.kind.name}',
+      ),
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        border: sideBySide
+            ? Border(
+                top: BorderSide(color: color),
+                left: BorderSide(color: color),
+                bottom: BorderSide(color: color),
+              )
+            : Border.all(color: color),
+      ),
+      child: ClipRRect(
+        borderRadius: radius,
+        // Keep top flush so 「목록」 aligns with 「등록 기본 정보」.
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(12, 0, sideBySide ? 0 : 12, 12),
+          child: child,
+        ),
+      ),
+    );
+  }
 
   Widget _compactDetails(List<AdminField> fields) {
     final rows = <Widget>[];
@@ -525,90 +554,100 @@ class AdminEditorState extends State<AdminEditor> {
     final remaining = _fields.where((f) => !basic.contains(f)).toList();
     return Form(
       key: _form,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ResponsiveColumns(
-            enabled: true,
-            // Keep search/filter fields outside the registration FormState.
-            first: Form(child: widget.list!),
-            second: _panel(
-              _isEditing ? '수정 기본 정보' : '등록 기본 정보',
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [for (final field in basic) _field(field)],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final sideBySide =
+              constraints.maxWidth >= 760 &&
+              MediaQuery.textScalerOf(context).scale(14) <= 18;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ResponsiveColumns(
+                enabled: true,
+                // Keep search/filter fields outside the registration FormState.
+                first: _listRail(
+                  sideBySide: sideBySide,
+                  child: Form(child: widget.list!),
+                ),
+                second: _panel(
+                  _isEditing ? '수정 기본 정보' : '등록 기본 정보',
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [for (final field in basic) _field(field)],
+                  ),
+                  key: ValueKey('admin-basic-${widget.kind.name}'),
+                ),
               ),
-              key: ValueKey('admin-basic-${widget.kind.name}'),
-              alignWithList: true,
-            ),
-          ),
-          const Divider(height: 40),
-          _panel(
-            '적용 범위·상세',
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_lifecycleButtons().isNotEmpty) ...[
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _lifecycleButtons(),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (_isEditing && _activeRecord!.value('sourceUrl').isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: ExternalLinkButton(
-                      url: _activeRecord!.value('sourceUrl'),
-                      label: '원문 열기',
-                    ),
-                  ),
-                _compactDetails([
-                  for (final group in adminFieldGroups(remaining).values)
-                    ...group,
-                ]),
-                if (_isRule) _executionPanel(),
-                if (_message != null)
-                  Semantics(liveRegion: true, child: Text(_message!)),
-                if (_error != null)
-                  Semantics(
-                    liveRegion: true,
-                    child: Text(
-                      _error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ),
-                const Divider(height: 24),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+              SizedBox(height: FeatureLine.slotGap(context)),
+              _panel(
+                '적용 범위·상세',
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    TextButton(
-                      onPressed: saving ? null : _cancel,
-                      child: const Text('취소'),
-                    ),
-                    FilledButton(
-                      onPressed: saving || _metadataLocked ? null : _save,
-                      child: Text(
-                        _saving
-                            ? '저장 중…'
-                            : _isRule
-                            ? '요건 설명 저장'
-                            : _isEditing
-                            ? '저장'
-                            : '등록',
+                    if (_lifecycleButtons().isNotEmpty) ...[
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _lifecycleButtons(),
                       ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (_isEditing &&
+                        _activeRecord!.value('sourceUrl').isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: ExternalLinkButton(
+                          url: _activeRecord!.value('sourceUrl'),
+                          label: '원문 열기',
+                        ),
+                      ),
+                    _compactDetails([
+                      for (final group in adminFieldGroups(remaining).values)
+                        ...group,
+                    ]),
+                    if (_isRule) _executionPanel(),
+                    if (_message != null)
+                      Semantics(liveRegion: true, child: Text(_message!)),
+                    if (_error != null)
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    const Divider(height: 24),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        TextButton(
+                          onPressed: saving ? null : _cancel,
+                          child: const Text('취소'),
+                        ),
+                        FilledButton(
+                          onPressed: saving || _metadataLocked ? null : _save,
+                          child: Text(
+                            _saving
+                                ? '저장 중…'
+                                : _isRule
+                                ? '요건 설명 저장'
+                                : _isEditing
+                                ? '저장'
+                                : '등록',
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-            key: ValueKey('admin-details-${widget.kind.name}'),
-          ),
-        ],
+                key: ValueKey('admin-details-${widget.kind.name}'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -222,12 +222,31 @@ void main() {
     final list = find.byKey(const ValueKey('admin-section-department'));
     final basic = find.byKey(const ValueKey('admin-basic-department'));
     final details = find.byKey(const ValueKey('admin-details-department'));
+    expect(
+      find.byKey(const ValueKey('admin-list-rail-department')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: form, matching: find.text('적용 범위·상세')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: form, matching: find.text('등록 기본 정보')),
+      findsOneWidget,
+    );
+    // Only the action-row Divider remains; the full-width section Divider is gone.
+    expect(
+      find.descendant(of: form, matching: find.byType(Divider)),
+      findsOneWidget,
+    );
+    final rail = find.byKey(const ValueKey('admin-list-rail-department'));
     expect(tester.getTopLeft(list).dy, tester.getTopLeft(basic).dy);
     expect(
       tester.getTopLeft(details).dy,
       greaterThan(tester.getBottomLeft(list).dy),
     );
-    expect(tester.getTopLeft(details).dx, tester.getTopLeft(list).dx);
+    // Details spans full width; list content is inset inside the ㄷ rail.
+    expect(tester.getTopLeft(details).dx, tester.getTopLeft(rail).dx);
     expect(
       tester.getSize(details).width,
       greaterThan(tester.getSize(list).width * 1.9),
@@ -347,7 +366,7 @@ void main() {
       matching: find.widgetWithText(FilledButton, '삭제'),
     );
     expect(find.descendant(of: row, matching: find.text('상세')), findsNothing);
-    expect(tester.getSize(row).height, 72);
+    expect(tester.getSize(row).height, 64);
     expect(tester.getTopLeft(name).dx, lessThan(tester.getTopLeft(edit).dx));
     expect(tester.getTopLeft(edit).dx, lessThan(tester.getTopLeft(remove).dx));
     expect(tester.takeException(), isNull);
@@ -378,7 +397,7 @@ void main() {
         of: find.byKey(const ValueKey('admin-registration-course-school-a')),
         matching: find.widgetWithText(FilledButton, '등록'),
       );
-      expect(tester.getSize(catalog).height, 72 * 3);
+      expect(tester.getSize(catalog).height, 64 * 3);
       expect(
         tester
             .widget<Scrollbar>(
