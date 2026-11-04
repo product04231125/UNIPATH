@@ -33,7 +33,11 @@ class CourseTerm {
       ? semester.trim()
       : '${year.trim()}년 ${semester.trim()}';
 
-  static String? validateYear(String? value, {required bool required}) {
+  static String? validateYear(
+    String? value, {
+    required bool required,
+    int? allowYear,
+  }) {
     final year = (value ?? '').trim();
     if (year.isEmpty && !required) return null;
     if (!RegExp(r'^[1-9]\d{3}$').hasMatch(year)) {
@@ -42,6 +46,8 @@ class CourseTerm {
     final parsed = int.parse(year);
     final maxYear = DateTime.now().year + 1;
     if (parsed < 1900 || parsed > maxYear) {
+      // Keep an out-of-range stored year selectable so unrelated edits still save.
+      if (allowYear != null && parsed == allowYear) return null;
       return '1900년부터 $maxYear년 사이의 연도를 선택해 주세요.';
     }
     return null;

@@ -248,6 +248,7 @@ Future<void> showPersonalRecordForm({
                         validator: (value) => CourseTerm.validateYear(
                           value,
                           required: record == null || period.year.isNotEmpty,
+                          allowYear: int.tryParse(period.year),
                         ),
                         builder: (state) {
                           final currentYear = DateTime.now().year;
@@ -333,6 +334,10 @@ Future<void> showPersonalRecordForm({
                             },
                             builder: (state) {
                               final selected = controllers[field.key]!.text;
+                              // Keep the exact stored semester (incl. odd spacing)
+                              // so AnchoredSelectField can resolve the value, and
+                              // so switching away mid-edit does not drop the option.
+                              final originalSemester = period.semester;
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -354,10 +359,13 @@ Future<void> showPersonalRecordForm({
                                         for (final option
                                             in CourseTerm.standardSemesters)
                                           SelectOption(option, option),
-                                        if (selected.isNotEmpty &&
+                                        if (originalSemester.trim().isNotEmpty &&
                                             !CourseTerm.standardSemesters
-                                                .contains(selected))
-                                          SelectOption(selected, selected),
+                                                .contains(originalSemester))
+                                          SelectOption(
+                                            originalSemester,
+                                            originalSemester.trim(),
+                                          ),
                                       ],
                                       onChanged: (value) {
                                         controllers[field.key]!.text = value;

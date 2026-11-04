@@ -140,6 +140,10 @@ void main() {
       }
       expect(CourseTerm.validateYear('1899', required: true), isNotNull);
       expect(
+        CourseTerm.validateYear('1899', required: true, allowYear: 1899),
+        isNull,
+      );
+      expect(
         CourseTerm.validateYear('${DateTime.now().year + 2}', required: true),
         isNotNull,
       );
@@ -354,6 +358,16 @@ void main() {
           .value,
       '봄학기',
     );
+    await chooseForm(
+      tester,
+      const ValueKey('record-select-term'),
+      '1학기',
+    );
+    await chooseForm(
+      tester,
+      const ValueKey('record-select-term'),
+      '봄학기',
+    );
     await enter(tester, 'section', 'A1');
     expect(
       tester
@@ -367,6 +381,30 @@ void main() {
     await repo.load();
     expect(repo.records.single.value('term'), '2022년 봄학기');
     expect(repo.records.single.value('section'), '1');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('out-of-range stored year still allows unrelated edits', (
+    tester,
+  ) async {
+    await seed({'옛 연도': '1899년 1학기'});
+    await open(tester);
+    await tester.tap(find.widgetWithText(TextButton, '수정'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<AnchoredSelectField<String>>(
+            find.byKey(const ValueKey('record-select-course-year')),
+          )
+          .value,
+      '1899',
+    );
+    await enter(tester, 'section', '3');
+    await save(tester);
+    final repo = PersonalRecordRepository(PersonalRecordKind.course);
+    await repo.load();
+    expect(repo.records.single.value('term'), '1899년 1학기');
+    expect(repo.records.single.value('section'), '3');
     expect(tester.takeException(), isNull);
   });
 }
