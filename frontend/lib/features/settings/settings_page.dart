@@ -86,16 +86,21 @@ class _SettingsPageState extends State<SettingsPage> {
 
   bool get _canUseCatalog => widget.studentApi != null;
 
-  String? get _personalSchoolLabel {
+  /// Saved academic profile source for the settings card.
+  /// Catalog UUID → 등록된 학교; name-only personal profile → 개인 설정.
+  String? get _academicSourceLabel {
     final profile = widget.repository.profile;
-    if (profile.hasCatalogSchool || profile.school.trim().isEmpty) {
-      return null;
-    }
+    final school = profile.school.trim();
     final department = profile.department.trim();
-    if (department.isEmpty) {
-      return profile.school;
+    final summary = [
+      if (school.isNotEmpty) school,
+      if (department.isNotEmpty) department,
+    ].join(' · ');
+    if (profile.hasCatalogSchool) {
+      return summary.isEmpty ? '등록된 학교' : '등록된 학교 · $summary';
     }
-    return '${profile.school} · $department';
+    if (school.isEmpty) return null;
+    return '개인 설정 · $summary';
   }
 
   @override
@@ -196,10 +201,9 @@ class _SettingsPageState extends State<SettingsPage> {
                                         const FeatureLine.one(
                                           text: '등록된 학교는 목록에서 고릅니다. 목록에 없으면 만들지 않습니다.',
                                         ),
-                                        if (_personalSchoolLabel != null)
+                                        if (_academicSourceLabel != null)
                                           FeatureLine.one(
-                                            text:
-                                                '개인 기준에서 가져온 학교: $_personalSchoolLabel',
+                                            text: _academicSourceLabel!,
                                           ),
                                       ],
                                       if (_useCatalog &&

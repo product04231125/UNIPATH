@@ -55,7 +55,7 @@ class HomePage extends StatelessWidget {
             title: '나의 대학생활 경로',
             description: '오늘 일정과 다음 기록을 한눈에 봅니다.',
             contextLabel: phone && profile.isConfigured
-                ? '${profile.school} · ${profile.department}'
+                ? (profile.hasCatalogSchool ? '등록' : '개인 설정')
                 : null,
             body: [
               WeeklySchedule(

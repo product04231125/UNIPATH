@@ -134,6 +134,7 @@ void main() {
     expect(repository.profile.curriculumId, otherId);
     expect(repository.profile.school, '검증 대학');
     expect(repository.profile.department, '검증 학과');
+    expect(find.text('등록된 학교 · 검증 대학 · 검증 학과'), findsOneWidget);
     await choose(tester, '검증 대학', '학교 선택');
     await saveSettings(tester);
     expect(repository.profile.school, isEmpty);
@@ -168,7 +169,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('개인 기준에서 가져온 학교: 미등록 대학 · 미등록 학과'), findsOneWidget);
+    expect(find.text('개인 설정 · 미등록 대학 · 미등록 학과'), findsOneWidget);
     expect(find.text('학교 선택'), findsOneWidget);
     await saveSettings(tester);
     expect(repository.profile.school, '미등록 대학');

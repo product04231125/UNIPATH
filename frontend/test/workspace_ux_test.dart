@@ -8,6 +8,7 @@ import 'package:university_path_frontend/features/home/home_page.dart';
 import 'package:university_path_frontend/features/planning/planning_dates.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
 import 'package:university_path_frontend/features/planning/weekly_schedule.dart';
+import 'package:university_path_frontend/app_shell/phone_shell.dart';
 import 'package:university_path_frontend/app_shell/workspace_shell.dart';
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 
@@ -522,6 +523,75 @@ void main() {
       }
     });
   }
+
+  testWidgets('phone home contextLabel shows 등록 or 개인 설정 only', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final personal = PlanningRepository();
+    await personal.load();
+    await personal.saveProfile(
+      const PlanningProfile(
+        school: '개인대학',
+        department: '개인학과',
+        admissionYear: 2024,
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: universityPathTheme(),
+        home: PhoneChromeScope(
+          active: true,
+          child: Scaffold(
+            body: HomePage(
+              repository: personal,
+              onOpenPage: (_) {},
+              onOpenSettings: () {},
+              onOpenSchedule: (_) {},
+              onAddSchedule: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('개인 설정'), findsOneWidget);
+    expect(find.text('개인대학 · 개인학과'), findsNothing);
+    expect(find.text('등록'), findsNothing);
+
+    final catalog = PlanningRepository();
+    await catalog.load();
+    await catalog.saveProfile(
+      const PlanningProfile(
+        school: '등록대학',
+        department: '등록학과',
+        admissionYear: 2024,
+        institutionId: 'inst-1',
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: universityPathTheme(),
+        home: PhoneChromeScope(
+          active: true,
+          child: Scaffold(
+            body: HomePage(
+              repository: catalog,
+              onOpenPage: (_) {},
+              onOpenSettings: () {},
+              onOpenSchedule: (_) {},
+              onAddSchedule: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('등록'), findsOneWidget);
+    expect(find.text('개인 설정'), findsNothing);
+    expect(find.text('등록대학 · 등록학과'), findsNothing);
+  });
 
   testWidgets('home uses real upcoming data and opens the selected date', (
     tester,
