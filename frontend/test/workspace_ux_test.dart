@@ -261,13 +261,25 @@ void main() {
           final upcoming = tester.getRect(card('다가오는 일정'));
           final prepare = tester.getRect(card('준비 목록'));
           final next = tester.getRect(card('다음에 이어갈 기록'));
+          final weekly = tester.getRect(find.byType(WeeklySchedule));
+          expect(weekly.left, closeTo(upcoming.left, 0.5));
+          expect(
+            find.descendant(
+              of: card('다가오는 일정'),
+              matching: find.text('일정 추가'),
+            ),
+            findsOneWidget,
+          );
+          expect(find.widgetWithText(FilledButton, '일정 추가'), findsOneWidget);
           if (width >= 820) {
             expect(upcoming.top, closeTo(prepare.top, 0.01));
             expect(upcoming.bottom, closeTo(prepare.bottom, 0.01));
             expect(next.top, greaterThan(prepare.bottom));
+            expect(weekly.right, closeTo(prepare.right, 0.5));
           } else {
             expect(prepare.top, greaterThan(upcoming.bottom));
             expect(next.top, greaterThan(prepare.bottom));
+            expect(weekly.width, closeTo(upcoming.width, 0.5));
             // Stacked cards retain their own natural content height.
             expect((upcoming.height - prepare.height).abs(), greaterThan(1));
           }
@@ -329,7 +341,7 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     }
-    await tester.binding.setSurfaceSize(const Size(851, 900));
+    await tester.binding.setSurfaceSize(const Size(847, 900));
     await tester.pumpAndSettle();
     expect(find.byTooltip('홈'), findsOneWidget);
     expect(

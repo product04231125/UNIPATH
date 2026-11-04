@@ -256,8 +256,8 @@ void main() {
 
     for (final menu in [
       ('수강 관리', '내 수강 과목'),
-      ('일정', '개인 계획을 이 기기에 저장합니다.'),
-      ('졸업 요건', '기준일'),
+      ('일정', '개인 일정을 주간으로 보고 추가합니다.'),
+      ('졸업 요건', '학업 프로필'),
       ('활동', '등록한 활동'),
       ('자격', '등록한 자격'),
       ('자료', '내 자료'),
@@ -284,6 +284,7 @@ void main() {
 
     await tester.tap(find.byTooltip('일정'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('일정 추가'));
     await tester.tap(find.text('일정 추가'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, '프로젝트 마감');

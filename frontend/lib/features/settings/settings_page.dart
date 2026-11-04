@@ -164,7 +164,11 @@ class _SettingsPageState extends State<SettingsPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const FeatureLine.section(text: '학업과 계획'),
+                              const FeatureLine.section(
+                                text: '학업과 계획',
+                                padTop: false,
+                                padBottom: false,
+                              ),
                               if (widget.repository.isServerBacked)
                                 PlanningImportSection(
                                   repository: widget.repository,
@@ -353,11 +357,13 @@ class _SettingsPageState extends State<SettingsPage> {
                               ),
                               const FeatureLine.two(
                                 primary: '개인 교육과정·규칙',
-                                secondary: '내가 직접 입력하는 학사 기준입니다.',
+                                secondary:
+                                    '등록 학교 목록에 없으면 여기서 교육과정·규칙을 직접 만듭니다.',
+                                divided: false,
                               ),
                               Align(
                                 alignment: Alignment.centerLeft,
-                                child: OutlinedButton(
+                                child: FilledButton.tonal(
                                   onPressed: _saving
                                       ? null
                                       : () => setState(() => _personal = true),

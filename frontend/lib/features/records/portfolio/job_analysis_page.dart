@@ -281,13 +281,15 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
           ],
         ),
       ),
-      const SizedBox(height: 16),
+      SizedBox(height: FeatureLine.slotGap(context)),
       SurfaceCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             FeatureLine.section(
               text: '비교에 넣을 개인 기록',
+              padTop: false,
+              padBottom: false,
               trailing: _failed ? FeatureLine.reload(onPressed: _load) : null,
             ),
             const FeatureLine.one(text: '고른 항목만 포함합니다.'),
@@ -327,12 +329,16 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
           ],
         ),
       ),
-      const SizedBox(height: 16),
+      SizedBox(height: FeatureLine.slotGap(context)),
       SurfaceCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const FeatureLine.section(text: '분석 상태'),
+            const FeatureLine.section(
+              text: '분석 상태',
+              padTop: false,
+              padBottom: false,
+            ),
             const FeatureLine.one(text: '상태: 분석할 수 없음'),
             FeatureLine.one(
               key: const ValueKey('job-analysis-reason'),

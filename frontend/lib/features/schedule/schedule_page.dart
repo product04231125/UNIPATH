@@ -7,6 +7,7 @@ import '../../shared/widgets/equal_height_row.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/input_dialog.dart';
+import '../../shared/widgets/surface_card.dart';
 import '../../shared/pending_ui_action.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
@@ -87,7 +88,7 @@ class _SchedulePageState extends State<SchedulePage> {
                     ? EqualHeightRow(
                         children: [
                           Expanded(flex: 3, child: _calendar()),
-                          const SizedBox(width: 18),
+                          const SizedBox(width: 16),
                           Expanded(flex: 2, child: _dayList(selectedEvents)),
                         ],
                       )
@@ -95,18 +96,11 @@ class _SchedulePageState extends State<SchedulePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _calendar(),
-                          SizedBox(height: phoneAwareGap(context, wide: 18)),
+                          SizedBox(height: FeatureLine.slotGap(context)),
                           _dayList(selectedEvents),
                         ],
                       ),
               ),
-            ),
-          ],
-          actions: [
-            FilledButton.icon(
-              onPressed: () => _editEvent(),
-              icon: const Icon(Icons.add),
-              label: const Text('일정 추가'),
             ),
           ],
         ),
@@ -114,20 +108,17 @@ class _SchedulePageState extends State<SchedulePage> {
     },
   );
 
-  Widget _calendar() => Card(
-    clipBehavior: Clip.antiAlias,
-    child: Padding(
-      padding: phoneAwarePadding(context, wide: 16),
-      child: Column(
+  Widget _calendar() => SurfaceCard(
+    child: Column(
         children: [
           Row(
             children: [
-              IconButton(
+              IconButton.filledTonal(
                 tooltip: '이전 달',
                 onPressed: () => setState(
                   () => _month = DateTime(_month.year, _month.month - 1),
                 ),
-                icon: Icon(Icons.chevron_left),
+                icon: const Icon(Icons.chevron_left),
               ),
               Expanded(
                 child: Text(
@@ -136,12 +127,12 @@ class _SchedulePageState extends State<SchedulePage> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
-              IconButton(
+              IconButton.filledTonal(
                 tooltip: '다음 달',
                 onPressed: () => setState(
                   () => _month = DateTime(_month.year, _month.month + 1),
                 ),
-                icon: Icon(Icons.chevron_right),
+                icon: const Icon(Icons.chevron_right),
               ),
             ],
           ),
@@ -191,8 +182,7 @@ class _SchedulePageState extends State<SchedulePage> {
           ),
         ],
       ),
-    ),
-  );
+    );
 
   Widget _dayCell(DateTime day) {
     final events = _eventsForDay(day);
@@ -251,21 +241,25 @@ class _SchedulePageState extends State<SchedulePage> {
     );
   }
 
-  Widget _dayList(List<PlanningEvent> events) => Card(
-    child: Padding(
-      padding: phoneAwarePadding(context, wide: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          FeatureLine.section(
-            text: '${_selectedDay.month}월 ${_selectedDay.day}일 일정',
+  Widget _dayList(List<PlanningEvent> events) => SurfaceCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FeatureLine.section(
+          text: '${_selectedDay.month}월 ${_selectedDay.day}일 일정',
+          padTop: false,
+          padBottom: false,
+          trailing: FilledButton.icon(
+            onPressed: () => _editEvent(),
+            icon: const Icon(Icons.add),
+            label: const Text('일정 추가'),
           ),
-          if (events.isEmpty)
-            const FeatureLine.one(text: '등록된 개인 일정이 없습니다.')
-          else
-            for (final event in events) _eventTile(event),
-        ],
-      ),
+        ),
+        if (events.isEmpty)
+          const FeatureLine.one(text: '등록된 개인 일정이 없습니다.')
+        else
+          for (final event in events) _eventTile(event),
+      ],
     ),
   );
 

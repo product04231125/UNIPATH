@@ -130,7 +130,7 @@ void main() {
           host(SchedulePage(repository: repository), scale),
         );
         await tester.pumpAndSettle();
-        final cards = find.byType(Card);
+        final cards = find.byType(SurfaceCard);
         expect(cards, findsNWidgets(2));
         if (size.width >= 820) {
           expect(find.byType(EqualHeightRow), findsOneWidget);
@@ -149,6 +149,9 @@ void main() {
             isNot(closeTo(tester.getSize(cards.last).height, .01)),
           );
         }
+        expect(find.widgetWithText(FilledButton, '일정 추가'), findsOneWidget);
+        expect(find.byTooltip('이전 달'), findsOneWidget);
+        expect(find.byTooltip('다음 달'), findsOneWidget);
         expect(tester.takeException(), isNull);
       }
     });

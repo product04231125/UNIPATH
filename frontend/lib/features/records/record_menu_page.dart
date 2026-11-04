@@ -507,6 +507,8 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
             children: [
               FeatureLine.section(
                 text: widget.listTitle,
+                padTop: false,
+                padBottom: false,
                 trailing: _repository.isServerBacked
                     ? FeatureLine.reload(onPressed: _loading ? null : _load)
                     : null,

@@ -8,6 +8,7 @@ import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/feature_actions.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/responsive_columns.dart';
+import '../../shared/widgets/surface_card.dart';
 import '../../shared/widgets/responsive_panels.dart';
 import 'personal_record_fields.dart';
 import 'personal_record_repository.dart';
@@ -420,15 +421,9 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
         .where((f) => f.key == 'title' || f.key == relation)
         .toList();
     final details = _fields.where((f) => !basic.contains(f)).toList();
-    return Card(
+    return SurfaceCard(
       key: ValueKey('personal-frame-${widget.kind.name}'),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Form(
+      child: Form(
           key: _form,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -520,7 +515,6 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
             ],
           ),
         ),
-      ),
     );
   }
 

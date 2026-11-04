@@ -215,8 +215,11 @@ class PersonalRequirementPanelState extends State<PersonalRequirementPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const FeatureLine.section(text: '계산 조건'),
-          const SizedBox(height: 12),
+          const FeatureLine.section(
+            text: '계산 조건',
+            padTop: false,
+            padBottom: false,
+          ),
           if (_loading) const LinearProgressIndicator(),
           if (c?.sources != null)
             PersonalConditionFields(

@@ -430,11 +430,13 @@ void main() {
     addTearDown(repo.dispose);
     await repo.load();
     await tester.pumpWidget(host(SchedulePage(repository: repo)));
+    await tester.ensureVisible(find.widgetWithText(FilledButton, '일정 추가'));
     await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));
     await tester.pumpAndSettle();
     await tester.tapAt(const Offset(5, 5));
     await tester.pumpAndSettle();
     expect(find.byType(InputDialog), findsNothing);
+    await tester.ensureVisible(find.widgetWithText(FilledButton, '일정 추가'));
     await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, '일정');

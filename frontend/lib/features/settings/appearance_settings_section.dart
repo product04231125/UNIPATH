@@ -15,7 +15,11 @@ class AppearanceSettingsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const FeatureLine.section(text: '화면'),
+          const FeatureLine.section(
+            text: '화면',
+            padTop: false,
+            padBottom: false,
+          ),
           if (appearance.loading)
             const LinearProgressIndicator()
           else if (appearance.error != null) ...[

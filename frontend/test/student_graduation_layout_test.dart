@@ -6,6 +6,7 @@ import 'package:university_path_frontend/features/graduation/personal_graduation
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_record_codec.dart';
 import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
+import 'package:university_path_frontend/shared/widgets/surface_card.dart';
 
 import 'personal_graduation_test.dart' as fixture;
 import 'remote_personal_ui_test.dart' as server;
@@ -184,7 +185,7 @@ void main() {
       expect(repo.records.single.value('schoolId'), 'school');
       expect(repo.records.single.value('code'), 'CS');
       expect(find.text('등록한 항목 1개'), findsOneWidget);
-      expect(find.byType(Card), findsOneWidget);
+      expect(find.byType(SurfaceCard), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

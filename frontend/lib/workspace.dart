@@ -362,7 +362,6 @@ class _WorkspaceState extends State<Workspace> {
       switch (index) {
         0 => HomePage(
           repository: _planningRepository,
-          coveredRightWidth: 0,
           onOpenPage: _selectPage,
           onOpenSettings: () => _selectPage(settingsPage - 1),
           onOpenSchedule: (day) {

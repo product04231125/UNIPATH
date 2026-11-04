@@ -109,6 +109,12 @@ void main() {
   ) async {
     final repository = await pumpSettings(tester, SettingsCatalogServer());
     expect(find.textContaining('목록에 없으면 만들지 않습니다'), findsOneWidget);
+    expect(
+      find.textContaining('등록 학교 목록에 없으면 여기서 교육과정·규칙을 직접 만듭니다.'),
+      findsOneWidget,
+    );
+    expect(find.widgetWithText(FilledButton, '개인 교육과정 작업'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, '개인 교육과정 작업'), findsNothing);
     expect(find.text('학교 선택'), findsOneWidget);
     expect(find.text('목록에 없는 학교 직접 입력'), findsNothing);
     repository.dispose();

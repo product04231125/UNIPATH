@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/surface_card.dart';
 
@@ -52,12 +51,16 @@ class AccountSettingsSection extends StatelessWidget {
       return const SizedBox.shrink();
     }
     return Padding(
-      padding: EdgeInsets.only(top: phoneAwareGap(context, wide: 24)),
+      padding: EdgeInsets.only(top: FeatureLine.slotGap(context)),
       child: SurfaceCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const FeatureLine.section(text: '계정·정보'),
+            const FeatureLine.section(
+              text: '계정·정보',
+              padTop: false,
+              padBottom: false,
+            ),
             if (security != null) ...[
               Align(
                 alignment: Alignment.centerLeft,

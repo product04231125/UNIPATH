@@ -120,6 +120,8 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
             children: [
               FeatureLine.section(
                 text: '1. 교육과정과 기준일',
+                padTop: false,
+                padBottom: false,
                 trailing: FeatureLine.reload(
                   onPressed: c.locked
                       ? null
@@ -185,7 +187,7 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: FeatureLine.slotGap(context)),
         if (c.sources case final sources?)
           Form(
             key: _form,
@@ -385,6 +387,8 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
       children: [
         FeatureLine.section(
           text: '저장된 계산 이력',
+          padTop: false,
+          padBottom: false,
           trailing: FeatureLine.reload(
             onPressed: c.historyLoading ? null : () => c.loadHistory(),
             label: '이력 다시 불러오기',

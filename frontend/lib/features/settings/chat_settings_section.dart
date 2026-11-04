@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/surface_card.dart';
@@ -15,12 +14,16 @@ class ChatSettingsSection extends StatelessWidget {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: preferences,
     builder: (context, _) => Padding(
-      padding: EdgeInsets.only(top: phoneAwareGap(context, wide: 24)),
+      padding: EdgeInsets.only(top: FeatureLine.slotGap(context)),
       child: SurfaceCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const FeatureLine.section(text: '채팅'),
+            const FeatureLine.section(
+              text: '채팅',
+              padTop: false,
+              padBottom: false,
+            ),
             const FeatureLine.one(text: '다음 열기부터 적용합니다.'),
             if (preferences.loading)
               const LinearProgressIndicator()

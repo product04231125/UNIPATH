@@ -259,7 +259,11 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const FeatureLine.section(text: '학업 프로필'),
+            const FeatureLine.section(
+              text: '학업 프로필',
+              padTop: false,
+              padBottom: false,
+            ),
             FeatureLine.two(
               primary: officialAuditProfileSummary(widget.profile),
               secondary: _ready

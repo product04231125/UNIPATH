@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/equal_height_row.dart';
-import '../../shared/widgets/feature_actions.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/surface_card.dart';
@@ -20,14 +19,12 @@ class HomePage extends StatelessWidget {
     required this.onOpenSettings,
     required this.onOpenSchedule,
     required this.onAddSchedule,
-    this.coveredRightWidth = 0,
   });
   final PlanningRepository repository;
   final ValueChanged<int> onOpenPage;
   final VoidCallback onOpenSettings;
   final ValueChanged<DateTime> onOpenSchedule;
   final VoidCallback onAddSchedule;
-  final double coveredRightWidth;
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -61,32 +58,13 @@ class HomePage extends StatelessWidget {
                 ? '${profile.school} · ${profile.department}'
                 : null,
             body: [
-              LayoutBuilder(
-                builder: (context, constraints) => Align(
-                  alignment: Alignment.topLeft,
-                  child: SizedBox(
-                    width: (constraints.maxWidth - coveredRightWidth).clamp(
-                      0.0,
-                      constraints.maxWidth,
-                    ),
-                    child: WeeklySchedule(
-                      compact: compact,
-                      events: repository.events,
-                      startsOn: profile.weekStartsOn,
-                      onSelectDay: onOpenSchedule,
-                    ),
-                  ),
-                ),
+              WeeklySchedule(
+                compact: compact,
+                events: repository.events,
+                startsOn: profile.weekStartsOn,
+                onSelectDay: onOpenSchedule,
               ),
-              FeatureActions(
-                children: [
-                  FilledButton.icon(
-                    onPressed: onAddSchedule,
-                    icon: const Icon(Icons.add),
-                    label: const Text('일정 추가'),
-                  ),
-                ],
-              ),
+              SizedBox(height: FeatureLine.slotGap(context)),
               LayoutBuilder(
                 builder: (context, constraints) {
                   final upcomingCard = _upcoming(
@@ -100,7 +78,7 @@ class HomePage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         upcomingCard,
-                        SizedBox(height: phoneAwareGap(context, wide: 16)),
+                        SizedBox(height: FeatureLine.slotGap(context)),
                         prepare,
                       ],
                     );
@@ -114,7 +92,7 @@ class HomePage extends StatelessWidget {
                   );
                 },
               ),
-              SizedBox(height: phone ? phoneListGap : (compact ? 8 : 16)),
+              SizedBox(height: FeatureLine.slotGap(context)),
               _nextSteps(context, year, compact: true),
             ],
           );
@@ -123,12 +101,22 @@ class HomePage extends StatelessWidget {
     },
   );
 
-  Widget _card(BuildContext context, String title, Widget child) => SurfaceCard(
+  Widget _card(
+    BuildContext context,
+    String title,
+    Widget child, {
+    Widget? trailing,
+  }) => SurfaceCard(
     key: ValueKey('home-card-$title'),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        FeatureLine.section(text: title),
+        FeatureLine.section(
+          text: title,
+          trailing: trailing,
+          padTop: false,
+          padBottom: false,
+        ),
         child,
       ],
     ),
@@ -175,6 +163,11 @@ class HomePage extends StatelessWidget {
               ),
             ],
           ),
+    trailing: FilledButton.icon(
+      onPressed: onAddSchedule,
+      icon: const Icon(Icons.add),
+      label: const Text('일정 추가'),
+    ),
   );
 
   Widget _prepare(BuildContext context, PlanningProfile profile) {

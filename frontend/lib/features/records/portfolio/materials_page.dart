@@ -3,12 +3,12 @@ import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
-import '../../../app_shell/phone_shell.dart';
 import '../../../shared/app_style.dart';
 import '../../../shared/widgets/feature_actions.dart';
 import '../../../shared/widgets/feature_line.dart';
 import '../../../shared/widgets/feature_page.dart';
 import '../../../shared/widgets/field_label.dart';
+import '../../../shared/widgets/surface_card.dart';
 import '../../../shared/widgets/input_dialog.dart';
 import '../../../shared/widgets/responsive_columns.dart';
 import 'material_repository.dart';
@@ -308,16 +308,16 @@ class MaterialsPageState extends State<MaterialsPage> {
                 ),
             ],
           ),
-          second: Card(
-            child: Padding(
-              padding: phoneAwarePadding(context, wide: 20),
-              child: Form(
+          second: SurfaceCard(
+            child: Form(
                 key: _form,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     FeatureLine.section(
                       text: _editing == null ? '자료 등록' : '자료 수정',
+                      padTop: false,
+                      padBottom: false,
                     ),
                     _field('title', '자료 이름 *', _title, required: true),
                     _field('type', '파일 종류 · 용도 (선택)', _type),
@@ -390,7 +390,6 @@ class MaterialsPageState extends State<MaterialsPage> {
                     ),
                   ],
                 ),
-              ),
             ),
           ),
         ),
