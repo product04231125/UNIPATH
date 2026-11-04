@@ -512,6 +512,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                     : null,
               ),
               if (widget.kind == PersonalRecordKind.course) ...[
+                const SizedBox(height: 24),
                 Wrap(
                   spacing: 16,
                   runSpacing: 12,
