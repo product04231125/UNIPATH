@@ -282,18 +282,20 @@ class HomePage extends StatelessWidget {
         ),
       ],
     };
-    return Padding(
+    return SurfaceCard(
       key: const ValueKey('home-card-다음에 이어갈 기록'),
+      // Dense padding so the Windows default client size still fits without scroll.
       padding: EdgeInsets.symmetric(
-        horizontal: PhoneChromeScope.of(context) ? phoneCardPadding : 18,
-        vertical: PhoneChromeScope.of(context)
-            ? phoneListGap
-            : (compact ? 4 : 8),
+        horizontal: 18,
+        vertical: compact ? 4 : 8,
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('다음에 이어갈 기록', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            '다음에 이어갈 기록',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 4),
           Wrap(
             spacing: 12,

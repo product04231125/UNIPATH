@@ -869,110 +869,135 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
               ],
             ),
         ] else ...[
-          ResponsiveColumns(
-            enabled: true,
-            first: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const FeatureLine.section(text: '바로가기'),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      style: _overviewOutlinedStyle,
-                      onPressed: _busy ? null : () => _navigate('/admin/rules'),
-                      icon: const Icon(Icons.arrow_forward, size: 18),
-                      label: const Text('졸업요건 확인'),
-                    ),
-                    OutlinedButton.icon(
-                      style: _overviewOutlinedStyle,
-                      onPressed: _busy
-                          ? null
-                          : () => _navigate('/admin/documents'),
-                      icon: const Icon(Icons.arrow_forward, size: 18),
-                      label: const Text('공식 문서 확인'),
-                    ),
-                    if (_role == AppRole.superAdmin)
+          SurfaceCard(
+            child: ResponsiveColumns(
+              enabled: true,
+              first: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const FeatureLine.section(
+                    text: '바로가기',
+                    padTop: false,
+                    padBottom: false,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
                       OutlinedButton.icon(
                         style: _overviewOutlinedStyle,
-                        onPressed: _busy
-                            ? null
-                            : () => _navigate('/admin/accounts'),
+                        onPressed:
+                            _busy ? null : () => _navigate('/admin/rules'),
                         icon: const Icon(Icons.arrow_forward, size: 18),
-                        label: const Text('관리자 범위 관리'),
+                        label: const Text('졸업요건 확인'),
                       ),
-                    OutlinedButton.icon(
-                      style: _overviewOutlinedStyle,
-                      onPressed: _busy
-                          ? null
-                          : () => _navigate('/admin/history'),
-                      icon: const Icon(Icons.arrow_forward, size: 18),
-                      label: const Text('관리 이력 보기'),
-                    ),
-                    if (widget.onEnterStudentPreview != null)
                       OutlinedButton.icon(
-                        key: const ValueKey('admin-student-preview'),
                         style: _overviewOutlinedStyle,
                         onPressed: _busy
                             ? null
-                            : widget.onEnterStudentPreview,
-                        icon: const Icon(Icons.visibility_outlined, size: 18),
-                        label: const Text('학생 화면 미리보기'),
+                            : () => _navigate('/admin/documents'),
+                        icon: const Icon(Icons.arrow_forward, size: 18),
+                        label: const Text('공식 문서 확인'),
                       ),
-                  ],
-                ),
-              ],
-            ),
-            second: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const FeatureLine.section(text: '자료 등록'),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final kind in [
-                      AdminKind.department,
-                      AdminKind.curriculum,
-                      AdminKind.course,
-                      AdminKind.document,
-                    ])
-                      if (_canCreate(kind))
-                        FilledButton.icon(
-                          style: _overviewFilledStyle,
-                          onPressed: _busy ? null : () => _edit(kind),
-                          icon: const Icon(Icons.add, size: 18),
-                          label: Text('${kind.label} 등록'),
+                      if (_role == AppRole.superAdmin)
+                        OutlinedButton.icon(
+                          style: _overviewOutlinedStyle,
+                          onPressed: _busy
+                              ? null
+                              : () => _navigate('/admin/accounts'),
+                          icon: const Icon(Icons.arrow_forward, size: 18),
+                          label: const Text('관리자 범위 관리'),
                         ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          FeatureLine.section(
-            text: '최근 변경',
-            trailing: _repo.live
-                ? FeatureLine.reload(
-                    onPressed: _busy || _loading || _refreshing ? null : _load,
-                  )
-                : null,
-          ),
-          if (recent.isEmpty)
-            const FeatureLine.one(text: '현재 학교의 변경 이력이 없습니다.'),
-          for (final entry in recent)
-            InkWell(
-              onTap: () => _navigate('/admin/history'),
-              child: FeatureLine.two(
-                primary:
-                    '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
-                secondary:
-                    _find(entry.targetId) != null &&
-                        _repo.canRead(_actor, _find(entry.targetId)!)
-                    ? _find(entry.targetId)!.name
-                    : '삭제되었거나 볼 수 없는 항목',
+                      OutlinedButton.icon(
+                        style: _overviewOutlinedStyle,
+                        onPressed: _busy
+                            ? null
+                            : () => _navigate('/admin/history'),
+                        icon: const Icon(Icons.arrow_forward, size: 18),
+                        label: const Text('관리 이력 보기'),
+                      ),
+                      if (widget.onEnterStudentPreview != null)
+                        OutlinedButton.icon(
+                          key: const ValueKey('admin-student-preview'),
+                          style: _overviewOutlinedStyle,
+                          onPressed: _busy
+                              ? null
+                              : widget.onEnterStudentPreview,
+                          icon: const Icon(Icons.visibility_outlined, size: 18),
+                          label: const Text('학생 화면 미리보기'),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+              second: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const FeatureLine.section(
+                    text: '자료 등록',
+                    padTop: false,
+                    padBottom: false,
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final kind in [
+                        AdminKind.department,
+                        AdminKind.curriculum,
+                        AdminKind.course,
+                        AdminKind.document,
+                      ])
+                        if (_canCreate(kind))
+                          FilledButton.icon(
+                            style: _overviewFilledStyle,
+                            onPressed: _busy ? null : () => _edit(kind),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: Text('${kind.label} 등록'),
+                          ),
+                    ],
+                  ),
+                ],
               ),
             ),
+          ),
+          SizedBox(height: FeatureLine.slotGap(context)),
+          SurfaceCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FeatureLine.section(
+                  text: '최근 변경',
+                  padTop: false,
+                  padBottom: false,
+                  trailing: _repo.live
+                      ? FeatureLine.reload(
+                          onPressed:
+                              _busy || _loading || _refreshing ? null : _load,
+                        )
+                      : null,
+                ),
+                const SizedBox(height: 8),
+                if (recent.isEmpty)
+                  const FeatureLine.one(text: '현재 학교의 변경 이력이 없습니다.'),
+                for (final entry in recent)
+                  InkWell(
+                    onTap: () => _navigate('/admin/history'),
+                    child: FeatureLine.two(
+                      primary:
+                          '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
+                      secondary:
+                          _find(entry.targetId) != null &&
+                              _repo.canRead(_actor, _find(entry.targetId)!)
+                          ? _find(entry.targetId)!.name
+                          : '삭제되었거나 볼 수 없는 항목',
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ],
       ],
     );
@@ -1018,74 +1043,82 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     final actionOptions = {
       for (final entry in allScoped) entry.action: _actionLabel(entry.action),
     };
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        FeatureLine.section(
-          text: '관리 이력',
-          trailing: _repo.live
-              ? FeatureLine.reload(
-                  onPressed: _busy || _loading || _refreshing ? null : _load,
-                )
-              : null,
-        ),
-        TextFormField(
-          key: const ValueKey('admin-history-search'),
-          controller: _historyQuery,
-          decoration: const InputDecoration(
-            labelText: '대상·수행자·행동 검색',
-            prefixIcon: Icon(Icons.search),
+    return SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FeatureLine.section(
+            text: '관리 이력',
+            padTop: false,
+            padBottom: false,
+            trailing: _repo.live
+                ? FeatureLine.reload(
+                    onPressed: _busy || _loading || _refreshing ? null : _load,
+                  )
+                : null,
           ),
-          onChanged: (_) => setState(() {}),
-        ),
-        const SizedBox(height: 8),
-        AnchoredSelectField<String>(
-          key: const ValueKey('admin-history-kind'),
-          externalLabel: true,
-          value: _historyKind,
-          label: '종류',
-          options: [
-            const SelectOption('', '전체 종류'),
-            for (final entry in kindOptions.entries)
-              SelectOption(entry.key, entry.value),
-          ],
-          onChanged: (value) => setState(() => _historyKind = value),
-        ),
-        const SizedBox(height: 8),
-        AnchoredSelectField<String>(
-          key: const ValueKey('admin-history-action'),
-          externalLabel: true,
-          value: _historyAction,
-          label: '행동',
-          options: [
-            const SelectOption('', '전체 행동'),
-            for (final entry in actionOptions.entries)
-              SelectOption(entry.key, entry.value),
-          ],
-          onChanged: (value) => setState(() => _historyAction = value),
-        ),
-        if (allScoped.isEmpty)
-          const FeatureLine.one(text: '관리 이력이 없습니다. 등록·수정 후 확인하세요.')
-        else if (entries.isEmpty)
-          const FeatureLine.one(text: '검색·필터에 맞는 이력이 없습니다.')
-        else
-          for (final entry in entries) ...[
-            FeatureLine.two(
-              primary:
-                  '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
-              secondary:
-                  '${_timeLabel(entry.at)} · ${_actorName(entry.actorId)} · ${_relationName(entry.targetId).isEmpty ? '삭제되었거나 볼 수 없는 항목' : _relationName(entry.targetId)}',
+          SizedBox(height: FeatureLine.slotGap(context)),
+          TextFormField(
+            key: const ValueKey('admin-history-search'),
+            controller: _historyQuery,
+            decoration: const InputDecoration(
+              labelText: '대상·수행자·행동 검색',
+              prefixIcon: Icon(Icons.search),
             ),
-            ExpansionTile(
-              title: const Text('기술 식별자'),
-              children: [
-                SelectableText(
-                  '요청 ID: ${entry.requestId}\n대상 ID: ${entry.targetId}',
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 8),
+          AnchoredSelectField<String>(
+            key: const ValueKey('admin-history-kind'),
+            externalLabel: true,
+            value: _historyKind,
+            label: '종류',
+            options: [
+              const SelectOption('', '전체 종류'),
+              for (final entry in kindOptions.entries)
+                SelectOption(entry.key, entry.value),
+            ],
+            onChanged: (value) => setState(() => _historyKind = value),
+          ),
+          const SizedBox(height: 8),
+          AnchoredSelectField<String>(
+            key: const ValueKey('admin-history-action'),
+            externalLabel: true,
+            value: _historyAction,
+            label: '행동',
+            options: [
+              const SelectOption('', '전체 행동'),
+              for (final entry in actionOptions.entries)
+                SelectOption(entry.key, entry.value),
+            ],
+            onChanged: (value) => setState(() => _historyAction = value),
+          ),
+          if (allScoped.isEmpty)
+            const FeatureLine.one(text: '관리 이력이 없습니다. 등록·수정 후 확인하세요.')
+          else if (entries.isEmpty)
+            const FeatureLine.one(text: '검색·필터에 맞는 이력이 없습니다.')
+          else
+            for (final entry in entries) ...[
+              FeatureLine.two(
+                primary:
+                    '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
+                secondary:
+                    '${_timeLabel(entry.at)} · ${_actorName(entry.actorId)} · ${_relationName(entry.targetId).isEmpty ? '삭제되었거나 볼 수 없는 항목' : _relationName(entry.targetId)}',
+              ),
+              Material(
+                type: MaterialType.transparency,
+                child: ExpansionTile(
+                  title: const Text('기술 식별자'),
+                  children: [
+                    SelectableText(
+                      '요청 ID: ${entry.requestId}\n대상 ID: ${entry.targetId}',
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ],
-      ],
+              ),
+            ],
+        ],
+      ),
     );
   }
 

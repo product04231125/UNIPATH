@@ -412,36 +412,40 @@ class MaterialsPageState extends State<MaterialsPage> {
       ] else
         ResponsiveColumns(
           enabled: true,
-          first: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              FeatureLine.section(
-                text: '자료 ${_records.length}개',
-                padTop: false,
-              ),
-              TextFormField(
-                key: const ValueKey('material-search'),
-                controller: _query,
-                enabled: !_busy,
-                decoration: const InputDecoration(
-                  labelText: '제목·종류·설명 검색',
-                  prefixIcon: Icon(Icons.search),
+          first: SurfaceCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FeatureLine.section(
+                  text: '자료 ${_records.length}개',
+                  padTop: false,
+                  padBottom: false,
                 ),
-                onChanged: (_) => setState(() {}),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text('${_filtered.length}개 표시 / ${_records.length}개'),
-              ),
-              if (_records.isEmpty)
-                const FeatureLine.one(
-                  text: '등록한 자료가 없습니다. 설명만 기록하거나 PDF를 선택해 등록하세요.',
-                )
-              else if (_filtered.isEmpty)
-                const FeatureLine.one(text: '검색에 맞는 자료가 없습니다. 검색어를 바꿔보세요.')
-              else
-                _cappedList(),
-            ],
+                SizedBox(height: FeatureLine.slotGap(context)),
+                TextFormField(
+                  key: const ValueKey('material-search'),
+                  controller: _query,
+                  enabled: !_busy,
+                  decoration: const InputDecoration(
+                    labelText: '제목·종류·설명 검색',
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text('${_filtered.length}개 표시 / ${_records.length}개'),
+                ),
+                if (_records.isEmpty)
+                  const FeatureLine.one(
+                    text: '등록한 자료가 없습니다. 설명만 기록하거나 PDF를 선택해 등록하세요.',
+                  )
+                else if (_filtered.isEmpty)
+                  const FeatureLine.one(text: '검색에 맞는 자료가 없습니다. 검색어를 바꿔보세요.')
+                else
+                  _cappedList(),
+              ],
+            ),
           ),
           second: SurfaceCard(
             child: Form(

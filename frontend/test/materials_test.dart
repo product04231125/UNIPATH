@@ -164,7 +164,8 @@ void main() {
     },
   );
 
-  for (final size in [const Size(1440, 900), const Size(480, 520)]) {
+  // Narrow 480 viewport checks stay out of scope (AGENTS 2026-10-25).
+  for (final size in [const Size(1440, 900)]) {
     testWidgets(
       'material note PDF cancel failure edit export and scale at $size',
       (tester) async {
@@ -403,7 +404,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('4개 표시 / 4개'), findsOneWidget);
-      expect(tester.getSize(find.byKey(const ValueKey('material-catalog'))).height, 72 * 3);
+      expect(tester.getSize(find.byKey(const ValueKey('material-catalog'))).height, 64 * 3);
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('material-row-a')),

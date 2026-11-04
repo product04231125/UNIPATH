@@ -216,70 +216,87 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
     title: '채용공고 분석',
     description: '공고와 고른 기록으로 분석을 준비합니다.',
     body: [
-      FieldLabel(
-        label: '채용공고 텍스트',
-        child: TextFormField(
-          key: const ValueKey('job-posting-text'),
-          controller: _posting,
-          minLines: 6,
-          maxLines: 12,
-          decoration: const InputDecoration(hintText: '비교할 공고 본문을 붙여 넣으세요.'),
-        ),
-      ),
-      const SizedBox(height: 16),
-      FieldLabel(
-        label: '채용공고 주소',
-        child: TextFormField(
-          key: const ValueKey('job-posting-url'),
-          controller: _url,
-          keyboardType: TextInputType.url,
-          decoration: InputDecoration(
-            hintText: 'https://',
-            errorText: _urlInvalid
-                ? 'http:// 또는 https:// 로 시작하는 주소를 입력하세요.'
-                : null,
-          ),
-        ),
-      ),
-      const SizedBox(height: 16),
-      FieldLabel(
-        label: '공고 PDF·캡처',
+      SurfaceCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('텍스트, 주소, PDF·캡처 중 하나만 있어도 됩니다.'),
+            const FeatureLine.section(
+              text: '공고 입력',
+              padTop: false,
+              padBottom: false,
+            ),
             const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton(
-                key: const ValueKey('job-posting-file'),
-                onPressed: _fileBusy ? null : _pickFile,
-                child: Text(_fileBusy ? '파일 읽는 중…' : 'PDF·캡처 선택'),
+            FieldLabel(
+              label: '채용공고 텍스트',
+              child: TextFormField(
+                key: const ValueKey('job-posting-text'),
+                controller: _posting,
+                minLines: 6,
+                maxLines: 12,
+                decoration:
+                    const InputDecoration(hintText: '비교할 공고 본문을 붙여 넣으세요.'),
               ),
             ),
-            if (_fileError != null) ...[
-              const SizedBox(height: 8),
-              Text(_fileError!, key: const ValueKey('job-posting-file-error')),
-            ],
-            if (_fileBytes != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                '$_fileName · ${(_fileBytes!.length / 1024).ceil()}KB',
-                key: const ValueKey('job-posting-file-name'),
-              ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton(
-                  key: const ValueKey('job-posting-file-clear'),
-                  onPressed: () => setState(() {
-                    _fileBytes = null;
-                    _fileName = '';
-                    _fileError = null;
-                  }),
-                  child: const Text('첨부 제외'),
+            const SizedBox(height: 16),
+            FieldLabel(
+              label: '채용공고 주소',
+              child: TextFormField(
+                key: const ValueKey('job-posting-url'),
+                controller: _url,
+                keyboardType: TextInputType.url,
+                decoration: InputDecoration(
+                  hintText: 'https://',
+                  errorText: _urlInvalid
+                      ? 'http:// 또는 https:// 로 시작하는 주소를 입력하세요.'
+                      : null,
                 ),
               ),
-            ],
+            ),
+            const SizedBox(height: 16),
+            FieldLabel(
+              label: '공고 PDF·캡처',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('텍스트, 주소, PDF·캡처 중 하나만 있어도 됩니다.'),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton(
+                      key: const ValueKey('job-posting-file'),
+                      onPressed: _fileBusy ? null : _pickFile,
+                      child: Text(_fileBusy ? '파일 읽는 중…' : 'PDF·캡처 선택'),
+                    ),
+                  ),
+                  if (_fileError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _fileError!,
+                      key: const ValueKey('job-posting-file-error'),
+                    ),
+                  ],
+                  if (_fileBytes != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '$_fileName · ${(_fileBytes!.length / 1024).ceil()}KB',
+                      key: const ValueKey('job-posting-file-name'),
+                    ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        key: const ValueKey('job-posting-file-clear'),
+                        onPressed: () => setState(() {
+                          _fileBytes = null;
+                          _fileName = '';
+                          _fileError = null;
+                        }),
+                        child: const Text('첨부 제외'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),
