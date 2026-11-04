@@ -161,7 +161,7 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
   }
 
   Future<void> _save() async {
-    if (!_form.currentState!.validate()) return;
+    if (_saving || !_form.currentState!.validate()) return;
     if (!widget.isDocument &&
         _audience == PortfolioAudience.publicReview &&
         !_reviewed) {

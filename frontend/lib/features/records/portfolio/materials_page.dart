@@ -465,8 +465,7 @@ class MaterialsPageState extends State<MaterialsPage> {
                         'material-type-state-${_editing?.id ?? 'new'}',
                       ),
                       initialValue: _type.text,
-                      validator: (value) =>
-                          MaterialKinds.isAllowed(value ?? _type.text)
+                      validator: (_) => MaterialKinds.isAllowed(_type.text)
                           ? null
                           : '자료 종류를 선택하세요.',
                       builder: (state) => FieldLabel(

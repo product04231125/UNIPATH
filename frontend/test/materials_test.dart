@@ -376,6 +376,64 @@ void main() {
     expect(find.text('자유 입력 종류 · 옛 자료'), findsNothing);
   });
 
+  testWidgets('a new material requires its own kind after saving or cancelling', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = MemoryMaterials();
+    await tester.pumpWidget(
+      MaterialApp(home: Scaffold(body: MaterialsPage(repository: repo))),
+    );
+    await tester.pumpAndSettle();
+
+    Future<void> fillAndSave(String title) async {
+      await tester.enterText(
+        find.byKey(const ValueKey('material-title')),
+        title,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('material-description')),
+        '보관할 설명',
+      );
+      final save = find.widgetWithText(FilledButton, '자료 등록');
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+    }
+
+    await tester.tap(find.byKey(const ValueKey('material-type')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('이력서').last);
+    await tester.pumpAndSettle();
+    await fillAndSave('첫 자료');
+    expect(repo.records.length, 1);
+    await fillAndSave('두 번째 자료');
+    expect(find.text('자료 종류를 선택하세요.'), findsOneWidget);
+    expect(repo.records.length, 1);
+
+    final cancel = find.widgetWithText(TextButton, '취소');
+    await tester.ensureVisible(cancel);
+    await tester.tap(cancel);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('내용 폐기'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('material-type')));
+    await tester.tap(find.byKey(const ValueKey('material-type')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('포트폴리오').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(cancel);
+    await tester.tap(cancel);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('내용 폐기'));
+    await tester.pumpAndSettle();
+    await fillAndSave('취소 후 자료');
+    expect(find.text('자료 종류를 선택하세요.'), findsOneWidget);
+    expect(repo.records.length, 1);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'materials list searches locally, caps height, and outlines edit',
     (tester) async {

@@ -91,6 +91,8 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
     PortfolioComposition? composition,
     ApplicationDocument? document,
   }) async {
+    if (_busy || _loading) return;
+    setState(() => _busy = true);
     try {
       await _repository.reloadSources();
       if (!mounted) return;
@@ -114,6 +116,8 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
       if (mounted) {
         setState(() => _message = '개인 기록을 읽지 못했습니다. 원본은 유지됩니다. 다시 시도하세요.');
       }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
