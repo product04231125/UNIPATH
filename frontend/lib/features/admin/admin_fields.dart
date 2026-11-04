@@ -45,6 +45,29 @@ Map<String, List<AdminField>> adminFieldGroups(List<AdminField> fields) {
   return groups;
 }
 
+/// UI-only year choices for curriculum `year`. The posted value remains the
+/// existing integer `year` contract field; this does not add a year catalog API.
+List<int> adminYearChoices({
+  required Iterable<AdminRecord> records,
+  String selected = '',
+  DateTime? now,
+}) {
+  final current = (now ?? DateTime.now()).year;
+  final years = <int>{
+    for (var year = current - 10; year <= current + 2; year++) year,
+  };
+  void add(String? raw) {
+    final year = int.tryParse(raw?.trim() ?? '');
+    if (year != null && year >= 1000 && year <= 9999) years.add(year);
+  }
+
+  for (final record in records) {
+    if (record.kind == AdminKind.curriculum) add(record.value('year'));
+  }
+  add(selected);
+  return years.where((year) => year >= 1000 && year <= 9999).toList()..sort();
+}
+
 /// Isolated client mock schema; candidate fields, not OpenAPI types/enums.
 List<AdminField> adminFields(AdminKind kind) => [
   const AdminField('name', '이름'),

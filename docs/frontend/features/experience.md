@@ -2,13 +2,20 @@
 
 ## 목적
 
-프로젝트·인턴·스터디·동아리 경험을 개인의 사실 기반 기록으로 관리한다.
+프로젝트·인턴·스터디·동아리 경험을 개인의 사실 기반 기록으로 관리한다. 별도의 사이드바
+`경험` 메뉴는 없다. 학생은 `활동` 메뉴에서 프로젝트·인턴·동아리를 고르면 이 기록 종류로
+저장한다.
 
 ## 현재 구현
 
+- 사이드바 입구는 `활동` 메뉴다. `/experiences` 주소는 합쳐진 활동 화면을 연다. 저장소·API는
+  기존 경험 기록을 유지하며 활동 기록과 자동 병합하지 않는다.
+- 합쳐진 목록·추가 종류 선택은 `frontend/lib/features/records/activity/activity_page.dart`가
+  소유한다. `experience_page.dart`는 기존 단일 경험 화면 래퍼로 남아 있으며 학생 사이드바는
+  열지 않는다.
+
 - 공통 `PageHeader`로 한글 제목·설명을 표시하며 중복 영어 라벨은 제거했다.
   읽기 대기·실패에도 제목을 유지하고 학교 미연결·개인 기록 안내는 보존한다.
-- `frontend/lib/features/records/experience/experience_page.dart`가 화면·입력 상태를 소유한다.
 - 예시 행은 `frontend/lib/features/records/fixtures/experience_fixture.dart`에 있다.
 - 종류·기관·기간·역할·결과/개인 기여·진행 상태를 분리 입력하며 개인 기록을 추가·수정·삭제한다.
   실제 계정은 서버에서 재조회하며 debug/이전 원본은 기기에 남는다. [ERD 대조](../manual-input-boundaries.md)를 따른다.

@@ -151,7 +151,8 @@ void main() {
       );
       expect(tester.getSize(department).width, tester.getSize(year).width);
       await tester.enterText(field('name'), '2026 교육과정');
-      await tester.enterText(year, '2026');
+      tester.widget<AnchoredSelectField<String>>(year).onChanged('2026');
+      await tester.pumpAndSettle();
       final save = find.descendant(
         of: form,
         matching: find.widgetWithText(FilledButton, '등록'),
@@ -160,7 +161,7 @@ void main() {
       await tester.tap(save);
       await tester.pumpAndSettle();
       expect(find.text('학과을 선택하세요.'), findsOneWidget);
-      expect(tester.widget<TextFormField>(year).controller!.text, '2026');
+      expect(tester.widget<AnchoredSelectField<String>>(year).value, '2026');
       tester
           .widget<AnchoredSelectField<String>>(department)
           .onChanged('school-a-dept');
@@ -326,4 +327,78 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+  testWidgets('catalog rows stay two lines with edit and delete on the right', (
+    tester,
+  ) async {
+    await showWorkspace(
+      tester,
+      FakeAdminRepository(),
+      AppRole.superAdmin,
+      '/admin/schools',
+    );
+    final row = find.byKey(const ValueKey('admin-row-school-a'));
+    final name = find.descendant(of: row, matching: find.text('합성 대학 A'));
+    final edit = find.descendant(
+      of: row,
+      matching: find.widgetWithText(TextButton, '수정'),
+    );
+    final remove = find.descendant(
+      of: row,
+      matching: find.widgetWithText(FilledButton, '삭제'),
+    );
+    expect(find.descendant(of: row, matching: find.text('상세')), findsNothing);
+    expect(tester.getSize(row).height, 72);
+    expect(tester.getTopLeft(name).dx, lessThan(tester.getTopLeft(edit).dx));
+    expect(tester.getTopLeft(edit).dx, lessThan(tester.getTopLeft(remove).dx));
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets(
+    'long catalog stays capped so the same frame register stays nearby',
+    (tester) async {
+      final repo = FakeAdminRepository();
+      for (var index = 1; index <= 12; index++) {
+        final id = index.toString().padLeft(2, '0');
+        await repo.save(
+          'super-admin',
+          AdminRecord(
+            id: 'long-course-$id',
+            kind: AdminKind.course,
+            values: {
+              'name': '긴 목록 과목 $id',
+              'institutionId': 'school-a',
+              'code': 'LC$id',
+              'credits': '3',
+            },
+          ),
+        );
+      }
+      await showWorkspace(tester, repo, AppRole.superAdmin, '/admin/curricula');
+      final catalog = find.byKey(const ValueKey('admin-catalog-course'));
+      final register = find.descendant(
+        of: find.byKey(const ValueKey('admin-registration-course-school-a')),
+        matching: find.widgetWithText(FilledButton, '등록'),
+      );
+      expect(tester.getSize(catalog).height, 72 * 3);
+      expect(
+        tester
+            .widget<Scrollbar>(
+              find.descendant(of: catalog, matching: find.byType(Scrollbar)),
+            )
+            .thumbVisibility,
+        isTrue,
+      );
+      expect(find.text('긴 목록 과목 01'), findsOneWidget);
+      expect(find.text('긴 목록 과목 12'), findsNothing);
+      expect(
+        tester.getTopLeft(register).dy - tester.getTopLeft(catalog).dy,
+        lessThan(900),
+      );
+      await tester.ensureVisible(catalog);
+      await tester.pumpAndSettle();
+      await tester.drag(find.text('긴 목록 과목 01'), const Offset(0, -600));
+      await tester.pumpAndSettle();
+      expect(find.text('긴 목록 과목 12'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

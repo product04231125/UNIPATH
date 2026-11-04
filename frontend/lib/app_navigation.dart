@@ -31,14 +31,19 @@ class AppLocation {
     '/courses',
     '/graduation',
     '/activities',
-    '/experiences',
     '/credentials',
     '/portfolio',
+    '/job-postings',
     '/settings',
   ];
   final String path;
   int? get menu {
-    final index = menuPaths.indexOf(path == '/' ? '/home' : path);
+    final normalized = path == '/'
+        ? '/home'
+        : path == '/experiences'
+        ? '/activities'
+        : path;
+    final index = menuPaths.indexOf(normalized);
     return index < 0 ? null : index;
   }
 }
@@ -469,8 +474,14 @@ class AppNavigation extends RouterDelegate<AppLocation>
       );
     } else if (!authenticated || _location.path == '/login') {
       key = 'login';
+      final gateway = _auth;
+      final cookieHint = gateway is AuthApi ? gateway.cookieHostHint : null;
+      final notice = [
+        _loginNotice,
+        cookieHint,
+      ].whereType<String>().join('\n\n');
       page = LoginPage(
-        notice: _loginNotice,
+        notice: notice.isEmpty ? null : notice,
         authenticate: _authenticate,
         registerSchoolAdmin: _auth is AuthApi ? _registerSchoolAdmin : null,
         onSignedIn: () {

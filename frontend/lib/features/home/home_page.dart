@@ -301,10 +301,10 @@ class HomePage extends StatelessWidget {
       ],
       3 => const [
         _PlanLink(
-          '경험 정리',
+          '활동 정리',
           '프로젝트와 경험을 내 기록으로 남기세요.',
-          Icons.business_center_outlined,
-          5,
+          Icons.volunteer_activism_outlined,
+          4,
         ),
         _PlanLink(
           '수강 계획 확인',
@@ -321,10 +321,10 @@ class HomePage extends StatelessWidget {
           3,
         ),
         _PlanLink(
-          '포트폴리오 정리',
-          '기록한 경험과 성과를 정리하세요.',
+          '자료 정리',
+          '기록한 경험과 자료를 정리하세요.',
           Icons.collections_bookmark_outlined,
-          7,
+          6,
         ),
       ],
       _ => const [
@@ -334,12 +334,6 @@ class HomePage extends StatelessWidget {
           '참여한 활동을 내 기록으로 남기세요.',
           Icons.volunteer_activism_outlined,
           4,
-        ),
-        _PlanLink(
-          '경험 정리',
-          '프로젝트와 경험을 정리하세요.',
-          Icons.business_center_outlined,
-          5,
         ),
       ],
     };

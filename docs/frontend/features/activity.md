@@ -2,10 +2,16 @@
 
 ## 목적
 
-교내 활동·봉사·동아리·공모전을 활동 단위로 관리한다. 개인 기록과 학교 승인 기록을 혼동하지
-않는다.
+교내 활동·봉사와 프로젝트·인턴·동아리 경험을 한 메뉴에서 관리한다. 개인 기록과 학교 승인
+기록을 혼동하지 않는다. 사이드바 이름은 `활동`이며 `활동·경험`이 아니다.
 
 ## 현재 구현
+
+- 학생 사이드바의 `활동`과 예전 `경험` 메뉴를 `활동` 하나로 합쳤다. 한 목록에서 기존 활동
+  기록과 경험 기록을 함께 보인다. 추가할 때 봉사, 프로젝트·인턴·동아리, 그 밖의 활동 중
+  하나를 고른다. 봉사와 그 밖의 활동은 기존 `/me/activity-records` 필드(시간·승인)에, 프로젝트·인턴·동아리는
+  기존 `/me/experience-records` 필드(역할·결과)에 저장한다. 두 API를 하나의 새 기록 종류로
+  합치거나 기존 기록을 자동으로 옮기지 않는다.
 
 - 전체 기록 목록의 세로 스크롤바와 카드는 16px 분리한다. 내부 병렬 카드의 중첩 스크롤은 제거했다.
 
@@ -18,8 +24,8 @@
 
 - 공통 `PageHeader`로 한글 제목·설명을 표시하며 중복 영어 라벨은 제거했다.
   읽기 대기·실패에도 제목을 유지하고 학교 미연결·개인 기록 안내는 보존한다.
-- `frontend/lib/features/records/activity/activity_page.dart`가 화면·입력 상태를 소유한다.
-- 예시 행은 `frontend/lib/features/records/fixtures/activity_fixture.dart`에 있다.
+- `frontend/lib/features/records/activity/activity_page.dart`가 합쳐진 목록과 추가 종류 선택을 소유한다.
+- 예시 행은 `frontend/lib/features/records/fixtures/activity_fixture.dart`와 `experience_fixture.dart`를 함께 보여 준다.
 - 기관·기간·역할·직접 입력 봉사 시간·사용자가 확인한 승인 시간/상태/확인일을 분리 입력한다.
   실제 계정의 개인 기록 CRUD·서버 저장과 debug/기기 원본 보존, 사용자가 승인됨으로 기록한 봉사 시간 합계를 제공한다.
   상세 경계는 [ERD 대조](../manual-input-boundaries.md)를 따른다.
