@@ -26,7 +26,7 @@ class PhoneChromeScope extends InheritedWidget {
       active != oldWidget.active;
 }
 
-const studentPhonePrimaryLabels = ['홈', '일정', '수강 관리', '활동'];
+const studentPhonePrimaryLabels = ['일정', '졸업 요건', '홈', '자료', '채용공고 분석'];
 
 const adminPhonePrimaryPaths = [
   '/admin/overview',

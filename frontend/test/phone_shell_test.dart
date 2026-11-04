@@ -60,7 +60,7 @@ void main() {
     const Size(390, 844),
     const Size(430, 932),
   ]) {
-    testWidgets('student phone $size uses a 4+more bottom bar', (tester) async {
+    testWidgets('student phone $size uses a 5+more bottom bar', (tester) async {
       await pumpApp(tester, size);
       expect(find.byType(NavigationBar), findsOneWidget);
       expect(
@@ -71,7 +71,15 @@ void main() {
       expect(find.byTooltip('뒤로 가기'), findsNothing);
       expect(find.textContaining('기기 로컬 저장'), findsNothing);
       expect(find.byKey(const Key('mock-data-toggle')), findsNothing);
-      for (final label in ['홈', '일정', '수강 관리', '활동', '더보기']) {
+      final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+      expect(
+        [
+          for (final destination in bar.destinations)
+            (destination as NavigationDestination).label,
+        ],
+        ['일정', '졸업 요건', '홈', '자료', '채용공고 분석', '더보기'],
+      );
+      for (final label in ['일정', '졸업 요건', '홈', '자료', '채용공고 분석', '더보기']) {
         expect(barLabel(label), findsOneWidget);
       }
       expect(tester.takeException(), isNull);
@@ -88,27 +96,38 @@ void main() {
 
     await tester.tap(find.byKey(const Key('phone-nav-more')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('phone-nav-more-sheet')), findsOneWidget);
-    for (final label in ['졸업 요건', '자격', '자료', '채용공고 분석', '설정']) {
+    final sheet = find.byKey(const Key('phone-nav-more-sheet'));
+    expect(sheet, findsOneWidget);
+    const moreLabels = ['수강 관리', '활동', '자격', '설정'];
+    for (final label in moreLabels) {
       expect(
-        find.descendant(
-          of: find.byKey(const Key('phone-nav-more-sheet')),
-          matching: find.text(label),
-        ),
+        find.descendant(of: sheet, matching: find.text(label)),
         findsOneWidget,
+      );
+    }
+    final moreXs = [
+      for (final label in moreLabels)
+        tester
+            .getTopLeft(find.descendant(of: sheet, matching: find.text(label)))
+            .dx,
+    ];
+    expect(moreXs, [...moreXs]..sort());
+    expect(
+      find.descendant(of: sheet, matching: find.text('계정 보안')),
+      findsNothing,
+    );
+    for (final label in ['일정', '졸업 요건', '홈', '자료', '채용공고 분석']) {
+      expect(
+        find.descendant(of: sheet, matching: find.text(label)),
+        findsNothing,
       );
     }
     expect(find.byKey(const Key('mock-data-toggle')), findsNothing);
     expect(find.byKey(const Key('logout-button')), findsOneWidget);
 
-    await tester.tap(
-      find.descendant(
-        of: find.byKey(const Key('phone-nav-more-sheet')),
-        matching: find.text('졸업 요건'),
-      ),
-    );
+    await tester.tap(find.descendant(of: sheet, matching: find.text('수강 관리')));
     await tester.pumpAndSettle();
-    expect(find.text('기준 선택'), findsOneWidget);
+    expect(find.text('수강 과목 직접 입력'), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -154,7 +173,14 @@ void main() {
 
   testWidgets('student phone can add a course record', (tester) async {
     await pumpApp(tester, const Size(390, 844));
-    await tester.tap(find.byKey(const Key('phone-nav-수강 관리')));
+    await tester.tap(find.byKey(const Key('phone-nav-more')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('phone-nav-more-sheet')),
+        matching: find.text('수강 관리'),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('수강 과목 직접 입력'));
     await tester.pumpAndSettle();
