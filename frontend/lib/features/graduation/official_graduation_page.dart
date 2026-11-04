@@ -197,7 +197,7 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
       children: [
         PageHeader(
           title: '학교 검토 자료 기준 졸업요건 감사',
-          description: '학교가 검토한 규정과 승인 기록을 비교합니다. 학교의 최종 학위 수여 승인을 대신하지 않습니다.',
+          description: '학교가 검토한 규정과 승인 기록을 비교합니다.',
           actions: [
             TextButton(
               onPressed: _busy ? null : _personal,

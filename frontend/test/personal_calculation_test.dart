@@ -363,8 +363,8 @@ void main() {
           await tester.tap(retry);
           await tester.pumpAndSettle();
           expect(
-            find.text(PersonalEvaluationSummary.personalLabel),
-            findsNWidgets(2),
+            find.text(PersonalEvaluationSummary.personalDisplayLabel),
+            findsWidgets,
           );
           expect(find.text('계산 결과'), findsOneWidget);
           expect(g.posted.map((b) => b['client_id']).toSet().length, 1);

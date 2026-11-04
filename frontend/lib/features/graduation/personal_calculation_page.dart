@@ -115,8 +115,7 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
         children: [
           const PageHeader(
             title: '개인 기준 계산',
-            contextLabel: PersonalEvaluationSummary.personalLabel,
-            description: '서버에 저장한 본인 자료와 아래에서 직접 정한 조건으로 계산합니다. 학교 확인·승인이나 공식 졸업 판정을 대신하지 않습니다.',
+            description: '본인 자료와 직접 정한 조건으로 계산합니다.',
           ),
           const SizedBox(height: 12),
           SurfaceCard(
@@ -317,7 +316,7 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _heading('계산 결과'),
-        const Text(PersonalEvaluationSummary.personalLabel),
+        const Text(PersonalEvaluationSummary.personalDisplayLabel),
         Text(
           '${result.curriculumTitle} · 기준일 ${result.evaluatedOn} · 교육과정 버전 ${result.curriculumVersion}',
         ),

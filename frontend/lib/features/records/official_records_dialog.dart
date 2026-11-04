@@ -135,7 +135,7 @@ class _RecordsState extends State<OfficialRecordsDialog> {
     content: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('학교가 원본과 대조한 기록입니다. 승인된 기록도 졸업요건 충족 판정은 아닙니다.'),
+        const Text('학교가 원본과 대조한 기록입니다.'),
         if (widget.admin)
           FilledButton(
             onPressed: _busy || _loading ? null : _create,
@@ -537,7 +537,6 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
                       ? '현재 졸업감사 입력으로 사용할 수 있는 기록입니다.'
                       : '현재 졸업감사 입력으로 사용할 수 없습니다.',
                 ),
-                const Text('학생 기록 승인은 졸업요건 충족 판정이 아닙니다.'),
                 for (final issue in b.issues) Text(recordIssueLabel(issue)),
                 if (_loading) const LinearProgressIndicator(),
                 if (_error != null) Text(_error!),

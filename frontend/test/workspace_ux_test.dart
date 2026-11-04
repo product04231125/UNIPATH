@@ -108,8 +108,6 @@ void main() {
           .minimumContentWidth;
       await tester.tap(find.text('졸업 요건').first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('내 교육과정'));
-      await tester.pumpAndSettle();
       expect(
         tester
             .widget<WorkspaceShell>(find.byType(WorkspaceShell))
@@ -356,8 +354,6 @@ void main() {
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     await tester.pumpAndSettle();
     await tester.tap(find.text('졸업 요건').first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('내 교육과정'));
     await tester.pumpAndSettle();
     expect(find.text('홈'), findsOneWidget);
     expect(find.byType(Table), findsNothing);

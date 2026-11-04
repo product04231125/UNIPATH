@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../shared/app_typography.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/surface_card.dart';
 import '../../shared/widgets/content_scroll_view.dart';
@@ -17,7 +16,6 @@ class GraduationPage extends StatefulWidget {
 }
 
 class _GraduationPageState extends State<GraduationPage> {
-  var _tab = '대학 공통';
   bool _personal = false;
 
   @override
@@ -36,7 +34,10 @@ class _GraduationPageState extends State<GraduationPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              PageHeader(title: '학교 검토 자료 기준 졸업요건 감사'),
+              PageHeader(
+                title: '학교 검토 자료 기준 졸업요건 감사',
+                description: '학교가 검토한 규정과 승인 기록을 비교합니다.',
+              ),
               LinearProgressIndicator(),
             ],
           ),
@@ -57,7 +58,7 @@ class _GraduationPageState extends State<GraduationPage> {
         children: [
           PageHeader(
             title: '졸업 요건',
-            contextLabel: '학교 연동·공식 판정 API 미연결',
+            description: '학교 기준과 내 기록을 비교합니다.',
             actions: [
               OutlinedButton.icon(
                 onPressed: () => setState(() => _personal = true),
@@ -66,44 +67,7 @@ class _GraduationPageState extends State<GraduationPage> {
               ),
             ],
           ),
-          SurfaceCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '기준 선택',
-                  style: TextStyle(
-                    fontSize: AppTypography.section,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const Text('학교 공식 졸업 판정이 아닙니다. 내 자료는 개인 기준 설정에서 입력하세요.'),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    for (final value in ['대학 공통', '내 교육과정', '학과 기준'])
-                      OutlinedButton(
-                        onPressed: () => setState(() => _tab = value),
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: _tab == value
-                              ? Theme.of(context).colorScheme.secondaryContainer
-                              : null,
-                        ),
-                        child: Text(value),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          const SurfaceCard(
-            child: Text(
-              '학교 기준을 가져오는 API가 아직 연결되지 않았습니다. 내 학교·학과 기준 설정에서 개인 자료를 기록하세요.',
-            ),
-          ),
+          const SurfaceCard(child: Text('학교 기준을 가져오는 API가 아직 연결되지 않았습니다.')),
         ],
       ),
     );

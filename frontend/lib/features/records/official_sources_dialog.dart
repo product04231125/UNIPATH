@@ -184,9 +184,7 @@ class _SourcesState extends State<OfficialSourcesDialog> {
     content: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          '원본 확인은 학생 기록 승인이나 졸업 판정과 별개입니다. 제출 자료는 선택한 학교의 관리자만 검토할 수 있습니다.',
-        ),
+        const Text('제출 자료는 선택한 학교의 관리자만 검토할 수 있습니다.'),
         if (!widget.admin)
           Align(
             alignment: Alignment.centerLeft,
