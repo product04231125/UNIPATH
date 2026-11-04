@@ -11,6 +11,7 @@ import 'package:university_path_frontend/features/records/course/course_page.dar
 import 'package:university_path_frontend/features/records/credential/credential_page.dart';
 import 'package:university_path_frontend/features/records/experience/experience_page.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
+import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
 import 'package:university_path_frontend/workspace.dart';
 
 import '../password_entry_test.dart' as password;
@@ -501,12 +502,19 @@ void main() {
       '설정 저장이 실패하면': (tester, world) async {
         final repository = await world.pumpSettings(tester, emptyCatalog: true);
         world.ensureGateway().failWrites = true;
-        await tester.enterText(labeledField('입학연도'), '2024');
+        await _chooseSettingsAdmissionYear(tester, 2024);
         await settings.saveSettings(tester);
         expect(repository.profile.admissionYear, isNot(2024));
       },
       '작성 내용이 남고 저장 성공 뒤에만 프로필이 바뀐다': (tester, world) async {
-        expect(world.fieldText(tester, '입학연도'), '2024');
+        expect(
+          tester
+              .widget<AnchoredSelectField<int?>>(
+                find.byKey(const Key('settings-admission-year-select')),
+              )
+              .value,
+          2024,
+        );
         expect(world.ensureGateway().profile['admission_year'], isNot(2024));
         world.ensureGateway().failWrites = false;
       },
@@ -709,6 +717,23 @@ extension on StudentWorld {
   }
 }
 
+Future<void> _chooseSettingsAdmissionYear(
+  WidgetTester tester,
+  int year,
+) async {
+  final field = find.byKey(const Key('settings-admission-year-select'));
+  await tester.ensureVisible(field);
+  await tester.tap(field);
+  await tester.pumpAndSettle();
+  await tester.enterText(
+    find.byKey(const ValueKey('select-search-input')),
+    '$year',
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.widgetWithText(MenuItemButton, '$year년'));
+  await tester.pumpAndSettle();
+}
+
 Future<void> _saveCatalogProfile(
   WidgetTester tester,
   StudentWorld world,
@@ -717,7 +742,7 @@ Future<void> _saveCatalogProfile(
   await settings.choose(tester, '학교 선택', '검증 대학');
   await settings.choose(tester, '학과 선택', '검증 학과');
   await settings.choose(tester, '교육과정 선택', '검증 과정 (2026)');
-  await tester.enterText(labeledField('입학연도'), '2026');
+  await _chooseSettingsAdmissionYear(tester, 2026);
   await settings.saveSettings(tester);
   await repository.saveProfile(
     PlanningProfile(

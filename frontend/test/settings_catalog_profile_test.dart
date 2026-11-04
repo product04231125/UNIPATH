@@ -6,6 +6,7 @@ import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
 import 'package:university_path_frontend/features/planning/remote_planning_repository.dart';
 import 'package:university_path_frontend/features/settings/settings_page.dart';
+import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
 
 import 'support/auth_fixture.dart';
 
@@ -142,6 +143,36 @@ void main() {
     expect(repository.profile.departmentId, isNull);
     expect(repository.profile.curriculumId, isNull);
     expect(server.profile['institution_id'], isNull);
+    repository.dispose();
+  });
+
+  testWidgets('admission year is a searchable select up to the current year', (
+    tester,
+  ) async {
+    final repository = await pumpSettings(tester, SettingsCatalogServer());
+    final current = DateTime.now().year;
+    final field = find.byKey(const Key('settings-admission-year-select'));
+    expect(field, findsOneWidget);
+    final select = tester.widget<AnchoredSelectField<int?>>(field);
+    expect(select.searchable, isTrue);
+    expect(select.options.map((option) => option.value), contains(null));
+    expect(select.options.map((option) => option.value), contains(1900));
+    expect(select.options.map((option) => option.value), contains(current));
+    expect(
+      select.options.map((option) => option.value),
+      isNot(contains(current + 1)),
+    );
+    await tester.tap(field);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('select-search-input')),
+      '$current',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(MenuItemButton, '$current년'));
+    await tester.pumpAndSettle();
+    await saveSettings(tester);
+    expect(repository.profile.admissionYear, current);
     repository.dispose();
   });
 

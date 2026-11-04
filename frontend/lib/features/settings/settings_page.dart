@@ -13,6 +13,7 @@ import '../graduation/personal_graduation_workspace.dart';
 import '../graduation/school_context_form.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
+import '../../shared/year_options.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/feature_actions.dart';
 import '../../shared/widgets/feature_line.dart';
@@ -46,7 +47,7 @@ class _SettingsPageState extends State<SettingsPage> {
   final _schoolForm = GlobalKey<SchoolContextFormState>();
   late final TextEditingController _school;
   late final TextEditingController _department;
-  late final TextEditingController _admissionYear;
+  int? _admissionYear;
   int? _academicYearOverride;
   late WeekStartDay _weekStartsOn;
   bool _saved = false;
@@ -68,9 +69,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final profile = widget.repository.profile;
     _school = TextEditingController(text: profile.school);
     _department = TextEditingController(text: profile.department);
-    _admissionYear = TextEditingController(
-      text: profile.admissionYear?.toString() ?? '',
-    );
+    _admissionYear = profile.admissionYear;
     _academicYearOverride = profile.academicYearOverride;
     _weekStartsOn = profile.weekStartsOn;
     _track = profile.track;
@@ -107,7 +106,6 @@ class _SettingsPageState extends State<SettingsPage> {
   void dispose() {
     _school.dispose();
     _department.dispose();
-    _admissionYear.dispose();
     super.dispose();
   }
 
@@ -141,7 +139,7 @@ class _SettingsPageState extends State<SettingsPage> {
           final profile = widget.repository.profile;
           _school.text = profile.school;
           _department.text = profile.department;
-          _admissionYear.text = profile.admissionYear?.toString() ?? '';
+          _admissionYear = profile.admissionYear;
           _academicYearOverride = profile.academicYearOverride;
           _weekStartsOn = profile.weekStartsOn;
           _track = profile.track;
@@ -252,34 +250,30 @@ class _SettingsPageState extends State<SettingsPage> {
                                         ),
                                       ],
                                       const SizedBox(height: 14),
-                                      TextFormField(
-                                        controller: _admissionYear,
-                                        onChanged: (_) => setState(() {
+                                      AnchoredSelectField<int?>(
+                                        key: const Key(
+                                          'settings-admission-year-select',
+                                        ),
+                                        searchable: true,
+                                        searchLabel: '입학연도 검색',
+                                        value: _admissionYear,
+                                        label: '입학연도',
+                                        options: [
+                                          const SelectOption<int?>(
+                                            null,
+                                            '미입력',
+                                          ),
+                                          for (final year in yearOptions(
+                                            maxYear: DateTime.now().year,
+                                            include: _admissionYear,
+                                          ))
+                                            SelectOption<int?>(year, '$year년'),
+                                        ],
+                                        onChanged: (value) => setState(() {
+                                          _admissionYear = value;
                                           _saved = false;
                                           _dirty = true;
                                         }),
-                                        decoration: const InputDecoration(
-                                          labelText: '입학연도',
-                                          hintText: '예: 2024',
-                                        ),
-                                        keyboardType: TextInputType.number,
-                                        validator: (value) {
-                                          if (value == null ||
-                                              value.trim().isEmpty) {
-                                            return null;
-                                          }
-                                          final year = int.tryParse(
-                                            value.trim(),
-                                          );
-                                          final current =
-                                              DateTime.now().year + 1;
-                                          if (year == null ||
-                                              year < 1900 ||
-                                              year > current) {
-                                            return '1900년부터 $current년 사이의 연도를 입력해 주세요.';
-                                          }
-                                          return null;
-                                        },
                                       ),
                                     ],
                                   ),
@@ -437,11 +431,8 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  int? _suggestedYear() {
-    final admissionYear = int.tryParse(_admissionYear.text.trim());
-    return PlanningProfile(admissionYear: admissionYear)
-        .academicYearFor(DateTime.now());
-  }
+  int? _suggestedYear() => PlanningProfile(admissionYear: _admissionYear)
+      .academicYearFor(DateTime.now());
 
   void _captureCatalogSelection() {
     final form = _schoolForm.currentState;
@@ -501,7 +492,7 @@ class _SettingsPageState extends State<SettingsPage> {
           version: _displayedProfile?.version,
           school: school,
           department: department,
-          admissionYear: int.tryParse(_admissionYear.text.trim()),
+          admissionYear: _admissionYear,
           track: _track,
           academicYearOverride: _academicYearOverride,
           weekStartsOn: _weekStartsOn,
