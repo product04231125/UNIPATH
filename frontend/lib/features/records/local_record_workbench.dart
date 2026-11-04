@@ -12,6 +12,7 @@ import '../../shared/widgets/responsive_columns.dart';
 import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/surface_card.dart';
 import '../../shared/widgets/responsive_panels.dart';
+import '../auth/guest_preview_scope.dart';
 import 'personal_record_fields.dart';
 import 'personal_record_repository.dart';
 import '../graduation/personal_requirement_panel.dart';
@@ -108,6 +109,10 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
   }
 
   Future<void> _save() async {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     if (_saving || !_form.currentState!.validate()) return;
     if (_isRule && !(_rulePanel.currentState?.validateForMetadata() ?? false)) {
       return;
@@ -157,6 +162,10 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
   }
 
   Future<void> _delete(PersonalRecord record) async {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     if (_saving || !await allowLeave() || !mounted) return;
     final yes = await showDialog<bool>(
       context: context,

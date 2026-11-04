@@ -36,6 +36,7 @@ class AdminWorkspace extends StatefulWidget {
     this.beforeSignedOut,
     this.schoolChrome,
     this.phoneChrome = false,
+    this.initialSchoolId,
     this.onEnterStudentPreview,
   });
   final AppRole role;
@@ -48,6 +49,8 @@ class AdminWorkspace extends StatefulWidget {
   final Future<void> Function()? beforeSignedOut;
   final AdminSchoolChrome? schoolChrome;
   final bool phoneChrome;
+  /// Preferred school after leaving student guest preview.
+  final String? initialSchoolId;
   final VoidCallback? onEnterStudentPreview;
   static const menus = <String, String>{
     '/admin/overview': '관리 현황',
@@ -1173,23 +1176,25 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   void _publishSchoolChrome({required bool allowed}) {
     final chrome = widget.schoolChrome;
     if (chrome == null) return;
-    final showInTitle =
+    final keepSelection =
         allowed &&
-        !widget.phoneChrome &&
         _schools.isNotEmpty &&
-        _section != '/admin/applications';
+        _section != '/admin/applications' &&
+        _schoolId.isNotEmpty;
+    final showInTitle = keepSelection && !widget.phoneChrome;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || widget.schoolChrome != chrome) return;
-      if (!showInTitle) {
+      if (!keepSelection) {
         chrome.clear();
         return;
       }
+      // Phone keeps schoolId for guest-preview seeding; title bar stays hidden.
       chrome.publish(
         schoolId: _schoolId,
         schools: [
           for (final school in _schools) (id: school.id, name: school.name),
         ],
-        visible: true,
+        visible: showInTitle,
         onChanged: _changeSchool,
       );
     });
@@ -1198,7 +1203,11 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   @override
   Widget build(BuildContext context) {
     if (!_schools.any((r) => r.id == _schoolId)) {
-      _schoolId = _schools.firstOrNull?.id ?? '';
+      final preferred = widget.initialSchoolId?.trim() ?? '';
+      _schoolId =
+          preferred.isNotEmpty && _schools.any((r) => r.id == preferred)
+          ? preferred
+          : (_schools.firstOrNull?.id ?? '');
     }
     final known =
         AdminWorkspace.menus.containsKey(_section) &&

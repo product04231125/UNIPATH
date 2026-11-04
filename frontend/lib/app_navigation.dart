@@ -111,6 +111,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
   String? _previewInstitutionId;
   String? _previewInstitutionName;
   String? _previewReturnPath;
+  String? _restoreAdminSchoolId;
   final _adminSchoolChrome = AdminSchoolChrome();
   Future<void> _openApplications(BuildContext context) async {
     final identity = _identity;
@@ -364,6 +365,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
   void _exitStudentPreview(BuildContext context) {
     if (!_studentGuestPreview) return;
     final path = _previewReturnPath ?? '/admin/overview';
+    _restoreAdminSchoolId = _previewInstitutionId;
     _studentGuestPreview = false;
     _previewInstitutionId = null;
     _previewInstitutionName = null;
@@ -502,6 +504,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
           repository: _liveAdminRepository,
           sidebarVisible: _sidebarVisible,
           schoolChrome: _adminSchoolChrome,
+          initialSchoolId: _restoreAdminSchoolId,
           onEnterStudentPreview: _auth is AuthApi
               ? () => _enterStudentPreview(context)
               : null,
@@ -546,6 +549,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
         path: _location.path,
         sidebarVisible: _sidebarVisible,
         schoolChrome: _adminSchoolChrome,
+        initialSchoolId: _restoreAdminSchoolId,
         onNavigate: (path) => _go(context, path),
         onSignedOut: () => _signedOut(context),
       );
@@ -598,6 +602,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
         path: '/admin/overview',
         sidebarVisible: _sidebarVisible,
         schoolChrome: _adminSchoolChrome,
+        initialSchoolId: _restoreAdminSchoolId,
         onNavigate: (path) => _go(context, path),
         onSignedOut: () => _signedOut(context),
       );
@@ -655,6 +660,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
                         sidebarVisible: _sidebarVisible,
                         schoolChrome: _adminSchoolChrome,
                         phoneChrome: phone,
+                        initialSchoolId: _restoreAdminSchoolId,
                         onEnterStudentPreview: _auth is AuthApi
                             ? () => _enterStudentPreview(context)
                             : null,

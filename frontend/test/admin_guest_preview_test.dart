@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:university_path_frontend/features/admin/admin_repository.dart';
+import 'package:university_path_frontend/features/admin/admin_school_chrome.dart';
+import 'package:university_path_frontend/features/admin/admin_workspace.dart';
+import 'package:university_path_frontend/features/auth/app_role.dart';
 import 'package:university_path_frontend/features/auth/guest_preview_scope.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
+import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
 
 void main() {
   test('planning repository blocks writes in guest preview', () async {
@@ -47,5 +52,60 @@ void main() {
     await tester.tap(find.text('막기'));
     await tester.pump();
     expect(find.text(GuestPreviewScope.blockedMessage), findsOneWidget);
+  });
+
+  testWidgets('phone chrome keeps school id while title selector stays hidden', (
+    tester,
+  ) async {
+    final chrome = AdminSchoolChrome();
+    addTearDown(chrome.dispose);
+    final repo = FakeAdminRepository();
+    addTearDown(repo.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AdminWorkspace(
+            role: AppRole.superAdmin,
+            path: '/admin/overview',
+            repository: repo,
+            schoolChrome: chrome,
+            phoneChrome: true,
+            onNavigate: (_) {},
+            onSignedOut: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(chrome.visible, isFalse);
+    expect(chrome.schoolId, isNotEmpty);
+  });
+
+  testWidgets('initialSchoolId restores preferred school after preview exit', (
+    tester,
+  ) async {
+    final repo = FakeAdminRepository();
+    addTearDown(repo.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AdminWorkspace(
+            role: AppRole.superAdmin,
+            path: '/admin/overview',
+            repository: repo,
+            initialSchoolId: 'school-b',
+            onNavigate: (_) {},
+            onSignedOut: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final selector = find.byKey(const ValueKey('admin-school-selector'));
+    expect(selector, findsOneWidget);
+    expect(
+      tester.widget<AnchoredSelectField<String>>(selector).value,
+      'school-b',
+    );
   });
 }

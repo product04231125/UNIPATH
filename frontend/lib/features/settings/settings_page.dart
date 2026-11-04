@@ -369,7 +369,16 @@ class _SettingsPageState extends State<SettingsPage> {
                                 child: FilledButton.tonal(
                                   onPressed: _saving
                                       ? null
-                                      : () => setState(() => _personal = true),
+                                      : () {
+                                          if (GuestPreviewScope.isActive(
+                                            context,
+                                          )) {
+                                            GuestPreviewScope
+                                                .showBlockedMessage(context);
+                                            return;
+                                          }
+                                          setState(() => _personal = true);
+                                        },
                                   child: const Text('개인 교육과정 작업'),
                                 ),
                               ),
