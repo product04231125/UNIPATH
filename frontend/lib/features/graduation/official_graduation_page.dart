@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../auth/auth_api.dart';
 import '../auth/guest_preview_scope.dart';
 import '../api/graduation_api.dart';
+import '../api/rule_program_models.dart';
 import '../planning/planning_profile_cta.dart';
 import '../planning/planning_repository.dart';
 import '../records/personal_record_repository.dart';
@@ -124,7 +125,41 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
   String _clientId = PersonalRecord.newId();
   List<String> _fields = [];
   bool _busy = false, _loading = true, _uncertain = false;
+  final _lineMarks = <String, bool>{};
   bool _historyFailed = false;
+  List<Widget> _checklist(GraduationAuditView result) {
+    final rows = <Widget>[];
+    for (final program in result.criteria) {
+      for (final rule in program.rules) {
+        final condition = rule.condition;
+        if (condition is! OfficialManualCriterion) continue;
+        for (final raw in condition.instruction.split('\n')) {
+          final line = raw.trim();
+          if (line.isEmpty) continue;
+          final key = '${rule.ruleId}/$line';
+          final mark = _lineMarks[key];
+          rows.add(
+            Row(
+              children: [
+                Expanded(child: Text(line)),
+                TextButton(
+                  onPressed: () => setState(() => _lineMarks[key] = true),
+                  child: Text(mark == true ? '충족' : '충족으로 표시'),
+                ),
+                TextButton(
+                  onPressed: () => setState(() => _lineMarks[key] = false),
+                  child: Text(mark == false ? '미충족' : '미충족으로 표시'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    }
+    if (rows.isEmpty) return const [];
+    return [const Text('한 줄 요건. 학점, 활동, 자격 숫자는 각 메뉴에서 확인합니다.'), ...rows];
+  }
+
   GraduationContext? get _context => officialAuditContext(widget.profile);
   bool get _ready => !widget.profileLoadFailed && _context != null;
 
@@ -310,7 +345,8 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
       FeatureActions(
         children: [
           FilledButton(
-            onPressed: _busy ||
+            onPressed:
+                _busy ||
                     _loading ||
                     !_ready ||
                     GuestPreviewScope.isActive(context)
@@ -376,6 +412,7 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
                     ),
                   ),
                 Text('판정 근거', style: Theme.of(context).textTheme.titleMedium),
+                ..._checklist(r),
                 for (final program in r.criteria) ...[
                   Text('${program.name} · 판 ${program.sourceVersion}'),
                   for (final rule in program.rules) ...[

@@ -156,7 +156,8 @@ def validate_data(db, item, payload, *, complete=False):
         if meta.version != entry.expected_version:
             raise conflict()
         condition = entry.condition
-        if KINDS[meta.rule_type] != condition.kind:
+        checklist = condition.kind == "manual_review" and not entry.evidence_chunk_ids
+        if not checklist and KINDS[meta.rule_type] != condition.kind:
             raise invalid("요건 종류와 실행 조건 종류를 일치시켜 주세요.")
         identifier = uuid5(item.id, str(meta.id))
         rule = ProgramRule(
