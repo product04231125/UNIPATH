@@ -505,13 +505,13 @@ class AdminEditorState extends State<AdminEditor> {
     ],
   );
 
-  /// List column only: ㄷ (top/left/bottom) when beside the form; full border when stacked.
+  /// List column only: ㄷ (top/right/bottom) when beside the form; full border when stacked.
   Widget _listRail({required bool sideBySide, required Widget child}) {
     final color = Theme.of(context).colorScheme.outlineVariant;
     final radius = sideBySide
         ? const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            bottomLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+            bottomRight: Radius.circular(20),
           )
         : BorderRadius.circular(20);
     return DecoratedBox(
@@ -525,7 +525,7 @@ class AdminEditorState extends State<AdminEditor> {
         border: sideBySide
             ? Border(
                 top: BorderSide(color: color),
-                left: BorderSide(color: color),
+                right: BorderSide(color: color),
                 bottom: BorderSide(color: color),
               )
             : Border.all(color: color),
@@ -534,7 +534,7 @@ class AdminEditorState extends State<AdminEditor> {
         borderRadius: radius,
         // Keep top flush so 「목록」 aligns with 「등록 기본 정보」.
         child: Padding(
-          padding: EdgeInsets.fromLTRB(12, 0, sideBySide ? 0 : 12, 12),
+          padding: EdgeInsets.fromLTRB(12, 0, 12, 12),
           child: child,
         ),
       ),

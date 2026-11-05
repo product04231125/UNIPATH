@@ -240,6 +240,21 @@ void main() {
       findsOneWidget,
     );
     final rail = find.byKey(const ValueKey('admin-list-rail-department'));
+    final railBorder =
+        (tester.widget<DecoratedBox>(rail).decoration as BoxDecoration).border!
+            as Border;
+    final railRadius =
+        (tester.widget<DecoratedBox>(rail).decoration as BoxDecoration)
+                .borderRadius!
+            as BorderRadius;
+    expect(railBorder.left, BorderSide.none);
+    expect(railBorder.top.style, BorderStyle.solid);
+    expect(railBorder.right.style, BorderStyle.solid);
+    expect(railBorder.bottom.style, BorderStyle.solid);
+    expect(railRadius.topRight, const Radius.circular(20));
+    expect(railRadius.bottomRight, const Radius.circular(20));
+    expect(railRadius.topLeft, Radius.zero);
+    expect(railRadius.bottomLeft, Radius.zero);
     expect(tester.getTopLeft(list).dy, tester.getTopLeft(basic).dy);
     expect(
       tester.getTopLeft(details).dy,
