@@ -61,19 +61,14 @@ void main() {
         );
         expect(empty, findsOneWidget);
         expect(tester.getSize(list).height, inInclusiveRange(180, 360));
+        final basic = find.byKey(const ValueKey('admin-basic-ruleSet'));
         expect(
-          tester.getTopLeft(list).dy,
-          tester
-              .getTopLeft(find.byKey(const ValueKey('admin-basic-ruleSet')))
-              .dy,
+          tester.getBottomLeft(basic).dy,
+          lessThanOrEqualTo(tester.getTopLeft(list).dy),
         );
         expect(
-          tester.getTopLeft(list).dx,
-          lessThan(
-            tester
-                .getTopLeft(find.byKey(const ValueKey('admin-basic-ruleSet')))
-                .dx,
-          ),
+          (tester.getTopLeft(list).dx - tester.getTopLeft(basic).dx).abs(),
+          lessThanOrEqualTo(16),
         );
         expect(find.widgetWithText(FilledButton, '규칙 묶음 등록'), findsNothing);
         expect(
@@ -233,7 +228,7 @@ void main() {
     final basic = find.byKey(const ValueKey('admin-basic-department'));
     final details = find.byKey(const ValueKey('admin-details-department'));
     expect(
-      find.byKey(const ValueKey('admin-list-rail-department')),
+      find.byKey(const ValueKey('admin-list-panel-department')),
       findsOneWidget,
     );
     expect(
@@ -249,7 +244,7 @@ void main() {
       find.descendant(of: form, matching: find.byType(Divider)),
       findsOneWidget,
     );
-    final rail = find.byKey(const ValueKey('admin-list-rail-department'));
+    final rail = find.byKey(const ValueKey('admin-list-panel-department'));
     final railBorder =
         (tester.widget<DecoratedBox>(rail).decoration as BoxDecoration).border!
             as Border;
@@ -257,24 +252,26 @@ void main() {
         (tester.widget<DecoratedBox>(rail).decoration as BoxDecoration)
                 .borderRadius!
             as BorderRadius;
-    expect(railBorder.left, BorderSide.none);
+    expect(railBorder.left.style, BorderStyle.solid);
     expect(railBorder.top.style, BorderStyle.solid);
     expect(railBorder.right.style, BorderStyle.solid);
     expect(railBorder.bottom.style, BorderStyle.solid);
     expect(railRadius.topRight, const Radius.circular(20));
     expect(railRadius.bottomRight, const Radius.circular(20));
-    expect(railRadius.topLeft, Radius.zero);
-    expect(railRadius.bottomLeft, Radius.zero);
-    expect(tester.getTopLeft(list).dy, tester.getTopLeft(basic).dy);
+    expect(railRadius.topLeft, const Radius.circular(20));
+    expect(railRadius.bottomLeft, const Radius.circular(20));
     expect(
-      tester.getTopLeft(details).dy,
-      greaterThan(tester.getBottomLeft(list).dy),
+      tester.getBottomLeft(basic).dy,
+      lessThanOrEqualTo(tester.getTopLeft(list).dy),
     );
-    // Details spans full width; list content is inset inside the ㄷ rail.
+    expect(
+      tester.getBottomLeft(list).dy,
+      lessThanOrEqualTo(tester.getTopLeft(details).dy),
+    );
     expect(tester.getTopLeft(details).dx, tester.getTopLeft(rail).dx);
     expect(
       tester.getSize(details).width,
-      greaterThan(tester.getSize(list).width * 1.9),
+      closeTo(tester.getSize(rail).width, 1),
     );
     for (final field in repo.fields(AdminKind.department)) {
       expect(

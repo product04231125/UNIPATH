@@ -143,10 +143,13 @@ void main() {
         final details = find.byKey(ValueKey('admin-details-${item.$2}'));
         expect(find.descendant(of: frame, matching: first), findsOneWidget);
         expect(find.descendant(of: frame, matching: details), findsOneWidget);
-        expect(tester.getTopLeft(first).dy, tester.getTopLeft(second).dy);
         expect(
-          tester.getTopLeft(first).dx,
-          lessThan(tester.getTopLeft(second).dx),
+          tester.getBottomLeft(second).dy,
+          lessThanOrEqualTo(tester.getTopLeft(first).dy),
+        );
+        expect(
+          (tester.getTopLeft(first).dx - tester.getTopLeft(second).dx).abs(),
+          lessThanOrEqualTo(16),
         );
         expect(
           tester.getTopLeft(details).dy,
