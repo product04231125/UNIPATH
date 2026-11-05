@@ -135,6 +135,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       (widget.role == AppRole.superAdmin ? 'super-admin' : 'school-admin');
   AppRole get _role =>
       widget.role == AppRole.user ? AppRole.user : _repo.role(_actor);
+  bool get _isSuperAdmin =>
+      widget.role == AppRole.superAdmin && _role == AppRole.superAdmin;
   String get _section {
     final parts = widget.path.split('/');
     return parts.length > 2 ? parts.take(3).join('/') : '/admin/overview';
@@ -852,7 +854,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           const FeatureLine.one(
             text: '관리 가능한 학교가 없습니다. 학교 등록 또는 범위 부여가 필요합니다.',
           ),
-          if (_role == AppRole.superAdmin)
+          if (_isSuperAdmin)
             FeatureActions(
               children: [
                 FilledButton(
@@ -860,6 +862,10 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                   child: const Text('학교 등록'),
                 ),
               ],
+            ),
+          if (_repo.live)
+            FeatureLine.reload(
+              onPressed: _busy || _loading || _refreshing ? null : _load,
             ),
         ] else ...[
           SurfaceCard(
@@ -893,7 +899,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                         icon: const Icon(Icons.arrow_forward, size: 18),
                         label: const Text('공식 문서 확인'),
                       ),
-                      if (_role == AppRole.superAdmin)
+                      if (_isSuperAdmin)
                         OutlinedButton.icon(
                           style: _overviewOutlinedStyle,
                           onPressed: _busy
@@ -1236,7 +1242,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         _repo.active(_actor) &&
         _role != AppRole.user &&
         (!{'/admin/accounts', '/admin/applications'}.contains(_section) ||
-            _role == AppRole.superAdmin) &&
+            _isSuperAdmin) &&
         (_detailId == null ||
             detail != null &&
                 sectionKinds[_section]?.contains(detail.kind) == true &&
@@ -1252,7 +1258,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       menus: {
         for (final entry in AdminWorkspace.menus.entries)
           if (!{'/admin/accounts', '/admin/applications'}.contains(entry.key) ||
-              _role == AppRole.superAdmin)
+              _isSuperAdmin)
             entry.key: entry.value,
       },
       section: _section,

@@ -9,6 +9,68 @@ import 'package:university_path_frontend/features/planning/planning_repository.d
 import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
 
 void main() {
+  testWidgets('school admin preview keeps super admin destinations hidden', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = FakeAdminRepository();
+    addTearDown(repo.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AdminWorkspace(
+          role: AppRole.superAdmin,
+          actorId: 'super-admin',
+          path: '/admin/overview',
+          repository: repo,
+          onNavigate: (_) {},
+          onSignedOut: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('admin-menu-/admin/accounts')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('admin-menu-/admin/applications')),
+      findsOneWidget,
+    );
+    expect(find.text('관리자 범위 관리'), findsOneWidget);
+    for (final path in [
+      '/admin/overview',
+      '/admin/accounts',
+      '/admin/applications',
+    ]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdminWorkspace(
+            role: AppRole.schoolAdmin,
+            actorId: 'super-admin',
+            path: path,
+            repository: repo,
+            onNavigate: (_) {},
+            onSignedOut: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('admin-menu-/admin/accounts')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('admin-menu-/admin/applications')),
+        findsNothing,
+      );
+      expect(find.text('관리자 범위 관리'), findsNothing);
+      if (path != '/admin/overview') {
+        expect(find.text('접근할 수 없습니다.'), findsOneWidget);
+      }
+    }
+  });
+
   test('planning repository blocks writes in guest preview', () async {
     final repo = PlanningRepository(writer: (key, value) async => true);
     addTearDown(repo.dispose);
