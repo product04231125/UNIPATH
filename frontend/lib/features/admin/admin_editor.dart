@@ -51,7 +51,11 @@ class AdminEditorState extends State<AdminEditor> {
   var _executionKey = GlobalKey<AdminRuleExecutionPanelState>();
   final _conditionChanges = ValueNotifier<int>(0);
   bool get _isRule => widget.kind == AdminKind.rule && !widget.revoke;
-  AdminRecord? get _activeRecord => _editingRecord ?? widget.record;
+  bool get _isSchoolKind =>
+      widget.kind == AdminKind.institution ||
+      widget.kind == AdminKind.department;
+  AdminRecord? get _activeRecord =>
+      _isSchoolKind ? _editingRecord : _editingRecord ?? widget.record;
   AdminRecord? get activeRecord => _activeRecord;
   bool get _isEditing => _activeRecord != null;
   AdminRecord? get _rule =>
@@ -82,6 +86,10 @@ class AdminEditorState extends State<AdminEditor> {
       _initial[f.key] = record?.value(f.key) ?? _defaultValue(f);
       _controllers[f.key]!.text = _initial[f.key] ?? '';
     }
+    // Form.reset() restores controller fields to the previous build's
+    // initialValue and can leave validation using stale text. Clear the
+    // error display after the controllers already hold the new values.
+    if (_isSchoolKind) _form.currentState?.clearError();
     _savedRecord = record;
     _executionKey = GlobalKey<AdminRuleExecutionPanelState>();
   }
@@ -132,6 +140,7 @@ class AdminEditorState extends State<AdminEditor> {
   @override
   void initState() {
     super.initState();
+    if (_isSchoolKind) _editingRecord = widget.record;
     _savedRecord = widget.record;
     _fields = widget.revoke
         ? [const AdminField('reason', '회수 사유', multiline: true)]
