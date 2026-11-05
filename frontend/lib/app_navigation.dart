@@ -648,7 +648,8 @@ class AppNavigation extends RouterDelegate<AppLocation>
                 );
                 final canAccount =
                     _identity != null && authenticated && _auth is AuthApi;
-                final previewing = _studentGuestPreview && _role != AppRole.user;
+                final previewing =
+                    _studentGuestPreview && _role != AppRole.user;
                 final previewSchool = _previewInstitutionName ?? '';
                 final statusLabel = previewing
                     ? (previewSchool.isEmpty
@@ -656,7 +657,8 @@ class AppNavigation extends RouterDelegate<AppLocation>
                           : '학생 · 미리보기 · $previewSchool')
                     : _role.label;
                 // Rebuild AdminWorkspace with phoneChrome when shell is phone.
-                final shellPage = authenticated &&
+                final shellPage =
+                    authenticated &&
                         _identity != null &&
                         _role != AppRole.user &&
                         !_studentGuestPreview &&
@@ -682,9 +684,8 @@ class AppNavigation extends RouterDelegate<AppLocation>
                   onAccountSecurity: canAccount
                       ? () => _openAccountSecurity(frameContext)
                       : null,
-                  onApplications: canAccount &&
-                          _role != AppRole.user &&
-                          !previewing
+                  onApplications:
+                      canAccount && _role != AppRole.user && !previewing
                       ? () => _openApplications(frameContext)
                       : null,
                   applicationLabel: _role == AppRole.superAdmin
@@ -716,16 +717,17 @@ class AppNavigation extends RouterDelegate<AppLocation>
                                       value: _adminSchoolChrome.schoolId,
                                       label: '현재 학교',
                                       options: [
+                                        if (_adminSchoolChrome.allowAll)
+                                          const SelectOption('', '전체 학교'),
                                         for (final school
                                             in _adminSchoolChrome.schools)
-                                          SelectOption(
-                                            school.id,
-                                            school.name,
-                                          ),
+                                          SelectOption(school.id, school.name),
                                       ],
                                       onChanged: (v) {
                                         unawaited(
-                                          _adminSchoolChrome.onChanged?.call(v) ??
+                                          _adminSchoolChrome.onChanged?.call(
+                                                v,
+                                              ) ??
                                               Future<void>.value(),
                                         );
                                       },

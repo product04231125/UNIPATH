@@ -456,7 +456,7 @@ void main() {
         );
         await tester.pumpAndSettle();
         final schoolForm = find.byKey(
-          const ValueKey('admin-registration-institution-$schoolId'),
+          const ValueKey('admin-registration-institution-'),
         );
         final nameField = find.descendant(
           of: schoolForm,

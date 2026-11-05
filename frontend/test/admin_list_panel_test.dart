@@ -44,10 +44,11 @@ void main() {
           },
         );
         await showWorkspace(tester, repo, role, '/admin/rules');
+        final schoolKey = role == AppRole.superAdmin ? '' : 'school-a';
         final list = find.byKey(const ValueKey('admin-section-ruleSet'));
         final empty = find.byKey(const ValueKey('admin-empty-ruleSet'));
         final form = find.descendant(
-          of: find.byKey(const ValueKey('admin-registration-ruleSet-school-a')),
+          of: find.byKey(ValueKey('admin-registration-ruleSet-$schoolKey')),
           matching: find.byType(AdminEditor),
         );
         expect(
@@ -76,9 +77,22 @@ void main() {
         );
         expect(find.widgetWithText(FilledButton, '규칙 묶음 등록'), findsNothing);
         expect(
-          find.byKey(const ValueKey('admin-search-school-a-ruleSet')),
+          find.byKey(ValueKey('admin-search-$schoolKey-ruleSet')),
           findsNothing,
         );
+        if (role == AppRole.superAdmin) {
+          tester
+              .widget<AnchoredSelectField<String>>(
+                find.descendant(
+                  of: form,
+                  matching: find.byKey(
+                    const ValueKey('admin-field-institutionId'),
+                  ),
+                ),
+              )
+              .onChanged('school-a');
+          await tester.pumpAndSettle();
+        }
         final name = find.descendant(
           of: form,
           matching: find.byKey(const ValueKey('admin-field-name')),
@@ -108,9 +122,7 @@ void main() {
         );
         expect(form, findsOneWidget);
         expect(tester.widget<TextFormField>(name).controller!.text, isEmpty);
-        final search = find.byKey(
-          const ValueKey('admin-search-school-a-ruleSet'),
-        );
+        final search = find.byKey(ValueKey('admin-search-$schoolKey-ruleSet'));
         await tester.ensureVisible(search);
         await tester.enterText(search, '일치하지 않는 검색');
         await tester.pumpAndSettle();
@@ -130,9 +142,7 @@ void main() {
       final repo = FakeAdminRepository();
       await showWorkspace(tester, repo, AppRole.superAdmin, '/admin/curricula');
       final form = find.descendant(
-        of: find.byKey(
-          const ValueKey('admin-registration-curriculum-school-a'),
-        ),
+        of: find.byKey(const ValueKey('admin-registration-curriculum-')),
         matching: find.byType(AdminEditor),
       );
       Finder field(String key) => find.descendant(
@@ -185,7 +195,7 @@ void main() {
         '/admin/rules',
       );
       final form = find.descendant(
-        of: find.byKey(const ValueKey('admin-registration-rule-school-a')),
+        of: find.byKey(const ValueKey('admin-registration-rule-')),
         matching: find.byType(AdminEditor),
       );
       Finder field(String key) => find.descendant(
@@ -216,7 +226,7 @@ void main() {
     final repo = FakeAdminRepository();
     await showWorkspace(tester, repo, AppRole.superAdmin, '/admin/schools');
     final form = find.descendant(
-      of: find.byKey(const ValueKey('admin-registration-department-school-a')),
+      of: find.byKey(const ValueKey('admin-registration-department-')),
       matching: find.byType(AdminEditor),
     );
     final list = find.byKey(const ValueKey('admin-section-department'));
@@ -283,6 +293,15 @@ void main() {
       of: details,
       matching: find.byKey(const ValueKey('admin-field-code')),
     );
+    tester
+        .widget<AnchoredSelectField<String>>(
+          find.descendant(
+            of: form,
+            matching: find.byKey(const ValueKey('admin-field-institutionId')),
+          ),
+        )
+        .onChanged('school-a');
+    await tester.pumpAndSettle();
     await tester.ensureVisible(name);
     await tester.enterText(name, '새 학과');
     final save = find.descendant(
@@ -354,7 +373,7 @@ void main() {
     );
     expect(
       find.descendant(
-        of: find.byKey(const ValueKey('admin-registration-scope-school-a')),
+        of: find.byKey(const ValueKey('admin-registration-scope-')),
         matching: find.byType(AdminEditor),
       ),
       findsOneWidget,
@@ -409,7 +428,7 @@ void main() {
       await showWorkspace(tester, repo, AppRole.superAdmin, '/admin/curricula');
       final catalog = find.byKey(const ValueKey('admin-catalog-course'));
       final register = find.descendant(
-        of: find.byKey(const ValueKey('admin-registration-course-school-a')),
+        of: find.byKey(const ValueKey('admin-registration-course-')),
         matching: find.widgetWithText(FilledButton, '등록'),
       );
       expect(tester.getSize(catalog).height, 64 * 3);

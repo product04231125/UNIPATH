@@ -42,7 +42,7 @@ void main() {
           )
           .onChanged(value);
       final search = find.byKey(
-        const ValueKey('admin-search-school-a-account'),
+        const ValueKey('admin-search--account'),
       );
       role('user');
       await tester.pumpAndSettle();

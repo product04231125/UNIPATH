@@ -9,6 +9,7 @@ import 'package:university_path_frontend/features/admin/graduation_certification
 import 'package:university_path_frontend/features/admin/graduation_credit_grid.dart';
 import 'package:university_path_frontend/features/admin/graduation_credit_grid_page.dart';
 import 'package:university_path_frontend/features/auth/app_role.dart';
+import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
 
 Widget host(Widget child) => MaterialApp(home: Scaffold(body: child));
 
@@ -458,6 +459,12 @@ void main() {
         find.byKey(const ValueKey('admin-section-ruleSet')),
         findsOneWidget,
       );
+      tester
+          .widget<AnchoredSelectField<String>>(
+            find.byKey(const ValueKey('admin-school-selector')),
+          )
+          .onChanged('school-a');
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.byKey(const ValueKey('rule-view-grid')));
       await tester.tap(find.byKey(const ValueKey('rule-view-grid')));
       await tester.pumpAndSettle();

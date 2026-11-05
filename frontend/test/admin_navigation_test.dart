@@ -124,7 +124,7 @@ void main() {
       await tester.tap(find.text('학교·학과'));
       await tester.pumpAndSettle();
       final form = find.byKey(
-        const ValueKey('admin-registration-institution-school-a'),
+        const ValueKey('admin-registration-institution-'),
       );
       final name = find.descendant(
         of: form,

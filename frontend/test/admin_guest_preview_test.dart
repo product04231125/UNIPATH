@@ -116,32 +116,35 @@ void main() {
     expect(find.text(GuestPreviewScope.blockedMessage), findsOneWidget);
   });
 
-  testWidgets('phone chrome keeps school id while title selector stays hidden', (
-    tester,
-  ) async {
-    final chrome = AdminSchoolChrome();
-    addTearDown(chrome.dispose);
-    final repo = FakeAdminRepository();
-    addTearDown(repo.dispose);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: AdminWorkspace(
-            role: AppRole.superAdmin,
-            path: '/admin/overview',
-            repository: repo,
-            schoolChrome: chrome,
-            phoneChrome: true,
-            onNavigate: (_) {},
-            onSignedOut: () {},
+  testWidgets(
+    'phone chrome keeps school id while title selector stays hidden',
+    (tester) async {
+      final chrome = AdminSchoolChrome();
+      addTearDown(chrome.dispose);
+      final repo = FakeAdminRepository();
+      addTearDown(repo.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AdminWorkspace(
+              role: AppRole.superAdmin,
+              path: '/admin/overview',
+              repository: repo,
+              schoolChrome: chrome,
+              phoneChrome: true,
+              onNavigate: (_) {},
+              onSignedOut: () {},
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(chrome.visible, isFalse);
-    expect(chrome.schoolId, isNotEmpty);
-  });
+      );
+      await tester.pumpAndSettle();
+      expect(chrome.visible, isFalse);
+      expect(chrome.schoolId, isEmpty);
+      expect(chrome.allowAll, isTrue);
+      expect(chrome.schools, isNotEmpty);
+    },
+  );
 
   testWidgets('initialSchoolId restores preferred school after preview exit', (
     tester,

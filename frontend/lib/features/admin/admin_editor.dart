@@ -209,6 +209,48 @@ class AdminEditorState extends State<AdminEditor> {
   }
 
   String _value(String key) => _controllers[key]?.text ?? '';
+
+  String _choiceLabel(AdminRecord record) {
+    final label =
+        '${record.name}${record.kind.versioned ? ' · v${record.revision}' : ''}';
+    if (widget.schoolId.isNotEmpty || record.kind == AdminKind.institution) {
+      return label;
+    }
+    final schoolId = widget.repository.school(record);
+    final schoolName = widget.repository.records
+        .where((item) => item.id == schoolId)
+        .map((item) => item.name)
+        .firstOrNull;
+    if (schoolName == null || schoolName.isEmpty || schoolName == record.name) {
+      return label;
+    }
+    return '$label · $schoolName';
+  }
+
+  /// A selected title-bar school wins. Otherwise the form's school field, or
+  /// the school of the department or curriculum the user picked.
+  String _resolvedInstitution() {
+    if (_controllers.containsKey('institutionId')) {
+      return _value('institutionId');
+    }
+    if (widget.schoolId.isNotEmpty) return widget.schoolId;
+    final departmentId = _value('departmentId');
+    if (departmentId.isNotEmpty) {
+      final department = widget.repository.records
+          .where((record) => record.id == departmentId)
+          .firstOrNull;
+      if (department != null) return widget.repository.school(department);
+    }
+    final curriculumId = _value('curriculumId');
+    if (curriculumId.isNotEmpty) {
+      final curriculum = widget.repository.records
+          .where((record) => record.id == curriculumId)
+          .firstOrNull;
+      if (curriculum != null) return widget.repository.school(curriculum);
+    }
+    return '';
+  }
+
   Iterable<AdminRecord> _choices(AdminField field) =>
       widget.repository.records.where((r) {
         if (r.kind != field.relation ||
@@ -257,9 +299,7 @@ class AdminEditorState extends State<AdminEditor> {
           ...?(_isRule ? _rule : _currentRecord)?.values,
           for (final f in _fields) f.key: _value(f.key).trim(),
           if (widget.repository.live && widget.kind != AdminKind.institution)
-            'institutionId': _controllers.containsKey('institutionId')
-                ? _value('institutionId')
-                : widget.schoolId,
+            'institutionId': _resolvedInstitution(),
         };
         final record =
             (_isRule ? _rule : _currentRecord)?.copy(values: values) ??
@@ -429,11 +469,7 @@ class AdminEditorState extends State<AdminEditor> {
       const SelectOption('', '미선택'),
       for (final entry in field.options.entries)
         SelectOption(entry.key, entry.value),
-      for (final r in _choices(field))
-        SelectOption(
-          r.id,
-          '${r.name}${r.kind.versioned ? ' · v${r.revision}' : ''}',
-        ),
+      for (final r in _choices(field)) SelectOption(r.id, _choiceLabel(r)),
       if (_value(field.key).isNotEmpty &&
           !field.options.containsKey(_value(field.key)) &&
           !_choices(field).any((r) => r.id == _value(field.key)))
@@ -518,11 +554,7 @@ class AdminEditorState extends State<AdminEditor> {
           ),
   );
 
-  Widget _panel(
-    String title,
-    Widget content, {
-    Key? key,
-  }) => Column(
+  Widget _panel(String title, Widget content, {Key? key}) => Column(
     key: key,
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [

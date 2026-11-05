@@ -139,6 +139,44 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       widget.role == AppRole.user ? AppRole.user : _repo.role(_actor);
   bool get _isSuperAdmin =>
       widget.role == AppRole.superAdmin && _role == AppRole.superAdmin;
+  bool _appliedInitialSchool = false;
+  bool get _allSchools =>
+      _isSuperAdmin && _schoolId.isEmpty && _schools.isNotEmpty;
+
+  Widget _schoolScopedTable({required String empty, required Widget child}) {
+    if (_schools.isEmpty) {
+      return const FeatureLine.one(
+        text: '관리 가능한 학교가 없습니다. 학교 등록 또는 범위 부여가 필요합니다.',
+      );
+    }
+    if (_schoolId.isEmpty) return FeatureLine.one(text: empty);
+    return child;
+  }
+
+  void _keepSchoolSelection() {
+    final selected =
+        _schoolId.isNotEmpty &&
+        _schools.any((school) => school.id == _schoolId);
+    if (selected) {
+      _appliedInitialSchool = true;
+      return;
+    }
+    final preferred = widget.initialSchoolId?.trim() ?? '';
+    if (!_appliedInitialSchool &&
+        preferred.isNotEmpty &&
+        _schools.any((school) => school.id == preferred)) {
+      _schoolId = preferred;
+      _appliedInitialSchool = true;
+      return;
+    }
+    _appliedInitialSchool = true;
+    if (_isSuperAdmin) {
+      _schoolId = '';
+      return;
+    }
+    _schoolId = _schools.firstOrNull?.id ?? '';
+  }
+
   String get _section {
     final parts = widget.path.split('/');
     return parts.length > 2 ? parts.take(3).join('/') : '/admin/overview';
@@ -255,6 +293,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         (kind == AdminKind.account ||
             kind == AdminKind.scope ||
             kind == AdminKind.institution ||
+            _allSchools ||
             _repo.school(r) == _schoolId),
   );
   Future<void> _edit(
@@ -863,14 +902,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     _ => '관리 작업',
   };
 
-  Iterable<AdminAuditEntry> get _schoolHistory => _repo.history.reversed.where(
-    (entry) =>
-        entry.institutionId == _schoolId &&
-        (_role == AppRole.superAdmin ||
-            entry.actorId == _actor ||
-            _find(entry.targetId) != null &&
-                _repo.canRead(_actor, _find(entry.targetId)!)),
-  );
+  Iterable<AdminAuditEntry> get _schoolHistory =>
+      _repo.history.reversed.where(_historyInScope);
 
   static const _overviewActionMin = Size(148, 40);
 
@@ -885,7 +918,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_schoolId.isEmpty) ...[
+        if (_schools.isEmpty) ...[
           const FeatureLine.one(
             text: '관리 가능한 학교가 없습니다. 학교 등록 또는 범위 부여가 필요합니다.',
           ),
@@ -952,7 +985,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                         icon: const Icon(Icons.arrow_forward, size: 18),
                         label: const Text('관리 이력 보기'),
                       ),
-                      if (widget.onEnterStudentPreview != null)
+                      if (widget.onEnterStudentPreview != null &&
+                          _schoolId.isNotEmpty)
                         OutlinedButton.icon(
                           key: const ValueKey('admin-student-preview'),
                           style: _overviewOutlinedStyle,
@@ -1216,6 +1250,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         value: _schoolId,
         label: '현재 학교',
         options: [
+          if (_isSuperAdmin && _schools.isNotEmpty)
+            const SelectOption('', '전체 학교'),
           for (final school in _schools) SelectOption(school.id, school.name),
         ],
         onChanged: _changeSchool,
@@ -1230,7 +1266,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         allowed &&
         _schools.isNotEmpty &&
         _section != '/admin/applications' &&
-        _schoolId.isNotEmpty;
+        (_isSuperAdmin || _schoolId.isNotEmpty);
     final showInTitle = keepSelection && !widget.phoneChrome;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || widget.schoolChrome != chrome) return;
@@ -1245,6 +1281,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           for (final school in _schools) (id: school.id, name: school.name),
         ],
         visible: showInTitle,
+        allowAll: _isSuperAdmin,
         onChanged: _changeSchool,
       );
     });
@@ -1252,12 +1289,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_schools.any((r) => r.id == _schoolId)) {
-      final preferred = widget.initialSchoolId?.trim() ?? '';
-      _schoolId = preferred.isNotEmpty && _schools.any((r) => r.id == preferred)
-          ? preferred
-          : (_schools.firstOrNull?.id ?? '');
-    }
+    _keepSchoolSelection();
     final known =
         AdminWorkspace.menus.containsKey(_section) &&
         widget.path.split('/').length <= 4;
@@ -1365,36 +1397,42 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     SizedBox(height: FeatureLine.slotGap(context)),
                   ]
                 else if (_ruleView == 'grid')
-                  GraduationCreditGridPage(
-                    key: _creditGrid,
-                    schoolName: _relationName(_schoolId).isEmpty
-                        ? '현재 학교'
-                        : _relationName(_schoolId),
-                    departments: [
-                      for (final department in _repo.records.where(
-                        (r) =>
-                            r.kind == AdminKind.department &&
-                            r.value('institutionId') == _schoolId &&
-                            _repo.canRead(_actor, r),
-                      ))
-                        department,
-                    ],
+                  _schoolScopedTable(
+                    empty: '학점표를 보려면 학교를 하나 선택하세요.',
+                    child: GraduationCreditGridPage(
+                      key: _creditGrid,
+                      schoolName: _relationName(_schoolId).isEmpty
+                          ? '현재 학교'
+                          : _relationName(_schoolId),
+                      departments: [
+                        for (final department in _repo.records.where(
+                          (r) =>
+                              r.kind == AdminKind.department &&
+                              r.value('institutionId') == _schoolId &&
+                              _repo.canRead(_actor, r),
+                        ))
+                          department,
+                      ],
+                    ),
                   )
                 else
-                  GraduationCertificationPage(
-                    key: _certification,
-                    schoolName: _relationName(_schoolId).isEmpty
-                        ? '현재 학교'
-                        : _relationName(_schoolId),
-                    departments: [
-                      for (final department in _repo.records.where(
-                        (r) =>
-                            r.kind == AdminKind.department &&
-                            r.value('institutionId') == _schoolId &&
-                            _repo.canRead(_actor, r),
-                      ))
-                        department,
-                    ],
+                  _schoolScopedTable(
+                    empty: '인증 요건을 보려면 학교를 하나 선택하세요.',
+                    child: GraduationCertificationPage(
+                      key: _certification,
+                      schoolName: _relationName(_schoolId).isEmpty
+                          ? '현재 학교'
+                          : _relationName(_schoolId),
+                      departments: [
+                        for (final department in _repo.records.where(
+                          (r) =>
+                              r.kind == AdminKind.department &&
+                              r.value('institutionId') == _schoolId &&
+                              _repo.canRead(_actor, r),
+                        ))
+                          department,
+                      ],
+                    ),
                   ),
                 if (_section == '/admin/history') _history(),
                 if (_section == '/admin/applications')

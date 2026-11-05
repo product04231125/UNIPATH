@@ -186,9 +186,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       final form = find.descendant(
-        of: find.byKey(
-          const ValueKey('admin-registration-institution-school-a'),
-        ),
+        of: find.byKey(const ValueKey('admin-registration-institution-')),
         matching: find.byType(AdminEditor),
       );
       final name = find.descendant(
@@ -410,7 +408,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('alpha'), findsOneWidget);
     expect(find.text('beta'), findsOneWidget);
-    expect(find.text('gamma'), findsNothing);
+    expect(find.text('gamma'), findsOneWidget);
     tester
         .widget<AnchoredSelectField<String>>(
           find.byKey(const ValueKey('admin-status-document')),
@@ -419,7 +417,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('beta'), findsNothing);
     await tester.enterText(
-      find.byKey(const ValueKey('admin-search-school-a-document')),
+      find.byKey(const ValueKey('admin-search--document')),
       '없는 항목',
     );
     await tester.pumpAndSettle();
@@ -479,7 +477,7 @@ void main() {
     expect(find.text('바로가기'), findsOneWidget);
     expect(find.text('최근 변경'), findsOneWidget);
     expect(find.text('검토 문서 a'), findsOneWidget);
-    expect(find.text('검토 문서 b'), findsNothing);
+    expect(find.text('검토 문서 b'), findsOneWidget);
     tester
         .widget<AnchoredSelectField<String>>(
           find.byType(AnchoredSelectField<String>),
@@ -1118,9 +1116,15 @@ void main() {
       final selector = tester.widget<AnchoredSelectField<String>>(
         find.byKey(const ValueKey('admin-school-selector')),
       );
-      expect(selector.options.map((o) => o.value), ['school-a', 'school-b']);
+      expect(selector.value, '');
+      expect(selector.options.map((o) => o.value), [
+        '',
+        'school-a',
+        'school-b',
+      ]);
+      expect(selector.options.first.label, '전체 학교');
       final form = find.byKey(
-        const ValueKey('admin-registration-institution-school-a'),
+        const ValueKey('admin-registration-institution-'),
       );
       await tester.enterText(
         find.descendant(
