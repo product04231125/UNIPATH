@@ -36,17 +36,27 @@ void main() {
           await tester.pumpAndSettle();
           await tester.tap(find.byIcon(Icons.chat_bubble_outline));
           await tester.pumpAndSettle();
+          final panel = tester.getRect(find.byType(AssistantPanel));
+          if (size.width < 1180) {
+            expect(panel.width, size.width);
+            expect(
+              find.byKey(const Key('weekly-horizontal-scrollbar')),
+              findsNothing,
+            );
+            await tester.tap(find.byTooltip('작업 화면으로 돌아가기'));
+            await tester.pumpAndSettle();
+          }
           final scrollbar = find.byKey(
             const Key('weekly-horizontal-scrollbar'),
           );
           await tester.ensureVisible(scrollbar);
           await tester.pumpAndSettle();
           final frame = tester.getRect(scrollbar);
-          final panel = tester.getRect(find.byType(AssistantPanel));
-          expect(frame.right, lessThanOrEqualTo(panel.left));
+          final rightEdge = size.width < 1180 ? size.width : panel.left;
+          expect(frame.right, lessThanOrEqualTo(rightEdge));
           final widget = tester.widget<Scrollbar>(scrollbar);
           final controller = widget.controller!;
-          if (size.width < 1180) {
+          if (size.width < 1180 && controller.position.maxScrollExtent > 1) {
             expect(widget.thumbVisibility, isTrue);
             expect(widget.interactive, isTrue);
             expect(controller.position.maxScrollExtent, greaterThan(0));
@@ -81,11 +91,14 @@ void main() {
           );
           expect(day.hitTestable(), findsOneWidget);
           final rect = tester.getRect(day);
-          expect(rect.right, lessThanOrEqualTo(panel.left));
+          expect(rect.right, lessThanOrEqualTo(rightEdge));
           await tester.tap(day);
           await tester.pumpAndSettle();
           expect(find.byType(SchedulePage), findsOneWidget);
-          expect(find.byType(AssistantPanel), findsOneWidget);
+          expect(
+            find.byType(AssistantPanel),
+            size.width < 1180 ? findsNothing : findsOneWidget,
+          );
           expect(tester.takeException(), isNull);
         },
       );

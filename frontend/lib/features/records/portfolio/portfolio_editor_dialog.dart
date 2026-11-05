@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../shared/widgets/input_dialog.dart';
 
 import '../../../shared/widgets/anchored_select_field.dart';
 import '../personal_record_repository.dart';
 import 'portfolio_workspace_repository.dart';
+import '../../auth/auth_api.dart';
 
 class PortfolioEditorDialog extends StatefulWidget {
   const PortfolioEditorDialog({
@@ -30,7 +32,14 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
   late String _type;
   late bool _reviewed;
   bool _saving = false;
+  late final String _operationId =
+      widget.document?.id ?? widget.composition?.id ?? PersonalRecord.newId();
   String? _error;
+  late final List<String> _originalText;
+  late final List<String> _originalSelected;
+  late final PortfolioAudience _originalAudience;
+  late final String _originalType;
+  late final bool _originalReviewed;
 
   @override
   void initState() {
@@ -46,6 +55,17 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
     _audience = c?.audience ?? PortfolioAudience.private;
     _reviewed = c?.reviewed ?? false;
     _type = d?.type ?? '이력서';
+    _originalText = [
+      _title,
+      _description,
+      _target,
+      _role,
+      _body,
+    ].map((c) => c.text).toList();
+    _originalSelected = [..._selected];
+    _originalAudience = _audience;
+    _originalType = _type;
+    _originalReviewed = _reviewed;
   }
 
   @override
@@ -155,7 +175,8 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
       if (widget.isDocument) {
         await widget.repository.saveDocument(
           ApplicationDocument(
-            id: widget.document?.id ?? PersonalRecord.newId(),
+            id: _operationId,
+            version: widget.document?.version,
             title: _title.text.trim(),
             target: _target.text.trim(),
             role: _role.text.trim(),
@@ -167,7 +188,8 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
       } else {
         await widget.repository.saveComposition(
           PortfolioComposition(
-            id: widget.composition?.id ?? PersonalRecord.newId(),
+            id: _operationId,
+            version: widget.composition?.version,
             title: _title.text.trim(),
             description: _description.text.trim(),
             audience: _audience,
@@ -177,11 +199,13 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
         );
       }
       if (mounted) Navigator.pop(context, true);
-    } catch (_) {
+    } catch (failure) {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error = '기기에 저장하지 못했습니다. 입력은 유지됩니다. 원본 연결과 저장소 상태를 확인하고 다시 시도하세요.';
+          _error = failure is AuthFailure
+              ? '${failure.message} 입력은 유지됩니다.'
+              : '${widget.repository.isServerBacked ? '서버' : '기기'}에 저장하지 못했습니다. 입력은 유지됩니다. 원본 연결과 저장소 상태를 확인하고 다시 시도하세요.';
         });
       }
     }
@@ -198,6 +222,21 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
       changes: Listenable.merge([_title, _description, _target, _role, _body]),
       editing: widget.composition != null || widget.document != null,
       saving: _saving,
+      hasUnsavedChanges: () =>
+          !listEquals(
+            [_title, _description, _target, _role, _body]
+                .map(
+                  (c) => widget.composition == null && widget.document == null
+                      ? c.text.trim()
+                      : c.text,
+                )
+                .toList(),
+            _originalText,
+          ) ||
+          !listEquals(_selected, _originalSelected) ||
+          _audience != _originalAudience ||
+          _type != _originalType ||
+          _reviewed != _originalReviewed,
       hasContent: () =>
           [
             _title,
@@ -217,7 +256,9 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('기기 로컬 초안 · 온라인 게시·제출·파일 업로드·AI 생성은 하지 않습니다.'),
+            Text(
+              '${widget.repository.isServerBacked ? '계정 서버' : '기기 로컬'} 초안 · 온라인 게시·제출·파일 업로드·AI 생성은 하지 않습니다.',
+            ),
             const SizedBox(height: 16),
             _field(
               _title,
@@ -314,7 +355,7 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
                   ),
                 ),
               ),
-            const Text('추가할 개인 기록 선택 · 예시 데이터는 제외됩니다.'),
+            const Text('추가할 개인 기록 선택'),
             if (candidates.isEmpty)
               const Text('개인 기록이 없습니다. 성과 기록 또는 경험 메뉴에서 먼저 추가하세요.'),
             for (final source in candidates.where(
@@ -347,7 +388,9 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _saving ? null : () => Navigator.pop(context, false),
+          onPressed: _saving
+              ? null
+              : () => InputDialog.cancel<bool>(context, false),
           child: const Text('취소'),
         ),
         FilledButton(

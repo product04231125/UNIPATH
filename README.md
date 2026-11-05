@@ -27,7 +27,8 @@ git switch -c feature/your-task
 - 팀 공통: `compose.yaml`, `.env.example`, `docs/`에서 실행 환경과 API·DB 계약을 관리합니다.
 
 기능 브랜치는 `develop`을 기준으로 만들고 Pull Request의 대상도 `develop`로 설정합니다.
-통합 검증을 마친 변경은 `develop`에서 `main`으로 반영합니다. 개발용과 배포용 다운로드·서버 실행 절차는
+통합 검증을 마친 변경도 `main` 대상 PR은 이어진이 명시적으로 요청할 때만 올립니다.
+일반적인 개발·통합 요청은 `develop` 기준으로 처리합니다. 개발용과 배포용 다운로드·서버 실행 절차는
 [`docs/releases.md`](docs/releases.md)를 따릅니다. 브랜치에 푸시하는 것만으로 서버가
 자동 배포되지는 않습니다. 배포용 채널도 현재 기능 범위에서는 프리뷰입니다.
 각 담당자는 자신의 변경과 관련된 테스트를 실행하고, API·DB 계약을 바꾸면 영향받는
@@ -51,7 +52,31 @@ PR과 `main`/`develop`의 백엔드 변경을 검증합니다. 앱 다운로드 
 - 배포 채널: `main`, `https://unipath.duckdns.org`
 - 통합·빌드·릴리스 담당: 이어진
 
-현재 로그인·개인 기록은 목업/기기 로컬 상태이며 공식 졸업감사·LLM은 미연결입니다.
+develop의 로그인·가입·세션·역할/학교 범위는 실제 API/DB로 구현했습니다.
+[최초 학교관리자 가입·미등록 학교 신청](docs/api/initial-school-admin-signups.md)은 계정과
+접수를 함께 저장하고 슈퍼관리자 승인 시 학교 등록/기존 학교 연결·관리 권한 부여를 처리합니다.
+[학교관리자 신청·승인 API](docs/api/school-admin-applications.md)는 본인 신청과 슈퍼관리자의
+신원·학교 담당 확인 후 역할/학교 범위 부여를 원자적으로 처리합니다. 기존 권한 신청·심사 화면을 연결했으며, 회원가입의 최초 학교관리자 폼은 입력 준비까지 완료했습니다. 최초 학교 정보 접수 API는 후속 계약입니다.
+모든 실제 역할은 공통 제목표시줄의 [계정 보안](docs/api/account-security-integration.md)에서 비밀번호 변경·모든 기기 로그아웃을 사용합니다.
+학업 프로필·일정은 [서버 저장과 동의 이전 화면](docs/api/planning-integration.md)을 연결했습니다. [다른 개인 기록·구성·지원 문서 화면](docs/api/personal-workspace-integration.md)도 서버 저장과 동의 이전을 연결했습니다. 기기 원본은 보존합니다.
+[개인 기준 계산 API](docs/api/personal-evaluations.md)와 불변 결과 이력도 구현했습니다.
+[개인 자료 일괄 이전 API](docs/api/personal-imports.md)는 본인 확인·동의한 자료와 관계를
+원자적으로 추가하고 ID 대응표·안전한 재시도를 제공합니다. 프로필·일정과 다른 개인 자료 10종의 별도 동의 이전 화면을 연결했습니다.
+[학교 문서 검토·DB 검색 API](docs/api/school-knowledge.md)는 적용 문서의 추출본 등록,
+별도 승인·회수와 로그인 사용자의 UUID 문맥 검색을 제공합니다. 실제 LLM은 미연결입니다.
+[공식 실행 규칙](docs/api/rule-programs.md)은 적용 메타데이터에 명시적인 조건·승인 근거를
+연결하고 학교·학과·교육과정·입학연도·이수경로로 선택합니다.
+[자격증·발급기관 마스터](docs/api/certificates.md)는 슈퍼관리자가 관리합니다.
+규칙 선택은 전체 규정 완전성이나 공식 졸업 판정을 의미하지 않습니다.
+[학교 발급 자료 원본 제출·검토 API](docs/api/official-record-sources.md)는 본인 동의로 제출한
+PDF를 별도로 보관하고 학교 관리자가 발급기관·대상 신원을 확인합니다. 원본 확인을 성적·활동
+기록 승인이나 졸업 판정으로 사용하지 않습니다. [학교 검토 기록 API](docs/api/official-student-records.md)는
+관리자가 원본 페이지와 성적·봉사·자격·논문 기록을 연결해 별도 승인하고 불변 이력을 보관합니다.
+본인·문맥·기준일이 맞는 완전한 승인 기록을 [졸업요건 감사 API](docs/api/graduation-audits.md)에 연결했습니다.
+학교·학과·교육과정의 전체 규정 검토와 기록을 함께 확인하고 당시 결과·근거를 이력으로 보관합니다.
+제출·검토·공식 감사 화면 연결과 실제 학교 자료 등록은 후속입니다.
+개인 기준의 명시 조건 입력·계산·결과 이력 화면도 연결했습니다. 공식 감사의 타입/전송 API는 준비했고 LLM은 미연결입니다. main 채널의 기능은
+별도 승격 전까지 이전 릴리스를 유지합니다. [인증 계약과 초기 관리자](docs/api/authentication.md)를 참고하세요.
 배포 채널 제공과 실제 운영 서비스 완성은 구분합니다. 상세 빌드·다운로드·도메인 및
 HTTPS 설정은 [`docs/releases.md`](docs/releases.md)에 있습니다.
 
@@ -70,6 +95,12 @@ HTTPS 설정은 [`docs/releases.md`](docs/releases.md)에 있습니다.
 
 - 진로 정보 RAG 질의응답
 - 채용공고 요구사항 추출 및 개인 경험 비교
+
+착수용 [개인화·채용 분석 API 계약](docs/api/job-analysis.md)은 구현했습니다.
+명시적으로 선택한 본인 기록과 공고 원문을 입력받고 소유권·버전·인용을 검증합니다.
+실제 AI 분석기는 미연결이며 기본 응답은 `not_configured`입니다. 전체 2차 MVP 완료와
+구분합니다. [졸업 결과 안내](docs/api/graduation-audits.md)는 기존 Rule Engine 결과를
+근거·부족 항목·추가 확인 사항으로 정리합니다.
 
 ### 3차 MVP 기능
 
@@ -126,6 +157,17 @@ LLM         검색 근거와 판정 결과를 자연어로 설명
 
 Flutter Web은 역할에 따라 학생 사용자 화면과 학교 관리자 화면을 분리합니다. 두 화면은
 같은 애플리케이션과 `/api/v1` API를 사용하며, 관리자 기능은 역할 기반 권한으로 보호합니다.
+
+관리자 작업 공간은 학교 관리자와 슈퍼관리자가 공통 화면을 사용하고 역할·관리 범위로
+메뉴와 조작을 구분하는 설계다. 슈퍼관리자는 학교 등록·학교 관리자 범위 부여/회수와
+전체 학교 공식 데이터를 관리하며 학교 관리자는 활성 범위 안에서 직접 검토·적용한다.
+학생 개인 기록 접근 권한은 자동 부여하지 않는다. 역할·계정 상태·범위·변경 이력의
+계정·세션·학교 전체 범위는 [인증 API](docs/api/authentication.md)로 구현했다.
+학교·학과·교육과정·과목·검토 기준/문서 메타데이터 CRUD와 관리자 화면 연결은
+[학사 API](docs/api/academic.md)로 구현했다. 조건 설명은 실행 가능한 판정 규칙이 아니며,
+학생 자료 서버 저장과 학생용 학사 조회는 [학생 API](docs/api/personal.md)로 구현했다.
+본인 자료와 명시적 조건을 사용하는 [개인 계산](docs/api/personal-evaluations.md)은
+공식 판정과 분리해 구현했다. 학업 프로필·일정은 서버 저장·동의 이전을 연결했다. 나머지 개인 기록·구성·지원 문서도 서버 화면과 동의 이전을 연결했다. 개인 계산 조건·실행·이력 화면도 연결했다. 공식 졸업요건 감사 API와 학교 검토 기록을 연결했고, 관련 화면·하위 관리 범위는 후속이다.
 
 - 일반 사용자는 등록된 학교·학과 데이터가 없거나 지원하지 않는 학교·학과에 속해도
   자격증, 진로, 활동·경험, 채용 분석 등 공용 모듈을 사용할 수 있다. 학사정보와 과목도
@@ -196,14 +238,14 @@ Flutter Web은 역할에 따라 학생 사용자 화면과 학교 관리자 화�
 
 ### 모듈별 기본 소유권
 
-| 모듈 | 주 담당 | 협업 영역 |
-|---|---|---|
-| School Knowledge Module | AI·RAG·데이터 | 백엔드 API 연동 |
-| Career / Certificate Module (자격증 1차, 진로 2차) | AI·RAG·데이터 | 프론트 결과 표시 |
-| Academic Rule Engine | 백엔드·통합 | AI의 규정 데이터 제공 |
-| Job Analysis Module (2차 MVP) | AI·RAG·데이터 | 백엔드의 경험 비교 및 저장 |
-| Personalization Module | 백엔드·통합 | 프론트의 입력·표현 |
-| Flutter Web (1차)·Windows 애플리케이션 (3차) | 프론트엔드·UX·QA | 전 모듈 API 연동 |
+| 모듈                                          | 주 담당        | 협업 영역           |
+| ------------------------------------------- | ----------- | --------------- |
+| School Knowledge Module                     | AI·RAG·데이터  | 백엔드 API 연동      |
+| Career / Certificate Module (자격증 1차, 진로 2차) | AI·RAG·데이터  | 프론트 결과 표시       |
+| Academic Rule Engine                        | 백엔드·통합      | AI의 규정 데이터 제공   |
+| Job Analysis Module (2차 MVP)                | AI·RAG·데이터  | 백엔드의 경험 비교 및 저장 |
+| Personalization Module                      | 백엔드·통합      | 프론트의 입력·표현      |
+| Flutter Web (1차)·Windows 애플리케이션 (3차)        | 프론트엔드·UX·QA | 전 모듈 API 연동     |
 
 ## 4. 핵심 데이터 모델
 
@@ -345,11 +387,12 @@ university-path/
 │  ├─ initial-plan-comparison.md
 │  ├─ specialized-ai-and-supporting-tools-proposal.md
 │  ├─ job-matching-decision-layer-proposal.md
-│  ├─ product-ux.md
 │  └─ frontend/
 │     ├─ README.md
+│     ├─ product-ux.md
 │     ├─ architecture.md
 │     ├─ platform-differences.md
+│     ├─ verification/
 │     └─ features/
 ├─ compose.yaml
 ├─ .env.example
@@ -393,11 +436,19 @@ API 문서는 `http://localhost:8010/api/v1/docs`, DB 준비 상태 확인은
 `http://localhost:8010/api/v1/health/ready`입니다. PostgreSQL 호스트 포트는 5433입니다.
 Docker 내부에서는 API 8000과 DB 5432를 사용합니다. 기존 서비스와 충돌하면
 `.env`에서 호스트 포트를 변경합니다. 실행 시 Alembic으로 pgvector를 활성화하며,
-도메인 테이블·인증·졸업 판정은 후속 구현 범위입니다.
+계정·세션·역할·학교 범위, 학사 메타데이터와 개인 자료 테이블도 생성합니다.
+학사 CRUD·학생 자료 저장 API와 [학생용 학사 조회](docs/api/student-catalog.md)를 구현했습니다.
+개인 계산과 학교 검토 자료 기준 졸업요건 감사 API·결과 이력을 구현했습니다. DB·LLM과 독립적인
+학점·필수과목·봉사·자격증·논문 판정 코어와 호스트용 DB 백업·격리 복구 검증 도구는
+구현했습니다. 실행·계약은 [Rule Engine](docs/rule-engine.md)과
+[DB 백업](docs/database-backups.md)을 따릅니다.
 자세한 호스트 개발, 자동 재시작, 테스트 및 마이그레이션 방법은
 [`backend/README.md`](backend/README.md)를 참고합니다.
 
 RAG 팀의 PDF 추출·학교 검색 모듈은 `POST /api/v1/assistant/queries`로 연결했습니다.
+이 기존 경로는 로컬 이름 기반 계약을 유지합니다. 운영 DB 자료는 별도 관리자 검토 후
+`POST /api/v1/me/school-searches`와 `/me/school-queries`에서 학교·학과·교육과정 UUID로
+선택합니다. [JSONL 초안 가져오기·검토·검색 계약](docs/api/school-knowledge.md)을 따릅니다.
 [질의 API 계약](docs/api/assistant.md)과 [OpenAPI 사본](docs/api/openapi.json)을
 기준으로 프론트엔드 모델과 상태 처리를 연결합니다. 현재 PDF는 검토 대기 상태이며
 실제 LLM 생성기는 연결하지 않았습니다. 기본 실행은 빈 인덱스를 사용합니다.
@@ -414,7 +465,7 @@ python3 backend/scripts/smoke_api.py
 ### Flutter 프론트엔드 설치 및 실행 (Windows)
 
 `frontend/`는 Flutter Web과 Windows 화면을 함께 제공합니다. 학교 질의는 실제 API와
-연결하며 인증·개인 기록·졸업 판정은 목업 또는 기기 로컬 상태입니다. Flutter SDK를 내려받아
+연결하고 인증은 실제 계정 API를 사용합니다. 학업 프로필·일정·개인 기록·구성·지원 문서는 서버 저장입니다. 공식 졸업요건 감사는 타입/전송 API까지 준비했고 화면 연결은 후속입니다. Flutter SDK를 내려받아
 예를 들어 `C:\develop\flutter`에 압축을 풀고, `C:\develop\flutter\bin`을 사용자
 `Path`에 추가합니다. Windows 앱도 빌드하려면 Visual Studio의 **Desktop development
 with C++** 워크로드가 필요합니다. 자세한 설치 절차는 [Flutter 수동 설치 안내](https://docs.flutter.dev/install/manual)와 [Windows 개발 환경 안내](https://docs.flutter.dev/platform-integration/windows/setup)를 따른다.
@@ -431,7 +482,7 @@ flutter devices
 ```powershell
 cd frontend
 flutter pub get
-flutter run -d chrome --web-port 3000 --dart-define=API_BASE_URL=http://127.0.0.1:8010
+flutter run -d chrome --web-port 3000 --dart-define=API_BASE_URL=http://localhost:8010
 flutter run -d windows --dart-define=API_BASE_URL=http://127.0.0.1:8010
 flutter analyze
 flutter test
@@ -439,6 +490,7 @@ flutter build web
 flutter build windows
 ```
 
+Web 쿠키 세션은 `localhost`와 `127.0.0.1`을 다른 호스트로 보므로 Chrome은 `http://localhost:8010`을 사용합니다.
 Windows Release 실행 파일은 `frontend\build\windows\x64\runner\Release\university_path_frontend.exe`에 생성됩니다. Flutter가 `Path`에 없다면 위 명령의 `flutter` 대신 Flutter SDK의 `bin\flutter.bat` 절대 경로를 사용합니다.
 
 ## 8. 환경 분리 및 배포

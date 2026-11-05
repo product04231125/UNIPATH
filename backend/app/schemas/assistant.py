@@ -1,3 +1,4 @@
+from datetime import date
 from enum import StrEnum
 from typing import Annotated
 from uuid import UUID
@@ -57,6 +58,20 @@ class MissingContextField(StrEnum):
     GRADUATION_AUDIT = "graduation_audit"
 
 
+class CitationApplicability(BaseModel):
+    institution_id: UUID
+    department_id: UUID | None
+    curriculum_id: UUID | None
+    source_version: Annotated[int, Field(ge=1)]
+    knowledge_document_id: UUID
+    knowledge_version: Annotated[int, Field(ge=1)]
+    effective_from: date | None
+    effective_to: date | None
+    source_checked_on: date
+    admission_years: list[int]
+    tracks: list[str]
+
+
 class AssistantCitation(BaseModel):
     chunk_id: UUID
     document_id: UUID
@@ -64,6 +79,7 @@ class AssistantCitation(BaseModel):
     source_url: HttpUrl
     page: Annotated[int, Field(ge=1)]
     excerpt: str
+    applicability: CitationApplicability | None = None
 
 
 class AssistantQueryResponse(BaseModel):

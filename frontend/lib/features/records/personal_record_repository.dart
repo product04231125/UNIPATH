@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:math';
 
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../auth/local_data_owner.dart';
 
 enum PersonalRecordKind {
   course,
@@ -9,17 +12,26 @@ enum PersonalRecordKind {
   experience,
   credential,
   portfolio,
+  personalSchool,
+  personalDepartment,
   personalCurriculum,
   personalCurriculumCourse,
-  personalGraduationRule,
+  personalGraduationRule;
+
+  bool get hasServerContract =>
+      this != personalSchool && this != personalDepartment;
 }
 
-/// Client-local personal data, never a transport DTO or official school record.
+/// Personal UI model, never a transport DTO or official school record.
 class PersonalRecord {
-  PersonalRecord({required this.id, required Map<String, String> values})
-    : values = Map.unmodifiable(values);
+  PersonalRecord({
+    required this.id,
+    required Map<String, String> values,
+    this.version,
+  }) : values = Map.unmodifiable(values);
   final String id;
   final Map<String, String> values;
+  final int? version;
 
   String value(String key) => values[key] ?? '';
 
@@ -33,19 +45,44 @@ class PersonalRecord {
 }
 
 class PersonalRecordRepository {
-  PersonalRecordRepository(this.kind);
+  PersonalRecordRepository(this.kind, {LocalDataOwner? owner})
+    : _owner = owner ?? LocalDataOwner.current();
+  final LocalDataOwner _owner;
   final PersonalRecordKind kind;
+  bool get isServerBacked => false;
   SharedPreferences? _preferences;
   bool _loaded = false;
   List<PersonalRecord> _records = [];
   List<PersonalRecord> get records => List.unmodifiable(_records);
-  String get storageKey => 'university_path.personal_records.${kind.name}.v1';
+  String get storageKey =>
+      _owner.key('university_path.personal_records.${kind.name}.v1');
+  static final _operations = <String, Future<void>>{};
 
-  Future<void> load() async {
+  Future<void> _enqueue(Future<void> Function() operation) {
+    final previous = _operations[storageKey];
+    final finished = Completer<void>();
+    _operations[storageKey] = finished.future;
+    return (() async {
+      try {
+        if (previous != null) await previous;
+        await operation();
+      } finally {
+        if (identical(_operations[storageKey], finished.future)) {
+          _operations.remove(storageKey);
+        }
+        finished.complete();
+      }
+    })();
+  }
+
+  Future<void> load() => _enqueue(_read);
+
+  Future<void> _read() async {
     _loaded = false;
     _preferences ??= await SharedPreferences.getInstance();
     final raw = _preferences!.getString(storageKey);
     if (raw == null) {
+      _records = [];
       _loaded = true;
       return;
     }
@@ -64,7 +101,9 @@ class PersonalRecordRepository {
     _loaded = true;
   }
 
-  Future<void> save(PersonalRecord record) async {
+  Future<void> save(PersonalRecord record) => _enqueue(() async {
+    if (!_loaded) throw StateError('Load records successfully before writing');
+    await _read();
     final next = [..._records];
     final index = next.indexWhere((r) => r.id == record.id);
     if (index < 0) {
@@ -73,10 +112,13 @@ class PersonalRecordRepository {
       next[index] = record;
     }
     await _write(next);
-  }
+  });
 
-  Future<void> delete(String id) =>
-      _write(_records.where((r) => r.id != id).toList());
+  Future<void> delete(String id, {int? expectedVersion}) => _enqueue(() async {
+    if (!_loaded) throw StateError('Load records successfully before writing');
+    await _read();
+    await _write(_records.where((r) => r.id != id).toList());
+  });
 
   Future<void> _write(List<PersonalRecord> records) async {
     if (!_loaded) throw StateError('Load records successfully before writing');

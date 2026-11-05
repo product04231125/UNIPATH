@@ -118,14 +118,14 @@ class _WeeklyScheduleState extends State<WeeklySchedule> {
       child: Material(
         color: today ? colors.primaryContainer : colors.surfaceContainerLow,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(20),
           side: BorderSide(
             color: today ? colors.primary : colors.outlineVariant,
           ),
         ),
         child: InkWell(
           key: ValueKey('week-day-${day.toIso8601String()}'),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(20),
           onTap: () => widget.onSelectDay(day),
           child: Container(
             constraints: const BoxConstraints(minHeight: 144),

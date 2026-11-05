@@ -3,8 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/records/personal_record_fields.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
+
+import 'support/achievement_records_page.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -71,7 +72,7 @@ void main() {
             ),
             child: child!,
           ),
-          home: const Scaffold(body: PortfolioPage(showMockData: false)),
+          home: Scaffold(body: achievementRecordsPage()),
         );
         Future<void> fill(String key, String value) async {
           final field = find.byKey(ValueKey('record-field-$key'));

@@ -11,6 +11,8 @@ from uuid import UUID
 
 from .chunker import PIPELINE_VERSION, chunk_document
 from .pdf_loader import IngestionError, load_pdf
+from .sections import PIPELINE_VERSION as SECTION_VERSION
+from .sections import chunk_sections
 from .types import DocumentSource
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
@@ -64,18 +66,21 @@ def write_atomic(path: Path, content: str) -> None:
             temporary.unlink(missing_ok=True)
 
 
-def run(manifest: Path, source_root: Path, output_dir: Path) -> dict:
+def run(manifest: Path, source_root: Path, output_dir: Path, *, chunking: str = "page") -> dict:
+    if chunking not in ("page", "year-sections"):
+        raise IngestionError("Unknown chunking mode")
     sources = read_manifest(manifest)
     chunks = []
     reports = []
     # Finish extraction before touching existing outputs. A broken input fails the whole run.
     for source in sources:
-        document_chunks, report = chunk_document(load_pdf(source, source_root))
+        chunker = chunk_document if chunking == "page" else chunk_sections
+        document_chunks, report = chunker(load_pdf(source, source_root))
         chunks.extend(document_chunks)
         reports.append(report)
     result = {
         "schema_version": "1.0",
-        "pipeline_version": PIPELINE_VERSION,
+        "pipeline_version": PIPELINE_VERSION if chunking == "page" else SECTION_VERSION,
         "document_count": len(reports),
         "page_count": sum(report["page_count"] for report in reports),
         "chunk_count": len(chunks),
@@ -105,9 +110,10 @@ def main() -> int:
     parser.add_argument(
         "--output-dir", type=Path, default=Path(__file__).resolve().parents[1] / "output"
     )
+    parser.add_argument("--chunking", choices=["page", "year-sections"], default="page")
     args = parser.parse_args()
     try:
-        result = run(args.manifest, args.source_root, args.output_dir)
+        result = run(args.manifest, args.source_root, args.output_dir, chunking=args.chunking)
     except (IngestionError, OSError) as exc:
         print(f"Ingestion failed: {exc}", file=sys.stderr)
         return 1

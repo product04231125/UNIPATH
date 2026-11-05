@@ -1,35 +1,65 @@
 # Flutter 프론트엔드 문서
 
 이 폴더는 Flutter Web·Windows 클라이언트의 구현 구조와 기능별 화면 상태를 기록한다. 공통
-접근성·레이아웃·AI 보조 원칙은 [제품 UX 기준](../product-ux.md), API의 실제 계약은 FastAPI
+접근성·레이아웃·AI 보조 원칙은 [제품 UX 기준](product-ux.md), API의 실제 계약은 FastAPI
 OpenAPI(`/api/v1/docs`)가 기준이다.
 
-## 문서 구분
+## 현재 기준과 구현
 
-- [architecture.md](architecture.md): 모듈 경계, 상태 소유권, fixture와 API 전환 방식
-- [platform-differences.md](platform-differences.md): 현재 구현된 Web·Windows 동작 차이
-- [ux-ui-verification.md](ux-ui-verification.md): 공통 카드·입력/탐색의 검증 근거와 Windows 최종 확인
-- [manual-input-boundaries.md](manual-input-boundaries.md): ERD 기준 개인 입력·공식 데이터 경계와 현재 구현
-- [manual-input-audit.md](manual-input-audit.md): ERD·HTML 개인 입력 대조, 구현·테스트 근거와 계약 의존 범위
-- `features/`: 로그인부터 메뉴별 목적, 현재 구현, 목업 경계, 후속 계약과 검증
+- [product-ux.md](product-ux.md): 화면을 만들고 검토할 때 적용하는 UI·UX 기준
+- [architecture.md](architecture.md): 모듈 경계·상태 소유권·저장소/API 전환
+- [platform-differences.md](platform-differences.md): 현재 Web·Windows 동작 차이
+- [manual-input-boundaries.md](manual-input-boundaries.md): 개인 입력과 공식 데이터의 경계
+- [manual-input-audit.md](manual-input-audit.md): ERD/HTML 입력·관계의 구현 대조표와 계약 의존성
+- [백엔드 API 요구 명세](../api/frontend-backend-requirements.md): 서버 연결 요구와 미확정 계약
+- `features/`: 기능별 현재 동작·상태·계약 경계
+- `specs/`: 사용자 흐름과 수용 조건(Gherkin 등). 개인 학업·자료/PDF·관리자 본문 등록은 [workspace-registration.feature](specs/workspace-registration.feature). 학생 가입 경계·활동 메뉴 저장·설정 이름/공식 ID·이름 문맥 채팅은 [student-journey.feature](specs/student-journey.feature). 학교관리자 가입 유형·미접수 제출·접수 메뉴는 [school-admin-signup.feature](specs/school-admin-signup.feature). 그 밖의 화면별 성공/실패/입력 보존은 [screen-input-protection.feature](specs/screen-input-protection.feature). 계약이 없는 학사 안내·취업 질문은 [미계약 인수 문서](../api/student-journey-uncontracted.md)로 넘긴다. 학생 여정 명세 실행은 `frontend`에서 `flutter test test/bdd/student_journey_bdd_test.dart`다. workspace-registration, screen-input-protection, school-admin-signup는 이 명령에 포함하지 않는다.
 
-기능 문서는 구현된 동작과 계획을 섞지 않는다. API가 없는 현재의 입력·행 데이터는 fake
-fixture 또는 로컬 상태이며, 제품 계약이나 학교 공식 데이터가 아니다.
+기능 문서는 현재 동작을 중심으로 유지하고, 상세 테스트 횟수·캡처·작업별 리뷰 결과는
+아래 검증 이력에서 참조한다. 에이전트 운영 지침과 스킬 절차는 개인 지침 저장소에서 관리한다.
+
+## 검토·검증 이력
+
+`verification/`은 작업 시점의 결과를 보존한다. 과거 시안이나 검증 성공을 현재 정책 또는
+현재 버전의 전체 검증으로 해석하지 않는다. 기능 변경 시 필요한 관련 기록만 참고한다.
+
+| 기록 | 범위 |
+| --- | --- |
+| [구조 변경](verification/structure-registration-verification.md) | 개인 학업·자료/PDF·관리자 본문 등록 |
+| [PR #14 버그](verification/pr14-bug-verification.md) | 세션/저장/포커스 결함 수정·검증 |
+| [확정 UI](verification/ui-ux-final-verification.md) | 3테마·관리자 배치·Tab 순서 |
+| [UI 검토 보완](verification/ui-ux-review-fixes.md) | 입력 보존·AI 전용 보기·용어/헤더 |
+| [탐색·플랫폼](verification/ux-124-verification.md) | 반응형·창·메뉴 개편 |
+| [공통 입력·카드](verification/ux-ui-verification.md) | 입력 보호·글꼴·탐색 검증 |
+| [과거 스타일 비교](verification/style-preview.md) | 이후 결정으로 대체된 팔레트/삭제/배치 시안 |
 
 ## 기능 문서
 
 | 기능 | 문서 | 현재 상태 |
 | --- | --- | --- |
-| 인증 | [auth](features/auth.md) | 로그인·회원가입 목업 |
+| 인증 | [auth](features/auth.md) | 실제 가입·로그인·서버 세션·역할/학교 범위 |
+| 학교 문서 근거 검토 | [school-knowledge-review](features/school-knowledge-review.md) | 등록 추출본·페이지/범위 검토, 독립 확인 승인·회수 |
+| 관리자 | [admin](features/admin.md) | 학사 관리·한 줄 요건. 학점표·인증 요건은 문서 편집만 하고 저장은 계약 대기 |
 | 메뉴 탐색 | [navigation](features/navigation.md) | 주요 메뉴 hash URL·뒤로/앞으로·직접 진입 |
 | 홈 | [home](features/home.md) | 개인 계획 기반 시작 화면 |
-| 일정 | [schedule](features/schedule.md) | 기기 로컬 개인 일정 |
-| 수강 관리 | [course](features/course.md) | 기기 로컬 개인 수강 CRUD·학기 필터 |
-| 졸업 요건 | [graduation](features/graduation.md) | 기기 로컬 교육과정·과목·개인 규칙 CRUD·기록 연결 |
-| 활동 | [activity](features/activity.md) | 기기 로컬 개인 활동·봉사 CRUD |
-| 경험 | [experience](features/experience.md) | 기기 로컬 개인 경험 CRUD |
-| 자격 | [credential](features/credential.md) | 기기 로컬 개인 자격 CRUD |
-| 포트폴리오·성과 | [portfolio](features/portfolio.md) | 로컬 성과 CRUD·구성/순서/사용 의도·지원 문서 초안 |
+| 일정 | [schedule](features/schedule.md) | 실제 계정 서버 개인 일정·동의 이전 |
+| 수강 관리 | [course](features/course.md) | 실제 계정 서버 개인 수강 CRUD·학기 필터 |
+| 졸업 요건 | [graduation](features/graduation.md) | 학교 검토 졸업감사 실행·근거·이력, 별도 개인 기준 작업 공간 |
+| 학교 발급 자료 | [official-records](features/official-records.md) | 본인 PDF 제출·이력, 관리자 원본/학생 기록 검토·승인 |
+| 학교 문서 검색 | [school-document-search](features/school-document-search.md) | 등록 학교 문맥 검색·발췌·출처·근거 부족 |
+| 활동 | [activity](features/activity.md) | 사이드바 활동 하나에서 기존 활동·경험 기록을 함께 보임. API는 분리 유지 |
+| 경험 | [experience](features/experience.md) | 별도 메뉴 없음. 활동 추가 때 프로젝트·인턴·동아리를 고르면 기존 경험 API에 저장 |
+| 자격 | [credential](features/credential.md) | 실제 계정 서버 개인 자격 CRUD |
+| 자료 | [portfolio](features/portfolio.md) | 종류가 있는 기기 PDF·설명 보관 |
+| 채용공고 분석 | [portfolio](features/portfolio.md) | 텍스트·주소·PDF/캡처 중 하나. 불가 이유만 표시하고 결과는 계약 대기 |
 | AI 도우미 | [assistant](features/assistant.md) | 학교 질의 API·상태/인용 표시·창별 메모리 대화 |
-| 설정 | [settings](features/settings.md) | 학업과 계획 로컬 설정 |
+| 설정 | [settings](features/settings.md) | 실제 계정 서버 학업과 계획·기기 원본 보존 |
 | 외부 링크 | [external-links](features/external-links.md) | 1365·Q-Net·개인 증빙 URL 확인·열기·복사 |
+
+## 학생 API 전송 계약
+
+`lib/features/api/student_api_models.dart`는 Pydantic에서 생성한 22개 wire DTO다.
+`student_api.dart`, `student_catalog_api.dart`는 공통 AuthApi를 사용하는 전송 adapter이며
+학업 프로필·일정과 다른 개인 화면은 계정에 묶인 전송 객체로 서버 저장소를 사용한다. debug 샘플과 기기 원본은 로컬 저장소를 유지한다. 계정 변경 시 StudentApi를 폐기하고 새 신원으로 생성한다.
+[개인 자료 계약](../api/personal.md), [학생용 학사 조회](../api/student-catalog.md)의 이전 순서·
+부분 PATCH·서버 ID/로컬 client_id 매핑·시간대 정책을 따라 화면을 연결한다.

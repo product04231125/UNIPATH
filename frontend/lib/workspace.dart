@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'app_shell/phone_shell.dart';
 import 'app_shell/workspace_shell.dart';
 import 'shared/pending_ui_action.dart';
 import 'features/assistant/assistant_window_host.dart';
@@ -9,15 +11,25 @@ import 'features/settings/chat_preferences.dart';
 import 'features/assistant/assistant_conversation.dart';
 import 'features/assistant/assistant_api.dart';
 import 'features/assistant/assistant_panel.dart';
+import 'features/assistant/shared_school_context.dart';
+import 'features/assistant/conversation_bridge.dart';
+import 'chat_window.dart' as native;
 import 'features/graduation/graduation_page.dart';
+import 'features/graduation/personal_calculation_controller.dart';
 import 'features/home/home_page.dart';
 import 'features/planning/planning_repository.dart';
+import 'features/planning/remote_planning_repository.dart';
+import 'features/api/student_api.dart';
+import 'features/records/personal_repository_scope.dart';
+import 'features/records/personal_workspace_importer.dart';
+import 'features/records/remote_personal_record_repository.dart';
+import 'features/records/portfolio/remote_portfolio_workspace_repository.dart';
 import 'features/planning/weekly_schedule.dart';
 import 'features/records/activity/activity_page.dart';
 import 'features/records/course/course_page.dart';
 import 'features/records/credential/credential_page.dart';
-import 'features/records/experience/experience_page.dart';
-import 'features/records/portfolio/portfolio_page.dart';
+import 'features/records/portfolio/job_analysis_page.dart';
+import 'features/records/portfolio/materials_page.dart';
 import 'features/settings/settings_page.dart';
 import 'features/schedule/schedule_page.dart';
 
@@ -32,14 +44,21 @@ class Workspace extends StatefulWidget {
     this.selectedPage,
     this.onPageChanged,
     this.assistantFactory,
+    this.sidebarVisible = true,
+    this.integratedTitleBar = false,
+    this.beforeSignedOut,
+    this.studentApi,
   });
 
   final VoidCallback onSignedOut;
+  final Future<void> Function()? beforeSignedOut;
+  final StudentApi? studentApi;
   final AssistantWindowHost windowHost;
   final ChatPreferences? chatPreferences;
   final int? selectedPage;
   final ValueChanged<int>? onPageChanged;
   final AssistantGateway Function()? assistantFactory;
+  final bool sidebarVisible, integratedTitleBar;
 
   @override
   State<Workspace> createState() => _WorkspaceState();
@@ -52,9 +71,9 @@ class _WorkspaceState extends State<Workspace> {
     '수강 관리',
     '졸업 요건',
     '활동',
-    '경험',
     '자격',
-    '포트폴리오·성과',
+    '자료',
+    '채용공고 분석',
   ];
   static const _icons = [
     Icons.home_outlined,
@@ -62,12 +81,14 @@ class _WorkspaceState extends State<Workspace> {
     Icons.menu_book_outlined,
     Icons.school_outlined,
     Icons.volunteer_activism_outlined,
-    Icons.business_center_outlined,
     Icons.workspace_premium_outlined,
     Icons.collections_bookmark_outlined,
+    Icons.work_outline,
   ];
 
   var _page = 0;
+  final _visitedPages = <int>{};
+  final _materials = GlobalKey<MaterialsPageState>();
   var _showMockData = true;
   var _chatOpen = false;
   var _chatManuallyOpened = false;
@@ -75,14 +96,44 @@ class _WorkspaceState extends State<Workspace> {
   var _mainWindowMaximized = false;
   bool _openingChat = false;
   bool _detachingChat = false;
+  bool _signingOut = false;
+  Future<void>? _pendingDetachedOpen;
+  Future<void>? _endingSession;
+  final _assistantButtonFocus = FocusNode(debugLabel: 'AI 도우미 열기');
   late final ChatPreferences _chatPreferences;
   var _chatWidth = 360.0;
   double _graduationMinimumWidth = 0;
   final _graduationPageKey = GlobalKey();
+  final _assistantPanelKey = GlobalKey();
   late final _assistantConversation = AssistantConversation(
     api: widget.assistantFactory?.call(),
   );
-  final _planningRepository = PlanningRepository();
+  late final PlanningRepository _planningRepository = widget.studentApi == null
+      ? PlanningRepository()
+      : RemotePlanningRepository(widget.studentApi!);
+  late final StudentApi? _personalApi = widget.studentApi;
+  late final PersonalCalculationController? _personalCalculations =
+      _personalApi == null
+      ? null
+      : PersonalCalculationController(
+          _personalApi,
+          ensureOpen: _ensurePersonalOpen,
+        );
+  late final PersonalWorkspaceImporter? _personalImporter = _personalApi == null
+      ? null
+      : PersonalWorkspaceImporter(
+          _personalApi,
+          ensureOpen: _ensurePersonalOpen,
+        );
+  bool _personalClosed = false;
+  void _ensurePersonalOpen() {
+    if (_personalClosed || _signingOut) {
+      throw StateError('Personal workspace is closed');
+    }
+  }
+
+  late final SharedSchoolContext _sharedSchoolContext;
+  ConversationBridge? _conversationBridge;
   DateTime? _scheduleInitialDay;
   PendingUiAction? _scheduleAddRequest;
   StreamSubscription<bool>? _detachedChatSubscription;
@@ -92,6 +143,36 @@ class _WorkspaceState extends State<Workspace> {
   void initState() {
     super.initState();
     _page = widget.selectedPage ?? 0;
+    _sharedSchoolContext = SharedSchoolContext(
+      _planningRepository,
+      _assistantConversation,
+    );
+    if (widget.windowHost.supportsDetached) {
+      _conversationBridge = ConversationBridge(
+        _assistantConversation,
+        native.publishConversation,
+      );
+      native.bindConversation(
+        _conversationBridge!.read,
+        _conversationBridge!.command,
+      );
+      native.bindSchoolProfile(
+        () {
+          if (_planningRepository.isLoading || _planningRepository.loadFailed) {
+            throw StateError('Profile unavailable');
+          }
+          return _planningRepository.profile.toJson();
+        },
+        (value) => _planningRepository.saveSchoolContext(
+          school: value['school'] as String?,
+          department: value['department'] as String?,
+          admissionYear: value['admissionYear'] as int?,
+          track: value['track'] as String?,
+        ),
+      );
+      _planningRepository.addListener(_publishSchoolProfile);
+    }
+    _planningRepository.addListener(_refreshProfile);
     _planningRepository.load();
     _chatPreferences = widget.chatPreferences ?? ChatPreferences();
     _chatPreferences.load();
@@ -103,15 +184,15 @@ class _WorkspaceState extends State<Workspace> {
     _detachedChatSubscription = widget.windowHost.detachedChanges.listen((
       isOpen,
     ) {
-      if (!mounted || _detachedChatActive == isOpen) return;
+      if (!mounted || _signingOut || _detachedChatActive == isOpen) return;
       setState(() {
         final wasDetached = _detachedChatActive;
         _detachedChatActive = isOpen;
         // Closing a detached Windows window returns to the same closed state as
         // closing the dock: the user can reopen the assistant from its button.
         if (wasDetached && !isOpen) {
-          _chatOpen = _mainWindowMaximized;
-          _chatManuallyOpened = _mainWindowMaximized;
+          _chatOpen = true;
+          _chatManuallyOpened = true;
         }
       });
     }, onError: (Object _) {});
@@ -128,21 +209,58 @@ class _WorkspaceState extends State<Workspace> {
     });
   }
 
+  void _publishSchoolProfile() {
+    if (!_planningRepository.isLoading && !_planningRepository.loadFailed) {
+      unawaited(
+        native
+            .publishSchoolProfile(_planningRepository.profile.toJson())
+            .catchError((Object _) {}),
+      );
+    }
+  }
+
+  void _refreshProfile() {
+    if (mounted) setState(() {});
+  }
+
+  String get _profileSummary {
+    if (_planningRepository.isLoading) return '학업 정보 불러오는 중';
+    if (_planningRepository.loadFailed) return '학업 정보를 읽을 수 없습니다';
+    final profile = _planningRepository.profile;
+    final parts = [
+      if (profile.school.trim().isNotEmpty) profile.school.trim(),
+      if (profile.department.trim().isNotEmpty) profile.department.trim(),
+      if (profile.admissionYear != null) '${profile.admissionYear}년 입학',
+    ];
+    return parts.isEmpty ? '학업 정보 미설정' : parts.join(' · ');
+  }
+
   @override
   void didUpdateWidget(covariant Workspace oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.selectedPage != null && widget.selectedPage != _page) {
       _scheduleAddRequest = null;
-      _graduationMinimumWidth = 0;
       _page = widget.selectedPage!;
     }
   }
 
   @override
   void dispose() {
+    _personalClosed = true;
+    _personalImporter?.dispose();
+    _personalCalculations?.dispose();
+    unawaited(_releaseSession().catchError((Object _) {}));
+    _assistantButtonFocus.dispose();
     _detachedChatSubscription?.cancel();
     _mainWindowMaximizeSubscription?.cancel();
+    if (widget.windowHost.supportsDetached) {
+      native.bindSchoolProfile(null, null);
+      native.bindConversation(null, null);
+    }
+    _conversationBridge?.dispose();
+    _sharedSchoolContext.dispose();
     _assistantConversation.dispose();
+    _planningRepository.removeListener(_refreshProfile);
     _planningRepository.dispose();
     if (widget.chatPreferences == null) _chatPreferences.dispose();
     super.dispose();
@@ -150,38 +268,61 @@ class _WorkspaceState extends State<Workspace> {
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final phone = isPhonePortraitShell(
+          Size(constraints.maxWidth, constraints.maxHeight),
+        );
+        final showMockData = phone ? false : _showMockData;
+        return _buildShell(context, showMockData: showMockData);
+      },
+    );
+  }
+
+  Widget _buildShell(BuildContext context, {required bool showMockData}) {
     final navigationItems = [
       for (var index = 0; index < _labels.length; index++)
         WorkspaceNavigationItem(label: _labels[index], icon: _icons[index]),
       const WorkspaceNavigationItem(label: '설정', icon: Icons.settings_outlined),
     ];
-    return WorkspaceShell(
+    final shell = WorkspaceShell(
+      profileSummary: _profileSummary,
+      sidebarVisible: widget.sidebarVisible,
+      integratedTitleBar: widget.integratedTitleBar,
       selectedPage: _page,
       navigationItems: navigationItems,
-      onPageSelected: _selectPage,
-      minimumContentWidth: switch (_page) {
-        0 => WeeklySchedule.minimumWidth + 16,
-        3 =>
-          _showMockData && _graduationMinimumWidth > 0
-              ? _graduationMinimumWidth + 16
-              : 0,
-        _ => 0,
-      },
-      showMockData: _showMockData,
+      onPageSelected: (value) => _selectPage(value),
+      // Navigation shares the home baseline so changing destinations cannot
+      // expand a compact startup sidebar just because that page is narrower.
+      minimumContentWidth: math.max(
+        WeeklySchedule.minimumWidth + 16,
+        _page == 3 && showMockData && _graduationMinimumWidth > 0
+            ? _graduationMinimumWidth + 16
+            : 0,
+      ),
+      showMockData: showMockData,
       onMockDataChanged: (value) => setState(() => _showMockData = value),
-      onSignedOut: widget.onSignedOut,
+      onSignedOut: _signOut,
       isAssistantOpen: _chatOpen,
       isAssistantManuallyOpened: _chatManuallyOpened,
       assistantWidth: _chatWidth,
       assistantTooltip: _detachedChatActive ? '분리된 AI 도우미 앞으로' : 'AI 도우미 열기',
       onOpenAssistant: _openAssistant,
+      assistantButtonFocus: _assistantButtonFocus,
       onAssistantWidthChanged: (delta) => setState(() {
         _chatWidth = (_chatWidth - delta).clamp(300.0, 480.0);
       }),
-      pageBuilder: (context, layout) =>
-          _buildPage(navigationItems.length, layout),
-      assistantBuilder: (context, width) => AssistantPanel(
+      pageBuilder: (context, layout) => _buildPage(
+        navigationItems.length,
+        layout,
+        showMockData: showMockData,
+      ),
+      assistantBuilder: (context, width, fullScreen) => AssistantPanel(
+        key: _assistantPanelKey,
+        active: _chatOpen,
+        fullScreen: fullScreen,
         conversation: _assistantConversation,
+        saveContext: _sharedSchoolContext.save,
         suggestContext: () {
           final profile = _planningRepository.profile;
           return SchoolQueryContext(
@@ -192,6 +333,7 @@ class _WorkspaceState extends State<Workspace> {
                 ? null
                 : profile.department.trim(),
             admissionYear: profile.admissionYear,
+            track: profile.track,
           );
         },
         onClose: _closeChat,
@@ -201,68 +343,130 @@ class _WorkspaceState extends State<Workspace> {
         width: width,
       ),
     );
+    return _personalApi == null
+        ? shell
+        : PersonalRepositoryScope(
+            importer: _personalImporter,
+            calculations: _personalCalculations,
+            records: (kind) => RemotePersonalRecordRepository(
+              _personalApi,
+              kind,
+              ensureOpen: _ensurePersonalOpen,
+            ),
+            portfolio: () => RemotePortfolioWorkspaceRepository(
+              _personalApi,
+              ensureOpen: _ensurePersonalOpen,
+            ),
+            child: shell,
+          );
   }
 
-  Widget _buildPage(int settingsPage, WorkspaceShellLayout layout) =>
-      switch (_page) {
-        0 => HomePage(
-          repository: _planningRepository,
-          coveredRightWidth: layout.showAssistantOverlay
-              ? layout.assistantOverlayWidth
-              : 0,
-          onOpenPage: _selectPage,
-          onOpenSettings: () => _selectPage(settingsPage - 1),
-          onOpenSchedule: (day) {
-            _scheduleAddRequest = null;
-            _scheduleInitialDay = day;
-            _selectPage(1);
-          },
-          onAddSchedule: () {
-            _scheduleInitialDay = DateTime.now();
-            _selectPage(1, addRequest: PendingUiAction());
-          },
-        ),
-        1 => SchedulePage(
-          repository: _planningRepository,
-          initialDay: _scheduleInitialDay,
-          addRequest: _scheduleAddRequest,
-        ),
-        2 => CoursePage(showMockData: _showMockData),
-        3 => GraduationPage(
-          key: _graduationPageKey,
-          showMockData: _showMockData,
-          onMinimumWidthChanged: (width) => setState(() {
-            _graduationMinimumWidth = width;
-          }),
-        ),
-        4 => ActivityPage(showMockData: _showMockData),
-        5 => ExperiencePage(showMockData: _showMockData),
-        6 => CredentialPage(showMockData: _showMockData),
-        7 => PortfolioPage(showMockData: _showMockData),
-        _ when _page == settingsPage - 1 => SettingsPage(
-          repository: _planningRepository,
-          chatPreferences: widget.windowHost.supportsDetached
-              ? _chatPreferences
-              : null,
-        ),
-        _ => const SizedBox.shrink(),
-      };
+  Widget _buildPage(
+    int settingsPage,
+    WorkspaceShellLayout layout, {
+    required bool showMockData,
+  }) {
+    _visitedPages.add(_page);
+    return Stack(
+      children: [
+        for (final index in _visitedPages)
+          Positioned.fill(
+            child: Offstage(
+              key: ValueKey('retained-page-$index'),
+              offstage: index != _page,
+              child: ExcludeFocus(
+                excluding: index != _page,
+                child: TickerMode(
+                  enabled: index == _page,
+                  child: _pageFor(
+                    index,
+                    settingsPage,
+                    layout,
+                    showMockData: showMockData,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _pageFor(
+    int index,
+    int settingsPage,
+    WorkspaceShellLayout layout, {
+    required bool showMockData,
+  }) => switch (index) {
+    0 => HomePage(
+      repository: _planningRepository,
+      coveredRightWidth: 0,
+      onOpenPage: _selectPage,
+      onOpenSettings: () => _selectPage(settingsPage - 1),
+      onOpenSchedule: (day) {
+        _scheduleAddRequest = null;
+        _scheduleInitialDay = day;
+        _selectPage(1);
+      },
+      onAddSchedule: () {
+        _scheduleInitialDay = DateTime.now();
+        _selectPage(1, addRequest: PendingUiAction());
+      },
+    ),
+    1 => SchedulePage(
+      repository: _planningRepository,
+      initialDay: _scheduleInitialDay,
+      addRequest: _scheduleAddRequest,
+    ),
+    2 => CoursePage(showMockData: showMockData),
+    3 => GraduationPage(
+      planning: _planningRepository,
+      key: _graduationPageKey,
+      showMockData: showMockData,
+      onMinimumWidthChanged: (width) => setState(() {
+        _graduationMinimumWidth = width;
+      }),
+    ),
+    4 => ActivityPage(showMockData: showMockData),
+    5 => CredentialPage(showMockData: showMockData),
+    6 => MaterialsPage(key: _materials),
+    7 => const JobAnalysisPage(),
+    _ when index == settingsPage - 1 => SettingsPage(
+      repository: _planningRepository,
+      chatPreferences: widget.windowHost.supportsDetached
+          ? _chatPreferences
+          : null,
+      studentApi: widget.studentApi,
+    ),
+    _ => const SizedBox.shrink(),
+  };
 
   void _selectPage(int value, {PendingUiAction? addRequest}) {
+    unawaited(_selectPageGuarded(value, addRequest: addRequest));
+  }
+
+  Future<void> _selectPageGuarded(
+    int value, {
+    PendingUiAction? addRequest,
+  }) async {
+    if (_page == _labels.indexOf('자료') && value != _page) {
+      final allow =
+          await (_materials.currentState?.allowLeave() ?? Future.value(true));
+      if (!allow || !mounted) return;
+    }
     setState(() {
       _scheduleAddRequest = addRequest;
-      if (_page != value) _graduationMinimumWidth = 0;
       _page = value;
     });
     widget.onPageChanged?.call(value);
   }
 
   Future<void> _openAssistant() async {
-    if (_openingChat) return;
+    if (_openingChat || _signingOut) return;
     _openingChat = true;
     try {
       await _chatPreferences.load();
-      if (!mounted) return;
+      if (!mounted || _signingOut) return;
       if (widget.windowHost.supportsDetached &&
           !_mainWindowMaximized &&
           (_detachedChatActive ||
@@ -284,18 +488,24 @@ class _WorkspaceState extends State<Workspace> {
     });
   }
 
-  void _closeChat() => setState(() {
-    _chatOpen = false;
-    _chatManuallyOpened = false;
-  });
+  void _closeChat() {
+    setState(() {
+      _chatOpen = false;
+      _chatManuallyOpened = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _assistantButtonFocus.requestFocus();
+    });
+  }
 
   Future<void> _openDetachedChat() async {
-    if (_detachingChat || _mainWindowMaximized) return;
+    if (_detachingChat || _mainWindowMaximized || _signingOut) return;
     _detachingChat = true;
     try {
-      await widget.windowHost.openDetached(_chatWidth);
+      _pendingDetachedOpen = widget.windowHost.openDetached(_chatWidth);
+      await _pendingDetachedOpen;
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || _signingOut) return;
       setState(() => _detachedChatActive = false);
       _showDock();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -307,12 +517,57 @@ class _WorkspaceState extends State<Workspace> {
     } finally {
       _detachingChat = false;
     }
-    if (!mounted) return;
+    if (!mounted || _signingOut) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     setState(() {
       _detachedChatActive = true;
       _chatOpen = _mainWindowMaximized;
       _chatManuallyOpened = _mainWindowMaximized;
     });
+  }
+
+  Future<void> _signOut() async {
+    if (_signingOut) return;
+    _signingOut = true;
+    try {
+      await _releaseSession();
+      await widget.beforeSignedOut?.call();
+      if (mounted) widget.onSignedOut();
+    } catch (_) {
+      // A failed server logout keeps this workspace active. A child opened
+      // afterwards must also be closed by the next logout or disposal.
+      _endingSession = null;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              widget.beforeSignedOut == null
+                  ? 'AI 창을 닫지 못해 로그아웃하지 않았습니다.'
+                  : '로그아웃하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.',
+            ),
+            action: SnackBarAction(label: '다시 시도', onPressed: _signOut),
+          ),
+        );
+      }
+    } finally {
+      _signingOut = false;
+    }
+  }
+
+  Future<void> _releaseSession() => _endingSession ??= _endSession();
+
+  Future<void> _endSession() async {
+    final host = widget.windowHost;
+    try {
+      try {
+        await _pendingDetachedOpen;
+      } catch (_) {
+        /* Close even after a failed open. */
+      }
+      await host.endSession();
+    } catch (_) {
+      _endingSession = null;
+      rethrow;
+    }
   }
 }

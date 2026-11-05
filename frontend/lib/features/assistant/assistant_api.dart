@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../api/school_knowledge_models.dart';
+
 enum AssistantStatus { grounded, insufficientEvidence, needsUserInput, failed }
 
 class SchoolQueryContext {
@@ -31,7 +33,12 @@ class AssistantCitation {
       title = json['title'] as String,
       source = Uri.parse(json['source_url'] as String),
       page = json['page'] as int,
-      excerpt = json['excerpt'] as String {
+      excerpt = json['excerpt'] as String,
+      applicability = json['applicability'] == null
+          ? null
+          : SchoolKnowledgeCitationApplicability.fromJson(
+              Map<String, dynamic>.from(json['applicability'] as Map),
+            ) {
     if (!['http', 'https'].contains(source.scheme) ||
         source.host.isEmpty ||
         page < 1) {
@@ -44,6 +51,7 @@ class AssistantCitation {
   final Uri source;
   final int page;
   final String excerpt;
+  final SchoolKnowledgeCitationApplicability? applicability;
 }
 
 class AssistantResult {
@@ -80,6 +88,31 @@ class AssistantResult {
   final String? answer;
   final List<AssistantCitation> citations;
   final List<String> missingFields;
+
+  Map<String, dynamic> toJson() => {
+    'query_id': queryId,
+    'status': switch (status) {
+      AssistantStatus.grounded => 'grounded',
+      AssistantStatus.insufficientEvidence => 'insufficient_evidence',
+      AssistantStatus.needsUserInput => 'needs_user_input',
+      AssistantStatus.failed => 'failed',
+    },
+    'reason': reason,
+    'answer': answer,
+    'missing_fields': missingFields,
+    'citations': [
+      for (final c in citations)
+        {
+          'chunk_id': c.chunkId,
+          'document_id': c.documentId,
+          'title': c.title,
+          'source_url': c.source.toString(),
+          'page': c.page,
+          'excerpt': c.excerpt,
+          'applicability': c.applicability?.toJson(),
+        },
+    ],
+  };
 
   String get label => switch (status) {
     AssistantStatus.grounded => '공식 문서 근거',

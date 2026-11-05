@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:university_path_frontend/app_shell/phone_shell.dart';
 import 'package:university_path_frontend/shared/app_typography.dart';
 
 class WorkspaceNavigationItem {
@@ -42,6 +43,10 @@ class WorkspaceShell extends StatelessWidget {
     required this.pageBuilder,
     required this.assistantBuilder,
     this.minimumContentWidth = 0,
+    this.sidebarVisible = true,
+    this.integratedTitleBar = false,
+    this.assistantButtonFocus,
+    this.profileSummary = '학업 정보 미설정',
   });
 
   final int selectedPage;
@@ -58,124 +63,175 @@ class WorkspaceShell extends StatelessWidget {
   final ValueChanged<double> onAssistantWidthChanged;
   final Widget Function(BuildContext context, WorkspaceShellLayout layout)
   pageBuilder;
-  final Widget Function(BuildContext context, double width) assistantBuilder;
+  final Widget Function(BuildContext context, double width, bool fullScreen)
+  assistantBuilder;
   final double minimumContentWidth;
+  final bool sidebarVisible, integratedTitleBar;
+  final FocusNode? assistantButtonFocus;
+  final String profileSummary;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          const fallbackWidth = 480.0;
-          final usesScrollFallback = constraints.maxWidth < fallbackWidth;
-          final workspaceWidth = usesScrollFallback
-              ? fallbackWidth
-              : constraints.maxWidth;
-          final workspace = _buildWorkspace(context, workspaceWidth);
-          return usesScrollFallback
-              ? _WorkspaceScrollFallback(width: fallbackWidth, child: workspace)
-              : workspace;
-        },
-      ),
-    ),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      const fallbackWidth = 480.0;
+      final phone = isPhonePortraitShell(
+        Size(constraints.maxWidth, constraints.maxHeight),
+      );
+      final usesScrollFallback = !phone && constraints.maxWidth < fallbackWidth;
+      final workspaceWidth = usesScrollFallback
+          ? fallbackWidth
+          : constraints.maxWidth;
+      final showDockedAssistant = workspaceWidth >= 1180 && isAssistantOpen;
+      final showAssistantOverlay =
+          workspaceWidth < 1180 && isAssistantOpen && isAssistantManuallyOpened;
+      final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+      final workspace = _buildWorkspace(
+        context,
+        workspaceWidth,
+        phone: phone,
+        showDockedAssistant: showDockedAssistant,
+        showAssistantOverlay: showAssistantOverlay,
+      );
+      return PhoneChromeScope(
+        active: phone,
+        child: Scaffold(
+          resizeToAvoidBottomInset: true,
+          body: SafeArea(
+            bottom: !phone,
+            child: usesScrollFallback
+                ? _WorkspaceScrollFallback(
+                    width: fallbackWidth,
+                    child: workspace,
+                  )
+                : workspace,
+          ),
+          bottomNavigationBar: phone && !showAssistantOverlay && !keyboardOpen
+              ? _StudentPhoneNavigationBar(
+                  selectedPage: selectedPage,
+                  navigationItems: navigationItems,
+                  onPageSelected: onPageSelected,
+                  showMockData: showMockData,
+                  onMockDataChanged: onMockDataChanged,
+                  onSignedOut: onSignedOut,
+                )
+              : null,
+        ),
+      );
+    },
   );
 
-  Widget _buildWorkspace(BuildContext context, double maxWidth) {
-    final showDockedAssistant = maxWidth >= 1180 && isAssistantOpen;
-    final showAssistantOverlay =
-        maxWidth < 1180 && isAssistantOpen && isAssistantManuallyOpened;
-    // Leave a usable strip beside the compact overlay even at the 480px fallback.
-    final overlayWidth = ((maxWidth - 72) / 2).clamp(200.0, 360.0);
+  Widget _buildWorkspace(
+    BuildContext context,
+    double maxWidth, {
+    required bool phone,
+    required bool showDockedAssistant,
+    required bool showAssistantOverlay,
+  }) {
+    final overlayWidth = maxWidth;
     final dockWidth = showDockedAssistant ? assistantWidth + 6 : 0.0;
     final compactNavigation =
-        maxWidth < 900 || maxWidth - 220 - 56 - dockWidth < minimumContentWidth;
+        phone ||
+        !sidebarVisible ||
+        maxWidth < 900 ||
+        MediaQuery.textScalerOf(context).scale(14) > 18 ||
+        maxWidth -
+                220 -
+                56 -
+                dockWidth -
+                (showAssistantOverlay ? overlayWidth : 0) <
+            minimumContentWidth;
     final layout = WorkspaceShellLayout(
       maxWidth: maxWidth,
       showDockedAssistant: showDockedAssistant,
       showAssistantOverlay: showAssistantOverlay,
       assistantOverlayWidth: overlayWidth,
     );
+    final mainPane = _workspaceMain(
+      context,
+      layout,
+      compact: compactNavigation,
+    );
     return Stack(
+      fit: StackFit.expand,
       children: [
-        Row(
-          children: [
-            _Sidebar(
-              compact: compactNavigation,
-              selectedPage: selectedPage,
-              navigationItems: navigationItems,
-              onPageSelected: onPageSelected,
-              showMockData: showMockData,
-              onMockDataChanged: onMockDataChanged,
-              onSignedOut: onSignedOut,
-            ),
-            Expanded(
-              child: ClipRect(
-                child: Column(
-                  children: [
-                    const SizedBox(
-                      height: 52,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'UniversityPath  화면 목업',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xff27445d),
+        ExcludeFocus(
+          excluding: showAssistantOverlay,
+          child: ExcludeSemantics(
+            excluding: showAssistantOverlay,
+            child: Offstage(
+              offstage: showAssistantOverlay,
+              child: phone
+                  ? mainPane
+                  : Row(
+                      children: [
+                        _Sidebar(
+                          profileSummary: profileSummary,
+                          compact: compactNavigation,
+                          selectedPage: selectedPage,
+                          navigationItems: navigationItems,
+                          onPageSelected: onPageSelected,
+                          showMockData: showMockData,
+                          onMockDataChanged: onMockDataChanged,
+                          onSignedOut: onSignedOut,
+                        ),
+                        Expanded(child: mainPane),
+                        if (showDockedAssistant)
+                          MouseRegion(
+                            cursor: SystemMouseCursors.resizeColumn,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.translucent,
+                              onHorizontalDragUpdate: (details) =>
+                                  onAssistantWidthChanged(details.delta.dx),
+                              child: SizedBox(
+                                width: 8,
+                                child: Center(
+                                  child: Container(
+                                    width: 1,
+                                    height: double.infinity,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .outlineVariant,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
+                        if (showDockedAssistant)
+                          SizedBox(width: assistantWidth),
+                      ],
                     ),
-                    Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          compactNavigation ? 16 : 28,
-                          26,
-                          compactNavigation ? 16 : 28,
-                          30,
-                        ),
-                        child: pageBuilder(context, layout),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (showDockedAssistant)
-              MouseRegion(
-                cursor: SystemMouseCursors.resizeColumn,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onHorizontalDragUpdate: (details) =>
-                      onAssistantWidthChanged(details.delta.dx),
-                  child: Container(width: 6, color: const Color(0xffd8e1e7)),
-                ),
-              ),
-            if (showDockedAssistant) assistantBuilder(context, assistantWidth),
-          ],
-        ),
-        if (showAssistantOverlay)
-          Positioned(
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: overlayWidth,
-            child: Material(
-              elevation: 18,
-              child: assistantBuilder(context, overlayWidth),
             ),
           ),
+        ),
+        Positioned(
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: showAssistantOverlay ? overlayWidth : assistantWidth,
+          child: Offstage(
+            offstage: !showDockedAssistant && !showAssistantOverlay,
+            child: ExcludeFocus(
+              excluding: !showDockedAssistant && !showAssistantOverlay,
+              child: Material(
+                child: assistantBuilder(
+                  context,
+                  showAssistantOverlay ? overlayWidth : assistantWidth,
+                  showAssistantOverlay,
+                ),
+              ),
+            ),
+          ),
+        ),
         if (!showDockedAssistant && !showAssistantOverlay)
           Positioned(
             right: 18,
             bottom: 18,
             child: FloatingActionButton(
+              focusNode: assistantButtonFocus,
               tooltip: assistantTooltip,
               onPressed: onOpenAssistant,
-              backgroundColor: const Color(0xff193f59),
-              foregroundColor: Colors.white,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               child: Icon(
                 Icons.chat_bubble_outline,
                 semanticLabel: assistantTooltip,
@@ -183,6 +239,141 @@ class WorkspaceShell extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _workspaceMain(
+    BuildContext context,
+    WorkspaceShellLayout layout, {
+    required bool compact,
+  }) => ClipRect(
+    child: Column(
+      children: [
+        if (!integratedTitleBar)
+          SizedBox(
+            height: 52,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'UniversityPath',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              compact ? 16 : 28,
+              26,
+              compact ? 16 : 28,
+              30,
+            ),
+            child: pageBuilder(context, layout),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _StudentPhoneNavigationBar extends StatelessWidget {
+  const _StudentPhoneNavigationBar({
+    required this.selectedPage,
+    required this.navigationItems,
+    required this.onPageSelected,
+    required this.showMockData,
+    required this.onMockDataChanged,
+    required this.onSignedOut,
+  });
+
+  final int selectedPage;
+  final List<WorkspaceNavigationItem> navigationItems;
+  final ValueChanged<int> onPageSelected;
+  final bool showMockData;
+  final ValueChanged<bool> onMockDataChanged;
+  final VoidCallback onSignedOut;
+
+  int get _selectedBarIndex {
+    for (var index = 0; index < studentPhonePrimaryLabels.length; index++) {
+      final pageIndex = navigationItems.indexWhere(
+        (item) => item.label == studentPhonePrimaryLabels[index],
+      );
+      if (pageIndex == selectedPage) return index;
+    }
+    return studentPhonePrimaryLabels.length;
+  }
+
+  Future<void> _openMore(BuildContext context) async {
+    final moreItems = [
+      for (var index = 0; index < navigationItems.length; index++)
+        if (!studentPhonePrimaryLabels.contains(navigationItems[index].label))
+          (index: index, item: navigationItems[index]),
+    ];
+    await showPhoneMoreSheet<void>(
+      context: context,
+      destinations: [
+        for (final entry in moreItems)
+          PhoneMoreDestination(
+            label: entry.item.label,
+            icon: entry.item.icon,
+            selected: selectedPage == entry.index,
+            onTap: () {
+              Navigator.pop(context);
+              onPageSelected(entry.index);
+            },
+          ),
+      ],
+      actions: [
+        TextButton.icon(
+          key: const Key('logout-button'),
+          onPressed: () {
+            Navigator.pop(context);
+            onSignedOut();
+          },
+          icon: const Icon(Icons.logout, size: 18),
+          label: const Text('로그아웃'),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final destinations = [
+      for (final label in studentPhonePrimaryLabels)
+        NavigationDestination(
+          icon: Icon(
+            navigationItems.firstWhere((item) => item.label == label).icon,
+            key: Key('phone-nav-$label'),
+          ),
+          label: label,
+        ),
+      const NavigationDestination(
+        icon: Icon(Icons.more_horiz, key: Key('phone-nav-more')),
+        label: '더보기',
+      ),
+    ];
+    return NavigationBar(
+      key: const Key('phone-nav-bar'),
+      selectedIndex: _selectedBarIndex,
+      destinations: destinations,
+      onDestinationSelected: (index) {
+        if (index == studentPhonePrimaryLabels.length) {
+          _openMore(context);
+          return;
+        }
+        final label = studentPhonePrimaryLabels[index];
+        final pageIndex = navigationItems.indexWhere(
+          (item) => item.label == label,
+        );
+        if (pageIndex >= 0) onPageSelected(pageIndex);
+      },
     );
   }
 }
@@ -223,6 +414,7 @@ class _WorkspaceScrollFallbackState extends State<_WorkspaceScrollFallback> {
 
 class _Sidebar extends StatelessWidget {
   const _Sidebar({
+    required this.profileSummary,
     required this.compact,
     required this.selectedPage,
     required this.navigationItems,
@@ -233,6 +425,7 @@ class _Sidebar extends StatelessWidget {
   });
 
   final bool compact;
+  final String profileSummary;
   final int selectedPage;
   final List<WorkspaceNavigationItem> navigationItems;
   final ValueChanged<int> onPageSelected;
@@ -243,7 +436,7 @@ class _Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: compact ? 72 : 220,
-    color: const Color(0xfff2f5f6),
+    color: Theme.of(context).colorScheme.surfaceContainerLow,
     padding: const EdgeInsets.all(12),
     child: LayoutBuilder(
       builder: (context, constraints) {
@@ -252,106 +445,136 @@ class _Sidebar extends StatelessWidget {
             constraints.maxHeight < 660 ||
             MediaQuery.textScalerOf(context).scale(AppTypography.body) >
                 AppTypography.body * 1.2;
-        final content = _buildContent(scrollable: shouldScroll);
-        return shouldScroll ? SingleChildScrollView(child: content) : content;
+        return _buildContent(context, scrollable: shouldScroll);
       },
     ),
   );
 
-  Widget _buildContent({required bool scrollable}) => Column(
-    mainAxisSize: scrollable ? MainAxisSize.min : MainAxisSize.max,
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Padding(
-        padding: EdgeInsets.fromLTRB(compact ? 6 : 8, 10, compact ? 6 : 8, 18),
-        child: _Brand(compact: compact),
-      ),
-      for (var index = 0; index < navigationItems.length - 1; index++)
-        _NavigationTile(
-          item: navigationItems[index],
-          selected: selectedPage == index,
-          compact: compact,
-          onPressed: () => onPageSelected(index),
-        ),
-      if (scrollable) const SizedBox(height: 24) else const Spacer(),
-      if (!compact)
-        Material(
-          color: Colors.transparent,
-          child: SwitchListTile.adaptive(
-            key: const Key('mock-data-toggle'),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-            dense: true,
-            title: const Text(
-              '목업용',
-              style: TextStyle(
-                fontSize: AppTypography.body,
-                fontWeight: FontWeight.w700,
+  Widget _buildContent(BuildContext context, {required bool scrollable}) =>
+      Column(
+        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      compact ? 6 : 8,
+                      10,
+                      compact ? 6 : 8,
+                      18,
+                    ),
+                    child: _Brand(compact: compact),
+                  ),
+                  for (
+                    var index = 0;
+                    index < navigationItems.length - 1;
+                    index++
+                  )
+                    _NavigationTile(
+                      item: navigationItems[index],
+                      selected: selectedPage == index,
+                      compact: compact,
+                      onPressed: () => onPageSelected(index),
+                    ),
+                ],
               ),
             ),
-            subtitle: const Text(
-              '예시 데이터 표시',
-              style: TextStyle(fontSize: AppTypography.caption),
-            ),
-            value: showMockData,
-            onChanged: onMockDataChanged,
           ),
-        ),
-      if (!compact) const SizedBox(height: 4),
-      _NavigationTile(
-        item: navigationItems.last,
-        selected: selectedPage == navigationItems.length - 1,
-        compact: compact,
-        onPressed: () => onPageSelected(navigationItems.length - 1),
-      ),
-      const Divider(),
-      ListTile(
-        contentPadding: EdgeInsets.symmetric(horizontal: compact ? 4 : 8),
-        dense: true,
-        leading: const CircleAvatar(
-          radius: 15,
-          backgroundColor: Color(0xff19344d),
-          child: Text(
-            '정',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: AppTypography.caption,
+          const SizedBox(height: 8),
+          if (compact)
+            IconButton(
+              key: const Key('mock-data-toggle'),
+              tooltip: showMockData ? '예시 데이터 숨기기' : '예시 데이터 표시',
+              onPressed: () => onMockDataChanged(!showMockData),
+              icon: Icon(
+                showMockData
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+              ),
             ),
+          if (!compact)
+            Material(
+              color: Colors.transparent,
+              child: SwitchListTile.adaptive(
+                key: const Key('mock-data-toggle'),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                dense: true,
+                title: Text(
+                  '목업용',
+                  style: TextStyle(
+                    fontSize: AppTypography.body,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                subtitle: Text(
+                  '예시 데이터 표시',
+                  style: TextStyle(fontSize: AppTypography.caption),
+                ),
+                value: showMockData,
+                onChanged: onMockDataChanged,
+              ),
+            ),
+          if (!compact) const SizedBox(height: 4),
+          _NavigationTile(
+            item: navigationItems.last,
+            selected: selectedPage == navigationItems.length - 1,
+            compact: compact,
+            onPressed: () => onPageSelected(navigationItems.length - 1),
           ),
-        ),
-        title: compact
-            ? null
-            : const Text(
-                '정민서',
-                style: TextStyle(
-                  fontSize: AppTypography.body,
-                  fontWeight: FontWeight.w700,
+          const Divider(),
+          ListTile(
+            contentPadding: EdgeInsets.symmetric(horizontal: compact ? 4 : 8),
+            dense: true,
+            leading: CircleAvatar(
+              radius: 15,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: Tooltip(
+                message: '내 학업 정보 · $profileSummary',
+                child: Icon(
+                  Icons.person_outline,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                  size: 20,
                 ),
               ),
-        subtitle: compact
-            ? null
-            : const Text(
-                '2024학번 · 컴퓨터공학과',
-                style: TextStyle(fontSize: AppTypography.caption),
-              ),
-      ),
-      if (!compact)
-        TextButton.icon(
-          key: const Key('logout-button'),
-          onPressed: onSignedOut,
-          icon: const Icon(Icons.logout, size: 18),
-          label: const Text('로그아웃'),
-        )
-      else
-        Tooltip(
-          message: '로그아웃',
-          child: IconButton(
-            key: const Key('logout-button'),
-            onPressed: onSignedOut,
-            icon: const Icon(Icons.logout),
+            ),
+            title: compact
+                ? null
+                : Text(
+                    '내 학업 정보',
+                    style: TextStyle(
+                      fontSize: AppTypography.body,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+            subtitle: compact
+                ? null
+                : Text(
+                    profileSummary,
+                    style: TextStyle(fontSize: AppTypography.caption),
+                  ),
           ),
-        ),
-    ],
-  );
+          if (!compact)
+            TextButton.icon(
+              key: const Key('logout-button'),
+              onPressed: onSignedOut,
+              icon: Icon(Icons.logout, size: 18),
+              label: Text('로그아웃'),
+            )
+          else
+            Tooltip(
+              message: '로그아웃',
+              child: IconButton(
+                key: const Key('logout-button'),
+                onPressed: onSignedOut,
+                icon: Icon(Icons.logout),
+              ),
+            ),
+        ],
+      );
 }
 
 class _Brand extends StatelessWidget {
@@ -362,31 +585,27 @@ class _Brand extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      const CircleAvatar(
+      CircleAvatar(
         radius: 18,
-        backgroundColor: Color(0xff19344d),
-        child: Icon(Icons.route_outlined, color: Colors.white, size: 18),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        child: Icon(
+          Icons.route_outlined,
+          color: Theme.of(context).colorScheme.onPrimary,
+          size: 18,
+        ),
       ),
       if (!compact) const SizedBox(width: 9),
       if (!compact)
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
+            children: [
               Text(
                 'UniversityPath',
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontFamily: 'serif',
                   fontSize: AppTypography.section,
                   fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text(
-                '화면 목업',
-                style: TextStyle(
-                  fontSize: AppTypography.caption,
-                  color: Color(0xff708192),
                 ),
               ),
             ],
@@ -413,10 +632,12 @@ class _NavigationTile extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 4),
     child: Material(
-      color: selected ? const Color(0xffdcebf1) : Colors.transparent,
-      borderRadius: BorderRadius.circular(10),
+      color: selected
+          ? Theme.of(context).colorScheme.primaryContainer
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(20),
         onTap: onPressed,
         child: Tooltip(
           message: compact ? item.label : '',
@@ -427,7 +648,11 @@ class _NavigationTile extends StatelessWidget {
                   ? MainAxisAlignment.center
                   : MainAxisAlignment.start,
               children: [
-                Icon(item.icon, size: 18, color: const Color(0xff25465f)),
+                Icon(
+                  item.icon,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
                 if (!compact) const SizedBox(width: 10),
                 if (!compact)
                   Expanded(

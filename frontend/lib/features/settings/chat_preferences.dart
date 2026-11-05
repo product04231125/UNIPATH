@@ -8,8 +8,9 @@ class ChatPreferences extends ChangeNotifier {
   ChatPreferences({this.writer});
 
   static const storageKey = 'university_path.chat_opening.v1';
+  static const migrationKey = 'university_path.chat_opening.docked_default.v1';
   final Future<bool> Function(String key, String value)? writer;
-  ChatOpeningMode _mode = ChatOpeningMode.detached;
+  ChatOpeningMode _mode = ChatOpeningMode.docked;
   bool loading = true;
   bool loadFailed = false;
   bool saving = false;
@@ -39,11 +40,21 @@ class ChatPreferences extends ChangeNotifier {
     try {
       final preferences = await SharedPreferences.getInstance();
       final raw = preferences.getString(storageKey);
-      _mode = switch (raw) {
-        null || 'detached' => ChatOpeningMode.detached,
-        'docked' => ChatOpeningMode.docked,
+      final storedMode = switch (raw) {
+        null || 'docked' => ChatOpeningMode.docked,
+        'detached' => ChatOpeningMode.detached,
         _ => throw const FormatException('Unknown chat opening preference'),
       };
+      if (preferences.getBool(migrationKey) != true) {
+        // Write the new value before the marker so interrupted migration retries.
+        if (!await preferences.setString(storageKey, 'docked') ||
+            !await preferences.setBool(migrationKey, true)) {
+          throw StateError('Chat preference migration failed');
+        }
+        _mode = ChatOpeningMode.docked;
+      } else {
+        _mode = storedMode;
+      }
     } catch (_) {
       loadFailed = true;
       error = '채팅 설정을 읽지 못했습니다. 원본을 보존하고 다시 읽어 주세요.';

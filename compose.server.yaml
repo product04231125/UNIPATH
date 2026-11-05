@@ -4,14 +4,17 @@ services:
     restart: unless-stopped
   api:
     restart: unless-stopped
+    image: ${API_IMAGE:?Set API_IMAGE to the verified local backend image ID}
+    build: !reset null
+    pull_policy: never
+  migrate:
+    image: ${API_IMAGE:?Set API_IMAGE to the verified local backend image ID}
+    build: !reset null
+    pull_policy: never
   web:
     restart: unless-stopped
-    image: unipath-web:${APP_CHANNEL:?Set APP_CHANNEL}
-    build:
-      context: .
-      dockerfile: deploy/preview/Dockerfile
-      args:
-        APP_CHANNEL: ${APP_CHANNEL:?Set APP_CHANNEL}
+    image: ${WEB_IMAGE:?Set WEB_IMAGE to the verified local web image ID}
+    pull_policy: never
     depends_on:
       api:
         condition: service_healthy

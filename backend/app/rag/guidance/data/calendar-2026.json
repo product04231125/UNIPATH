@@ -1,0 +1,713 @@
+{
+  "year": 2026,
+  "source_url": "https://www.kduniv.ac.kr/kor/CMS/ScheduleMgr/YearList.do?mCode=MN096&calendar_year=2026",
+  "fetched_at": "2026-11-02T05:58:56.978367+00:00",
+  "sha256": "bcaba34c16176f65855697666d0e96c8d309272cb342a65ad6cf3e102c1eeac4",
+  "source_file": "sources/calendar-2026-bcaba34c1617.html",
+  "events": [
+    {
+      "id": "event-0001",
+      "listed_month": 1,
+      "date_text": "01. 02(금)",
+      "title": "신년 하례식(2026년도)",
+      "start_date": "2026-01-02",
+      "end_date": "2026-01-02"
+    },
+    {
+      "id": "event-0002",
+      "listed_month": 1,
+      "date_text": "01. 07(수) ∼ 01. 10(토)",
+      "title": "전기졸업대상자 졸업유예·조기졸업 신청기간(2025학년도)",
+      "start_date": "2026-01-07",
+      "end_date": "2026-01-10"
+    },
+    {
+      "id": "event-0003",
+      "listed_month": 1,
+      "date_text": "01. 12(월) ∼ 02. 27(금)",
+      "title": "복학신청기간(2026학년도 1학기)",
+      "start_date": "2026-01-12",
+      "end_date": "2026-02-27"
+    },
+    {
+      "id": "event-0004",
+      "listed_month": 1,
+      "date_text": "01. 13(화) ∼ 01. 14(수)",
+      "title": "동계 워크숍(2025학년도)",
+      "start_date": "2026-01-13",
+      "end_date": "2026-01-14"
+    },
+    {
+      "id": "event-0005",
+      "listed_month": 1,
+      "date_text": "01. 19(월) ∼ 01. 22(목)",
+      "title": "수강신청기간(2026학년도 1학기)",
+      "start_date": "2026-01-19",
+      "end_date": "2026-01-22"
+    },
+    {
+      "id": "event-0006",
+      "listed_month": 1,
+      "date_text": "01. 19(월) ∼ 01. 22(목)",
+      "title": "전과·재입학 신청기간(2026학년도 1학기)",
+      "start_date": "2026-01-19",
+      "end_date": "2026-01-22"
+    },
+    {
+      "id": "event-0007",
+      "listed_month": 1,
+      "date_text": "01. 29(목)",
+      "title": "전기 졸업사정(2025학년도)",
+      "start_date": "2026-01-29",
+      "end_date": "2026-01-29"
+    },
+    {
+      "id": "event-0008",
+      "listed_month": 2,
+      "date_text": "02. 02(월)",
+      "title": "신입학 정시 합격자 발표(2.2.이전 발표)(2026학년도)",
+      "start_date": "2026-02-02",
+      "end_date": "2026-02-02"
+    },
+    {
+      "id": "event-0009",
+      "listed_month": 2,
+      "date_text": "02. 02(월) ∼ 02. 05(목)",
+      "title": "유급신청기간(2026학년도 1학기)",
+      "start_date": "2026-02-02",
+      "end_date": "2026-02-05"
+    },
+    {
+      "id": "event-0010",
+      "listed_month": 2,
+      "date_text": "02. 03(화) ∼ 02. 05(목)",
+      "title": "신입학 수시 및 정시 최종 등록(2026학년도)",
+      "start_date": "2026-02-03",
+      "end_date": "2026-02-05"
+    },
+    {
+      "id": "event-0011",
+      "listed_month": 2,
+      "date_text": "02. 06(금) ∼ 02. 13(금)",
+      "title": "신입학 정시 미등록 충원(2026학년도)",
+      "start_date": "2026-02-06",
+      "end_date": "2026-02-13"
+    },
+    {
+      "id": "event-0012",
+      "listed_month": 2,
+      "date_text": "02. 09(월) ∼ 02. 12(목)",
+      "title": "수강신청 변경기간(2026학년도 1학기)",
+      "start_date": "2026-02-09",
+      "end_date": "2026-02-12"
+    },
+    {
+      "id": "event-0013",
+      "listed_month": 2,
+      "date_text": "02. 12(목)",
+      "title": "재학생 등록금 고지서 출력가능(2026학년도 1학기)",
+      "start_date": "2026-02-12",
+      "end_date": "2026-02-12"
+    },
+    {
+      "id": "event-0014",
+      "listed_month": 2,
+      "date_text": "02. 13(금)",
+      "title": "전기 학위수여식(2025학년도)",
+      "start_date": "2026-02-13",
+      "end_date": "2026-02-13"
+    },
+    {
+      "id": "event-0015",
+      "listed_month": 2,
+      "date_text": "02. 19(목) ∼ 03. 05(목)",
+      "title": "재학생 등록금 분할납부 신청(2026학년도 1학기)",
+      "start_date": "2026-02-19",
+      "end_date": "2026-03-05"
+    },
+    {
+      "id": "event-0016",
+      "listed_month": 2,
+      "date_text": "02. 20(금) ∼ 02. 27(금)",
+      "title": "신입학 추가모집(접수·발표·등록 포함)(2026학년도)",
+      "start_date": "2026-02-20",
+      "end_date": "2026-02-27"
+    },
+    {
+      "id": "event-0017",
+      "listed_month": 2,
+      "date_text": "02. 23(월) ∼ 02. 27(금)",
+      "title": "재학생 등록기간(2026학년도 1학기)",
+      "start_date": "2026-02-23",
+      "end_date": "2026-02-27"
+    },
+    {
+      "id": "event-0018",
+      "listed_month": 2,
+      "date_text": "02. 27(금)",
+      "title": "입학식 및 신입생, 편입생 수강신청(2026학년도)",
+      "start_date": "2026-02-27",
+      "end_date": "2026-02-27"
+    },
+    {
+      "id": "event-0019",
+      "listed_month": 3,
+      "date_text": "03. 03(화)",
+      "title": "개시일 및 개강(1학기)",
+      "start_date": "2026-03-03",
+      "end_date": "2026-03-03"
+    },
+    {
+      "id": "event-0020",
+      "listed_month": 3,
+      "date_text": "03. 09(월) ∼ 03. 12(목)",
+      "title": "복수ㆍ부전공신청(1학기)",
+      "start_date": "2026-03-09",
+      "end_date": "2026-03-12"
+    },
+    {
+      "id": "event-0021",
+      "listed_month": 3,
+      "date_text": "03. 28(토)",
+      "title": "수업일수 1/4선(1학기)",
+      "start_date": "2026-03-28",
+      "end_date": "2026-03-28"
+    },
+    {
+      "id": "event-0022",
+      "listed_month": 3,
+      "date_text": "03. 28(토)",
+      "title": "군 제대 학생 복학신청 마감(1학기)",
+      "start_date": "2026-03-28",
+      "end_date": "2026-03-28"
+    },
+    {
+      "id": "event-0023",
+      "listed_month": 3,
+      "date_text": "03. 28(토)",
+      "title": "미등록 휴학 마감일(미등록 제적)(1학기)",
+      "start_date": "2026-03-28",
+      "end_date": "2026-03-28"
+    },
+    {
+      "id": "event-0024",
+      "listed_month": 3,
+      "date_text": "03. 31(화)",
+      "title": "대학입학전형 시행계획 제출(2028학년도)",
+      "start_date": "2026-03-31",
+      "end_date": "2026-03-31"
+    },
+    {
+      "id": "event-0025",
+      "listed_month": 4,
+      "date_text": "04. 01(수)",
+      "title": "개시 30일(1학기)",
+      "start_date": "2026-04-01",
+      "end_date": "2026-04-01"
+    },
+    {
+      "id": "event-0026",
+      "listed_month": 4,
+      "date_text": "04. 01(수)",
+      "title": "미복학 휴학 연장 마감일(미복학 제적)(1학기)",
+      "start_date": "2026-04-01",
+      "end_date": "2026-04-01"
+    },
+    {
+      "id": "event-0027",
+      "listed_month": 4,
+      "date_text": "04. 06(월)",
+      "title": "수업일수 1/3선(1학기)",
+      "start_date": "2026-04-06",
+      "end_date": "2026-04-06"
+    },
+    {
+      "id": "event-0028",
+      "listed_month": 4,
+      "date_text": "04. 21(화) ∼ 04. 27(월)",
+      "title": "중간고사(1학기)",
+      "start_date": "2026-04-21",
+      "end_date": "2026-04-27"
+    },
+    {
+      "id": "event-0029",
+      "listed_month": 4,
+      "date_text": "04. 30(목)",
+      "title": "대학입학전형 시행계획 발표(홈페이지)(2027학년도)",
+      "start_date": "2026-04-30",
+      "end_date": "2026-04-30"
+    },
+    {
+      "id": "event-0030",
+      "listed_month": 4,
+      "date_text": "04. 30(목)",
+      "title": "대학입학전형 시행계획 제출(대교협)(2027학년도)",
+      "start_date": "2026-04-30",
+      "end_date": "2026-04-30"
+    },
+    {
+      "id": "event-0031",
+      "listed_month": 5,
+      "date_text": "05. 01(금)",
+      "title": "개시 60일(1학기)",
+      "start_date": "2026-05-01",
+      "end_date": "2026-05-01"
+    },
+    {
+      "id": "event-0032",
+      "listed_month": 5,
+      "date_text": "05. 13(수) ∼ 05. 14(목)",
+      "title": "체육대회",
+      "start_date": "2026-05-13",
+      "end_date": "2026-05-14"
+    },
+    {
+      "id": "event-0033",
+      "listed_month": 5,
+      "date_text": "05. 15(금)",
+      "title": "제45주년 개교기념일",
+      "start_date": "2026-05-15",
+      "end_date": "2026-05-15"
+    },
+    {
+      "id": "event-0034",
+      "listed_month": 5,
+      "date_text": "05. 19(화)",
+      "title": "수업일수 3/4선(1학기)",
+      "start_date": "2026-05-19",
+      "end_date": "2026-05-19"
+    },
+    {
+      "id": "event-0035",
+      "listed_month": 5,
+      "date_text": "05. 20(수)",
+      "title": "취업역량 경진대회",
+      "start_date": "2026-05-20",
+      "end_date": "2026-05-20"
+    },
+    {
+      "id": "event-0036",
+      "listed_month": 5,
+      "date_text": "05. 31(일)",
+      "title": "개시 90일(1학기)",
+      "start_date": "2026-05-31",
+      "end_date": "2026-05-31"
+    },
+    {
+      "id": "event-0037",
+      "listed_month": 5,
+      "date_text": "05. 31(일)",
+      "title": "신입학 수시 주요사항 발표(홈페이지)(2027학년도)",
+      "start_date": "2026-05-31",
+      "end_date": "2026-05-31"
+    },
+    {
+      "id": "event-0038",
+      "listed_month": 5,
+      "date_text": "05. 31(일)",
+      "title": "신입학 수시 주요사항 제출(대교협)(2027학년도)",
+      "start_date": "2026-05-31",
+      "end_date": "2026-05-31"
+    },
+    {
+      "id": "event-0039",
+      "listed_month": 6,
+      "date_text": "06. 01(월) ∼ 06. 04(목)",
+      "title": "하계계절학기 수강신청기간",
+      "start_date": "2026-06-01",
+      "end_date": "2026-06-04"
+    },
+    {
+      "id": "event-0040",
+      "listed_month": 6,
+      "date_text": "06. 08(월) ∼ 06. 10(수)",
+      "title": "하계계절학기 등록기간",
+      "start_date": "2026-06-08",
+      "end_date": "2026-06-10"
+    },
+    {
+      "id": "event-0041",
+      "listed_month": 6,
+      "date_text": "06. 09(화) ∼ 06. 15(월)",
+      "title": "보강주간(1학기)",
+      "start_date": "2026-06-09",
+      "end_date": "2026-06-15"
+    },
+    {
+      "id": "event-0042",
+      "listed_month": 6,
+      "date_text": "06. 16(화) ∼ 06. 22(월)",
+      "title": "기말고사(1학기)",
+      "start_date": "2026-06-16",
+      "end_date": "2026-06-22"
+    },
+    {
+      "id": "event-0043",
+      "listed_month": 6,
+      "date_text": "06. 16(화) ∼ 06. 30(화)",
+      "title": "성적열람 및 성적이의신청기간(1학기)",
+      "start_date": "2026-06-16",
+      "end_date": "2026-06-30"
+    },
+    {
+      "id": "event-0044",
+      "listed_month": 6,
+      "date_text": "06. 22(월)",
+      "title": "종강(1학기)",
+      "start_date": "2026-06-22",
+      "end_date": "2026-06-22"
+    },
+    {
+      "id": "event-0045",
+      "listed_month": 6,
+      "date_text": "06. 23(화) ∼ 07. 06(월)",
+      "title": "하계 계절학기 운영 및 성적처리기간",
+      "start_date": "2026-06-23",
+      "end_date": "2026-07-06"
+    },
+    {
+      "id": "event-0046",
+      "listed_month": 7,
+      "date_text": "07. 01(수) ∼ 07. 02(목)",
+      "title": "성적정정기간(1학기)",
+      "start_date": "2026-07-01",
+      "end_date": "2026-07-02"
+    },
+    {
+      "id": "event-0047",
+      "listed_month": 7,
+      "date_text": "07. 06(월) ∼ 07. 08(수)",
+      "title": "후기졸업대상자 졸업유예·조기졸업사정 신청기간(2025학년도)",
+      "start_date": "2026-07-06",
+      "end_date": "2026-07-08"
+    },
+    {
+      "id": "event-0048",
+      "listed_month": 7,
+      "date_text": "07. 06(월) ∼ 08. 28(금)",
+      "title": "복학신청기간(2학기)",
+      "start_date": "2026-07-06",
+      "end_date": "2026-08-28"
+    },
+    {
+      "id": "event-0049",
+      "listed_month": 7,
+      "date_text": "07. 07(화) ∼ 07. 08(수)",
+      "title": "하계 교수워크숍",
+      "start_date": "2026-07-07",
+      "end_date": "2026-07-08"
+    },
+    {
+      "id": "event-0050",
+      "listed_month": 7,
+      "date_text": "07. 09(목) ∼ 07. 14(화)",
+      "title": "전과·재입학 신청기간(2학기)",
+      "start_date": "2026-07-09",
+      "end_date": "2026-07-14"
+    },
+    {
+      "id": "event-0051",
+      "listed_month": 7,
+      "date_text": "07. 13(월) ∼ 07. 17(금)",
+      "title": "수강신청기간(2학기)",
+      "start_date": "2026-07-13",
+      "end_date": "2026-07-17"
+    },
+    {
+      "id": "event-0052",
+      "listed_month": 7,
+      "date_text": "07. 20(월) ∼ 07. 22(수)",
+      "title": "유급신청(2학기)",
+      "start_date": "2026-07-20",
+      "end_date": "2026-07-22"
+    },
+    {
+      "id": "event-0053",
+      "listed_month": 7,
+      "date_text": "07. 23(목)",
+      "title": "후기(2026학년도 8월 졸업) 졸업사정(2025학년도)",
+      "start_date": "2026-07-23",
+      "end_date": "2026-07-23"
+    },
+    {
+      "id": "event-0054",
+      "listed_month": 8,
+      "date_text": "08. 03(월) ∼ 08. 06(목)",
+      "title": "수강신청 변경기간(2학기)",
+      "start_date": "2026-08-03",
+      "end_date": "2026-08-06"
+    },
+    {
+      "id": "event-0055",
+      "listed_month": 8,
+      "date_text": "08. 14(금)",
+      "title": "후기졸업(2025학년도)",
+      "start_date": "2026-08-14",
+      "end_date": "2026-08-14"
+    },
+    {
+      "id": "event-0056",
+      "listed_month": 8,
+      "date_text": "08. 19(수)",
+      "title": "재학생 등록금고지서 출력가능(2학기)",
+      "start_date": "2026-08-19",
+      "end_date": "2026-08-19"
+    },
+    {
+      "id": "event-0057",
+      "listed_month": 8,
+      "date_text": "08. 19(수) ∼ 08. 28(금)",
+      "title": "재학생 등록금 분할납부 신청(2학기)",
+      "start_date": "2026-08-19",
+      "end_date": "2026-08-28"
+    },
+    {
+      "id": "event-0058",
+      "listed_month": 8,
+      "date_text": "08. 24(월) ∼ 08. 30(일)",
+      "title": "재학생 등록기간(2학기)",
+      "start_date": "2026-08-24",
+      "end_date": "2026-08-30"
+    },
+    {
+      "id": "event-0059",
+      "listed_month": 8,
+      "date_text": "08. 31(월)",
+      "title": "개시일 및 개강(2학기)",
+      "start_date": "2026-08-31",
+      "end_date": "2026-08-31"
+    },
+    {
+      "id": "event-0060",
+      "listed_month": 9,
+      "date_text": "09. 01(화)",
+      "title": "신입학 정시 주요사항 발표(홈페이지)(2027학년도)",
+      "start_date": "2026-09-01",
+      "end_date": "2026-09-01"
+    },
+    {
+      "id": "event-0061",
+      "listed_month": 9,
+      "date_text": "09. 01(화)",
+      "title": "신입학 정시 주요사항 제출(대교협)(2027학년도)",
+      "start_date": "2026-09-01",
+      "end_date": "2026-09-01"
+    },
+    {
+      "id": "event-0062",
+      "listed_month": 9,
+      "date_text": "09. 07(월) ∼ 09. 10(목)",
+      "title": "복수ㆍ부전공신청(2학기)",
+      "start_date": "2026-09-07",
+      "end_date": "2026-09-10"
+    },
+    {
+      "id": "event-0063",
+      "listed_month": 9,
+      "date_text": "09. 07(월) ∼ 09. 11(금)",
+      "title": "신입학 수시 원서접수(2027학년도)",
+      "start_date": "2026-09-07",
+      "end_date": "2026-09-11"
+    },
+    {
+      "id": "event-0064",
+      "listed_month": 9,
+      "date_text": "09. 25(금)",
+      "title": "수업일수 1/4선(2학기)",
+      "start_date": "2026-09-25",
+      "end_date": "2026-09-25"
+    },
+    {
+      "id": "event-0065",
+      "listed_month": 9,
+      "date_text": "09. 25(금)",
+      "title": "군 제대 학생 복학신청 마감(2학기)",
+      "start_date": "2026-09-25",
+      "end_date": "2026-09-25"
+    },
+    {
+      "id": "event-0066",
+      "listed_month": 9,
+      "date_text": "09. 25(금)",
+      "title": "미등록 휴학 마감일(미등록 제적)(2학기)",
+      "start_date": "2026-09-25",
+      "end_date": "2026-09-25"
+    },
+    {
+      "id": "event-0067",
+      "listed_month": 9,
+      "date_text": "09. 29(화)",
+      "title": "개시 30일(2학기)",
+      "start_date": "2026-09-29",
+      "end_date": "2026-09-29"
+    },
+    {
+      "id": "event-0068",
+      "listed_month": 9,
+      "date_text": "09. 29(화)",
+      "title": "미복학 휴학 연장 마감일(미복학 제적)(2학기)",
+      "start_date": "2026-09-29",
+      "end_date": "2026-09-29"
+    },
+    {
+      "id": "event-0069",
+      "listed_month": 10,
+      "date_text": "10. 04(일)",
+      "title": "수업일수 1/3선(2학기)",
+      "start_date": "2026-10-04",
+      "end_date": "2026-10-04"
+    },
+    {
+      "id": "event-0070",
+      "listed_month": 10,
+      "date_text": "10. 19(월) ∼ 10. 23(금)",
+      "title": "중간고사(2학기)",
+      "start_date": "2026-10-19",
+      "end_date": "2026-10-23"
+    },
+    {
+      "id": "event-0071",
+      "listed_month": 10,
+      "date_text": "10. 28(수)",
+      "title": "대학 축제",
+      "start_date": "2026-10-28",
+      "end_date": "2026-10-28"
+    },
+    {
+      "id": "event-0072",
+      "listed_month": 10,
+      "date_text": "10. 29(목)",
+      "title": "개시 60일(2학기)",
+      "start_date": "2026-10-29",
+      "end_date": "2026-10-29"
+    },
+    {
+      "id": "event-0073",
+      "listed_month": 11,
+      "date_text": "11. 16(월)",
+      "title": "수업일수 3/4선(2학기)",
+      "start_date": "2026-11-16",
+      "end_date": "2026-11-16"
+    },
+    {
+      "id": "event-0074",
+      "listed_month": 11,
+      "date_text": "11. 18(수)",
+      "title": "취업역량 경진대회",
+      "start_date": "2026-11-18",
+      "end_date": "2026-11-18"
+    },
+    {
+      "id": "event-0075",
+      "listed_month": 11,
+      "date_text": "11. 19(목)",
+      "title": "수능 시행일(2027학년도)",
+      "start_date": "2026-11-19",
+      "end_date": "2026-11-19"
+    },
+    {
+      "id": "event-0076",
+      "listed_month": 11,
+      "date_text": "11. 28(토)",
+      "title": "개시 90일(2학기)",
+      "start_date": "2026-11-28",
+      "end_date": "2026-11-28"
+    },
+    {
+      "id": "event-0077",
+      "listed_month": 11,
+      "date_text": "11. 30(월) ∼ 12. 03(목)",
+      "title": "동계계절학기 수강신청기간",
+      "start_date": "2026-11-30",
+      "end_date": "2026-12-03"
+    },
+    {
+      "id": "event-0078",
+      "listed_month": 12,
+      "date_text": "12. 07(월) ∼ 12. 09(수)",
+      "title": "동계계절학기 등록기간",
+      "start_date": "2026-12-07",
+      "end_date": "2026-12-09"
+    },
+    {
+      "id": "event-0079",
+      "listed_month": 12,
+      "date_text": "12. 07(월) ∼ 12. 11(금)",
+      "title": "보강주간(2학기)",
+      "start_date": "2026-12-07",
+      "end_date": "2026-12-11"
+    },
+    {
+      "id": "event-0080",
+      "listed_month": 12,
+      "date_text": "12. 11(금)",
+      "title": "수능 성적통지일(2027학년도)",
+      "start_date": "2026-12-11",
+      "end_date": "2026-12-11"
+    },
+    {
+      "id": "event-0081",
+      "listed_month": 12,
+      "date_text": "12. 14(월) ∼ 12. 18(금)",
+      "title": "기말고사(2학기)",
+      "start_date": "2026-12-14",
+      "end_date": "2026-12-18"
+    },
+    {
+      "id": "event-0082",
+      "listed_month": 12,
+      "date_text": "12. 14(월) ∼ 12. 28(월)",
+      "title": "성적열람 및 성적이의신청기간(2학기)",
+      "start_date": "2026-12-14",
+      "end_date": "2026-12-28"
+    },
+    {
+      "id": "event-0083",
+      "listed_month": 12,
+      "date_text": "12. 18(금)",
+      "title": "종강(2학기)",
+      "start_date": "2026-12-18",
+      "end_date": "2026-12-18"
+    },
+    {
+      "id": "event-0084",
+      "listed_month": 12,
+      "date_text": "12. 18(금)",
+      "title": "신입학 수시 합격자 발표(12.18.이전 발표)(2027학년도)",
+      "start_date": "2026-12-18",
+      "end_date": "2026-12-18"
+    },
+    {
+      "id": "event-0085",
+      "listed_month": 12,
+      "date_text": "12. 21(월) ∼ 12. 23(수)",
+      "title": "신입학 수시 예치금 등록(2027학년도)",
+      "start_date": "2026-12-21",
+      "end_date": "2026-12-23"
+    },
+    {
+      "id": "event-0086",
+      "listed_month": 12,
+      "date_text": "12. 21(월) ∼ 01. 05(화)",
+      "title": "동계계절학기 운영 및 성적처리기간",
+      "start_date": "2026-12-21",
+      "end_date": "2027-01-05"
+    },
+    {
+      "id": "event-0087",
+      "listed_month": 12,
+      "date_text": "12. 24(목) ∼ 12. 30(수)",
+      "title": "신입학 수시 미등록 충원(2027학년도)",
+      "start_date": "2026-12-24",
+      "end_date": "2026-12-30"
+    },
+    {
+      "id": "event-0088",
+      "listed_month": 12,
+      "date_text": "12. 29(화) ∼ 12. 30(수)",
+      "title": "성적정정기간(2학기)",
+      "start_date": "2026-12-29",
+      "end_date": "2026-12-30"
+    }
+  ]
+}

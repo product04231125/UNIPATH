@@ -1,6 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+
+import 'support/auth_fixture.dart';
+
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:university_path_frontend/features/assistant/assistant_api.dart';
@@ -43,9 +46,11 @@ void main() {
     expect(reloaded.events.single.title, '과제 마감');
   });
 
-  testWidgets('renders and validates the login mock', (tester) async {
+  testWidgets('renders login validation with an injected server gateway', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
-    await tester.pumpWidget(const UniversityPathApp());
+    await tester.pumpWidget(UniversityPathApp(authGateway: FakeAuth()));
 
     expect(find.text('나의 대학생활 경로를\n관리하세요.'), findsOneWidget);
     await tester.tap(find.byKey(const Key('login-submit')));
@@ -61,12 +66,11 @@ void main() {
     await tester.tap(find.byKey(const Key('login-submit')));
     await tester.pumpAndSettle();
     expect(find.text('나의 대학생활 경로'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('shows the sign-up mock without creating an account', (
-    tester,
-  ) async {
+  testWidgets('shows the sign-up form before submission', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     await tester.pumpWidget(const UniversityPathApp());
 
@@ -75,7 +79,7 @@ void main() {
 
     expect(find.text('이름'), findsOneWidget);
     expect(find.byKey(const Key('signup-submit')), findsOneWidget);
-    expect(find.textContaining('계정, 학교 정보, 역할은 생성·저장되지 않습니다.'), findsOneWidget);
+    expect(find.textContaining('계정, 학교 정보, 역할은 생성·저장되지 않습니다.'), findsNothing);
     await tester.binding.setSurfaceSize(null);
   });
 
@@ -83,7 +87,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     await tester.pumpAndSettle();
-    expect(find.text('UniversityPath'), findsOneWidget);
+    expect(find.text('UniversityPath'), findsWidgets);
     expect(find.text('나의 대학생활 경로'), findsOneWidget);
     await tester.binding.setSurfaceSize(null);
   });
@@ -267,19 +271,25 @@ void main() {
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
 
     for (final menu in [
-      ('수강 관리', '이번 학기 수강 과목'),
+      ('수강 관리', '내 수강 과목'),
       ('일정', '개인 계획을 이 기기에 저장합니다.'),
       ('졸업 요건', '기준 선택'),
       ('활동', '등록한 활동'),
-      ('경험', '경험 타임라인'),
       ('자격', '등록한 자격'),
-      ('포트폴리오·성과', '포트폴리오 초안'),
+      ('자료', '내 자료'),
+      ('채용공고 분석', '채용공고 텍스트'),
       ('설정', '학업과 계획'),
     ]) {
       await tester.tap(find.text(menu.$1));
       await tester.pumpAndSettle();
       expect(find.textContaining(menu.$2), findsWidgets);
     }
+    expect(find.byTooltip('경험'), findsNothing);
+    expect(find.text('자료'), findsOneWidget);
+    expect(find.text('채용공고 분석'), findsOneWidget);
+    expect(find.text('성과 기록'), findsNothing);
+    expect(find.text('기존 구성'), findsNothing);
+    expect(find.text('기존 지원 문서'), findsNothing);
     await tester.binding.setSurfaceSize(null);
   });
 
@@ -308,7 +318,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('내 학교·학과 기준 설정'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('교육과정 추가'));
     await tester.pumpAndSettle();
     for (final entry in {
       'title': '개인 교육과정 A',
@@ -321,6 +330,10 @@ void main() {
       await tester.ensureVisible(field);
       await tester.enterText(field, entry.value);
     }
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('내 기록에 저장'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('내 기록에 저장'));
     await tester.pumpAndSettle();
 

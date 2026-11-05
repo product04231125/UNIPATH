@@ -3,7 +3,9 @@
 import re
 from dataclasses import asdict
 
+from .budget import request_budget
 from .contracts import AnswerGenerator, AnswerStatus, GroundingRequest, QueryResult, SchoolContext
+from .providers import InvalidGeneratorOutput
 from .retriever import SchoolRetriever
 
 SYSTEM_INSTRUCTION = """공식 근거에 기반한 학사 안내만 작성한다.
@@ -15,48 +17,62 @@ SYSTEM_INSTRUCTION = """공식 근거에 기반한 학사 안내만 작성한다
 출력은 answer, citation_ids, insufficient_evidence를 갖는 구조화된 결과여야 한다."""
 
 
+def query_requirements(
+    question: str, context: SchoolContext, *, require_complete_scope: bool = False
+) -> QueryResult | None:
+    """Shared input requirements for approved source search and generated answers."""
+    if not question.strip():
+        return QueryResult(
+            AnswerStatus.NEEDS_USER_INPUT, None, "empty_question", missing_fields=["question"]
+        )
+    if re.search(r"졸업\s*(?:이\s*)?(?:가능|할\s*수|되나요|되나|되죠)", question):
+        return QueryResult(
+            AnswerStatus.NEEDS_USER_INPUT,
+            None,
+            "rule_engine_required",
+            missing_fields=["graduation_audit"],
+        )
+    missing = [key for key in ("institution", "department") if not getattr(context, key)]
+    if missing:
+        return QueryResult(
+            AnswerStatus.NEEDS_USER_INPUT,
+            None,
+            "school_context_required",
+            missing_fields=missing,
+        )
+    years = {int(year) for year in re.findall(r"(\d{4})\s*(?:학번|학년도|년\s*입학)", question)}
+    if context.admission_year is not None and years and years != {context.admission_year}:
+        return QueryResult(
+            AnswerStatus.NEEDS_USER_INPUT,
+            None,
+            "conflicting_admission_year",
+            missing_fields=["admission_year"],
+        )
+    if require_complete_scope or any(word in question for word in ("학점", "전공필수", "전공선택")):
+        missing = [key for key in ("admission_year", "track") if getattr(context, key) is None]
+        if missing:
+            return QueryResult(
+                AnswerStatus.NEEDS_USER_INPUT,
+                None,
+                "academic_scope_required",
+                missing_fields=missing,
+            )
+    return None
+
+
 class SchoolRagService:
     def __init__(self, retriever: SchoolRetriever, generator: AnswerGenerator | None = None):
         self.retriever = retriever
         self.generator = generator
 
     def query(self, question: str, context: SchoolContext, *, preview: bool = False) -> QueryResult:
-        if not question.strip():
-            return QueryResult(
-                AnswerStatus.NEEDS_USER_INPUT, None, "empty_question", missing_fields=["question"]
-            )
-        if re.search(r"졸업\s*(?:이\s*)?(?:가능|할\s*수|되나요|되나|되죠)", question):
-            return QueryResult(
-                AnswerStatus.NEEDS_USER_INPUT,
-                None,
-                "rule_engine_required",
-                missing_fields=["graduation_audit"],
-            )
-        missing = [key for key in ("institution", "department") if not getattr(context, key)]
-        if missing:
-            return QueryResult(
-                AnswerStatus.NEEDS_USER_INPUT,
-                None,
-                "school_context_required",
-                missing_fields=missing,
-            )
-        years = {int(year) for year in re.findall(r"(\d{4})\s*(?:학번|학년도|년\s*입학)", question)}
-        if context.admission_year is not None and years and years != {context.admission_year}:
-            return QueryResult(
-                AnswerStatus.NEEDS_USER_INPUT,
-                None,
-                "conflicting_admission_year",
-                missing_fields=["admission_year"],
-            )
-        if any(word in question for word in ("학점", "전공필수", "전공선택")):
-            missing = [key for key in ("admission_year", "track") if getattr(context, key) is None]
-            if missing:
-                return QueryResult(
-                    AnswerStatus.NEEDS_USER_INPUT,
-                    None,
-                    "academic_scope_required",
-                    missing_fields=missing,
-                )
+        with request_budget():
+            return self._query(question, context, preview=preview)
+
+    def _query(self, question: str, context: SchoolContext, *, preview: bool) -> QueryResult:
+        required = query_requirements(question, context)
+        if required is not None:
+            return required
         try:
             hits = self.retriever.search(question, context, preview=preview)
             if preview:
@@ -80,6 +96,8 @@ class SchoolRagService:
                 )
             if self.generator is None:
                 return QueryResult(AnswerStatus.FAILED, None, "answer_generator_not_configured")
+            if sum(len(hit.content) for hit in evidence) > 40_000:
+                return QueryResult(AnswerStatus.FAILED, None, "rag_processing_failed")
             request = GroundingRequest(
                 SYSTEM_INSTRUCTION,
                 question,
@@ -87,7 +105,13 @@ class SchoolRagService:
                 asdict(context),
             )
             generated = self.generator.generate(request)
-            if type(generated.insufficient_evidence) is not bool:
+            if (
+                type(generated.insufficient_evidence) is not bool
+                or not isinstance(generated.answer, str)
+                or len(generated.answer) > 8000
+                or not isinstance(generated.citation_ids, list)
+                or len(generated.citation_ids) > 64
+            ):
                 return QueryResult(AnswerStatus.FAILED, None, "invalid_generator_output")
             if generated.insufficient_evidence:
                 return QueryResult(
@@ -126,6 +150,8 @@ class SchoolRagService:
                 "generated_from_evidence",
                 citations=citations,
             )
+        except InvalidGeneratorOutput:
+            return QueryResult(AnswerStatus.FAILED, None, "invalid_generator_output")
         except Exception:
             # Do not leak provider exceptions, credentials, or question text.
             return QueryResult(AnswerStatus.FAILED, None, "rag_processing_failed")

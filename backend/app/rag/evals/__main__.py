@@ -10,6 +10,7 @@ from ..school.__main__ import DEFAULT_CHUNKS
 from ..school.contracts import SchoolContext
 from ..school.retriever import SchoolRetriever, load_chunks
 from ..school.service import SchoolRagService
+from .evidence import check_evidence
 
 DEFAULT_CASES = Path(__file__).with_name("questions.jsonl")
 SOURCE_VERSIONS = Path(__file__).with_name("source_versions.json")
@@ -25,12 +26,17 @@ def evaluate(chunks_path: Path, cases_path: Path, *, top_k: int = 3) -> dict:
     actual = {c["document_id"]: c["document_hash"] for c in chunks}
     if actual != sources:
         raise ValueError("Evaluation source versions changed; review expected evidence first")
-    pages = {(c["document_id"], c["page"]): c for c in chunks}
+    pages = {}
+    for c in sorted(chunks, key=lambda c: c.get("page_part_index", 0)):
+        key = (c["document_id"], c["page"])
+        pages[key] = pages.get(key, "") + c["content"]
     cases = [
         json.loads(line)
         for line in cases_path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
+    if type(top_k) is not int or not 1 <= top_k <= 20:
+        raise ValueError("top_k must be between 1 and 20")
     if not cases or len({case["id"] for case in cases}) != len(cases):
         raise ValueError("Evaluation needs nonempty cases with unique IDs")
     retriever = SchoolRetriever(chunks)
@@ -43,9 +49,11 @@ def evaluate(chunks_path: Path, cases_path: Path, *, top_k: int = 3) -> dict:
         context = SchoolContext(**case.get("context", {}))
         if case["kind"] == "retrieval":
             expected = {(ref["document_id"], ref["page"]) for ref in case["evidence"]}
-            for ref in case["evidence"]:
+            for ref in case["evidence"] + case.get("forbidden_evidence", []):
+                if not isinstance(ref.get("quote"), str) or not compact(ref["quote"]):
+                    raise ValueError("Evidence quotes must not be empty")
                 page = pages.get((ref["document_id"], ref["page"]))
-                if page is None or compact(ref["quote"]) not in compact(page["content"]):
+                if page is None or compact(ref["quote"]) not in compact(page):
                     raise ValueError(
                         f"Expected evidence no longer matches the source: {case['id']}"
                     )
@@ -53,6 +61,11 @@ def evaluate(chunks_path: Path, cases_path: Path, *, top_k: int = 3) -> dict:
                 case["question"], context, top_k=top_k, preview=case.get("preview", True)
             )
             found = [(hit.document_id, hit.page) for hit in hits]
+            evidence_check = check_evidence(
+                [hit.as_dict() for hit in hits],
+                case["evidence"],
+                case.get("forbidden_evidence", []),
+            )
             matched = expected.intersection(found)
             recall = len(matched) / len(expected) if expected else float(not found)
             reciprocal = next(
@@ -66,7 +79,8 @@ def evaluate(chunks_path: Path, cases_path: Path, *, top_k: int = 3) -> dict:
                 {
                     "id": case["id"],
                     "kind": "retrieval",
-                    "passed": recall == 1.0,
+                    "passed": recall == 1.0 and evidence_check["passed"],
+                    "evidence_check": evidence_check,
                     "recall_at_k": recall,
                     "reciprocal_rank": reciprocal,
                     "found": [{"document_id": doc, "page": page} for doc, page in found],

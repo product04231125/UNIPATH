@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+
+import 'support/auth_fixture.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/app_navigation.dart';
+import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/auth/login_page.dart';
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 import 'package:university_path_frontend/shared/widgets/input_dialog.dart';
@@ -59,6 +65,24 @@ void main() {
     });
   }
 
+  testWidgets('legacy experiences path opens the combined activity menu', (
+    tester,
+  ) async {
+    final provider = MemoryRouteProvider('/experiences');
+    await tester.pumpWidget(
+      UniversityPathApp(
+        startAuthenticated: true,
+        routeInformationProvider: provider,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 4);
+    expect(find.text('등록한 활동'), findsOneWidget);
+    expect(find.byTooltip('경험'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    provider.dispose();
+  });
+
   testWidgets(
     'menu pushes URL, browser back and forward keep workspace state',
     (tester) async {
@@ -101,7 +125,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.pumpWidget(const SizedBox());
       await tester.pumpWidget(
-        UniversityPathApp(routeInformationProvider: provider),
+        UniversityPathApp(
+          routeInformationProvider: provider,
+          authGateway: FakeAuth(),
+        ),
       );
       await tester.pumpAndSettle();
       expect(find.byType(LoginPage), findsOneWidget);
@@ -119,6 +146,49 @@ void main() {
       provider.dispose();
     },
   );
+
+  testWidgets(
+    'restored server session preserves the requested settings route',
+    (tester) async {
+      final provider = MemoryRouteProvider('/settings');
+      await tester.pumpWidget(
+        UniversityPathApp(
+          routeInformationProvider: provider,
+          authGateway: FakeAuth()..signedIn = true,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 8);
+      expect(provider.value.uri.path, '/settings');
+      await tester.pumpWidget(const SizedBox());
+      provider.dispose();
+    },
+  );
+
+  testWidgets('server student denied an admin route can return home', (
+    tester,
+  ) async {
+    final provider = MemoryRouteProvider('/admin/overview');
+    await tester.pumpWidget(
+      UniversityPathApp(
+        routeInformationProvider: provider,
+        authGateway: FakeAuth()..signedIn = true,
+      ),
+    );
+    await tester.pumpAndSettle();
+    final message = find.text('관리자 화면에 접근할 권한이 없습니다.');
+    expect(message, findsOneWidget);
+    expect(
+      DefaultTextStyle.of(tester.element(message)).style.decoration,
+      isNot(TextDecoration.underline),
+    );
+    await tester.tap(find.text('홈으로 이동'));
+    await tester.pumpAndSettle();
+    expect(find.byType(Workspace), findsOneWidget);
+    expect(provider.value.uri.path, '/home');
+    await tester.pumpWidget(const SizedBox());
+    provider.dispose();
+  });
 
   testWidgets('unknown route offers recovery without an empty screen', (
     tester,
@@ -138,5 +208,27 @@ void main() {
     expect(find.byType(Workspace), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     provider.dispose();
+  });
+
+  testWidgets('login explains cookie host mismatch before sign-in', (
+    tester,
+  ) async {
+    final api = AuthApi(
+      client: MockClient(
+        (_) async => http.Response(
+          '{}',
+          401,
+          headers: {'content-type': 'application/json'},
+        ),
+      ),
+      baseUrl: Uri.parse('http://127.0.0.1:8010'),
+      cookieMode: true,
+    );
+    await tester.pumpWidget(UniversityPathApp(authGateway: api));
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginPage), findsOneWidget);
+    expect(find.textContaining('웹 세션 쿠키는 localhost에서만 유지됩니다'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    api.close();
   });
 }

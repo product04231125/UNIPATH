@@ -3,15 +3,19 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Device-local personal planning data. It is deliberately separate from
-/// school records and will be replaced by an API adapter once that contract is
-/// available.
+import '../auth/local_data_owner.dart';
+
+/// Device-local planning for samples and preserved original data. Live accounts
+/// use RemotePlanningRepository; neither store represents official school records.
 class PlanningRepository extends ChangeNotifier {
-  PlanningRepository({this.writer});
+  PlanningRepository({this.writer, LocalDataOwner? owner})
+    : _storageKey = (owner ?? LocalDataOwner.current()).key(
+        'university_path.personal_planning.v1',
+      );
 
   final Future<bool> Function(String key, String value)? writer;
 
-  static const _storageKey = 'university_path.personal_planning.v1';
+  final String _storageKey;
 
   SharedPreferences? _preferences;
   bool _isLoading = true;
@@ -19,17 +23,50 @@ class PlanningRepository extends ChangeNotifier {
   bool _loaded = false;
   PlanningProfile _profile = const PlanningProfile();
   List<PlanningEvent> _events = const [];
+  Future<void> _pendingOperation = Future.value();
+  bool _disposed = false;
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  // All windows share this owner. Build each write from the last committed
+  // state so a school-context update cannot overwrite an in-flight event save.
+  Future<void> _enqueue(Future<void> Function() operation) {
+    if (_disposed) {
+      return Future.error(StateError('Planning repository is closed'));
+    }
+    final result = _pendingOperation.then((_) => operation());
+    _pendingOperation = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return result;
+  }
 
   bool get isLoading => _isLoading;
   bool get loadFailed => _loadFailed;
+  bool get isServerBacked => false;
+  String get storageLabel => isServerBacked ? '계정 서버 저장' : '기기 로컬 저장';
+  bool get canImportLocalPlanning => false;
+  String? get localPlanningNotice => null;
+  List<String> get localPlanningPreview => const [];
+  Future<void> importLocalPlanning({required bool confirmed}) =>
+      Future.error(StateError('Server planning is unavailable'));
   PlanningProfile get profile => _profile;
   List<PlanningEvent> get events => List.unmodifiable(_events);
 
-  Future<void> load() async {
+  Future<void> load() => _enqueue(() async {
     _isLoading = true;
     _loadFailed = false;
     _loaded = false;
-    notifyListeners();
+    _notify();
     try {
       _preferences ??= await SharedPreferences.getInstance();
       final raw = _preferences!.getString(_storageKey);
@@ -64,17 +101,36 @@ class PlanningRepository extends ChangeNotifier {
       _loadFailed = true;
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _notify();
     }
-  }
+  });
 
-  Future<void> saveProfile(PlanningProfile profile) async {
+  Future<void> saveProfile(PlanningProfile profile) =>
+      _enqueue(() => _commitProfile(profile));
+
+  Future<void> _commitProfile(PlanningProfile profile) async {
     await _save(profile, _events);
     _profile = profile;
-    notifyListeners();
+    _notify();
   }
 
-  Future<void> saveEvent(PlanningEvent event) async {
+  Future<void> saveSchoolContext({
+    String? school,
+    String? department,
+    int? admissionYear,
+    String? track,
+  }) => _enqueue(
+    () => _commitProfile(
+      _profile.withSchoolContext(
+        school: school,
+        department: department,
+        admissionYear: admissionYear,
+        track: track,
+      ),
+    ),
+  );
+
+  Future<void> saveEvent(PlanningEvent event) => _enqueue(() async {
     final index = _events.indexWhere((item) => item.id == event.id);
     final updated = [..._events];
     if (index == -1) {
@@ -85,15 +141,16 @@ class PlanningRepository extends ChangeNotifier {
     updated.sort((a, b) => a.start.compareTo(b.start));
     await _save(_profile, updated);
     _events = updated;
-    notifyListeners();
-  }
+    _notify();
+  });
 
-  Future<void> deleteEvent(String id) async {
-    final updated = _events.where((item) => item.id != id).toList();
-    await _save(_profile, updated);
-    _events = updated;
-    notifyListeners();
-  }
+  Future<void> deleteEvent(String id, {int? expectedVersion}) =>
+      _enqueue(() async {
+        final updated = _events.where((item) => item.id != id).toList();
+        await _save(_profile, updated);
+        _events = updated;
+        _notify();
+      });
 
   Future<void> _save(
     PlanningProfile profile,
@@ -117,15 +174,53 @@ class PlanningProfile {
     this.school = '',
     this.department = '',
     this.admissionYear,
+    this.track,
     this.academicYearOverride,
     this.weekStartsOn = WeekStartDay.sunday,
+    this.institutionId,
+    this.departmentId,
+    this.curriculumId,
+    this.version,
   });
 
   final String school;
   final String department;
   final int? admissionYear;
+  final String? track;
   final int? academicYearOverride;
   final WeekStartDay weekStartsOn;
+  final String? institutionId;
+  final String? departmentId;
+  final String? curriculumId;
+
+  /// Server version captured when a form starts; absent for local data.
+  final int? version;
+
+  bool get hasCatalogSchool =>
+      institutionId != null && institutionId!.isNotEmpty;
+
+  PlanningProfile withSchoolContext({
+    String? school,
+    String? department,
+    int? admissionYear,
+    String? track,
+  }) {
+    final nextSchool = school ?? '';
+    final nextDepartment = department ?? '';
+    final keep = nextSchool == this.school && nextDepartment == this.department;
+    return PlanningProfile(
+      school: nextSchool,
+      department: nextDepartment,
+      admissionYear: admissionYear,
+      track: track,
+      academicYearOverride: academicYearOverride,
+      weekStartsOn: weekStartsOn,
+      institutionId: keep ? institutionId : null,
+      departmentId: keep ? departmentId : null,
+      curriculumId: keep ? curriculumId : null,
+      version: version,
+    );
+  }
 
   bool get isConfigured =>
       school.trim().isNotEmpty &&
@@ -143,8 +238,12 @@ class PlanningProfile {
     'school': school,
     'department': department,
     'admissionYear': admissionYear,
+    'track': track,
     'academicYearOverride': academicYearOverride,
     'weekStartsOn': weekStartsOn.storageValue,
+    'institutionId': institutionId,
+    'departmentId': departmentId,
+    'curriculumId': curriculumId,
   };
 
   factory PlanningProfile.fromJson(Map<String, dynamic> json) =>
@@ -152,8 +251,12 @@ class PlanningProfile {
         school: json['school'] as String? ?? '',
         department: json['department'] as String? ?? '',
         admissionYear: json['admissionYear'] as int?,
+        track: json['track'] as String?,
         academicYearOverride: json['academicYearOverride'] as int?,
         weekStartsOn: weekStartDayFromStorage(json['weekStartsOn']),
+        institutionId: json['institutionId'] as String?,
+        departmentId: json['departmentId'] as String?,
+        curriculumId: json['curriculumId'] as String?,
       );
 }
 
@@ -224,6 +327,7 @@ class PlanningEvent {
     required this.end,
     required this.category,
     this.memo = '',
+    this.version,
   });
 
   final String id;
@@ -232,6 +336,7 @@ class PlanningEvent {
   final DateTime end;
   final PlanningEventCategory category;
   final String memo;
+  final int? version;
 
   Map<String, dynamic> toJson() => {
     'id': id,

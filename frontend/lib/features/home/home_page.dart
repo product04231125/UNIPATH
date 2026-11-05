@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/equal_height_row.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 
@@ -42,74 +43,61 @@ class HomePage extends StatelessWidget {
           .toList();
       return LayoutBuilder(
         builder: (context, viewport) {
+          final phone = PhoneChromeScope.of(context);
           final compact =
               viewport.maxWidth >= 1000 &&
               MediaQuery.textScalerOf(context).scale(14) <= 16.8;
           return ContentScrollView(
             key: const Key('home-scroll'),
-            padding: const EdgeInsets.only(bottom: 24),
+            padding: EdgeInsets.only(bottom: compact ? 8 : 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
+                Padding(
                   key: const Key('home-overview'),
-                  padding: EdgeInsets.all(compact ? 16 : 20),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Flex(
-                    direction: compact ? Axis.horizontal : Axis.vertical,
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Flexible(
-                        flex: compact ? 3 : 0,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${now.month}월 ${now.day}일 ${weekdayLabel(now.weekday)}요일',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
+                      Text(
+                        '${now.month}월 ${now.day}일 ${weekdayLabel(now.weekday)}요일',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 24,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Semantics(
+                            header: true,
+                            child: Text(
                               '나의 대학생활 경로',
                               style: Theme.of(context).textTheme.headlineMedium,
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              profile.isConfigured
-                                  ? '${profile.school} · ${profile.department}'
-                                  : '학교·학과와 첫 일정을 입력하고 나의 계획을 시작하세요.',
-                            ),
-                          ],
+                          ),
+                          FilledButton.icon(
+                            onPressed: onAddSchedule,
+                            icon: const Icon(Icons.add),
+                            label: const Text('일정 추가'),
+                          ),
+                        ],
+                      ),
+                      if (!phone) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          '오늘 일정 ${todayEvents.length}개 · ${year == null ? '개인 계획 미설정' : '개인 계획 $year학년'} · ${repository.storageLabel}',
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
-                      ),
-                      SizedBox(
-                        width: compact ? 24 : 0,
-                        height: compact ? 0 : 14,
-                      ),
-                      Flexible(
-                        flex: compact ? 2 : 0,
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            Chip(label: Text('오늘 일정 ${todayEvents.length}개')),
-                            Chip(
-                              label: Text(
-                                year == null ? '개인 계획 미설정' : '개인 계획 $year학년',
-                              ),
-                            ),
-                            const Chip(label: Text('기기 로컬 저장')),
-                          ],
+                      ],
+                      if (profile.isConfigured)
+                        Text(
+                          '${profile.school} · ${profile.department}',
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
-                      ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
                 LayoutBuilder(
                   builder: (context, constraints) => Align(
                     alignment: Alignment.topLeft,
@@ -127,7 +115,7 @@ class HomePage extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: compact ? 8 : 16),
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final upcomingCard = _upcoming(
@@ -151,20 +139,12 @@ class HomePage extends StatelessWidget {
                         Expanded(flex: compact ? 1 : 3, child: upcomingCard),
                         const SizedBox(width: 16),
                         Expanded(flex: compact ? 1 : 2, child: prepare),
-                        if (compact) ...[
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _nextSteps(context, year, compact: true),
-                          ),
-                        ],
                       ],
                     );
                   },
                 ),
-                if (!compact) ...[
-                  const SizedBox(height: 16),
-                  _nextSteps(context, year),
-                ],
+                SizedBox(height: compact ? 8 : 16),
+                _nextSteps(context, year, compact: true),
               ],
             ),
           );
@@ -175,6 +155,16 @@ class HomePage extends StatelessWidget {
 
   Widget _card(BuildContext context, String title, Widget child) => Card(
     key: ValueKey('home-card-$title'),
+    elevation: 0,
+    color: title == '다가오는 일정'
+        ? Theme.of(context).colorScheme.surface
+        : Theme.of(context).scaffoldBackgroundColor,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(20),
+      side: title == '다가오는 일정'
+          ? BorderSide(color: Theme.of(context).colorScheme.outlineVariant)
+          : BorderSide.none,
+    ),
     child: Padding(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -199,19 +189,18 @@ class HomePage extends StatelessWidget {
         ? Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.event_available_outlined, size: 28),
-              const SizedBox(height: 8),
               const Text('앞으로 예정된 개인 일정이 없습니다.'),
-              const SizedBox(height: 4),
-              Text(
-                '과제 마감이나 참여할 활동을 기록해 이번 주 계획을 채워보세요.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+              if (!PhoneChromeScope.of(context)) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '과제 마감이나 참여할 활동을 기록해 이번 주 계획을 채워보세요.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
               const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: onAddSchedule,
-                icon: const Icon(Icons.add),
-                label: const Text('일정 추가'),
+              TextButton(
+                onPressed: () => onOpenPage(1),
+                child: const Text('전체 일정 보기 →'),
               ),
             ],
           )
@@ -318,10 +307,10 @@ class HomePage extends StatelessWidget {
       ],
       3 => const [
         _PlanLink(
-          '경험 정리',
+          '활동 정리',
           '프로젝트와 경험을 내 기록으로 남기세요.',
-          Icons.business_center_outlined,
-          5,
+          Icons.volunteer_activism_outlined,
+          4,
         ),
         _PlanLink(
           '수강 계획 확인',
@@ -338,10 +327,10 @@ class HomePage extends StatelessWidget {
           3,
         ),
         _PlanLink(
-          '포트폴리오 정리',
-          '기록한 경험과 성과를 정리하세요.',
+          '자료 정리',
+          '기록한 경험과 자료를 정리하세요.',
           Icons.collections_bookmark_outlined,
-          7,
+          6,
         ),
       ],
       _ => const [
@@ -352,86 +341,35 @@ class HomePage extends StatelessWidget {
           Icons.volunteer_activism_outlined,
           4,
         ),
-        _PlanLink(
-          '경험 정리',
-          '프로젝트와 경험을 정리하세요.',
-          Icons.business_center_outlined,
-          5,
-        ),
       ],
     };
-    return _card(
-      context,
-      '다음에 이어갈 기록',
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Padding(
+      key: const ValueKey('home-card-다음에 이어갈 기록'),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            year == null
-                ? '관심 있는 기록부터 시작하세요.'
-                : '$year학년 개인 계획 링크 · 공식 학적 판정이나 서버 추천이 아닙니다.',
-            style: Theme.of(context).textTheme.bodySmall,
+          Text('다음에 이어갈 기록', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            children: [
+              for (final step in steps)
+                Tooltip(
+                  message: step.description,
+                  child: TextButton.icon(
+                    onPressed: () => onOpenPage(step.page),
+                    icon: Icon(step.icon, size: 18),
+                    label: Text(step.label),
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(height: 12),
-          if (compact)
-            for (final step in steps)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(step.icon),
-                title: Text(step.label),
-                subtitle: Text(step.description),
-                onTap: () => onOpenPage(step.page),
-              )
-          else
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final columns = constraints.maxWidth >= 820 ? steps.length : 1;
-                final width =
-                    (constraints.maxWidth - (columns - 1) * 12) / columns;
-                return Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    for (final step in steps)
-                      SizedBox(
-                        width: width,
-                        child: Material(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(12),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () => onOpenPage(step.page),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(step.icon),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    step.label,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium,
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    step.description,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
+          if (year != null && !PhoneChromeScope.of(context))
+            Text(
+              '$year학년 개인 계획 링크 · 공식 학적 판정이나 서버 추천이 아닙니다.',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
         ],
       ),

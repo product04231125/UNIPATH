@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'assistant_api.dart';
 
 class AssistantTurn {
-  AssistantTurn(this.question);
+  AssistantTurn(this.question, {this.id = ''});
+  final String id;
   final String question;
   AssistantResult? result;
   AssistantApiException? error;
@@ -21,6 +22,9 @@ class AssistantConversation extends ChangeNotifier {
   SchoolQueryContext context = const SchoolQueryContext();
   bool sending = false;
   bool _disposed = false;
+  int _nextTurnId = 0;
+  String? get connectionError => null;
+  bool get ready => true;
 
   void setContext(SchoolQueryContext value) {
     context = value;
@@ -30,7 +34,7 @@ class AssistantConversation extends ChangeNotifier {
   Future<void> send() async {
     final question = input.text.trim();
     if (question.isEmpty || sending) return;
-    final turn = AssistantTurn(question);
+    final turn = AssistantTurn(question, id: '${++_nextTurnId}');
     _turns.add(turn);
     await _query(turn);
   }

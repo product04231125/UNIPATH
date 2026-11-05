@@ -71,11 +71,14 @@ def main() -> None:
         "프론트엔드: 홍요아 · 백엔드: 이어진 · RAG: 신우철\n\n"
         f"소스 커밋: `{first['commit']}`\n\nAPI 주소: `{first['api_base_url']}`\n\n"
         "다운로드: Windows는 `*-windows.zip` 전체를 압축 해제한 뒤 EXE를 실행합니다. "
-        "웹은 `*-web.zip`을 풀고 `python -m http.server 3000`으로 실행합니다. "
+        "웹은 `*-web.zip`을 빌드 정보의 API 주소와 같은 HTTPS 출처에 배포합니다. "
+        "localhost의 정적 화면 미리보기에서는 원격 API의 세션 로그인을 지원하지 않습니다. "
         "Flutter SDK는 다운로드한 앱을 실행할 때 필요하지 않습니다.\n\n"
         "ZIP에는 실행 안내·빌드 정보가 있고 `.sha256`으로 무결성을 확인합니다.\n\n"
-        "현재 인증·개인 기록은 목업/로컬 상태입니다. PDF는 검토 대기이며 "
-        "LLM 생성기와 공식 졸업감사는 연결하지 않았습니다.\n"
+        "이 빌드의 자료 저장 범위와 구현·미연결 기능은 "
+        f"[소스 커밋의 기능 안내](https://github.com/{REPO}/blob/{first['commit']}/README.md)와 "
+        "ZIP 내부의 `DOWNLOAD-README.txt`를 확인하세요. "
+        "대상 API 서버에도 이 앱과 호환되는 API와 DB 마이그레이션이 필요합니다.\n"
     )
     if first["preview"]:
         notes += "\n이 릴리스는 프리뷰입니다. 실제 운영 서비스 전환을 의미하지 않습니다.\n"

@@ -1,16 +1,21 @@
+import '../../shared/app_style.dart';
+
 import 'package:flutter/material.dart';
 
 import 'package:university_path_frontend/shared/app_typography.dart';
 
-import '../../shared/widgets/equal_height_row.dart';
-import '../../shared/widgets/input_dialog.dart';
+import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/surface_card.dart';
 import 'fixtures/record_mock_entry.dart';
+import 'course/course_term.dart';
 import 'personal_record_repository.dart';
 import 'personal_record_fields.dart';
+import 'personal_record_form.dart';
+import 'personal_repository_scope.dart';
+import '../auth/auth_api.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/external_link_button.dart';
 
@@ -61,16 +66,37 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
   bool _loading = true;
   bool _loadFailed = false;
   String _term = '';
+  String _year = '';
   List<PersonalRecordField> _fields = [];
+  Listenable? _importChanges;
+  int _loadRevision = 0;
 
   @override
   void initState() {
     super.initState();
-    _repository = PersonalRecordRepository(widget.kind);
+    _repository =
+        PersonalRepositoryScope.read(context)?.records(widget.kind) ??
+        PersonalRecordRepository(widget.kind);
+    _importChanges = PersonalRepositoryScope.read(context)
+        ?.importer
+        ?.importedRevision;
+    _importChanges?.addListener(_reloadAfterImport);
     _load();
   }
 
+  void _reloadAfterImport() {
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _importChanges?.removeListener(_reloadAfterImport);
+    _loadRevision++;
+    super.dispose();
+  }
+
   Future<void> _load() async {
+    final revision = ++_loadRevision;
     if (mounted) {
       setState(() {
         _loading = true;
@@ -79,230 +105,75 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     }
     try {
       await _repository.load();
-      _fields =
+      final fields =
           await widget.fieldsLoader?.call() ??
           personalRecordFields(widget.kind);
+      if (mounted && revision == _loadRevision) _fields = fields;
     } catch (_) {
-      if (mounted) setState(() => _loadFailed = true);
+      if (mounted && revision == _loadRevision) {
+        setState(() => _loadFailed = true);
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && revision == _loadRevision) {
+        setState(() => _loading = false);
+      }
     }
   }
 
   Future<void> _showForm([PersonalRecord? record]) async {
-    List<PersonalRecordField> fields;
-    try {
-      fields =
-          await widget.fieldsLoader?.call() ??
-          personalRecordFields(widget.kind);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('연결할 개인 기록을 읽지 못했습니다. 다시 시도하세요.')),
-        );
-      }
-      return;
-    }
-    if (!mounted) return;
-    setState(() => _fields = fields);
-    final controllers = {
-      for (final field in fields)
-        field.key: TextEditingController(text: record?.value(field.key) ?? ''),
-    };
-    final form = GlobalKey<FormState>();
-    bool saving = false;
-    String? error;
-    await showInputDialog<void>(
+    await showPersonalRecordForm(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, updateDialog) => InputDialog(
-          changes: Listenable.merge(controllers.values.toList()),
-          editing: record != null,
-          saving: saving,
-          hasContent: () =>
-              controllers.values.any((c) => c.text.trim().isNotEmpty),
-          title: Text(record == null ? widget.addLabel : '개인 기록 수정'),
-          content: Form(
-            key: form,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  '기기 로컬 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드·서버 전송은 하지 않습니다.',
-                ),
-                const SizedBox(height: 16),
-                for (final field in fields)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: field.options.isEmpty
-                        ? TextFormField(
-                            key: ValueKey('record-field-${field.key}'),
-                            controller: controllers[field.key],
-                            enabled: !saving,
-                            maxLines: field.multiline ? 3 : 1,
-                            keyboardType: field.type == PersonalFieldType.number
-                                ? const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  )
-                                : TextInputType.text,
-                            decoration: InputDecoration(
-                              labelText:
-                                  '${field.label}${field.required ? ' *' : ' (선택)'}',
-                            ),
-                            validator: field.validate,
-                          )
-                        : FormField<String>(
-                            initialValue: controllers[field.key]!.text,
-                            validator: field.validate,
-                            builder: (state) => Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                IgnorePointer(
-                                  ignoring: saving,
-                                  child: AnchoredSelectField<String>(
-                                    key: ValueKey('record-select-${field.key}'),
-                                    value: controllers[field.key]!.text,
-                                    label: field.label,
-                                    options: [
-                                      const SelectOption('', '미선택'),
-                                      for (final option in field.options.where(
-                                        (o) => o.isNotEmpty,
-                                      ))
-                                        SelectOption(
-                                          option,
-                                          field.optionLabels[option] ?? option,
-                                        ),
-                                      if (controllers[field.key]!
-                                              .text
-                                              .isNotEmpty &&
-                                          !field.options.contains(
-                                            controllers[field.key]!.text,
-                                          ))
-                                        SelectOption(
-                                          controllers[field.key]!.text,
-                                          '연결 대상 없음 · 다시 선택하세요',
-                                        ),
-                                    ],
-                                    onChanged: (value) {
-                                      controllers[field.key]!.text = value;
-                                      state.didChange(value);
-                                    },
-                                  ),
-                                ),
-                                if (state.hasError)
-                                  Text(
-                                    state.errorText!,
-                                    style: TextStyle(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .error,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                  ),
-                if (error != null)
-                  Text(
-                    error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: saving ? null : () => Navigator.pop(dialogContext),
-              child: const Text('취소'),
-            ),
-            FilledButton(
-              onPressed: saving
-                  ? null
-                  : () async {
-                      if (!form.currentState!.validate()) return;
-                      final values = {
-                        for (final field in fields)
-                          field.key: controllers[field.key]!.text.trim(),
-                      };
-                      final crossError = personalRecordCrossError(values);
-                      if (crossError != null) {
-                        updateDialog(() => error = crossError);
-                        return;
-                      }
-                      updateDialog(() {
-                        saving = true;
-                        error = null;
-                      });
-                      try {
-                        final linkError = await widget.validateValues?.call(
-                          values,
-                        );
-                        if (!dialogContext.mounted) return;
-                        if (linkError != null) {
-                          updateDialog(() {
-                            saving = false;
-                            error = linkError;
-                          });
-                          return;
-                        }
-                        await _repository.save(
-                          PersonalRecord(
-                            id: record?.id ?? PersonalRecord.newId(),
-                            values: values,
-                          ),
-                        );
-                        if (mounted) setState(() {});
-                        if (dialogContext.mounted) Navigator.pop(dialogContext);
-                      } catch (_) {
-                        if (dialogContext.mounted) {
-                          updateDialog(() {
-                            saving = false;
-                            error = '기기에 저장하지 못했습니다. 입력을 유지했으니 다시 시도하세요.';
-                          });
-                        }
-                      }
-                    },
-              child: Text(saving ? '저장 중…' : '내 기록에 저장'),
-            ),
-          ],
-        ),
-      ),
+      kind: widget.kind,
+      repository: _repository,
+      addLabel: widget.addLabel,
+      record: record,
+      fieldsLoader: widget.fieldsLoader,
+      validateValues: widget.validateValues,
+      onFieldsReady: (fields) {
+        if (mounted) setState(() => _fields = fields);
+      },
+      onSaved: () {
+        if (mounted) setState(() {});
+      },
     );
-    for (final controller in controllers.values) {
-      controller.dispose();
-    }
   }
 
   Future<void> _delete(PersonalRecord record) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('개인 기록 삭제'),
-        content: Text('${record.value('title')} 기록을 이 기기에서 삭제할까요?'),
+        title: Text('개인 기록 삭제'),
+        content: Text(
+          '${record.value('title')} 기록을 ${_repository.isServerBacked ? '계정 서버' : '이 기기'}에서 삭제할까요?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
+            child: Text('취소'),
           ),
           FilledButton(
+            style: destructiveButtonStyle(context),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('삭제'),
+            child: Text('삭제'),
           ),
         ],
       ),
     );
     if (confirmed != true) return;
     try {
-      await _repository.delete(record.id);
+      await _repository.delete(record.id, expectedVersion: record.version);
       if (mounted) setState(() {});
-    } catch (_) {
+    } catch (failure) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('삭제하지 못했습니다. 기록은 유지됩니다.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              failure is AuthFailure && failure.status == 409
+                  ? '연결된 자료가 있거나 기록이 변경되었습니다. 연결을 정리하거나 서버 기록을 다시 불러와 주세요.'
+                  : '삭제하지 못했습니다. 기록은 유지됩니다.',
+            ),
+          ),
+        );
       }
     }
   }
@@ -317,7 +188,9 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               .where((f) => f.key != 'title' && record.value(f.key).isNotEmpty)
               .map(
                 (f) =>
-                    '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
+                    f.key == 'term' && widget.kind == PersonalRecordKind.course
+                    ? '수강 기간: ${CourseTerm.parse(record.value('term')).label}'
+                    : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
               )
               .join(' · '),
           status: '개인 기록',
@@ -334,11 +207,12 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               url: record.value(field.key),
               label: field.label,
             ),
+          TextButton(onPressed: () => _showForm(record), child: Text('수정')),
           TextButton(
-            onPressed: () => _showForm(record),
-            child: const Text('수정'),
+            style: destructiveButtonStyle(context),
+            onPressed: () => _delete(record),
+            child: Text('삭제'),
           ),
-          TextButton(onPressed: () => _delete(record), child: const Text('삭제')),
         ],
       ),
     ],
@@ -352,38 +226,46 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('개인 기록을 읽지 못했습니다. 기존 저장 내용은 덮어쓰지 않습니다.'),
-            TextButton(onPressed: _load, child: const Text('다시 시도')),
+            Text('개인 기록을 읽지 못했습니다. 기존 저장 내용은 덮어쓰지 않습니다.'),
+            TextButton(onPressed: _load, child: Text('다시 시도')),
           ],
         ),
       );
     }
-    final personal = _repository.records
-        .where((r) => _term.isEmpty || r.value('term') == _term)
-        .toList();
+    final personal = _repository.records.where((r) {
+      if (widget.kind != PersonalRecordKind.course) return true;
+      final period = CourseTerm.parse(r.value('term'));
+      return (_year.isEmpty || period.yearFilter == _year) &&
+          (_term.isEmpty || period.semester == _term);
+    }).toList();
     final entries = [if (widget.showMockData) ...widget.fixture];
+    final isCourse = widget.kind == PersonalRecordKind.course;
+    final phone = PhoneChromeScope.of(context);
     return ContentScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _header(),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            decoration: BoxDecoration(
-              color: const Color(0xfffff7e5),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xffefdba7)),
-            ),
-            child: Text(
-              widget.notice,
-              style: const TextStyle(
-                fontSize: AppTypography.caption,
-                color: Color(0xff795a22),
+          if (!isCourse && !phone)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+              child: Text(
+                widget.notice,
+                style: TextStyle(
+                  fontSize: AppTypography.caption,
+                  color: Theme.of(context).colorScheme.onSecondaryContainer,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 14),
+          if (!isCourse && !phone) const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
               final records = SurfaceCard(
@@ -392,93 +274,141 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                   children: [
                     Text(
                       widget.listTitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: AppTypography.section,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      '학교에서 확인한 정보가 없으면 내 기록을 직접 추가할 수 있습니다.',
-                      style: TextStyle(
-                        fontSize: AppTypography.caption,
-                        color: Color(0xff607386),
+                    if (!isCourse && !phone) const SizedBox(height: 4),
+                    if (!isCourse && !phone)
+                      Text(
+                        '학교에서 확인한 정보가 없으면 내 기록을 직접 추가할 수 있습니다.',
+                        style: TextStyle(
+                          fontSize: AppTypography.caption,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 12),
                     FilledButton.icon(
                       onPressed: _showForm,
-                      icon: const Icon(Icons.add),
+                      icon: Icon(Icons.add),
                       label: Text(widget.addLabel),
                     ),
                     const SizedBox(height: 10),
                     if (widget.kind == PersonalRecordKind.course) ...[
-                      AnchoredSelectField<String>(
-                        value: _term,
-                        label: '학기 필터',
-                        options: [
-                          const SelectOption('', '전체 학기'),
-                          for (final term
-                              in _repository.records
-                                  .map((r) => r.value('term'))
-                                  .toSet())
-                            SelectOption(term, term),
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 12,
+                        children: [
+                          SizedBox(
+                            width: 240,
+                            child: AnchoredSelectField<String>(
+                              key: const ValueKey('record-course-year-filter'),
+                              value: _year,
+                              label: '수강 연도 필터',
+                              options: [
+                                const SelectOption('', '전체 연도'),
+                                for (final year in {
+                                  ..._repository.records.map(
+                                    (r) =>
+                                        CourseTerm.parse(r.value('term'))
+                                            .yearFilter,
+                                  ),
+                                  if (_year.isNotEmpty) _year,
+                                }.toList()..sort((a, b) => b.compareTo(a)))
+                                  SelectOption(
+                                    year,
+                                    year == CourseTerm.unspecified
+                                        ? '연도 미지정'
+                                        : '$year년',
+                                  ),
+                              ],
+                              onChanged: (value) =>
+                                  setState(() => _year = value),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 240,
+                            child: AnchoredSelectField<String>(
+                              key: const ValueKey('record-course-term-filter'),
+                              value: _term,
+                              label: '학기 필터',
+                              options: [
+                                const SelectOption('', '전체 학기'),
+                                for (final term in {
+                                  ..._repository.records.map(
+                                    (r) =>
+                                        CourseTerm.parse(r.value('term'))
+                                            .semester,
+                                  ),
+                                  if (_term.isNotEmpty) _term,
+                                }.toList()..sort())
+                                  SelectOption(term, term),
+                              ],
+                              onChanged: (value) =>
+                                  setState(() => _term = value),
+                            ),
+                          ),
                         ],
-                        onChanged: (value) => setState(() => _term = value),
                       ),
-                      Text(
-                        '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점 · 공식 이수학점 아님',
-                      ),
+                      if (!phone) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점 · 공식 이수학점 아님',
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          widget.notice,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 12),
+                      ] else
+                        const SizedBox(height: 12),
                     ],
-                    if (widget.kind == PersonalRecordKind.activity)
+                    if (widget.kind == PersonalRecordKind.activity && !phone)
                       Text(
                         '사용자가 승인됨으로 기록한 봉사 시간 합계 ${personal.where((r) => r.value('approval') == 'approved').fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('approvedHours')) ?? 0))}시간 · 학교 검증 아님',
                       ),
-                    if (entries.isEmpty && personal.isEmpty)
-                      const Text('개인 기록이 없습니다. 직접 입력해 주세요.'),
-                    for (final entry in entries) _entry(entry),
+                    if (personal.isEmpty)
+                      Text(
+                        isCourse && (_year.isNotEmpty || _term.isNotEmpty)
+                            ? '선택한 연도·학기에 맞는 개인 기록이 없습니다. 필터를 변경해 주세요.'
+                            : '개인 기록이 없습니다. 직접 입력해 주세요.',
+                      ),
                     for (final record in personal) _personalEntry(record),
+                    if (entries.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      const Divider(),
+
+                      for (final entry in entries) _entry(entry),
+                    ],
                   ],
                 ),
               );
-              final guide = SurfaceCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      widget.guideTitle,
-                      style: const TextStyle(
-                        fontSize: AppTypography.section,
-                        fontWeight: FontWeight.w800,
+                    records,
+                    const SizedBox(height: 12),
+                    ExpansionTile(
+                      title: Text(widget.guideTitle),
+                      childrenPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    for (final guide in widget.guides)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 11),
-                        child: Text(
-                          '• $guide',
-                          style: const TextStyle(
-                            fontSize: AppTypography.body,
-                            height: 1.4,
+                      expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final line in widget.guides)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text('• $line'),
                           ),
-                        ),
-                      ),
+                      ],
+                    ),
                     ...widget.guideActions,
                   ],
-                ),
-              );
-              return constraints.maxWidth >= 760
-                  ? EqualHeightRow(
-                      children: [
-                        Expanded(flex: 6, child: records),
-                        const SizedBox(width: 14),
-                        Expanded(flex: 4, child: guide),
-                      ],
-                    )
-                  : Column(
-                      children: [records, const SizedBox(height: 14), guide],
-                    );
+                );
+              }
             },
           ),
         ],
@@ -486,11 +416,22 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     );
   }
 
-  Widget _header() => PageHeader(
-    title: widget.title,
-    contextLabel: widget.contextLabel,
-    description: widget.description,
-  );
+  Widget _header() {
+    final phone = PhoneChromeScope.of(context);
+    return PageHeader(
+      title: widget.title,
+      contextLabel: widget.contextLabel,
+      description: phone ? null : widget.description,
+      actions: [
+        if (_repository.isServerBacked)
+          TextButton.icon(
+            onPressed: _loading ? null : _load,
+            icon: const Icon(Icons.refresh),
+            label: const Text('서버 기록 다시 불러오기'),
+          ),
+      ],
+    );
+  }
 
   Widget _statePage({required Widget child}) => ContentScrollView(
     child: Column(
@@ -501,15 +442,17 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
 
   Widget _entry(RecordMockEntry entry) => Container(
     padding: const EdgeInsets.symmetric(vertical: 11),
-    decoration: const BoxDecoration(
-      border: Border(bottom: BorderSide(color: Color(0xffe4ebef))),
+    decoration: BoxDecoration(
+      border: Border(
+        bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
     ),
     child: Row(
       children: [
-        const Icon(
+        Icon(
           Icons.description_outlined,
           size: 19,
-          color: Color(0xff315a77),
+          color: Theme.of(context).colorScheme.onSurface,
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -518,7 +461,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
             children: [
               Text(
                 entry.title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: AppTypography.body,
                   fontWeight: FontWeight.w700,
                 ),
@@ -526,16 +469,16 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               const SizedBox(height: 2),
               Text(
                 entry.detail,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: AppTypography.caption,
-                  color: Color(0xff607386),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
           ),
         ),
         const SizedBox(width: 10),
-        StatusBadge(status: entry.status == '기록됨' ? '충족' : entry.status),
+        StatusBadge(status: entry.status),
       ],
     ),
   );

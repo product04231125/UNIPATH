@@ -8,9 +8,10 @@ import 'package:university_path_frontend/shared/external_links.dart';
 import 'package:university_path_frontend/shared/widgets/external_link_button.dart';
 import 'package:university_path_frontend/features/records/activity/activity_page.dart';
 import 'package:university_path_frontend/features/records/credential/credential_page.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_page.dart';
 import 'package:university_path_frontend/features/records/personal_record_fields.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
+
+import 'support/achievement_records_page.dart';
 
 Finder openButton() => find.widgetWithText(FilledButton, '외부 사이트 열기');
 
@@ -238,9 +239,7 @@ void main() {
         ),
       );
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(body: PortfolioPage(showMockData: false)),
-        ),
+        MaterialApp(home: Scaffold(body: achievementRecordsPage())),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('공개 가능한 링크 · 외부 열기'));

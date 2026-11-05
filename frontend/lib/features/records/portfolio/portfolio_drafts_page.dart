@@ -1,3 +1,5 @@
+import '../../../shared/app_style.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../shared/widgets/input_dialog.dart';
@@ -10,15 +12,20 @@ import '../../../shared/widgets/surface_card.dart';
 import '../../../shared/widgets/page_header.dart';
 import 'portfolio_editor_dialog.dart';
 import 'portfolio_workspace_repository.dart';
+import '../personal_repository_scope.dart';
 
 class PortfolioDraftsPage extends StatefulWidget {
   const PortfolioDraftsPage({
     super.key,
     required this.isDocument,
     this.repository,
+    this.onOpenAchievements,
+    this.active = true,
   });
   final bool isDocument;
+  final bool active;
   final PortfolioWorkspaceRepository? repository;
+  final VoidCallback? onOpenAchievements;
   @override
   State<PortfolioDraftsPage> createState() => _PortfolioDraftsPageState();
 }
@@ -27,25 +34,57 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
   late final PortfolioWorkspaceRepository _repository;
   bool _loading = true, _failed = false, _busy = false;
   String? _message;
+  Future<void> _pendingLoad = Future.value();
+  int _loadRevision = 0;
+  Listenable? _importChanges;
   @override
   void initState() {
     super.initState();
-    _repository = widget.repository ?? PortfolioWorkspaceRepository();
+    _repository =
+        widget.repository ??
+        PersonalRepositoryScope.read(context)?.portfolio() ??
+        PortfolioWorkspaceRepository();
+    _importChanges = PersonalRepositoryScope.read(context)
+        ?.importer
+        ?.importedRevision;
+    _importChanges?.addListener(_reloadAfterImport);
     _load();
   }
 
+  void _reloadAfterImport() {
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _importChanges?.removeListener(_reloadAfterImport);
+    _loadRevision++;
+    super.dispose();
+  }
+
   Future<void> _load() async {
+    final revision = ++_loadRevision;
     setState(() {
       _loading = true;
       _failed = false;
     });
     try {
-      await _repository.load();
+      final operation = _pendingLoad.then((_) => _repository.load());
+      _pendingLoad = operation.then<void>((_) {}, onError: (Object _) {});
+      await operation;
     } catch (_) {
-      if (mounted) setState(() => _failed = true);
+      if (mounted && revision == _loadRevision) setState(() => _failed = true);
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && revision == _loadRevision) {
+        setState(() => _loading = false);
+      }
     }
+  }
+
+  @override
+  void didUpdateWidget(covariant PortfolioDraftsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.active && widget.active) _load();
   }
 
   Future<void> _edit({
@@ -65,7 +104,11 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
         ),
       );
       if (mounted && saved == true) {
-        setState(() => _message = '이 기기에 초안을 저장했습니다.');
+        setState(
+          () => _message = _repository.isServerBacked
+              ? '계정 서버에 초안을 저장했습니다.'
+              : '이 기기에 초안을 저장했습니다.',
+        );
       }
     } catch (_) {
       if (mounted) {
@@ -75,10 +118,16 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
   }
 
   Future<void> _delete(String id, String title) async {
+    final expectedVersion = widget.isDocument
+        ? _repository.documents.where((d) => d.id == id).firstOrNull?.version
+        : _repository.compositions
+              .where((c) => c.id == id)
+              .firstOrNull
+              ?.version;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('로컬 초안 삭제'),
+        title: Text(_repository.isServerBacked ? '서버 초안 삭제' : '로컬 초안 삭제'),
         content: Text('$title 초안을 삭제할까요? 연결된 성과·경험 원본은 삭제되지 않습니다.'),
         actions: [
           TextButton(
@@ -86,6 +135,7 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
             child: const Text('취소'),
           ),
           FilledButton(
+            style: destructiveButtonStyle(context),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('삭제'),
           ),
@@ -96,9 +146,12 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
     setState(() => _busy = true);
     try {
       if (widget.isDocument) {
-        await _repository.deleteDocument(id);
+        await _repository.deleteDocument(id, expectedVersion: expectedVersion);
       } else {
-        await _repository.deleteComposition(id);
+        await _repository.deleteComposition(
+          id,
+          expectedVersion: expectedVersion,
+        );
       }
       if (mounted) setState(() => _message = '초안을 삭제했습니다. 원본 기록은 유지됩니다.');
     } catch (_) {
@@ -112,7 +165,7 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
 
   String _documentText(ApplicationDocument document) => [
     document.title,
-    '기기 로컬 지원 문서 초안 · 미제출',
+    '${_repository.isServerBacked ? '계정 서버' : '기기 로컬'} 지원 문서 초안 · 미제출',
     '${document.type} · ${document.target} · ${document.role}',
     document.body,
     if (document.sources.any((ref) => !_repository.sources.containsKey(ref)))
@@ -156,11 +209,15 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
                     ? null
                     : () => showDialog<void>(
                         context: context,
-                        builder: (_) => _DraftPreview(text: preview),
+                        builder: (_) => _DraftPreview(
+                          text: preview,
+                          serverBacked: _repository.isServerBacked,
+                        ),
                       ),
                 child: const Text('미리보기'),
               ),
               TextButton(
+                style: destructiveButtonStyle(context),
                 onPressed: _busy ? null : delete,
                 child: const Text('삭제'),
               ),
@@ -212,11 +269,23 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
               padding: EdgeInsets.only(top: 14),
               child: Text('아직 만든 구성이 없습니다. 성과 기록을 먼저 추가하거나 빈 구성을 저장하세요.'),
             ),
+          if (!document &&
+              _repository.compositions.isEmpty &&
+              widget.onOpenAchievements != null) ...[
+            const SizedBox(height: 8),
+
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: widget.onOpenAchievements,
+              icon: const Icon(Icons.arrow_forward, size: 18),
+              label: const Text('개인 성과 기록으로 이동'),
+            ),
+          ],
           if (document)
             for (final d in _repository.documents)
               _card(
                 d.title,
-                '${d.type} · ${d.target} · ${d.role} · 로컬 초안 · 미제출',
+                '${d.type} · ${d.target} · ${d.role} · ${_repository.isServerBacked ? '서버' : '로컬'} 초안 · 미제출',
                 d.sources,
                 () => _edit(document: d),
                 () => _delete(d.id, d.title),
@@ -226,7 +295,7 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
             for (final c in _repository.compositions)
               _card(
                 c.title,
-                '${audienceLabel(c.audience)} · ${c.sources.length}개 · 로컬 구성 · 게시되지 않음',
+                '${audienceLabel(c.audience)} · ${c.sources.length}개 · ${_repository.isServerBacked ? '서버' : '로컬'} 구성 · 게시되지 않음',
                 c.sources,
                 () => _edit(composition: c),
                 () => _delete(c.id, c.title),
@@ -239,9 +308,17 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
 
   Widget _header() => PageHeader(
     title: widget.isDocument ? '지원 문서' : '포트폴리오 구성',
+    actions: [
+      if (_repository.isServerBacked)
+        TextButton.icon(
+          onPressed: _loading || _busy ? null : _load,
+          icon: const Icon(Icons.refresh),
+          label: const Text('서버 초안 다시 불러오기'),
+        ),
+    ],
     description: widget.isDocument
         ? '지원처별 이력서·자기소개서 초안을 직접 편집합니다. 개인 경험·성과를 선택하여 본문에 가져올 수 있습니다. AI가 작성하거나 지원처로 제출하지 않습니다.'
-        : '개인 성과 중 사용할 항목과 순서를 선택합니다. 나만 보기·제출 검토용·공개 검토용은 기기 로컬 사용 의도이며 실제 게시·권한 설정이 아닙니다.',
+        : '개인 성과 중 사용할 항목과 순서를 선택합니다. 나만 보기·제출 검토용·공개 검토용은 ${_repository.isServerBacked ? '개인' : '기기 로컬'} 사용 의도이며 실제 게시·권한 설정이 아닙니다.',
   );
 
   Widget _statePage(Widget child) => ContentScrollView(
@@ -253,8 +330,9 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
 }
 
 class _DraftPreview extends StatefulWidget {
-  const _DraftPreview({required this.text});
+  const _DraftPreview({required this.text, this.serverBacked = false});
   final String text;
+  final bool serverBacked;
   @override
   State<_DraftPreview> createState() => _DraftPreviewState();
 }
@@ -274,7 +352,7 @@ class _DraftPreviewState extends State<_DraftPreview> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('로컬 초안 미리보기'),
+    title: Text(widget.serverBacked ? '서버 초안 미리보기' : '로컬 초안 미리보기'),
     content: SizedBox(
       width: 560,
       child: ContentScrollView(

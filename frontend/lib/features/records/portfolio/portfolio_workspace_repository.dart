@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../personal_record_repository.dart';
+import '../../auth/local_data_owner.dart';
 
 enum PortfolioAudience { private, application, publicReview }
 
@@ -20,11 +21,13 @@ class PortfolioComposition {
     this.audience = PortfolioAudience.private,
     this.reviewed = false,
     required List<String> sources,
+    this.version,
   }) : sources = List.unmodifiable(sources);
   final String id, title, description;
   final PortfolioAudience audience;
   final bool reviewed;
   final List<String> sources;
+  final int? version;
 }
 
 class ApplicationDocument {
@@ -36,9 +39,11 @@ class ApplicationDocument {
     required this.type,
     this.body = '',
     required List<String> sources,
+    this.version,
   }) : sources = List.unmodifiable(sources);
   final String id, title, target, role, type, body;
   final List<String> sources;
+  final int? version;
 }
 
 class PortfolioSource {
@@ -70,9 +75,13 @@ class PortfolioSource {
 
 /// Client-local compositions/documents, not ERD entities or published content.
 class PortfolioWorkspaceRepository {
-  PortfolioWorkspaceRepository({this.writer});
+  PortfolioWorkspaceRepository({this.writer, LocalDataOwner? owner})
+    : _owner = owner ?? LocalDataOwner.current();
+  final LocalDataOwner _owner;
+  bool get isServerBacked => false;
   final Future<bool> Function(String key, String value)? writer;
   static const storageKey = 'university_path.portfolio_workspace.v1';
+  String get _accountStorageKey => _owner.key(storageKey);
   SharedPreferences? _preferences;
   bool _loaded = false;
   List<PortfolioComposition> _compositions = [];
@@ -86,7 +95,7 @@ class PortfolioWorkspaceRepository {
   Future<void> load() async {
     _loaded = false;
     _preferences ??= await SharedPreferences.getInstance();
-    final raw = _preferences!.getString(storageKey);
+    final raw = _preferences!.getString(_accountStorageKey);
     final root = raw == null
         ? {'compositions': [], 'documents': []}
         : jsonDecode(raw) as Map;
@@ -150,7 +159,7 @@ class PortfolioWorkspaceRepository {
       PersonalRecordKind.portfolio,
       PersonalRecordKind.experience,
     ]) {
-      final repo = PersonalRecordRepository(kind);
+      final repo = PersonalRecordRepository(kind, owner: _owner);
       await repo.load();
       for (final record in repo.records) {
         final source = PortfolioSource(kind, record);
@@ -214,9 +223,9 @@ class PortfolioWorkspaceRepository {
     }
   }
 
-  Future<void> deleteComposition(String id) =>
+  Future<void> deleteComposition(String id, {int? expectedVersion}) =>
       _write(_compositions.where((c) => c.id != id).toList(), _documents);
-  Future<void> deleteDocument(String id) =>
+  Future<void> deleteDocument(String id, {int? expectedVersion}) =>
       _write(_compositions, _documents.where((d) => d.id != id).toList());
 
   Future<void> _write(
@@ -254,8 +263,8 @@ class PortfolioWorkspaceRepository {
       ],
     });
     final saved =
-        await (writer?.call(storageKey, raw) ??
-            _preferences!.setString(storageKey, raw));
+        await (writer?.call(_accountStorageKey, raw) ??
+            _preferences!.setString(_accountStorageKey, raw));
     if (!saved) throw StateError('Local workspace write failed');
     _compositions = compositions;
     _documents = documents;

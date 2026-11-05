@@ -67,58 +67,57 @@ void main() {
 
   for (final scale in [1.0, 2.0]) {
     for (final populated in [false, true]) {
-      testWidgets('record cards align scale=$scale populated=$populated', (
-        tester,
-      ) async {
-        await tester.binding.setSurfaceSize(const Size(900, 768));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
-        for (final kind in PersonalRecordKind.values) {
-          if (populated) {
-            final repository = PersonalRecordRepository(kind);
-            await repository.load();
-            await repository.save(
-              PersonalRecord(
-                id: 'layout-test',
-                values: {
-                  'title': '긴 개인 기록 제목 ' * 12,
-                  'description': '메모 ' * 40,
-                },
+      testWidgets(
+        'record guidance folds below list scale=$scale populated=$populated',
+        (tester) async {
+          await tester.binding.setSurfaceSize(const Size(900, 768));
+          addTearDown(() => tester.binding.setSurfaceSize(null));
+          for (final kind in PersonalRecordKind.values) {
+            if (populated) {
+              final repository = PersonalRecordRepository(kind);
+              await repository.load();
+              await repository.save(
+                PersonalRecord(
+                  id: 'layout-test',
+                  values: {
+                    'title': '긴 개인 기록 제목 ' * 12,
+                    'description': '메모 ' * 40,
+                  },
+                ),
+              );
+            }
+            await tester.pumpWidget(
+              host(
+                RecordMenuPage(
+                  key: ValueKey(kind),
+                  kind: kind,
+                  title: '기록',
+                  description: '개인 기록',
+                  notice: '학교 공식 판정 아님',
+                  listTitle: '등록 기록',
+                  fixture: const [],
+                  guideTitle: '준비',
+                  guides: ['긴 안내 문구 ' * 15],
+                  addLabel: '추가',
+                  detailLabel: '상세',
+                  showMockData: false,
+                ),
+                scale,
               ),
             );
+            await tester.pumpAndSettle();
+            final cards = find.byType(SurfaceCard);
+
+            expect(cards, findsOneWidget);
+            expect(find.byType(ExpansionTile), findsOneWidget);
+            expect(
+              tester.getTopLeft(find.byType(ExpansionTile)).dy,
+              greaterThan(tester.getBottomLeft(cards).dy),
+            );
+            expect(tester.takeException(), isNull, reason: kind.name);
           }
-          await tester.pumpWidget(
-            host(
-              RecordMenuPage(
-                key: ValueKey(kind),
-                kind: kind,
-                title: '기록',
-                description: '개인 기록',
-                notice: '학교 공식 판정 아님',
-                listTitle: '등록 기록',
-                fixture: const [],
-                guideTitle: '준비',
-                guides: ['긴 안내 문구 ' * 15],
-                addLabel: '추가',
-                detailLabel: '상세',
-                showMockData: false,
-              ),
-              scale,
-            ),
-          );
-          await tester.pumpAndSettle();
-          final cards = find.byType(SurfaceCard);
-          expect(cards, findsNWidgets(2));
-          expect(
-            tester.getTopLeft(cards.first).dy,
-            tester.getTopLeft(cards.last).dy,
-          );
-          expect(
-            tester.getBottomLeft(cards.first).dy,
-            closeTo(tester.getBottomLeft(cards.last).dy, .01),
-          );
-          expect(tester.takeException(), isNull, reason: kind.name);
-        }
-      });
+        },
+      );
     }
 
     testWidgets('schedule cards align and narrow cards stack scale=$scale', (
