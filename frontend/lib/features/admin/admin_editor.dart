@@ -27,6 +27,7 @@ class AdminEditor extends StatefulWidget {
     this.inline = false,
     this.list,
     this.onRevokeRequested,
+    this.onClosed,
   });
   final AdminRepository repository;
   final String actorId, schoolId;
@@ -36,6 +37,7 @@ class AdminEditor extends StatefulWidget {
   final bool inline;
   final Widget? list;
   final VoidCallback? onRevokeRequested;
+  final VoidCallback? onClosed;
   @override
   State<AdminEditor> createState() => AdminEditorState();
 }
@@ -102,6 +104,18 @@ class AdminEditorState extends State<AdminEditor> {
     _executionKey = GlobalKey<AdminRuleExecutionPanelState>();
   }
 
+  void showRecord(AdminRecord record) {
+    _editingRecord = record;
+    _savedRecord = record;
+    _fill(record);
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      _error = null;
+      _message = null;
+    });
+  }
+
   Future<void> loadRecord(AdminRecord record) async {
     if (!mounted) return;
     if (_currentRecord?.id == record.id) {
@@ -138,6 +152,11 @@ class AdminEditorState extends State<AdminEditor> {
   }
 
   Future<void> _cancel() async {
+    if (widget.onClosed != null) {
+      if (!await allowLeave() || !mounted) return;
+      widget.onClosed!();
+      return;
+    }
     if (widget.inline) {
       await clearToCreate();
     } else {
@@ -270,6 +289,14 @@ class AdminEditorState extends State<AdminEditor> {
             _saving = false;
             _message = '요건 설명을 저장했습니다. 아래에서 계산 조건을 이어서 저장하세요.';
           });
+        } else if (widget.onClosed != null) {
+          for (final field in _fields) {
+            _initial[field.key] = _value(field.key);
+          }
+          setState(() {
+            _saving = false;
+            _message = '저장했습니다.';
+          });
         } else if (widget.inline) {
           final edited = _isEditing;
           _editingRecord = null;
@@ -352,9 +379,9 @@ class AdminEditorState extends State<AdminEditor> {
                 ? '범위 회수'
                 : _isRule
                 ? '요건 설명 저장'
-                : widget.inline
-                ? '등록'
-                : '저장',
+                : widget.onClosed != null || !widget.inline
+                ? '저장'
+                : '등록',
           ),
         ),
       ],

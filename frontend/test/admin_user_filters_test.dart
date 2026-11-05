@@ -83,4 +83,57 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('account edit opens role and status without registration', (
+    tester,
+  ) async {
+    final repo = FakeAdminRepository(seed: adminFixture());
+    await harness.showWorkspace(
+      tester,
+      repo,
+      AppRole.superAdmin,
+      '/admin/accounts',
+    );
+    expect(find.text('사용자 수정'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('admin-row-super-admin')),
+        matching: find.widgetWithText(OutlinedButton, '수정'),
+      ),
+      findsNothing,
+    );
+    final edit = find.descendant(
+      of: find.byKey(const ValueKey('admin-row-sample-user')),
+      matching: find.widgetWithText(OutlinedButton, '수정'),
+    );
+    await tester.ensureVisible(edit);
+    await tester.tap(edit);
+    await tester.pumpAndSettle();
+    expect(find.text('사용자 수정'), findsOneWidget);
+    expect(find.byKey(const ValueKey('admin-field-role')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('admin-field-accountStatus')),
+      findsOneWidget,
+    );
+    final form = find.ancestor(
+      of: find.text('사용자 수정'),
+      matching: find.byType(Card),
+    );
+    expect(find.descendant(of: form, matching: find.text('등록')), findsNothing);
+    expect(find.descendant(of: form, matching: find.text('저장')), findsOneWidget);
+    tester
+        .widget<AnchoredSelectField<String>>(
+          find.byKey(const ValueKey('admin-field-accountStatus')),
+        )
+        .onChanged('suspended');
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: form, matching: find.widgetWithText(FilledButton, '저장')),
+    );
+    await tester.pumpAndSettle();
+    expect(repo.find('sample-user')!.value('accountStatus'), 'suspended');
+    expect(repo.find('sample-user')!.value('role'), 'user');
+    expect(find.text('사용자 등록'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }

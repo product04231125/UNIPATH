@@ -125,6 +125,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   };
 
   String _accountRole = '';
+  String? _accountEditId;
   final _queries = <AdminKind, String>{};
   final _statuses = <AdminKind, String>{};
   final _historyQuery = TextEditingController();
@@ -279,6 +280,17 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       if (record != null && _find(record.id)?.status == 'revoked') {
         _editorKeys[kind]?.currentState?.abandonToCreate();
       }
+      return;
+    }
+    if (kind == AdminKind.account && record != null) {
+      final editor = _editorKeys[AdminKind.account]?.currentState;
+      if (editor != null && editor.activeRecord?.id != record.id) {
+        if (!await editor.allowLeave()) return;
+        if (!mounted) return;
+        editor.showRecord(record);
+      }
+      if (!mounted) return;
+      setState(() => _accountEditId = record.id);
       return;
     }
     final path = _pathFor(kind);
@@ -489,6 +501,31 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   });
 
   Widget _records(AdminKind kind) {
+    if (kind == AdminKind.account) {
+      final editing = _accountEditId == null ? null : _find(_accountEditId!);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _recordList(kind),
+          if (editing != null) ...[
+            SizedBox(height: FeatureLine.slotGap(context)),
+            AdminEditor(
+              key: _editorKeys.putIfAbsent(
+                AdminKind.account,
+                GlobalKey<AdminEditorState>.new,
+              ),
+              repository: _repo,
+              actorId: _actor,
+              kind: kind,
+              schoolId: _schoolId,
+              record: editing,
+              inline: true,
+              onClosed: () => setState(() => _accountEditId = null),
+            ),
+          ],
+        ],
+      );
+    }
     if (!_canCreate(kind)) return _recordList(kind);
     return SurfaceCard(
       key: ValueKey('admin-frame-${kind.name}'),
