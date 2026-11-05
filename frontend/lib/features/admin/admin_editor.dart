@@ -56,8 +56,14 @@ class AdminEditorState extends State<AdminEditor> {
       widget.kind == AdminKind.department;
   AdminRecord? get _activeRecord =>
       _isSchoolKind ? _editingRecord : _editingRecord ?? widget.record;
-  AdminRecord? get activeRecord => _activeRecord;
-  bool get _isEditing => _activeRecord != null;
+  bool get _isCurriculumKind =>
+      widget.kind == AdminKind.curriculum ||
+      widget.kind == AdminKind.course ||
+      widget.kind == AdminKind.curriculumCourse;
+  AdminRecord? get _currentRecord =>
+      _isCurriculumKind ? _editingRecord : _activeRecord;
+  AdminRecord? get activeRecord => _currentRecord;
+  bool get _isEditing => _currentRecord != null;
   AdminRecord? get _rule =>
       widget.repository.records
           .where((r) => r.id == _savedRecord?.id)
@@ -89,14 +95,16 @@ class AdminEditorState extends State<AdminEditor> {
     // Form.reset() restores controller fields to the previous build's
     // initialValue and can leave validation using stale text. Clear the
     // error display after the controllers already hold the new values.
-    if (_isSchoolKind) _form.currentState?.clearError();
+    if (_isSchoolKind || _isCurriculumKind) {
+      _form.currentState?.clearError();
+    }
     _savedRecord = record;
     _executionKey = GlobalKey<AdminRuleExecutionPanelState>();
   }
 
   Future<void> loadRecord(AdminRecord record) async {
     if (!mounted) return;
-    if (_activeRecord?.id == record.id) {
+    if (_currentRecord?.id == record.id) {
       _editingRecord = record;
       _savedRecord = record;
       if (!dirty) _fill(record);
@@ -141,6 +149,7 @@ class AdminEditorState extends State<AdminEditor> {
   void initState() {
     super.initState();
     if (_isSchoolKind) _editingRecord = widget.record;
+    if (_isCurriculumKind) _editingRecord = widget.record;
     _savedRecord = widget.record;
     _fields = widget.revoke
         ? [const AdminField('reason', '회수 사유', multiline: true)]
@@ -226,7 +235,7 @@ class AdminEditorState extends State<AdminEditor> {
         );
       } else {
         final values = {
-          ...?(_isRule ? _rule : _activeRecord)?.values,
+          ...?(_isRule ? _rule : _currentRecord)?.values,
           for (final f in _fields) f.key: _value(f.key).trim(),
           if (widget.repository.live && widget.kind != AdminKind.institution)
             'institutionId': _controllers.containsKey('institutionId')
@@ -234,7 +243,7 @@ class AdminEditorState extends State<AdminEditor> {
                 : widget.schoolId,
         };
         final record =
-            (_isRule ? _rule : _activeRecord)?.copy(values: values) ??
+            (_isRule ? _rule : _currentRecord)?.copy(values: values) ??
             AdminRecord(
               id: 'mock-${PersonalRecord.newId()}',
               kind: widget.kind,
