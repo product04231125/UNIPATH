@@ -53,8 +53,35 @@ class GraduationCertificationDraft {
   String departmentId;
   final List<GraduationCertificationGroup> groups;
 
+  static int _nextId = 0;
   static String newId([String prefix = 'cert']) =>
-      '$prefix-${DateTime.now().microsecondsSinceEpoch}';
+      '$prefix-${DateTime.now().microsecondsSinceEpoch}-${_nextId++}';
+}
+
+GraduationCertificationDraft copyCertificationDraft(
+  GraduationCertificationDraft source,
+) {
+  GraduationCertificationGroup copyGroup(GraduationCertificationGroup group) =>
+      GraduationCertificationGroup(
+        id: group.id,
+        label: group.label,
+        choice: group.choice,
+        pickCount: group.pickCount,
+        items: [
+          for (final item in group.items)
+            GraduationCertificationItem(
+              id: item.id,
+              label: item.label,
+              kind: item.kind,
+            ),
+        ],
+        groups: group.groups.map(copyGroup).toList(),
+        exemptions: [...group.exemptions],
+      );
+  return GraduationCertificationDraft(
+    departmentId: source.departmentId,
+    groups: source.groups.map(copyGroup).toList(),
+  );
 }
 
 String certificationChoiceLabel(GraduationCertificationChoice choice) =>

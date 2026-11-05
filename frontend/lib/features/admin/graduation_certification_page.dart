@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -36,16 +38,18 @@ class GraduationCertificationPageState
   final _itemLabels = <String, TextEditingController>{};
   final _exemptionLabels = <String, TextEditingController>{};
   final _pickCounts = <String, TextEditingController>{};
+  late final String _initial;
 
   @override
   void initState() {
     super.initState();
-    _draft =
-        widget.initial ??
-        GraduationCertificationDraft(
-          departmentId: widget.departments.firstOrNull?.id ?? '',
-        );
+    _draft = widget.initial != null
+        ? copyCertificationDraft(widget.initial!)
+        : GraduationCertificationDraft(
+            departmentId: widget.departments.firstOrNull?.id ?? '',
+          );
     _syncControllers();
+    _initial = _fingerprint;
   }
 
   @override
@@ -61,10 +65,25 @@ class GraduationCertificationPageState
     super.dispose();
   }
 
-  bool get dirty => (widget.initial == null
-      ? _draft.groups.isNotEmpty
-      : _draft.departmentId != widget.initial!.departmentId ||
-            _draft.groups.isNotEmpty);
+  String get _fingerprint => jsonEncode([
+    _draft.departmentId,
+    [
+      for (final g in _allGroups())
+        [
+          g.id,
+          g.label,
+          g.choice.name,
+          g.pickCount,
+          [
+            for (final i in g.items) [i.id, i.label, i.kind.name],
+          ],
+          g.exemptions,
+          [for (final child in g.groups) child.id],
+        ],
+    ],
+  ]);
+
+  bool get dirty => _fingerprint != _initial;
 
   Future<bool> allowLeave() async =>
       !dirty || await confirmInputDiscard(context);

@@ -137,22 +137,41 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
   @override
   void didUpdateWidget(AdminRuleExecutionPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.schoolId != widget.schoolId ||
-        oldWidget.rule?.id != widget.rule?.id) {
-      _revision++;
-      _documents = [];
-      _pages = [];
-      _parts = [];
-      _certificates = [];
-      _programs = [];
-      _programId = '';
-      _existing = null;
-      _documentId = '';
-      _page = null;
-      _selectedEvidence.clear();
-      _evidence.clear();
-      _uncertain = false;
-      _conflict = false;
+    final contextChanged =
+        oldWidget.repository != widget.repository ||
+        oldWidget.actorId != widget.actorId ||
+        oldWidget.schoolId != widget.schoolId;
+    final ruleChanged = oldWidget.rule?.id != widget.rule?.id;
+    if (!contextChanged && !ruleChanged) return;
+    // A newly saved rule replaces an empty id with the server id in the same
+    // session. Keep the typed execution input; only a school/actor/repository
+    // switch is a different target.
+    _revision++;
+    if (contextChanged) {
+      _inputRevision++;
+      _values.clear();
+      _drafts.clear();
+    }
+    _documents = [];
+    _pages = [];
+    _parts = [];
+    _certificates = [];
+    _programs = [];
+    _programId = '';
+    _existing = null;
+    _documentId = '';
+    _page = null;
+    _selectedEvidence.clear();
+    _evidence.clear();
+    _uncertain = false;
+    _conflict = false;
+    _reloaded = false;
+    _error = null;
+    _message = null;
+    _serverFields = [];
+    if (contextChanged) {
+      draft;
+      _initial = _fingerprint;
     }
   }
 
@@ -176,6 +195,7 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
 
   Future<void> _run(Future<void> Function() action) async {
     if (_busy) return;
+    final revision = _revision;
     setState(() {
       _busy = true;
       _error = null;
@@ -185,9 +205,10 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
     try {
       _ensure();
       await action();
+      if (!mounted || revision != _revision) return;
       _ensure();
     } catch (e) {
-      if (mounted) {
+      if (mounted && revision == _revision) {
         _error = e is AuthFailure
             ? e.message
             : e is FormatException
@@ -302,8 +323,9 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
   });
   Future<void> _selectProgram(String id) async {
     if (_busy || (id == _programId && !_uncertain && !_conflict)) return;
+    final revision = _revision;
     if (dirty && !await confirmInputDiscard(context)) return;
-    if (!mounted) return;
+    if (!mounted || revision != _revision) return;
     await _run(() async {
       if (id.isEmpty) {
         _existing = null;
@@ -313,6 +335,7 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
         return;
       }
       final value = await OfficialProgramAdminApi(_gateway!).get(id);
+      if (!mounted || revision != _revision) return;
       _ensure();
       if (value.status != 'draft' ||
           value.sourceVersion != parent!.version ||
@@ -330,11 +353,9 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
         'yearTo': '${value.admissionYearTo}',
         'tracks': value.tracks.join(', '),
       });
-      if (entry != null) {
-        _drafts[widget.ruleType] = AdminRequirementDraft.fromCondition(
-          entry.condition,
-        );
-      }
+      _drafts[widget.ruleType] = entry == null
+          ? AdminRequirementDraft()
+          : AdminRequirementDraft.fromCondition(entry.condition);
       _selectedEvidence.clear();
       _evidence.clear();
       if (entry != null) {
@@ -354,6 +375,7 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
   }
 
   Future<void> _selectDocument(String id) => _run(() async {
+    final revision = _revision;
     _documentId = id;
     _page = null;
     _parts = [];
@@ -364,6 +386,7 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
     do {
       final list = await SchoolKnowledgeAdminApi(_gateway!)
           .pages(id, cursor: cursor);
+      if (!mounted || revision != _revision) return;
       _ensure();
       pages.addAll(list.items.where((p) => !p.isBlank));
       cursor = list.nextCursor;
@@ -374,8 +397,10 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
     _pages = pages;
   });
   Future<void> _selectPage(int page) => _run(() async {
+    final revision = _revision;
     final value = await SchoolKnowledgeAdminApi(_gateway!)
         .page(_documentId, page);
+    if (!mounted || revision != _revision) return;
     _ensure();
     if (value.knowledgeDocumentId != _documentId ||
         value.page != page ||
@@ -394,6 +419,7 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
   });
   Future<void> _apply() async {
     if (_busy || parent == null || widget.metadataDirty) return;
+    final revision = _revision;
     final proceed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -415,15 +441,17 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
         ],
       ),
     );
-    if (proceed != true || !mounted) return;
+    if (proceed != true || !mounted || revision != _revision) return;
     await _run(() async {
       await widget.repository.apply(widget.actorId, parent!.id);
+      if (!mounted || revision != _revision) return;
       _message = '요건이 적용되었습니다. 이제 실행 조건 초안을 저장할 수 있습니다.';
     });
   }
 
   bool validateForMetadata() => _form.currentState?.validate() ?? true;
   Future<void> _save() => _run(() async {
+    final revision = _revision;
     if (!ready ||
         widget.metadataDirty ||
         _gateway == null ||
@@ -507,6 +535,7 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
                 expectedVersion: old.version,
               ),
             );
+      if (!mounted || revision != _revision) return;
       _ensure();
       if (saved.status != 'draft' ||
           (saved.ruleSetId ?? saved.ruleId) != parent!.id ||
@@ -522,11 +551,13 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
       _initial = _fingerprint;
       _message = '계산 조건 초안을 서버에 저장했습니다. 아직 승인되지 않았습니다.';
     } on AuthFailure catch (e) {
+      if (!mounted || revision != _revision) return;
       _reloaded = false;
       _uncertain = e.status == null || e.status! >= 500;
       _conflict = e.status == 409;
       rethrow;
     } on FormatException {
+      if (!mounted || revision != _revision) return;
       _reloaded = false;
       _uncertain = true;
       rethrow;
@@ -653,12 +684,15 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
               _check(
                 '${course.name} · ${course.value('code')}',
                 draft.selected.contains(course.id),
-                (v) => v
-                    ? draft.selected.add(course.id)
-                    : {
-                        draft.selected.remove(course.id),
-                        draft.referenceVersions.remove(course.id),
-                      },
+                (v) {
+                  if (v) {
+                    draft.selected.add(course.id);
+                    draft.referenceVersions[course.id] = course.version;
+                  } else {
+                    draft.selected.remove(course.id);
+                    draft.referenceVersions.remove(course.id);
+                  }
+                },
               ),
               if (draft.selected.contains(course.id))
                 ResponsivePanels(
@@ -692,12 +726,16 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
               _check(
                 certificate.name,
                 draft.selected.contains(certificate.id),
-                (v) => v
-                    ? draft.selected.add(certificate.id)
-                    : {
-                        draft.selected.remove(certificate.id),
-                        draft.referenceVersions.remove(certificate.id),
-                      },
+                (v) {
+                  if (v) {
+                    draft.selected.add(certificate.id);
+                    draft.referenceVersions[certificate.id] =
+                        certificate.version;
+                  } else {
+                    draft.selected.remove(certificate.id);
+                    draft.referenceVersions.remove(certificate.id);
+                  }
+                },
               ),
             if (_certificates.isEmpty)
               const Text('근거·초안 다시 읽기를 눌러 활성 자격증 목록을 불러오세요.'),

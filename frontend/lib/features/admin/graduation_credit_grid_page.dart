@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -38,22 +40,24 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
   final _rowNotes = <String, TextEditingController>{};
   final _cellValues = <String, TextEditingController>{};
   var _copied = false;
+  late final String _initial;
 
   @override
   void initState() {
     super.initState();
-    _grid =
-        widget.initial ??
-        GraduationCreditGrid(
-          admissionYear: '',
-          departmentId: widget.departments.firstOrNull?.id ?? '',
-        );
+    _grid = widget.initial != null
+        ? copyCreditGrid(widget.initial!, regenerateIds: false)
+        : GraduationCreditGrid(
+            admissionYear: '',
+            departmentId: widget.departments.firstOrNull?.id ?? '',
+          );
     _year = TextEditingController(text: _grid.admissionYear);
     _year.addListener(() {
       _grid.admissionYear = _year.text.trim();
       setState(() {});
     });
     _syncControllers();
+    _initial = _fingerprint;
   }
 
   @override
@@ -71,19 +75,33 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
     super.dispose();
   }
 
-  bool get dirty {
-    if (widget.initial != null) {
-      return _year.text.trim() != widget.initial!.admissionYear ||
-          _grid.departmentId != widget.initial!.departmentId ||
-          _grid.groups.isNotEmpty ||
-          _grid.columns.isNotEmpty ||
-          _grid.rows.isNotEmpty;
-    }
-    return _year.text.trim().isNotEmpty ||
-        _grid.groups.isNotEmpty ||
-        _grid.columns.isNotEmpty ||
-        _grid.rows.isNotEmpty;
-  }
+  String get _fingerprint => jsonEncode([
+    _grid.admissionYear,
+    _grid.departmentId,
+    [
+      for (final g in _grid.groups) [g.id, g.label],
+    ],
+    [
+      for (final c in _grid.columns) [c.id, c.label, c.groupId],
+    ],
+    [
+      for (final r in _grid.rows)
+        [
+          r.id,
+          r.label,
+          r.note,
+          [
+            for (final c in _grid.columns)
+              [
+                _grid.cellFor(r.id, c.id).kind.name,
+                _grid.cellFor(r.id, c.id).value,
+              ],
+          ],
+        ],
+    ],
+  ]);
+
+  bool get dirty => _fingerprint != _initial;
 
   Future<bool> allowLeave() async =>
       !dirty || await confirmInputDiscard(context);
@@ -211,7 +229,10 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
     setState(() {
       final cell = _grid.cellFor(row.id, column.id);
       cell.kind = kind;
-      if (kind != GraduationCreditCellKind.number) cell.value = null;
+      if (kind != GraduationCreditCellKind.number) {
+        cell.value = null;
+        _cellValues[GraduationCreditGrid.cellKey(row.id, column.id)]?.clear();
+      }
       _syncControllers();
     });
   }

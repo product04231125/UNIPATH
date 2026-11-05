@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:university_path_frontend/features/admin/admin_models.dart';
 import 'package:university_path_frontend/features/admin/admin_repository.dart';
 import 'package:university_path_frontend/features/admin/admin_workspace.dart';
+import 'package:university_path_frontend/features/admin/admin_rule_execution_panel.dart';
+import 'package:university_path_frontend/features/admin/graduation_certification.dart';
 import 'package:university_path_frontend/features/admin/graduation_certification_page.dart';
 import 'package:university_path_frontend/features/admin/graduation_credit_grid.dart';
 import 'package:university_path_frontend/features/admin/graduation_credit_grid_page.dart';
@@ -19,6 +21,196 @@ List<AdminRecord> departments() => [
 ];
 
 void main() {
+  test(
+    'credit grid copy keeps IDs unique and leaves sparse source unchanged',
+    () {
+      final grid = GraduationCreditGrid(
+        admissionYear: '2026',
+        departmentId: 'dept-cs',
+        groups: [
+          for (var i = 0; i < 100; i++)
+            GraduationCreditColumnGroup(id: 'g$i', label: '묶음 $i'),
+        ],
+        columns: [
+          for (var i = 0; i < 100; i++)
+            GraduationCreditColumn(id: 'c$i', label: '열 $i', groupId: 'g$i'),
+        ],
+        rows: [GraduationCreditRow(id: 'r1', label: '경로')],
+      );
+      final copy = copyCreditGrid(grid);
+      expect(copy.groups.map((g) => g.id).toSet(), hasLength(100));
+      expect(copy.columns.map((c) => c.id).toSet(), hasLength(100));
+      for (var i = 0; i < 100; i++) {
+        expect(copy.columns[i].groupId, copy.groups[i].id);
+      }
+      copy.cellFor(copy.rows.single.id, copy.columns.first.id).value = '9';
+      expect(grid.cells, isEmpty);
+    },
+  );
+
+  test('certification IDs stay unique during rapid creation', () {
+    expect({
+      for (var i = 0; i < 1000; i++) GraduationCertificationDraft.newId(),
+    }, hasLength(1000));
+  });
+
+  testWidgets(
+    'credit draft isolates initial data and detects edit and revert',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final grid = GraduationCreditGrid(
+        admissionYear: '2026',
+        departmentId: 'dept-cs',
+      );
+      final key = GlobalKey<GraduationCreditGridPageState>();
+      await tester.pumpWidget(
+        host(
+          GraduationCreditGridPage(
+            key: key,
+            schoolName: '학교',
+            departments: departments(),
+            initial: grid,
+          ),
+        ),
+      );
+      expect(key.currentState!.dirty, isFalse);
+      await tester.enterText(
+        find.byKey(const ValueKey('credit-grid-year')),
+        '2027',
+      );
+      expect(key.currentState!.dirty, isTrue);
+      expect(grid.admissionYear, '2026');
+      await tester.enterText(
+        find.byKey(const ValueKey('credit-grid-year')),
+        '2026',
+      );
+      expect(key.currentState!.dirty, isFalse);
+    },
+  );
+
+  testWidgets(
+    'certification draft isolates nested initial data and tracks revert',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final nested = GraduationCertificationGroup(id: 'child', label: '안쪽');
+      final initial = GraduationCertificationDraft(
+        departmentId: 'dept-cs',
+        groups: [
+          GraduationCertificationGroup(id: 'parent', groups: [nested]),
+        ],
+      );
+      final key = GlobalKey<GraduationCertificationPageState>();
+      await tester.pumpWidget(
+        host(
+          GraduationCertificationPage(
+            key: key,
+            schoolName: '학교',
+            departments: departments(),
+            initial: initial,
+            scrollable: true,
+          ),
+        ),
+      );
+      expect(key.currentState!.dirty, isFalse);
+      final field = find.byKey(const ValueKey('certification-group-child'));
+      await tester.enterText(field, '수정');
+      expect(key.currentState!.dirty, isTrue);
+      expect(nested.label, '안쪽');
+      await tester.enterText(field, '안쪽');
+      expect(key.currentState!.dirty, isFalse);
+    },
+  );
+
+  testWidgets('cell kind changes clear the displayed and previewed number', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final grid = GraduationCreditGrid(
+      admissionYear: '2026',
+      departmentId: 'dept-cs',
+      columns: [GraduationCreditColumn(id: 'c', label: '학점')],
+      rows: [GraduationCreditRow(id: 'r', label: '경로')],
+    );
+    grid.cellFor('r', 'c')
+      ..kind = GraduationCreditCellKind.number
+      ..value = '7';
+    final key = GlobalKey<GraduationCreditGridPageState>();
+    await tester.pumpWidget(
+      host(
+        GraduationCreditGridPage(
+          key: key,
+          schoolName: '학교',
+          departments: departments(),
+          initial: grid,
+          scrollable: true,
+        ),
+      ),
+    );
+    expect(key.currentState!.dirty, isFalse);
+    await tester.tap(find.byKey(const ValueKey('credit-grid-kind-r/c-empty')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('credit-grid-kind-r/c-number')));
+    await tester.pump();
+    final field = tester.widget<TextField>(
+      find.byKey(const ValueKey('credit-grid-cell-r/c')),
+    );
+    expect(field.controller!.text, isEmpty);
+    expect(grid.cellFor('r', 'c').value, '7');
+    await tester.enterText(
+      find.byKey(const ValueKey('credit-grid-cell-r/c')),
+      '8',
+    );
+    await tester.tap(find.byKey(const ValueKey('credit-grid-preview')));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('template-preview-dialog')),
+        matching: find.text('8'),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('execution draft resets when school context changes', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = FakeAdminRepository();
+    addTearDown(repo.dispose);
+    final key = GlobalKey<AdminRuleExecutionPanelState>();
+    Widget panel(String school) => host(
+      AdminRuleExecutionPanel(
+        key: key,
+        repository: repo,
+        actorId: '',
+        schoolId: school,
+        ruleType: 'credits',
+        description: '',
+        rule: null,
+        metadataDirty: false,
+        onBusy: (_) {},
+        onChanged: () {},
+      ),
+    );
+    await tester.pumpWidget(panel('school-a'));
+    await tester.enterText(find.byType(TextFormField).first, '30');
+    expect(key.currentState!.dirty, isTrue);
+    await tester.pumpWidget(panel('school-b'));
+    expect(key.currentState!.draft.values, isEmpty);
+    expect(key.currentState!.dirty, isFalse);
+    expect(
+      tester
+          .widget<TextFormField>(find.byType(TextFormField).first)
+          .initialValue,
+      isEmpty,
+    );
+  });
+
   testWidgets('credit grid keeps empty, number, and not-applicable cells', (
     tester,
   ) async {
