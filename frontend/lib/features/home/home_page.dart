@@ -268,7 +268,7 @@ class HomePage extends StatelessWidget {
       4 => const [
         _PlanLink(
           '졸업 요건 확인',
-          '개인 기준과 학교 공식 정보의 범위를 확인하세요.',
+          '개인 기준으로 졸업 요건을 확인하세요.',
           Icons.school_outlined,
           3,
         ),
@@ -292,17 +292,11 @@ class HomePage extends StatelessWidget {
     return SurfaceCard(
       key: const ValueKey('home-card-다음에 이어갈 기록'),
       // Dense padding so the Windows default client size still fits without scroll.
-      padding: EdgeInsets.symmetric(
-        horizontal: 18,
-        vertical: compact ? 4 : 8,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: 18, vertical: compact ? 4 : 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            '다음에 이어갈 기록',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('다음에 이어갈 기록', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
           Wrap(
             spacing: 12,

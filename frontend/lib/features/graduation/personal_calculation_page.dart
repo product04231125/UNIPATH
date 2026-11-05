@@ -204,9 +204,7 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
                 ),
               if (!c.loading && c.curricula.isEmpty && c.sourceError == null)
                 widget.onOpenSettings == null
-                    ? const Text(
-                        '계산할 교육과정이 없습니다. 교육과정 탭에서 먼저 등록하세요.',
-                      )
+                    ? const Text('계산할 교육과정이 없습니다. 교육과정 탭에서 먼저 등록하세요.')
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -303,7 +301,8 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
                 FeatureActions(
                   children: [
                     FilledButton.icon(
-                      onPressed: c.busy ||
+                      onPressed:
+                          c.busy ||
                               c.loading ||
                               c.sourceError != null ||
                               GuestPreviewScope.isActive(context)
@@ -571,9 +570,8 @@ String describePersonalCondition(
   ].join('\n'),
   PersonalThesisCondition(
     :final thesisType,
-    :final requiresApproval,
     :final acceptedGrades,
     :final records,
   ) =>
-    '유형 $thesisType · 승인 ${requiresApproval ? '필요' : '불필요'} · 허용 성적 ${acceptedGrades.isEmpty ? '제한 없음' : acceptedGrades.join(', ')}\n${[for (final row in records) '성과 ${row.achievementId} · 완료 ${row.completion} · 승인 ${row.approval}'].join('\n')}',
+    '유형 $thesisType · 허용 성적 ${acceptedGrades.isEmpty ? '제한 없음' : acceptedGrades.join(', ')}\n${[for (final row in records) '성과 ${row.achievementId} · 완료 ${row.completion}'].join('\n')}',
 };

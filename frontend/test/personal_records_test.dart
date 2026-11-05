@@ -349,11 +349,13 @@ void main() {
     final guest = ValueNotifier(false);
     addTearDown(guest.dispose);
     await _pumpActivityReview(tester, repository: repository, guest: guest);
-    expect(find.textContaining('알 수 없는 승인 상태'), findsOneWidget);
+    expect(find.textContaining('알 수 없는 승인 상태'), findsNothing);
     expect(find.textContaining('연결 대상 없음'), findsNothing);
     await tester.tap(find.text('수정'));
     await tester.pumpAndSettle();
-    expect(find.text('알 수 없는 승인 상태 · 다시 선택하세요'), findsOneWidget);
+    expect(find.byKey(const ValueKey('record-field-approval')), findsNothing);
+    await tester.tap(find.text('내 기록에 저장'));
+    await tester.pumpAndSettle();
     expect(repository.records.single.value('approval'), 'future_status');
   });
 
@@ -434,7 +436,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('개인 기록'), findsOneWidget);
       expect(find.text('충족'), findsNothing);
-      expect(find.textContaining('사용자가 확인한 승인 상태: 검토 필요'), findsOneWidget);
+      expect(find.textContaining('사용자가 확인한 승인 상태'), findsNothing);
       expect(find.textContaining('needs_review'), findsNothing);
       final loaded = PersonalRecordRepository(PersonalRecordKind.activity);
       await loaded.load();
@@ -461,7 +463,9 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1440, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final activity = PersonalRecordRepository(PersonalRecordKind.activity);
-      final experience = PersonalRecordRepository(PersonalRecordKind.experience);
+      final experience = PersonalRecordRepository(
+        PersonalRecordKind.experience,
+      );
       await activity.load();
       await experience.load();
       await tester.pumpWidget(
@@ -510,10 +514,7 @@ void main() {
       expect(find.textContaining('활동 · 통합 봉사'), findsOneWidget);
       expect(find.textContaining('활동 · 통합 기타'), findsOneWidget);
       expect(find.textContaining('경험 · 통합 프로젝트'), findsOneWidget);
-      expect(activity.records.map((r) => r.value('title')), [
-        '통합 봉사',
-        '통합 기타',
-      ]);
+      expect(activity.records.map((r) => r.value('title')), ['통합 봉사', '통합 기타']);
       expect(experience.records.single.value('title'), '통합 프로젝트');
       expect(experience.records.single.value('type'), '프로젝트');
       expect(tester.takeException(), isNull);
@@ -560,7 +561,8 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('교육과정 확인'));
         await tester.pumpAndSettle();
-        expect(find.text('• 인정 영역과 학점 분류 확인'), findsOneWidget);
+        expect(find.text('• 다음 학기 수강 계획 정리'), findsOneWidget);
+        expect(find.text('• 인정 영역과 학점 분류 확인'), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );
@@ -621,14 +623,6 @@ void main() {
       );
       expect(
         personalRecordCrossError({'approvedHours': '4', 'approval': 'pending'}),
-        isNotNull,
-      );
-      expect(
-        personalRecordCrossError({
-          'approvedHours': '4',
-          'approval': 'approved',
-          'observedOn': '2026-02-28',
-        }),
         isNull,
       );
     },
@@ -728,9 +722,9 @@ void main() {
       final title = find.byKey(const ValueKey('record-field-title'));
       await tester.ensureVisible(title);
       await tester.enterText(title, '합성 봉사');
-      final end = find.byKey(const ValueKey('record-field-observedOn'));
-      await tester.ensureVisible(end);
-      await tester.enterText(end, '2026-10-03');
+      final hours = find.byKey(const ValueKey('record-field-reportedHours'));
+      await tester.ensureVisible(hours);
+      await tester.enterText(hours, '3');
       expect(find.text('내 기록에 저장').hitTestable(), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.tap(find.text('취소'));

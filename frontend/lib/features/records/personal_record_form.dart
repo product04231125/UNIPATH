@@ -5,6 +5,7 @@ import '../../app_shell/phone_shell.dart';
 import '../../shared/credits_format.dart';
 import '../../shared/year_options.dart';
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/field_requirement.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/input_dialog.dart';
@@ -182,8 +183,8 @@ Future<void> showPersonalRecordForm({
               if (!PhoneChromeScope.of(context)) ...[
                 Text(
                   repository.isServerBacked
-                      ? '계정 서버 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드는 하지 않습니다.'
-                      : '기기 로컬 개인 기록 · 학교 공식 데이터나 졸업 판정이 아닙니다. 파일 업로드·서버 전송은 하지 않습니다.',
+                      ? '계정 서버 개인 기록 · 파일 업로드는 하지 않습니다.'
+                      : '기기 로컬 개인 기록 · 파일 업로드·서버 전송은 하지 않습니다.',
                 ),
                 const SizedBox(height: 16),
               ],
@@ -265,7 +266,11 @@ Future<void> showPersonalRecordForm({
                   ),
               ],
               for (final field in fields) ...[
-                if (isCourse && _courseHiddenInputKeys.contains(field.key))
+                if ((isCourse && _courseHiddenInputKeys.contains(field.key)) ||
+                    (kind == PersonalRecordKind.activity &&
+                        !activityVisibleKeys.contains(field.key)) ||
+                    (kind == PersonalRecordKind.portfolio &&
+                        portfolioHiddenKeys.contains(field.key)))
                   const SizedBox.shrink()
                 else ...[
                   if (isCourse && field.key == 'term') ...[
@@ -301,8 +306,7 @@ Future<void> showPersonalRecordForm({
                                         period.year.isNotEmpty,
                                   ),
                                   options: [
-                                    if (record != null &&
-                                        period.year.isEmpty)
+                                    if (record != null && period.year.isEmpty)
                                       const SelectOption('', '연도 미지정'),
                                     for (final optionYear in yearOptions(
                                       maxYear: currentYear + 1,
@@ -324,7 +328,9 @@ Future<void> showPersonalRecordForm({
                                   padding: const EdgeInsets.only(top: 8),
                                   child: Text(
                                     '기존 기록은 연도 미지정입니다. 확인한 연도만 선택하세요.',
-                                    style: Theme.of(context).textTheme.bodySmall,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall,
                                   ),
                                 ),
                               if (state.hasError)
@@ -387,7 +393,9 @@ Future<void> showPersonalRecordForm({
                                         for (final option
                                             in CourseTerm.standardSemesters)
                                           SelectOption(option, option),
-                                        if (originalSemester.trim().isNotEmpty &&
+                                        if (originalSemester
+                                                .trim()
+                                                .isNotEmpty &&
                                             !CourseTerm.standardSemesters
                                                 .contains(originalSemester))
                                           SelectOption(
@@ -405,9 +413,9 @@ Future<void> showPersonalRecordForm({
                                     Text(
                                       state.errorText!,
                                       style: TextStyle(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.error,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .error,
                                       ),
                                     ),
                                 ],
@@ -415,29 +423,39 @@ Future<void> showPersonalRecordForm({
                             },
                           )
                         : field.options.isEmpty
-                        ? TextFormField(
-                            key: ValueKey('record-field-${field.key}'),
-                            controller: controllers[field.key],
-                            enabled: !saving,
-                            maxLines: field.multiline ? 3 : 1,
-                            keyboardType: isCourse && field.key == 'section'
-                                ? TextInputType.number
-                                : field.type == PersonalFieldType.number
-                                ? const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  )
-                                : TextInputType.text,
-                            inputFormatters: isCourse && field.key == 'section'
-                                ? [FilteringTextInputFormatter.digitsOnly]
-                                : null,
-                            decoration: InputDecoration(
-                              labelText: fieldRequirementLabel(
-                                field.label,
-                                required: field.required,
+                        ? () {
+                            final above =
+                                kind == PersonalRecordKind.activity &&
+                                activityVisibleKeys.contains(field.key);
+                            final caption = fieldRequirementLabel(
+                              field.label,
+                              required: field.required,
+                            );
+                            final input = TextFormField(
+                              key: ValueKey('record-field-${field.key}'),
+                              controller: controllers[field.key],
+                              enabled: !saving,
+                              maxLines: field.multiline ? 3 : 1,
+                              keyboardType: isCourse && field.key == 'section'
+                                  ? TextInputType.number
+                                  : field.type == PersonalFieldType.number
+                                  ? const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    )
+                                  : TextInputType.text,
+                              inputFormatters:
+                                  isCourse && field.key == 'section'
+                                  ? [FilteringTextInputFormatter.digitsOnly]
+                                  : null,
+                              decoration: InputDecoration(
+                                labelText: above ? null : caption,
                               ),
-                            ),
-                            validator: field.validate,
-                          )
+                              validator: field.validate,
+                            );
+                            return above
+                                ? FieldLabel(label: caption, child: input)
+                                : input;
+                          }()
                         : FormField<String>(
                             initialValue: controllers[field.key]!.text,
                             validator: field.validate,
@@ -470,10 +488,7 @@ Future<void> showPersonalRecordForm({
                                           ))
                                         SelectOption(
                                           controllers[field.key]!.text,
-                                          kind == PersonalRecordKind.activity &&
-                                                  field.key == 'approval'
-                                              ? '알 수 없는 승인 상태 · 다시 선택하세요'
-                                              : '연결 대상 없음 · 다시 선택하세요',
+                                          '연결 대상 없음 · 다시 선택하세요',
                                         ),
                                     ],
                                     onChanged: (value) {

@@ -23,7 +23,7 @@ class CoursePage extends StatelessWidget {
     description: '학기별 수강 계획과 개인 이수 기록을 정리합니다.',
     listTitle: '내 수강 과목',
     guideTitle: '교육과정 확인',
-    guides: const ['인정 영역과 학점 분류 확인', '다음 학기 수강 계획 정리', '학과 공지의 변경 사항 확인'],
+    guides: const ['다음 학기 수강 계획 정리', '학과 공지의 변경 사항 확인'],
     addLabel: '수강 과목 추가',
     detailLabel: '구분 · 학점',
     studentApi: studentApi,

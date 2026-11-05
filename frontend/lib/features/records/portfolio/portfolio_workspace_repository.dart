@@ -60,7 +60,6 @@ class PortfolioSource {
       ('thesisType', '논문·캡스톤 유형'),
       ('thesisStatus', '논문·캡스톤 개인 기록 상태'),
       ('thesisGrade', '논문·캡스톤 원 성적 표기'),
-      ('thesisApprovedOn', '사용자가 확인한 논문·캡스톤 승인일 · 학교 승인 처리 아님'),
       ('organization', '기관'),
       ('startedOn', '시작일'),
       ('endedOn', '종료일'),

@@ -204,15 +204,17 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     final entry = RecordMockEntry(
       title: record.value('title'),
       detail: _fields
-          .where((f) => f.key != 'title' && record.value(f.key).isNotEmpty)
+          .where(
+            (f) =>
+                f.key != 'title' &&
+                record.value(f.key).isNotEmpty &&
+                (widget.kind != PersonalRecordKind.activity ||
+                    activityVisibleKeys.contains(f.key)),
+          )
           .map(
             (f) => f.key == 'term' && isCourse
                 ? '수강 기간: ${CourseTerm.parse(record.value('term')).label}'
-                : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key))
-                          ? widget.kind == PersonalRecordKind.activity && f.key == 'approval'
-                                ? '알 수 없는 승인 상태 · 수정에서 다시 선택하세요'
-                                : '연결 대상 없음 · 수정에서 다시 선택하세요'
-                          : record.value(f.key))}',
+                : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
           )
           .join(' · '),
       status: '개인 기록',
@@ -272,7 +274,10 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     }
     final planning = widget.planning;
     if (planning == null) return _loadedPage();
-    return AnimatedBuilder(animation: planning, builder: (context, _) => _loadedPage());
+    return AnimatedBuilder(
+      animation: planning,
+      builder: (context, _) => _loadedPage(),
+    );
   }
 
   Widget _loadedPage() {
@@ -373,7 +378,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               if (widget.kind == PersonalRecordKind.activity)
                 FeatureLine.one(
                   text:
-                      '사용자가 승인됨으로 기록한 봉사 시간 합계 ${personal.where((r) => r.value('approval') == 'approved').fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('approvedHours')) ?? 0))}시간',
+                      '기록한 시간 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('reportedHours')) ?? 0))}시간',
                 ),
               if (personal.isEmpty)
                 FeatureLine.one(

@@ -119,7 +119,7 @@ class _ActivityPageState extends State<ActivityPage> {
             child: const ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text('봉사'),
-              subtitle: Text('시간·승인 필드를 사용합니다.'),
+              subtitle: Text('이름·시간·메모를 적습니다.'),
             ),
           ),
           SimpleDialogOption(
@@ -137,7 +137,7 @@ class _ActivityPageState extends State<ActivityPage> {
             child: const ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text('그 밖의 활동'),
-              subtitle: Text('교내외 활동 기록의 기존 필드를 사용합니다.'),
+              subtitle: Text('이름·시간·메모를 적습니다.'),
             ),
           ),
         ],
@@ -217,12 +217,10 @@ class _ActivityPageState extends State<ActivityPage> {
     }
   }
 
-  String _fieldDisplay(PersonalRecordKind kind, PersonalRecordField field, String value) {
+  String _fieldDisplay(PersonalRecordField field, String value) {
     if (field.optionLabels[value] != null) return field.optionLabels[value]!;
     if (field.options.isNotEmpty && !field.options.contains(value)) {
-      return kind == PersonalRecordKind.activity && field.key == 'approval'
-          ? '알 수 없는 승인 상태 · 수정에서 다시 선택하세요'
-          : '연결 대상 없음 · 수정에서 다시 선택하세요';
+      return '연결 대상 없음 · 수정에서 다시 선택하세요';
     }
     return value;
   }
@@ -232,11 +230,14 @@ class _ActivityPageState extends State<ActivityPage> {
     return FeatureLine.two(
       primary: '${_kindLabel(kind)} · ${record.value('title')}',
       secondary: fields
-          .where((f) => f.key != 'title' && record.value(f.key).isNotEmpty)
-          .map(
+          .where(
             (f) =>
-                '${f.label}: ${_fieldDisplay(kind, f, record.value(f.key))}',
+                f.key != 'title' &&
+                record.value(f.key).isNotEmpty &&
+                (kind != PersonalRecordKind.activity ||
+                    activityVisibleKeys.contains(f.key)),
           )
+          .map((f) => '${f.label}: ${_fieldDisplay(f, record.value(f.key))}')
           .join(' · '),
       leading: Icon(
         Icons.description_outlined,
@@ -302,12 +303,10 @@ class _ActivityPageState extends State<ActivityPage> {
       for (final record in _experienceRepo.records)
         (PersonalRecordKind.experience, record),
     ];
-    final approvedHours = _activityRepo.records
-        .where((r) => r.value('approval') == 'approved')
-        .fold<double>(
-          0,
-          (sum, r) => sum + (double.tryParse(r.value('approvedHours')) ?? 0),
-        );
+    final recordedHours = _activityRepo.records.fold<double>(
+      0,
+      (sum, r) => sum + (double.tryParse(r.value('reportedHours')) ?? 0),
+    );
     final serverBacked =
         _activityRepo.isServerBacked || _experienceRepo.isServerBacked;
 
@@ -327,9 +326,7 @@ class _ActivityPageState extends State<ActivityPage> {
                     ? FeatureLine.reload(onPressed: _loading ? null : _load)
                     : null,
               ),
-              FeatureLine.one(
-                text: '사용자가 승인됨으로 기록한 봉사 시간 합계 $approvedHours시간',
-              ),
+              FeatureLine.one(text: '기록한 시간 합계 $recordedHours시간'),
               if (personal.isEmpty)
                 const FeatureLine.one(text: '개인 기록이 없습니다. 직접 입력해 주세요.'),
               for (final item in personal) _personalEntry(item.$1, item.$2),
@@ -356,10 +353,6 @@ class _ActivityPageState extends State<ActivityPage> {
             ),
             Padding(
               padding: EdgeInsets.only(bottom: 8),
-              child: Text('• 교내 활동 인정 절차 확인'),
-            ),
-            Padding(
-              padding: EdgeInsets.only(bottom: 8),
               child: Text('• 프로젝트·인턴·동아리는 역할과 결과를 분리해 기록'),
             ),
             Padding(
@@ -372,7 +365,7 @@ class _ActivityPageState extends State<ActivityPage> {
           url: 'https://www.1365.go.kr/',
           label: '1365 봉사 찾기',
           description:
-              '1365에서 활동을 찾아 직접 신청하고, 학교 인정이 필요한 활동은 학교에 등록·승인받으세요. 링크 열기로 봉사 시간이나 승인 상태를 자동 변경하지 않습니다.',
+              '1365에서 활동을 찾아 직접 신청할 수 있습니다. 링크 열기로 봉사 시간을 자동 변경하지 않습니다.',
         ),
       ],
     );

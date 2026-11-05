@@ -342,10 +342,14 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                   ],
                 ),
                 for (final f in _fields.where(
-                  (f) => f.key != 'title' && r.value(f.key).isNotEmpty,
+                  (f) =>
+                      f.key != 'title' &&
+                      r.value(f.key).isNotEmpty &&
+                      (widget.kind != PersonalRecordKind.activity ||
+                          activityVisibleKeys.contains(f.key)),
                 ))
                   Text(
-                    '${f.label}: ${f.options.isEmpty ? r.value(f.key) : f.optionLabels[r.value(f.key)] ?? (widget.kind == PersonalRecordKind.activity && f.key == 'approval' ? '알 수 없는 승인 상태 · 다시 선택하세요' : '연결 대상 없음 · 다시 선택하세요')}',
+                    '${f.label}: ${f.options.isEmpty ? r.value(f.key) : f.optionLabels[r.value(f.key)] ?? '연결 대상 없음 · 다시 선택하세요'}',
                   ),
                 const SizedBox(height: 12),
                 Wrap(
@@ -457,10 +461,19 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
       PersonalRecordKind.personalGraduationRule => 'curriculumId',
       _ => '',
     };
-    final basic = _fields
+    final shown = _fields.where((f) {
+      if (widget.kind == PersonalRecordKind.activity) {
+        return activityVisibleKeys.contains(f.key);
+      }
+      if (widget.kind == PersonalRecordKind.portfolio) {
+        return !portfolioHiddenKeys.contains(f.key);
+      }
+      return true;
+    });
+    final basic = shown
         .where((f) => f.key == 'title' || f.key == relation)
         .toList();
-    final details = _fields.where((f) => !basic.contains(f)).toList();
+    final details = shown.where((f) => !basic.contains(f)).toList();
     return SurfaceCard(
       key: ValueKey('personal-frame-${widget.kind.name}'),
       child: Form(

@@ -10,7 +10,7 @@ Widget achievementRecordsPage() => const RecordMenuPage(
   guideTitle: '성과 구성',
   guides: [
     '설명·역할·결과·링크를 함께 보관',
-    '논문·캡스톤은 유형·상태·원 성적·확인한 승인일을 선택 기록 · 학교 승인 처리 아님',
+    '논문·캡스톤은 유형·상태·원 성적을 선택 기록',
     '파일은 올리지 않으며 공개 가능한 링크만 기록',
   ],
   addLabel: '성과 직접 기록',
