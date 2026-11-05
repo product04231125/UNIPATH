@@ -17,11 +17,13 @@ def test_gateway_fixture_keeps_staging_limits_for_both_templates(template):
     assert "unipath-product-web" not in fixture
 
 
-def test_product_gateway_limits_and_upstream_are_preserved():
+def test_product_gateway_matches_staging_limits_with_its_own_upstream():
     source = (ROOT / "deploy/gateway/unipath-https.conf").read_text()
     product = server_block(source, "unipath.duckdns.org")
-    assert "client_max_body_size 16k;" in product
+    assert "client_max_body_size 2m;" in product
+    assert "error_page 413 = @product_payload_too_large;" in product
+    assert product.count("access_log off;") == 3
     assert "set $unipath_upstream unipath-product-web;" in product
-    assert "staging_payload_too_large" not in product
+    assert "staging" not in product
     with pytest.raises(ValueError):
         server_block(source, "missing.example.invalid")
