@@ -451,9 +451,12 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('한 줄 요건'), findsOneWidget);
-      expect(find.text('학점표'), findsOneWidget);
-      expect(find.text('인증 요건'), findsOneWidget);
+      expect(
+        find.widgetWithText(FilledButton, '한 줄 요건'),
+        findsOneWidget,
+      );
+      expect(find.widgetWithText(OutlinedButton, '학점표'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, '인증 요건'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('admin-section-ruleSet')),
         findsOneWidget,
@@ -462,6 +465,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('rule-view-grid')));
       await tester.pumpAndSettle();
       expect(find.text('학점표 저장 불가 · 연결 전'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, '학점표'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, '한 줄 요건'), findsOneWidget);
       expect(find.byKey(const ValueKey('admin-section-ruleSet')), findsNothing);
       await tester.ensureVisible(find.byKey(const ValueKey('rule-view-cert')));
       await tester.tap(find.byKey(const ValueKey('rule-view-cert')));

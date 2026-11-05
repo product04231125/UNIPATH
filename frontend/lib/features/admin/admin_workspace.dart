@@ -1131,18 +1131,24 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
         ('grid', '학점표'),
         ('cert', '인증 요건'),
       ])
-        OutlinedButton(
-          key: ValueKey('rule-view-${entry.$1}'),
-          onPressed: () async {
-            if (_ruleView == entry.$1) return;
-            if (!await _allowLeave()) return;
-            if (!mounted) return;
-            setState(() => _ruleView = entry.$1);
-          },
-          child: Text(entry.$2),
-        ),
+        _ruleViewButton(entry.$1, entry.$2),
     ],
   );
+
+  Widget _ruleViewButton(String id, String label) {
+    final selected = _ruleView == id;
+    final onPressed = () async {
+      if (_ruleView == id) return;
+      if (!await _allowLeave()) return;
+      if (!mounted) return;
+      setState(() => _ruleView = id);
+    };
+    final child = Text(label);
+    final key = ValueKey('rule-view-$id');
+    return selected
+        ? FilledButton(key: key, onPressed: onPressed, child: child)
+        : OutlinedButton(key: key, onPressed: onPressed, child: child);
+  }
 
   Future<void> _changeSchool(String v) async {
     if (v == _schoolId || !await _allowLeave()) return;
