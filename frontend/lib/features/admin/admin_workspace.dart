@@ -1105,6 +1105,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     '${_timeLabel(entry.at)} · ${_actorName(entry.actorId)} · ${_relationName(entry.targetId).isEmpty ? '삭제되었거나 볼 수 없는 항목' : _relationName(entry.targetId)}',
               ),
               Material(
+                key: ObjectKey(entry),
                 type: MaterialType.transparency,
                 child: ExpansionTile(
                   title: const Text('기술 식별자'),

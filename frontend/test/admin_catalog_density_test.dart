@@ -123,6 +123,19 @@ void main() {
       ),
     );
     expect(repo.history, isNotEmpty);
+    await repo.save(
+      'super-admin',
+      AdminRecord(
+        id: 'document-history-filter',
+        kind: AdminKind.document,
+        values: {
+          'name': '이력필터문서',
+          'institutionId': 'school-a',
+          'sourceUrl': 'https://example.org/history',
+          'documentType': 'academic',
+        },
+      ),
+    );
 
     await tester.pumpWidget(
       host(
@@ -143,6 +156,20 @@ void main() {
     expect(find.text('관리 이력이 없습니다. 등록·수정 후 확인하세요.'), findsNothing);
 
     final search = find.byKey(const ValueKey('admin-history-search'));
+    final identifiers = find.widgetWithText(ExpansionTile, '기술 식별자');
+    await tester.ensureVisible(identifiers.first);
+    await tester.tap(identifiers.first);
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('대상 ID: document-history-filter'),
+      findsOneWidget,
+    );
+
+    await tester.ensureVisible(search);
+    await tester.enterText(search, '이력필터학과');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('요청 ID:'), findsNothing);
+
     await tester.ensureVisible(search);
     await tester.enterText(search, '없는검색어zzzz');
     await tester.pumpAndSettle();
