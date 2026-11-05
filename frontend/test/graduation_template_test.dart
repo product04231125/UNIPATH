@@ -350,6 +350,88 @@ void main() {
     },
   );
 
+  testWidgets('invalid pick-N shows an error and still opens the preview', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      host(
+        GraduationCertificationPage(
+          schoolName: '경동대학교',
+          departments: departments(),
+          scrollable: true,
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('certification-add-group')));
+    await tester.pump();
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'certification-choice-',
+            ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(MenuItemButton, '택 N'));
+    await tester.pumpAndSettle();
+
+    const overEmpty = '기준은 0개입니다. 택하는 개수는 기준 수를 넘지 않게 입력하세요.';
+    expect(find.text(overEmpty), findsOneWidget);
+    final preview = find.byKey(const ValueKey('certification-preview'));
+    expect(tester.widget<OutlinedButton>(preview).onPressed, isNotNull);
+    await tester.tap(preview);
+    await tester.pumpAndSettle();
+    expect(find.text('인증 요건 미리보기'), findsOneWidget);
+    expect(find.text('묶음 (택 1)'), findsOneWidget);
+    expect(find.text(overEmpty), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('template-preview-close')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('기준 추가'));
+    await tester.pump();
+    expect(find.text(overEmpty), findsNothing);
+
+    final pick = find.byWidgetPredicate(
+      (widget) =>
+          widget.key is ValueKey<String> &&
+          (widget.key! as ValueKey<String>).value.startsWith(
+            'certification-pick-',
+          ),
+    );
+    await tester.enterText(pick, '');
+    await tester.pump();
+    expect(find.text('택하는 개수를 입력하세요.'), findsOneWidget);
+    await tester.tap(preview);
+    await tester.pumpAndSettle();
+    expect(find.text('인증 요건 미리보기'), findsOneWidget);
+    expect(find.text('묶음 (택 미입력)'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('template-preview-close')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(pick, '0');
+    await tester.pump();
+    expect(find.text('택하는 개수는 1 이상의 숫자로 입력하세요.'), findsOneWidget);
+    await tester.tap(preview);
+    await tester.pumpAndSettle();
+    expect(find.text('묶음 (택 0)'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('template-preview-close')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(pick, '2');
+    await tester.pump();
+    const overItems = '기준은 1개입니다. 택하는 개수는 기준 수를 넘지 않게 입력하세요.';
+    expect(find.text(overItems), findsOneWidget);
+    await tester.tap(preview);
+    await tester.pumpAndSettle();
+    expect(find.text('인증 요건 미리보기'), findsOneWidget);
+    expect(find.text('묶음 (택 2)'), findsOneWidget);
+    expect(find.text(overItems), findsOneWidget);
+  });
+
   testWidgets(
     'rules menu keeps line editor beside credit and certification views',
     (tester) async {

@@ -147,11 +147,13 @@ class GraduationCertificationPageState
       ],
       (id) {
         final group = _allGroups().firstWhere((g) => g.id == id);
-        return TextEditingController(text: '${group.pickCount}')
-          ..addListener(() {
-            group.pickCount = int.tryParse(_pickCounts[id]!.text) ?? 1;
-            setState(() {});
-          });
+        return TextEditingController(
+          text: group.pickCount == null ? '' : '${group.pickCount}',
+        )..addListener(() {
+          final text = _pickCounts[id]!.text.trim();
+          group.pickCount = text.isEmpty ? null : int.tryParse(text);
+          setState(() {});
+        });
       },
     );
   }
@@ -311,7 +313,13 @@ class GraduationCertificationPageState
                   controller: _pickCounts[group.id],
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(hintText: '2'),
+                  decoration: InputDecoration(
+                    hintText: '2',
+                    errorText: certificationPickCountError(
+                      _pickCounts[group.id]?.text ?? '',
+                      group.items.length,
+                    ),
+                  ),
                 ),
               ),
             ],
