@@ -10,6 +10,7 @@ import 'package:sembast/sembast_memory.dart' hide Finder;
 import 'package:university_path_frontend/features/records/portfolio/material_repository.dart';
 import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
 import 'package:university_path_frontend/features/auth/local_data_owner.dart';
+import 'package:university_path_frontend/shared/widgets/surface_card.dart';
 
 class MemoryMaterials extends MaterialRepository {
   final records = <String, PersonalMaterial>{};
@@ -376,63 +377,66 @@ void main() {
     expect(find.text('자유 입력 종류 · 옛 자료'), findsNothing);
   });
 
-  testWidgets('a new material requires its own kind after saving or cancelling', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final repo = MemoryMaterials();
-    await tester.pumpWidget(
-      MaterialApp(home: Scaffold(body: MaterialsPage(repository: repo))),
-    );
-    await tester.pumpAndSettle();
-
-    Future<void> fillAndSave(String title) async {
-      await tester.enterText(
-        find.byKey(const ValueKey('material-title')),
-        title,
+  testWidgets(
+    'a new material requires its own kind after saving or cancelling',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repo = MemoryMaterials();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: MaterialsPage(repository: repo)),
+        ),
       );
-      await tester.enterText(
-        find.byKey(const ValueKey('material-description')),
-        '보관할 설명',
-      );
-      final save = find.widgetWithText(FilledButton, '자료 등록');
-      await tester.ensureVisible(save);
-      await tester.tap(save);
       await tester.pumpAndSettle();
-    }
 
-    await tester.tap(find.byKey(const ValueKey('material-type')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('이력서').last);
-    await tester.pumpAndSettle();
-    await fillAndSave('첫 자료');
-    expect(repo.records.length, 1);
-    await fillAndSave('두 번째 자료');
-    expect(find.text('자료 종류를 선택하세요.'), findsOneWidget);
-    expect(repo.records.length, 1);
+      Future<void> fillAndSave(String title) async {
+        await tester.enterText(
+          find.byKey(const ValueKey('material-title')),
+          title,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('material-description')),
+          '보관할 설명',
+        );
+        final save = find.widgetWithText(FilledButton, '자료 등록');
+        await tester.ensureVisible(save);
+        await tester.tap(save);
+        await tester.pumpAndSettle();
+      }
 
-    final cancel = find.widgetWithText(TextButton, '취소');
-    await tester.ensureVisible(cancel);
-    await tester.tap(cancel);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('내용 폐기'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const ValueKey('material-type')));
-    await tester.tap(find.byKey(const ValueKey('material-type')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('포트폴리오').last);
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(cancel);
-    await tester.tap(cancel);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('내용 폐기'));
-    await tester.pumpAndSettle();
-    await fillAndSave('취소 후 자료');
-    expect(find.text('자료 종류를 선택하세요.'), findsOneWidget);
-    expect(repo.records.length, 1);
-    expect(tester.takeException(), isNull);
-  });
+      await tester.tap(find.byKey(const ValueKey('material-type')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('이력서').last);
+      await tester.pumpAndSettle();
+      await fillAndSave('첫 자료');
+      expect(repo.records.length, 1);
+      await fillAndSave('두 번째 자료');
+      expect(find.text('자료 종류를 선택하세요.'), findsOneWidget);
+      expect(repo.records.length, 1);
+
+      final cancel = find.widgetWithText(TextButton, '취소');
+      await tester.ensureVisible(cancel);
+      await tester.tap(cancel);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('내용 폐기'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const ValueKey('material-type')));
+      await tester.tap(find.byKey(const ValueKey('material-type')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('포트폴리오').last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(cancel);
+      await tester.tap(cancel);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('내용 폐기'));
+      await tester.pumpAndSettle();
+      await fillAndSave('취소 후 자료');
+      expect(find.text('자료 종류를 선택하세요.'), findsOneWidget);
+      expect(repo.records.length, 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'materials list searches locally, caps height, and outlines edit',
@@ -462,7 +466,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('4개 표시 / 4개'), findsOneWidget);
-      expect(tester.getSize(find.byKey(const ValueKey('material-catalog'))).height, 64 * 3);
+      expect(
+        tester.getSize(find.byKey(const ValueKey('material-catalog'))).height,
+        64 * 3,
+      );
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('material-row-a')),
@@ -489,4 +496,35 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('wide materials list card matches the registration form', (
+    tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = MemoryMaterials();
+    Future<void> pump(Size size) async {
+      await tester.binding.setSurfaceSize(size);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: MaterialsPage(repository: repo)),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await pump(const Size(1440, 900));
+    expect(find.text('자료 목록'), findsOneWidget);
+    expect(find.text('0개'), findsOneWidget);
+    expect(
+      find.text('등록한 자료가 없습니다. 설명만 기록하거나 PDF를 선택해 등록하세요.'),
+      findsOneWidget,
+    );
+    final cards = find.byType(SurfaceCard);
+    expect(cards, findsNWidgets(2));
+    final list = tester.getSize(cards.at(0));
+    final form = tester.getSize(cards.at(1));
+    expect(list.height, form.height);
+    expect(list.width, form.width);
+    expect(tester.takeException(), isNull);
+  });
 }

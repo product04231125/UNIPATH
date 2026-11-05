@@ -4,6 +4,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../../../shared/app_style.dart';
+import '../../../shared/app_typography.dart';
 import '../../../shared/widgets/feature_actions.dart';
 import '../../../shared/widgets/feature_line.dart';
 import '../../../shared/widgets/anchored_select_field.dart';
@@ -413,14 +414,22 @@ class MaterialsPageState extends State<MaterialsPage> {
       ] else
         ResponsiveColumns(
           enabled: true,
+          stretch: true,
           first: SurfaceCard(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                FeatureLine.section(
-                  text: '자료 ${_records.length}개',
-                  padTop: false,
-                  padBottom: false,
+                Row(
+                  children: [
+                    Text(
+                      '자료 목록',
+                      style: Theme.of(context).textTheme.titleLarge
+                          ?.merge(AppTypography.sectionStyle),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('${_records.length}개'),
+                  ],
                 ),
                 SizedBox(height: FeatureLine.slotGap(context)),
                 FieldLabel(
@@ -454,6 +463,7 @@ class MaterialsPageState extends State<MaterialsPage> {
             child: Form(
               key: _form,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   FeatureLine.section(
