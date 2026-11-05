@@ -451,10 +451,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(
-        find.widgetWithText(FilledButton, '한 줄 요건'),
-        findsOneWidget,
-      );
+      expect(find.widgetWithText(FilledButton, '한 줄 요건'), findsOneWidget);
       expect(find.widgetWithText(OutlinedButton, '학점표'), findsOneWidget);
       expect(find.widgetWithText(OutlinedButton, '인증 요건'), findsOneWidget);
       expect(
@@ -481,4 +478,96 @@ void main() {
       );
     },
   );
+
+  testWidgets('added credit rows and certification groups can be removed', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      host(
+        GraduationCreditGridPage(
+          schoolName: '경동대학교',
+          departments: departments(),
+          scrollable: true,
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('credit-grid-add-group')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'credit-grid-remove-group-',
+            ),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'credit-grid-remove-group-',
+            ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('열 묶음이나 이수 경로 행을 추가'), findsOneWidget);
+
+    await tester.pumpWidget(
+      host(
+        GraduationCertificationPage(
+          schoolName: '경동대학교',
+          departments: departments(),
+          scrollable: true,
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('certification-add-group')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'certification-add-item-',
+            ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'certification-remove-item-',
+            ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'certification-remove-item-',
+            ),
+      ),
+      findsNothing,
+    );
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'certification-remove-group-',
+            ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('묶음을 추가해 인증 요건을 적으세요'), findsOneWidget);
+  });
 }
