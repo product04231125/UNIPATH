@@ -1,10 +1,78 @@
 # 최초 학교관리자 가입·미등록 학교 신청
 
+2026-11-04: 아래 **목표 계약(미구현)** 은 백엔드 런타임·OpenAPI에 아직 반영하지 않은
+제품 계약이다. **현재 구현** 은 이 체크아웃 서버 동작이다. 구현 전까지 클라이언트는
+현재 구현을 따른다. 등록 학교 UUID 기반 추가 신청은
+[학교관리자 신청](school-admin-applications.md), 로그인·역할은
+[인증 API](authentication.md)를 본다.
+
+## 목표 계약 (미구현)
+
+학생 가입과 학교관리자 가입은 처음부터 갈라진다. 학교관리자 가입은 승인 전에 학생
+작업 공간에 들어가지 않고, 로그인만으로 대기·반려(사유)·취소 상태를 보여 줄 수 있어야
+한다. 반려된 계정을 학생(`user`)으로 바꾸지 않는다.
+
+### 공개 가입
+
+`POST /api/v1/auth/school-admin-signups`의 입력 필드·정규화·한도·`client_id` 재확인
+규칙은 현재 구현과 같다. 바뀌는 것은 성공 응답과 세션이다.
+
+| 항목 | 목표 |
+|---|---|
+| 트랜잭션 | 계정 자격 증명과 신청을 한 트랜잭션으로 저장한다. 공식 학교는 자동 등록하지 않는다. |
+| 역할 | 승인 전 역할은 `user`가 아니다. 학생 작업 공간·개인 기록 API를 쓰지 않는 학교관리자 신청 계정으로 둔다. 공개 enum을 새로 두지 않고, 보호 API·로그인이 신청 상태로 진입을 막는다. |
+| 세션 | 201이어도 쿠키·Bearer를 발급하지 않는다. `session_mode`를 받아도 무시한다. |
+| 응답 | `signup` 상세만 반환한다(`id`, `status=pending`, `school_name`, `expected_version` 등). `user`·`admin_scopes`·`access_token`·`session_expires_at`을 넣지 않는다. |
+| 재확인 | 같은 이메일·`client_id`·같은 신청 정보·현재 비밀번호면 같은 접수를 반환하고, 역시 세션을 만들지 않는다. |
+| 반려·취소 | 같은 키로 되살리지 않는다. 보완 신청은 새 `client_id`다. 반려·취소 뒤에도 학생 가입으로 바꾸지 않으며, 같은 이메일로 `POST /auth/register` 하면 409다. |
+
+연락 이메일·홈페이지는 소속 확인을 대신하지 않는다. 권한·owner·학교 ID·승인 상태를
+요청에서 정할 수 없다.
+
+### 승인 전 상태 조회·취소 (세션 없음)
+
+승인 전에는 `/auth/me`나 `/me/*`를 쓸 세션이 없다. 클라이언트가 대기/반려 팝업을 띄우려면
+로그인 자체가 상태를 반환해야 한다. 상세는 [인증 API 목표 계약](authentication.md)이다.
+
+대기 신청 취소도 세션 없이 자격 증명으로 한다.
+
+| 메서드·경로 | 동작 |
+|---|---|
+| `POST /api/v1/auth/login` | 비밀번호가 맞으면 세션 없이 403과 `signup` 상태(`pending`/`rejected`/`cancelled`)·반려 사유를 반환 |
+| `POST /api/v1/auth/school-admin-signups/{id}/cancel` | 본인 `email`·`password`·`expected_version`으로 대기 신청만 취소. 세션 미발급 |
+
+기존 `GET/POST /api/v1/me/school-admin-signups*`는 **이미 세션이 있는 계정**용이다.
+학생(`user`)이 여기로 미등록 학교를 신청하면 생성 거부한다. 학교관리자 추가 인력은
+공개 학교관리자 가입만 쓴다.
+
+### 심사 주체
+
+신청이 가리키는 학교가 공식 목록에 없고, 또는 해당 공식 학교에 **활성 `school_admin`
+범위가 한 명도 없으면** 슈퍼관리자만 심사한다. 이때만 미등록 학교 등록 또는 기존 학교
+연결과 **그 학교의 첫 학교관리자** 승인이 함께 이뤄진다.
+
+이미 활성 학교관리자가 있는 공식 학교에 대한 추가 가입은 슈퍼 전용 심사가 아니다.
+대상 학교의 기존 `school_admin`이 [추가 신청](school-admin-applications.md)으로 승인·반려한다.
+
+슈퍼 승인 입력(`expected_version`, 신청자 `expected_user_version`, 신청자에게 보이는
+`review_note`, `identity_verified`/`affiliation_verified` true, 기존 학교 연결 **또는**
+`new_institution` 중 하나)과 원자적 커밋·롤백은 현재 구현과 같다. 승인 뒤에만
+`school_admin` 역할·해당 학교 전체 범위·세션 가능한 계정이 된다. 반려는 신청을
+`rejected`로 두고 역할을 학생으로 내리지 않는다.
+
+정지·강제 회수·감사는 슈퍼 전용이며 [인증 API](authentication.md)를 본다. 조교 전용
+하위 역할은 없다. 추가 인력도 같은 `school_admin`과 학교 전체 범위다.
+
+OpenAPI·마이그레이션·런타임 변경은 이 문서만으로 완료되지 않는다. 구현 작업에서
+스키마와 테스트를 함께 바꾼다.
+
+## 현재 구현
+
 계정 정보와 학교명·홈페이지·담당자 정보를 함께 접수한다. **계정·신청·세션은 하나의
 트랜잭션으로 저장**하며 승인 전 계정은 `user` 권한이다. 제안 학교는 공식 학교 목록에
 자동 등록하지 않는다. 기존 일반 가입 및 등록 학교 UUID 기반 권한 신청 계약은 유지한다.
 
-## 최초 가입과 재시도
+### 최초 가입과 재시도
 
 `POST /api/v1/auth/school-admin-signups`는 기존 가입의 `display_name`, `email`,
 `password`(15~128자), `session_mode`와 아래 신청 정보를 받는다.
@@ -32,7 +100,7 @@ HttpOnly 쿠키, Windows는 메모리 Bearer를 사용한다. 권한·owner·학
 응답 유실은 실패나 성공으로 단정하지 않는다. 프론트는 같은 요청 ID와 입력으로 재확인하거나
 로그인한 뒤 이력을 조회한다. 접수 확인 후 번호와 승인 대기를 표시하고 계속하기로 진입한다.
 
-## 로그인한 신청자
+### 로그인한 신청자
 
 prefix는 `/api/v1/me/school-admin-signups`다.
 
@@ -49,7 +117,7 @@ prefix는 `/api/v1/me/school-admin-signups`다.
 취소·반려는 계정이나 개인 자료를 삭제하지 않는다. 목록은 상태 필터, UUID cursor,
 limit(1~100, 기본 30), `items/next_cursor`를 제공한다.
 
-## 슈퍼관리자 승인·반려
+### 슈퍼관리자 승인·반려
 
 prefix는 `/api/v1/admin/school-admin-signups`다. GET 목록·GET `/{id}`·POST
 `/{id}/approve`·POST `/{id}/reject`를 제공한다. 목록/상세는 슈퍼관리자만 접근한다.
