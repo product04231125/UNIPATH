@@ -105,11 +105,7 @@ class PortfolioWorkspaceRepository {
           id: item['id'] as String,
           title: item['title'] as String,
           description: item['description'] as String,
-          audience:
-              PortfolioAudience.values
-                  .where((a) => a.name == item['audience'])
-                  .firstOrNull ??
-              PortfolioAudience.private,
+          audience: _storedAudience(item['audience']),
           reviewed: item['reviewed'] as bool,
           sources: List<String>.from(item['sources'] as List),
         ),
@@ -145,6 +141,13 @@ class PortfolioWorkspaceRepository {
     _compositions = compositions;
     _documents = documents;
     _loaded = true;
+  }
+
+  PortfolioAudience _storedAudience(Object? raw) {
+    for (final audience in PortfolioAudience.values) {
+      if (audience.name == raw) return audience;
+    }
+    throw const FormatException('Unknown audience');
   }
 
   void _uniqueIds(List<String> ids) {

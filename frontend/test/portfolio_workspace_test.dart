@@ -275,7 +275,7 @@ void main() {
   });
 
   test(
-    'deleted sources remain explicit and unknown audiences default private',
+    'deleted sources remain explicit and unknown audiences fail the read',
     () async {
       await seedRecords();
       final repo = PortfolioWorkspaceRepository();
@@ -327,8 +327,12 @@ void main() {
         jsonEncode(root),
       );
       final safe = PortfolioWorkspaceRepository();
-      await safe.load();
-      expect(safe.compositions.single.audience, PortfolioAudience.private);
+      await expectLater(safe.load(), throwsFormatException);
+      expect(
+        (jsonDecode(prefs.getString(PortfolioWorkspaceRepository.storageKey)!)
+                as Map)['compositions'][0]['audience'],
+        'future_unknown',
+      );
     },
   );
 
