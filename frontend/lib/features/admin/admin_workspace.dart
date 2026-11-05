@@ -1174,12 +1174,12 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
 
   Widget _ruleViewButton(String id, String label) {
     final selected = _ruleView == id;
-    final onPressed = () async {
+    Future<void> onPressed() async {
       if (_ruleView == id) return;
       if (!await _allowLeave()) return;
       if (!mounted) return;
       setState(() => _ruleView = id);
-    };
+    }
     final child = Text(label);
     final key = ValueKey('rule-view-$id');
     return selected
