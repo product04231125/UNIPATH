@@ -224,6 +224,7 @@ class MaterialsPageState extends State<MaterialsPage> {
     final scaled = MediaQuery.textScalerOf(context).scale(_rowHeight);
     return scaled < _rowHeight ? _rowHeight : scaled;
   }
+
   static const _visibleRows = 3;
 
   List<PersonalMaterial> get _filtered {
@@ -422,15 +423,17 @@ class MaterialsPageState extends State<MaterialsPage> {
                   padBottom: false,
                 ),
                 SizedBox(height: FeatureLine.slotGap(context)),
-                TextFormField(
-                  key: const ValueKey('material-search'),
-                  controller: _query,
-                  enabled: !_busy,
-                  decoration: const InputDecoration(
-                    labelText: '제목·종류·설명 검색',
-                    prefixIcon: Icon(Icons.search),
+                FieldLabel(
+                  label: '제목·종류·설명 검색',
+                  child: TextFormField(
+                    key: const ValueKey('material-search'),
+                    controller: _query,
+                    enabled: !_busy,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: (_) => setState(() {}),
                   ),
-                  onChanged: (_) => setState(() {}),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),

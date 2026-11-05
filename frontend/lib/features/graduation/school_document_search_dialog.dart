@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/school_knowledge_api.dart';
 import '../api/school_knowledge_models.dart';
 import '../auth/auth_api.dart';
+import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/external_link_button.dart';
 import 'school_context_form.dart';
@@ -139,18 +140,20 @@ class _SearchState extends State<SchoolDocumentSearchDialog> {
           onChanged: _invalidate,
         ),
         const Text('입학연도·이수 경로가 없으면 추가 정보를 요청할 수 있습니다.'),
-        TextField(
-          controller: _question,
-          enabled: !_busy,
-          minLines: 2,
-          maxLines: 5,
-          maxLength: 4000,
-          decoration: InputDecoration(
-            labelText: '검색 질문',
-            errorText:
-                _fields.any((f) => f == 'question' || f.endsWith('.question'))
-                ? '검색 질문을 확인하세요.'
-                : null,
+        FieldLabel(
+          label: '검색 질문',
+          child: TextField(
+            controller: _question,
+            enabled: !_busy,
+            minLines: 2,
+            maxLines: 5,
+            maxLength: 4000,
+            decoration: InputDecoration(
+              errorText:
+                  _fields.any((f) => f == 'question' || f.endsWith('.question'))
+                  ? '검색 질문을 확인하세요.'
+                  : null,
+            ),
           ),
         ),
         if (_busy) const LinearProgressIndicator(),

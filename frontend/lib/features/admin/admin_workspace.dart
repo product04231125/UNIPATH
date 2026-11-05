@@ -49,6 +49,7 @@ class AdminWorkspace extends StatefulWidget {
   final Future<void> Function()? beforeSignedOut;
   final AdminSchoolChrome? schoolChrome;
   final bool phoneChrome;
+
   /// Preferred school after leaving student guest preview.
   final String? initialSchoolId;
   final VoidCallback? onEnterStudentPreview;
@@ -488,6 +489,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     final seen = <String>{};
     return parts.where(seen.add).join(' · ');
   }
+
   Iterable<AdminRecord> _filteredRows(AdminKind kind) => _rows(kind).where((r) {
     if (kind == AdminKind.institution) return true;
     final query = (_queries[kind] ?? '').trim().toLowerCase();
@@ -699,9 +701,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   }
 
   ButtonStyle _catalogActionStyle({bool danger = false}) {
-    final base = danger
-        ? _dangerStyle()
-        : OutlinedButton.styleFrom();
+    final base = danger ? _dangerStyle() : OutlinedButton.styleFrom();
     return base.copyWith(
       visualDensity: VisualDensity.compact,
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -874,13 +874,11 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
 
   static const _overviewActionMin = Size(148, 40);
 
-  ButtonStyle get _overviewOutlinedStyle => OutlinedButton.styleFrom(
-    minimumSize: _overviewActionMin,
-  );
+  ButtonStyle get _overviewOutlinedStyle =>
+      OutlinedButton.styleFrom(minimumSize: _overviewActionMin);
 
-  ButtonStyle get _overviewFilledStyle => FilledButton.styleFrom(
-    minimumSize: _overviewActionMin,
-  );
+  ButtonStyle get _overviewFilledStyle =>
+      FilledButton.styleFrom(minimumSize: _overviewActionMin);
 
   Widget _overview() {
     final recent = _schoolHistory.take(5).toList();
@@ -923,8 +921,9 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     children: [
                       OutlinedButton.icon(
                         style: _overviewOutlinedStyle,
-                        onPressed:
-                            _busy ? null : () => _navigate('/admin/rules'),
+                        onPressed: _busy
+                            ? null
+                            : () => _navigate('/admin/rules'),
                         icon: const Icon(Icons.arrow_forward, size: 18),
                         label: const Text('졸업요건 확인'),
                       ),
@@ -1010,8 +1009,9 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                   padBottom: false,
                   trailing: _repo.live
                       ? FeatureLine.reload(
-                          onPressed:
-                              _busy || _loading || _refreshing ? null : _load,
+                          onPressed: _busy || _loading || _refreshing
+                              ? null
+                              : _load,
                         )
                       : null,
                 ),
@@ -1070,8 +1070,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   }
 
   Widget _history() {
-    final allScoped =
-        _repo.history.reversed.where(_historyInScope).toList();
+    final allScoped = _repo.history.reversed.where(_historyInScope).toList();
     final entries = _filteredHistory(allScoped).toList();
     final kindOptions = {
       for (final entry in allScoped) entry.kind.name: entry.kind.label,
@@ -1094,14 +1093,14 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 : null,
           ),
           SizedBox(height: FeatureLine.slotGap(context)),
-          TextFormField(
-            key: const ValueKey('admin-history-search'),
-            controller: _historyQuery,
-            decoration: const InputDecoration(
-              labelText: '대상·수행자·행동 검색',
-              prefixIcon: Icon(Icons.search),
+          FieldLabel(
+            label: '대상·수행자·행동 검색',
+            child: TextFormField(
+              key: const ValueKey('admin-history-search'),
+              controller: _historyQuery,
+              decoration: const InputDecoration(prefixIcon: Icon(Icons.search)),
+              onChanged: (_) => setState(() {}),
             ),
-            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 8),
           AnchoredSelectField<String>(
@@ -1180,6 +1179,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       if (!mounted) return;
       setState(() => _ruleView = id);
     }
+
     final child = Text(label);
     final key = ValueKey('rule-view-$id');
     return selected
@@ -1254,8 +1254,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   Widget build(BuildContext context) {
     if (!_schools.any((r) => r.id == _schoolId)) {
       final preferred = widget.initialSchoolId?.trim() ?? '';
-      _schoolId =
-          preferred.isNotEmpty && _schools.any((r) => r.id == preferred)
+      _schoolId = preferred.isNotEmpty && _schools.any((r) => r.id == preferred)
           ? preferred
           : (_schools.firstOrNull?.id ?? '');
     }
@@ -1323,8 +1322,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 ? AdminWorkspace.menuDescriptions[_section]
                 : null,
             body: [
-              if (showBodySchool)
-                _schoolSelector(compactHeader: compactHeader),
+              if (showBodySchool) _schoolSelector(compactHeader: compactHeader),
               if (_repo.live && _repo.warning != null) Text(_repo.warning!),
               if (_loading)
                 const LinearProgressIndicator()

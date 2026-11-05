@@ -265,10 +265,7 @@ void main() {
           final weekly = tester.getRect(find.byType(WeeklySchedule));
           expect(weekly.left, closeTo(upcoming.left, 0.5));
           expect(
-            find.descendant(
-              of: card('다가오는 일정'),
-              matching: find.text('일정 추가'),
-            ),
+            find.descendant(of: card('다가오는 일정'), matching: find.text('일정 추가')),
             findsOneWidget,
           );
           expect(find.widgetWithText(FilledButton, '일정 추가'), findsOneWidget);
@@ -524,9 +521,7 @@ void main() {
     });
   }
 
-  testWidgets('phone home contextLabel shows 등록 or 개인 설정 only', (
-    tester,
-  ) async {
+  testWidgets('phone home contextLabel shows 등록 or 개인 설정 only', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final personal = PlanningRepository();
@@ -803,4 +798,56 @@ void main() {
       TargetPlatform.linux,
     }),
   );
+
+  testWidgets('search stays on screen while only options scroll', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: universityPathTheme(),
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              width: 320,
+              child: AnchoredSelectField<int>(
+                value: 0,
+                label: '과목',
+                searchable: true,
+                searchLabel: '과목 이름·코드 검색',
+                options: [
+                  for (var i = 0; i < 30; i++) SelectOption(i, '과목 $i'),
+                ],
+                onChanged: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byType(AnchoredSelectField<int>));
+    await tester.pumpAndSettle();
+    final search = tester.getRect(
+      find.byKey(const ValueKey('select-search-input')),
+    );
+    final label = tester.getRect(find.text('과목 이름·코드 검색'));
+    expect(label.top, greaterThanOrEqualTo(0));
+    expect(search.bottom, lessThanOrEqualTo(700));
+    expect(label.bottom, lessThanOrEqualTo(search.top));
+    final options = find.descendant(
+      of: find.byType(ListView),
+      matching: find.byType(MenuItemButton),
+    );
+    final firstOption = tester.getRect(options.at(1));
+    await tester.drag(find.byType(ListView), const Offset(0, -180));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getRect(find.byKey(const ValueKey('select-search-input'))).top,
+      closeTo(search.top, 1),
+    );
+    expect(tester.getRect(options.at(1)).top, lessThan(firstOption.top));
+    expect(tester.takeException(), isNull);
+  });
 }
