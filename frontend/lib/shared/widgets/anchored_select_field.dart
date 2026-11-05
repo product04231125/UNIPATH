@@ -91,7 +91,7 @@ class _AnchoredSelectFieldState<T> extends State<AnchoredSelectField<T>> {
         childFocusNode: _focus,
         crossAxisUnconstrained: false,
         alignmentOffset: openAbove
-            ? Offset(0, -(menuHeight + space!.fieldHeight + 4))
+            ? Offset(0, -(menuHeight + space.fieldHeight + 4))
             : const Offset(0, 4),
         onOpen: () {
           if (widget.searchable) setState(() => _query = '');
