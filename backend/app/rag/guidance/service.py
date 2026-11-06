@@ -9,9 +9,9 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlsplit
 
-from . import content
+from . import career_menu, content
 
-VERSION = "academic-click-v2"
+VERSION = "academic-click-v3"
 STATUS_TEXT = {
     "satisfied": "기준일의 검토 자료로 등록된 요건을 충족했습니다.",
     "not_satisfied": "기준일의 검토 자료에서 충족하지 못한 요건이 있습니다.",
@@ -49,8 +49,15 @@ NODES = {
 NOTICE = "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
 
 
+_node_cache = (None, None)
+
+
 def _nodes():
-    return {**NODES, **content.bundle()[0]}
+    global _node_cache
+    dynamic = content.bundle()[0]
+    if _node_cache[0] is not dynamic:
+        _node_cache = (dynamic, {**NODES, **dynamic, **career_menu.NODES})
+    return _node_cache[1]
 
 
 def _button(node_id):
@@ -66,6 +73,11 @@ def _button(node_id):
 
 def catalog():
     """Return a detached serializable catalog for the frontend handoff, not a live API."""
+    nodes = _nodes()
+    children = {key: [] for key in nodes}
+    for key, (_, parent, _) in nodes.items():
+        if parent in children:
+            children[parent].append(key)
     return {
         "schema_version": VERSION,
         "root_id": "home",
@@ -75,7 +87,7 @@ def catalog():
                 "label": label,
                 "parent_id": parent,
                 "mode": mode,
-                "children": [child for child, value in _nodes().items() if value[1] == key],
+                "children": children[key],
             }
             for key, (label, parent, mode) in _nodes().items()
         ],
@@ -308,4 +320,7 @@ def respond(node_id="home", *, audit=None):
                     ),
                 )
     response.update(content.payload(node_id))
+    response.update(career_menu.payload(node_id))
+    for related in response.pop("related_node_ids", []):
+        response["buttons"].append(_button(related))
     return deepcopy(response)
