@@ -7,6 +7,7 @@ import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/digits_only_hint.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/field_label.dart';
+import '../../shared/widgets/horizontal_scroll_area.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/surface_card.dart';
 import 'admin_models.dart';
@@ -35,6 +36,7 @@ class GraduationCreditGridPage extends StatefulWidget {
 class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
   late GraduationCreditGrid _grid;
   late final TextEditingController _year;
+  final _horizontal = ScrollController();
   final _groupLabels = <String, TextEditingController>{};
   final _columnLabels = <String, TextEditingController>{};
   final _rowLabels = <String, TextEditingController>{};
@@ -63,6 +65,7 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
 
   @override
   void dispose() {
+    _horizontal.dispose();
     _year.dispose();
     for (final controller in [
       ..._groupLabels.values,
@@ -427,8 +430,9 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
   }
 
   Widget _table() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return HorizontalScrollArea(
+      controller: _horizontal,
+      scrollbarKey: const ValueKey('credit-grid-horizontal-scrollbar'),
       child: Table(
         defaultColumnWidth: const IntrinsicColumnWidth(),
         defaultVerticalAlignment: TableCellVerticalAlignment.middle,

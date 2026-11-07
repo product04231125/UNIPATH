@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:university_path_frontend/features/admin/admin_models.dart';
 import 'package:university_path_frontend/features/admin/admin_repository.dart';
@@ -22,6 +23,50 @@ List<AdminRecord> departments() => [
 ];
 
 void main() {
+  testWidgets('credit grid exposes mouse horizontal scrolling after adding columns and resizing', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final grid = GraduationCreditGrid(
+      admissionYear: '2026', departmentId: 'dept-cs',
+      columns: [GraduationCreditColumn(id: 'first', label: '첫 열')],
+      rows: [GraduationCreditRow(id: 'row', label: '이수 경로')],
+    );
+    await tester.pumpWidget(host(GraduationCreditGridPage(
+      schoolName: '합성 대학', departments: departments(), initial: grid, scrollable: true,
+    )));
+    await tester.pumpAndSettle();
+    final bar = find.byKey(const ValueKey('credit-grid-horizontal-scrollbar'));
+    final add = find.byKey(const ValueKey('credit-grid-add-column'));
+    for (var i = 0; i < 6; i++) {
+      await tester.ensureVisible(add);
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+    }
+    await tester.binding.setSurfaceSize(const Size(760, 1000));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(bar);
+    await tester.pumpAndSettle();
+    final scrollbar = tester.widget<Scrollbar>(bar);
+    expect(scrollbar.thumbVisibility, isTrue);
+    expect(scrollbar.interactive, isTrue);
+    final controller = scrollbar.controller!;
+    expect(controller.position.maxScrollExtent, greaterThan(0));
+    // Mouse users can move the content itself as well as the bottom thumb.
+    final bounds = tester.getRect(bar);
+    final mouse = await tester.startGesture(bounds.center, kind: PointerDeviceKind.mouse);
+    await mouse.moveBy(const Offset(-240, 0));
+    await mouse.up();
+    await tester.pumpAndSettle();
+    expect(controller.offset, greaterThan(0));
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await tester.pumpAndSettle();
+    final note = find.byKey(const ValueKey('credit-grid-note-row'));
+    expect(note.hitTestable(), findsOneWidget);
+    await tester.enterText(note, '오른쪽 비고 입력');
+    expect(tester.widget<TextField>(note).controller!.text, '오른쪽 비고 입력');
+    expect(tester.takeException(), isNull);
+  });
+
   test('fractional credit cells retain exact thousandth sums', () {
     final grid = GraduationCreditGrid(admissionYear: '2026', departmentId: 'dept', rows: [GraduationCreditRow(id: 'row', label: '행')]);
     final group = GraduationCreditColumnGroup(id: 'decimal', label: '소수');
