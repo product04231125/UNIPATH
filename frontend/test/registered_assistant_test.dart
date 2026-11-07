@@ -353,6 +353,82 @@ void main() {
       await updates.close();
     },
   );
+  test('personalized reconnect keeps one request and receives consent revocation', () async {
+    final api = Api()..pending = Completer<Map<String, dynamic>>();
+    final p = await permissions();
+    final c = conversation(api, p);
+    final updates = StreamController<Map<String, dynamic>>.broadcast(
+      sync: true,
+    );
+    final bridge = ConversationBridge(c, (value) async => updates.add(value));
+    var loseAcknowledgement = true;
+    final remote = RemoteConversation(
+      request: (command) async {
+        if (command == null) return bridge.read();
+        final state = bridge.command(command);
+        if (command['action'] == 'send' && loseAcknowledgement) {
+          loseAcknowledgement = false;
+          throw StateError('lost acknowledgement');
+        }
+        return state;
+      },
+      changes: updates.stream,
+    );
+    await remote.load();
+    remote.setMode(AssistantMode.personalized);
+    await remote.flush();
+    await remote.refreshRecords();
+    remote.selectRecord(record.key, true);
+    await remote.flush();
+    expect(
+      await remote.permit(AssistantMode.personalized, remember: true),
+      true,
+    );
+    remote.input.text = '진행 중 질문';
+    await remote.flush();
+    await remote.send();
+    expect(remote.connectionError, isNotNull);
+    expect(api.calls.length, 1);
+    await remote.load();
+    expect(remote.connectionError, isNull);
+    expect(remote.sending, true);
+    expect(remote.mode, AssistantMode.personalized);
+    expect(remote.selectedRecords.single.version, record.version);
+    expect(api.calls.length, 1);
+
+    // A settings revocation reaches the child while the original request runs.
+    expect(
+      await p.setAllowed(AiConsentFeature.personalizedQuestion, false),
+      true,
+    );
+    expect(remote.allowsMode(AssistantMode.personalized), false);
+    api.pending!.complete({
+      'query_id': 'q',
+      'status': 'evidence_only',
+      'reason': 'generator_not_configured',
+      'official': false,
+      'school': {
+        'query_id': 's',
+        'status': 'insufficient_evidence',
+        'reason': 'no_approved_matching_evidence',
+      },
+      'personal': {'records': [], 'official': false},
+    });
+    await Future<void>.delayed(Duration.zero);
+    expect(remote.turns.single.personalized!.status, 'evidence_only');
+    expect(remote.sending, false);
+    remote.input.text = '철회 뒤 다음 질문';
+    await remote.flush();
+    await remote.send();
+    expect(api.calls.length, 1);
+    expect(remote.input.text, '철회 뒤 다음 질문');
+    expect(remote.submissionError, isNotNull);
+    remote.dispose();
+    bridge.dispose();
+    c.dispose();
+    p.dispose();
+    await updates.close();
+  });
   testWidgets('registered panel offers modes and shows evidence-only safely', (
     tester,
   ) async {
