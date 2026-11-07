@@ -1,66 +1,106 @@
-import 'dart:typed_data';
-
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:university_path_frontend/features/records/personal_record_repository.dart';
+import 'package:university_path_frontend/features/api/student_api.dart';
+import 'package:university_path_frontend/features/auth/auth_api.dart';
+import 'package:university_path_frontend/features/assistant/ai_record_catalog.dart';
 import 'package:university_path_frontend/features/records/portfolio/job_analysis_page.dart';
-import 'package:university_path_frontend/main.dart';
+import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
+
+class AnalysisGateway extends ApiGateway {
+  final calls = <Map<String, Object?>>[];
+  Object? failure;
+  Map<String, dynamic> result = {
+    'analysis_id': 'a',
+    'status': 'not_configured',
+    'reason': 'analyzer_not_configured',
+    'official': false,
+    'comparisons': [],
+    'missing_fields': [],
+  };
+  @override
+  Future<Map<String, dynamic>?> request(
+    String method,
+    String path, [
+    Map<String, Object?>? body,
+  ]) async {
+    expect(path, 'me/job-analyses');
+    calls.add(body!);
+    if (failure != null) throw failure!;
+    return result;
+  }
+}
+
+const record = AiRecordOption(
+  kind: 'experience',
+  id: 'record-id',
+  version: 2,
+  title: '선택한 경험',
+);
+Future<AiConsentPreferences> consent() async {
+  final p = AiConsentPreferences(
+    ownerId: 'owner',
+    reader: (_) async => null,
+    writer: (_, _) async => true,
+  );
+  await p.load();
+  return p;
+}
+
+Future<void> mount(
+  WidgetTester tester,
+  AnalysisGateway api,
+  AiConsentPreferences p,
+) async {
+  await tester.binding.setSurfaceSize(const Size(1440, 1000));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: JobAnalysisPage(
+          api: StudentApi(api, ownerId: 'owner'),
+          consent: p,
+          loadRecords: () async => [record],
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.enterText(
+    find.byKey(const ValueKey('job-posting-text')),
+    '합성 공고 본문',
+  );
+  await tester.tap(
+    find.byKey(const ValueKey('job-record-experience/record-id')),
+  );
+  await tester.pump();
+}
+
+Future<void> execute(WidgetTester tester) async {
+  await tester.ensureVisible(find.text('공고 분석'));
+  await tester.tap(find.text('공고 분석'));
+  await tester.pumpAndSettle();
+}
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
-
   testWidgets(
-    'job analysis keeps posting text and selected records without inventing results',
+    'text analysis works without school and preserves explicit selected version',
     (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1440, 900));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      final activities = PersonalRecordRepository(PersonalRecordKind.activity);
-      await activities.load();
-      await activities.save(
-        PersonalRecord(id: 'job-act', values: {'title': '선택한 봉사'}),
-      );
-      await tester.pumpWidget(
-        const UniversityPathApp(startAuthenticated: true),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('채용공고 분석'));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('학생용 채용 분석 API가 아직 없습니다'), findsOneWidget);
-      expect(
-        find.textContaining('공고 텍스트, 주소, PDF·캡처 중 하나가 필요합니다'),
-        findsOneWidget,
-      );
-      expect(find.text('답변: 받은 답변 없음'), findsOneWidget);
-      expect(find.text('근거: 받은 근거 없음'), findsOneWidget);
-      expect(find.text('불확실한 부분: 받은 내용 없음'), findsOneWidget);
-      expect(find.text('분석 실행 불가 · 연결 전'), findsOneWidget);
-      await tester.enterText(
-        find.byKey(const ValueKey('job-posting-text')),
-        '합성 채용공고 본문',
-      );
-      await tester.pump();
-      expect(find.textContaining('중 하나가 필요합니다'), findsNothing);
-      await tester.enterText(
-        find.byKey(const ValueKey('job-posting-url')),
-        '공고주소',
-      );
-      await tester.pump();
-      expect(find.textContaining('주소가 http:// 또는 https://'), findsOneWidget);
-      await tester.enterText(
-        find.byKey(const ValueKey('job-posting-url')),
-        'https://example.test/jobs/1',
-      );
-      await tester.tap(
-        find.byKey(const ValueKey('job-record-activity/job-act')),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('선택한 기록 1개'), findsOneWidget);
-      await tester.tap(find.text('자료'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('채용공고 분석').first);
-      await tester.pumpAndSettle();
+      final api = AnalysisGateway(), p = await consent();
+      await p.setAllowed(AiConsentFeature.jobAnalysis, true);
+      await mount(tester, api, p);
+      await execute(tester);
+      expect(api.calls.single, {
+        'posting_text': '합성 공고 본문',
+        'records': [
+          {
+            'kind': 'experience',
+            'record_id': 'record-id',
+            'expected_version': 2,
+          },
+        ],
+        'external_processing_consent': true,
+      });
+      expect(find.text('분석 기능 준비 중'), findsOneWidget);
       expect(
         tester
             .widget<TextFormField>(
@@ -68,81 +108,146 @@ void main() {
             )
             .controller!
             .text,
-        '합성 채용공고 본문',
+        '합성 공고 본문',
       );
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const ValueKey('job-posting-url')))
+            .enabled,
+        false,
+      );
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.byKey(const ValueKey('job-posting-file')),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      p.dispose();
+    },
+  );
+  testWidgets(
+    'cancel consent sends nothing and one-time consent remains unsaved',
+    (tester) async {
+      final api = AnalysisGateway(), p = await consent();
+      await mount(tester, api, p);
+      await execute(tester);
+      await tester.tap(find.text('취소'));
+      await tester.pumpAndSettle();
+      expect(api.calls, isEmpty);
+      await execute(tester);
+      await tester.tap(find.text('이번만 허용'));
+      await tester.pumpAndSettle();
+      expect(api.calls.length, 1);
+      expect(p.allows(AiConsentFeature.jobAnalysis), false);
+      await tester.pumpWidget(const SizedBox());
+      p.dispose();
+    },
+  );
+  testWidgets('version conflict retains text and selected record', (
+    tester,
+  ) async {
+    final api = AnalysisGateway()
+      ..failure = const AuthFailure('변경', status: 409, requestId: 'request-id');
+    final p = await consent();
+    await p.setAllowed(AiConsentFeature.jobAnalysis, true);
+    await mount(tester, api, p);
+    await execute(tester);
+    expect(find.textContaining('선택한 기록이 변경'), findsOneWidget);
+    expect(find.text('문의 식별자: request-id'), findsOneWidget);
+    expect(
+      tester
+          .widget<CheckboxListTile>(
+            find.byKey(const ValueKey('job-record-experience/record-id')),
+          )
+          .value,
+      true,
+    );
+    expect(
+      tester
+          .widget<TextFormField>(find.byKey(const ValueKey('job-posting-text')))
+          .controller!
+          .text,
+      '합성 공고 본문',
+    );
+    await tester.pumpWidget(const SizedBox());
+    p.dispose();
+  });
+  testWidgets(
+    'completed displays posting and personal citations with comparison status',
+    (tester) async {
+      final api = AnalysisGateway()
+        ..result = {
+          'analysis_id': 'a',
+          'status': 'completed',
+          'reason': 'compared_with_personal_evidence',
+          'official': false,
+          'missing_fields': [],
+          'comparisons': [
+            {
+              'requirement_id': 'r',
+              'priority': 'required',
+              'requirement': '개발 경험',
+              'status': 'supported',
+              'posting_evidence': {'start': 0, 'end': 2, 'excerpt': '개발'},
+              'personal_evidence': [
+                {
+                  'kind': 'experience',
+                  'record_id': 'record-id',
+                  'version': 2,
+                  'excerpt': '프로젝트 경험',
+                },
+              ],
+              'explanation': '선택한 기록에서 개발 경험을 확인했습니다.',
+            },
+          ],
+        };
+      final p = await consent();
+      await p.setAllowed(AiConsentFeature.jobAnalysis, true);
+      await mount(tester, api, p);
+      await execute(tester);
+      expect(find.text('분석 완료'), findsOneWidget);
+      expect(find.text('근거 있음'), findsOneWidget);
+      expect(find.text('공고 근거: 개발'), findsOneWidget);
+      expect(find.textContaining('내 기록 근거 (버전 2)'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      p.dispose();
+    },
+  );
+  for (final item in [
+    ('needs_user_input', 'external_processing_consent_required', '추가 입력 필요'),
+    ('insufficient_evidence', 'no_requirements_found', '분석 근거 부족'),
+    ('failed', 'analysis_failed', '분석 실패'),
+  ]) {
+    testWidgets('analysis state ${item.$1} remains explicit', (tester) async {
+      final api = AnalysisGateway()
+        ..result = {
+          'analysis_id': 'a',
+          'status': item.$1,
+          'reason': item.$2,
+          'official': false,
+          'comparisons': [],
+          'missing_fields': [],
+        };
+      final p = await consent();
+      await p.setAllowed(AiConsentFeature.jobAnalysis, true);
+      await mount(tester, api, p);
+      await execute(tester);
+      expect(find.text(item.$3), findsOneWidget);
       expect(
         tester
             .widget<TextFormField>(
-              find.byKey(const ValueKey('job-posting-url')),
+              find.byKey(const ValueKey('job-posting-text')),
             )
             .controller!
             .text,
-        'https://example.test/jobs/1',
+        '합성 공고 본문',
       );
-      expect(
-        tester
-            .widget<Checkbox>(
-              find.byKey(const ValueKey('job-record-activity/job-act')),
-            )
-            .value,
-        isTrue,
-      );
-      expect(find.textContaining('합격'), findsNothing);
-      expect(find.textContaining('분석 결과'), findsNothing);
-      expect(tester.takeException(), isNull);
-    },
-  );
-
-  testWidgets(
-    'a screenshot or pdf alone is enough and other files are refused',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1440, 900));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      XFile? next;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: JobAnalysisPage(pickFile: () async => next)),
-        ),
-      );
-      await tester.pumpAndSettle();
-      next = XFile.fromData(
-        Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0, 0, 0, 0]),
-        name: 'notice.png',
-        path: 'notice.png',
-        mimeType: 'image/png',
-      );
-      await tester.tap(find.byKey(const ValueKey('job-posting-file')));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('notice.png'), findsOneWidget);
-      expect(find.textContaining('중 하나가 필요합니다'), findsNothing);
-      expect(find.textContaining('학생용 채용 분석 API가 아직 없습니다'), findsOneWidget);
-      expect(find.textContaining('합격'), findsNothing);
-
-      next = XFile.fromData(
-        Uint8List.fromList('%PDF-1.4'.codeUnits),
-        name: 'notice.pdf',
-        path: 'notice.pdf',
-        mimeType: 'application/pdf',
-      );
-      await tester.tap(find.byKey(const ValueKey('job-posting-file')));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('notice.pdf'), findsOneWidget);
-
-      next = XFile.fromData(
-        Uint8List.fromList('memo'.codeUnits),
-        name: 'memo.txt',
-        path: 'memo.txt',
-      );
-      await tester.tap(find.byKey(const ValueKey('job-posting-file')));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('PDF 또는 캡처 이미지'), findsWidgets);
-      expect(find.textContaining('notice.pdf'), findsOneWidget);
-
-      await tester.tap(find.byKey(const ValueKey('job-posting-file-clear')));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('notice.pdf'), findsNothing);
-      expect(find.textContaining('중 하나가 필요합니다'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    },
-  );
+      await tester.pumpWidget(const SizedBox());
+      p.dispose();
+    });
+  }
 }

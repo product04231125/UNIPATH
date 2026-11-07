@@ -451,7 +451,7 @@ class _WorkspaceState extends State<Workspace> {
     4 => ActivityPage(showMockData: showMockData),
     5 => CredentialPage(showMockData: showMockData),
     6 => MaterialsPage(key: _materials),
-    7 => const JobAnalysisPage(),
+    7 => JobAnalysisPage(api: widget.studentApi, consent: _aiConsent),
     _ when index == settingsPage - 1 => SettingsPage(
       repository: _planningRepository,
       chatPreferences: widget.windowHost.supportsDetached
