@@ -17,6 +17,7 @@ class Api extends ApiGateway {
   Completer<Map<String, dynamic>>? pending;
   String personalizedStatus = 'evidence_only';
   String personalizedReason = 'generator_not_configured';
+  Map<String, dynamic>? personalizedResponse;
   @override
   Future<Map<String, dynamic>?> request(
     String method,
@@ -27,6 +28,7 @@ class Api extends ApiGateway {
     if (failure != null) throw failure!;
     if (pending != null) return pending!.future;
     if (path == 'me/personalized-guidance') {
+      if (personalizedResponse != null) return personalizedResponse;
       return {
         'query_id': 'q',
         'status': personalizedStatus,
@@ -87,6 +89,111 @@ AssistantConversation conversation(Api api, AiConsentPreferences prefs) =>
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  for (final state in [
+    ('needs_user_input', 'external_processing_consent_required'),
+    ('needs_user_input', 'personal_records_required'),
+    ('insufficient_evidence', 'school_evidence_unavailable'),
+    ('failed', 'generation_failed'),
+  ]) {
+    test(
+      'personalized server state ${state.$1}/${state.$2} preserves draft and selection',
+      () async {
+        final api = Api()
+          ..personalizedStatus = state.$1
+          ..personalizedReason = state.$2;
+        final p = await permissions(), c = conversation(api, p);
+        c.setMode(AssistantMode.personalized);
+        await c.refreshRecords();
+        c.selectRecord(record.key, true);
+        c.input.text = '입력을 유지할 질문';
+        await c.permit(AssistantMode.personalized, remember: false);
+        await c.send();
+        expect(c.turns.single.personalized!.status, state.$1);
+        expect(c.turns.single.personalized!.reason, state.$2);
+        expect(c.turns.single.personalized!.answer, isNull);
+        expect(c.input.text, '입력을 유지할 질문');
+        expect(c.selectedRecords.single.version, 3);
+        c.dispose();
+        p.dispose();
+      },
+    );
+  }
+  test('personalized grounded answer carries distinct school and personal citations', () async {
+    final api = Api()
+      ..personalizedResponse = {
+        'query_id': 'q',
+        'status': 'grounded',
+        'reason': 'generated_from_separated_evidence',
+        'official': false,
+        'answer': '학교 안내와 선택한 봉사 기록을 구분한 설명입니다.',
+        'school': {
+          'query_id': 's',
+          'status': 'evidence_found',
+          'reason': 'approved_sources_found',
+          'sources': [
+            {
+              'chunk_id': 'chunk',
+              'document_id': 'document',
+              'title': '학교 안내',
+              'source_url': 'https://example.invalid/source',
+              'page': 1,
+              'excerpt': '학교 안내 문장',
+            },
+          ],
+        },
+        'personal': {
+          'official': false,
+          'records': [
+            {
+              'kind': 'activity',
+              'record_id': 'activity-id',
+              'version': 3,
+              'origin': 'personal',
+              'official': false,
+              'title': '봉사 기록',
+              'text': '선택한 봉사 기록',
+              'truncated': false,
+            },
+          ],
+        },
+        'school_chunk_ids': ['chunk'],
+        'personal_citations': [
+          {
+            'kind': 'activity',
+            'record_id': 'activity-id',
+            'version': 3,
+            'excerpt': '선택한 봉사 기록',
+          },
+        ],
+      };
+    final p = await permissions(), c = conversation(api, p);
+    c.setMode(AssistantMode.personalized);
+    await c.refreshRecords();
+    c.selectRecord(record.key, true);
+    c.input.text = '설명 요청';
+    await c.permit(AssistantMode.personalized, remember: false);
+    await c.send();
+    final result = c.turns.single.personalized!;
+    expect(result.school.sources.single.chunkId, 'chunk');
+    expect(result.personal.records.single.recordId, 'activity-id');
+    expect(result.personalCitations.single.version, 3);
+    expect(result.official, false);
+    expect(c.input.text, isEmpty);
+    c.dispose();
+    p.dispose();
+  });
+  test('personalized missing selection blocks before network', () async {
+    final api = Api(), p = await permissions();
+    final c = conversation(api, p);
+    c.setMode(AssistantMode.personalized);
+    c.input.text = '기록 질문';
+    await c.send();
+    expect(api.calls, isEmpty);
+    expect(c.submissionError, contains('기록을 선택'));
+    expect(c.input.text, '기록 질문');
+    c.dispose();
+    p.dispose();
+  });
   test(
     'unregistered personal profile never sends and preserves draft',
     () async {
@@ -268,7 +375,11 @@ void main() {
         ),
       ),
     );
-    expect(find.text('내 자료로 질문'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, '내 자료로 질문'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).decoration!.labelText,
+      '내 자료로 질문',
+    );
     expect(find.text('학교 문서'), findsOneWidget);
     expect(find.text('내 기록'), findsOneWidget);
     expect(find.textContaining('답변 생성 준비 중'), findsOneWidget);

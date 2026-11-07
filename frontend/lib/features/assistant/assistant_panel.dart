@@ -429,9 +429,14 @@ class AssistantPanelState extends State<AssistantPanel> {
                         onSubmitted: (_) {
                           if (_canSend) _submit();
                         },
-                        decoration: const InputDecoration(
-                          labelText: '학교 규정 질문',
-                          hintText: '예: 사회봉사 조건은?',
+                        decoration: InputDecoration(
+                          labelText: conversation.registeredOnly
+                              ? conversation.mode.label
+                              : '학교 규정 질문',
+                          hintText:
+                              conversation.mode == AssistantMode.personalized
+                              ? '예: 내 봉사 기록과 학교 안내를 설명해 줘'
+                              : '예: 사회봉사 조건은?',
                           counterText: '',
                           isDense: true,
                           border: OutlineInputBorder(),
@@ -491,8 +496,13 @@ class AssistantPanelState extends State<AssistantPanel> {
       final reasonText = switch (result.reason) {
         'external_processing_consent_required' => '외부 전송 동의를 확인해 주세요.',
         'personal_records_required' => '내 기록을 선택해 주세요.',
-        'school_evidence_unavailable' =>
-          '학교 문서 근거를 확인할 수 없습니다. 학교 문맥과 승인 자료를 확인해 주세요.',
+        'school_evidence_unavailable' => switch (result.school.reason) {
+          'rule_engine_required' => '졸업 가능 여부는 졸업 요건 화면의 감사 결과로 확인해 주세요.',
+          'academic_scope_required' => '설정에서 입학연도와 이수경로를 확인해 주세요.',
+          'conflicting_admission_year' =>
+            '질문 속 입학연도와 설정의 입학연도가 다릅니다. 입력을 확인해 주세요.',
+          _ => '현재 질문에 사용할 학교 문서 근거가 준비되지 않았습니다.',
+        },
         'generator_not_configured' =>
           '답변 생성 기능이 준비 중입니다. 조회된 학교 자료와 내 기록을 확인할 수 있습니다.',
         _ => '받은 자료만 표시합니다. 입력을 유지하고 다시 시도할 수 있습니다.',
@@ -609,8 +619,11 @@ class AssistantPanelState extends State<AssistantPanel> {
 }
 
 String assistantFieldLabel(String field) => switch (field.split('.').last) {
-  'institution' => '학교',
-  'department' => '학과',
+  'institution' || 'institution_id' => '학교',
+  'department' || 'department_id' => '학과',
+  'curriculum_id' => '교육과정',
+  'records' => '개인 기록',
+  'external_processing_consent' => '외부 전송 동의',
   'admission_year' => '입학연도',
   'track' => '이수경로',
   'question' => '질문',

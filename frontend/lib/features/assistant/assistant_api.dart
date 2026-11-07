@@ -170,7 +170,7 @@ class AssistantResult {
   String get message {
     if (status == AssistantStatus.grounded) return answer!;
     if (reason == 'rule_engine_required') {
-      return '졸업 가능 여부는 별도 졸업감사로 확인해야 합니다. 현재 졸업감사 기능은 준비 중입니다.';
+      return '졸업 가능 여부는 별도 졸업감사 결과로 확인해야 합니다. 졸업 요건 화면에서 확인해 주세요.';
     }
     if (reason == 'conflicting_admission_year') {
       return '질문 속 입학연도와 질의 정보가 다릅니다. 입학연도를 확인한 뒤 다시 질문해 주세요.';

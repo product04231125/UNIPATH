@@ -48,9 +48,7 @@ class AssistantConversation extends ChangeNotifier {
     this.registeredOnly = false,
     this.onOpenSettings,
     this.onOpenCareer,
-    this.supportedGuidanceInstitutionId = const String.fromEnvironment(
-      'ACADEMIC_GUIDANCE_INSTITUTION_ID',
-    ),
+    this.supportedGuidanceInstitutionId = '',
   }) : _api = api ?? AssistantApi() {
     consent?.addListener(_consentChanged);
   }
@@ -72,7 +70,7 @@ class AssistantConversation extends ChangeNotifier {
       return '등록된 학교·학과를 설정한 뒤 이용할 수 있습니다.';
     }
     if (supportedGuidanceInstitutionId.isEmpty) {
-      return '학교별 안내 자료 연결을 확인 중입니다. 현재 학교의 안내 자료는 아직 연결되지 않았습니다.';
+      return '학교 안내 자료의 관리자 연결 기능을 준비 중입니다.';
     }
     if (context.institutionId != supportedGuidanceInstitutionId) {
       return '현재 학교에 연결된 안내 자료가 없습니다.';
