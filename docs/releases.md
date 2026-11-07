@@ -203,6 +203,20 @@ HTTPS 개통 완료로 간주하지 않는다. SPA 화면 경로와 API readines
 두 도메인에서 확인한다. 배포 실패 시 게이트웨이 설정의 작업 전 백업으로 되돌리며
 DB 볼륨은 삭제하지 않는다.
 
+## Gemini 설정
+
+Gemini는 Vertex AI로만 호출하고 기본값은 꺼짐이다. 환경 파일에 `VERTEX_PROJECT`,
+`VERTEX_LOCATION`, `VERTEX_MODEL`을 함께 넣으면 켜진다. 일부만 넣으면 API가 시작되지 않는다.
+서비스 계정 키는 `VERTEX_CREDENTIALS_FILE`에 저장소 밖 경로로 지정한다. 컨테이너 사용자
+UID 10001이 읽을 수 있어야 하므로 `chown root:10001`, `chmod 640`으로 둔다. 키를 커밋하거나
+로그에 남기지 않는다. 키를 바꾸거나 설정을 켠 뒤에는 API 컨테이너를 다시 만든다.
+호출 상한은 `LLM_REQUESTS_PER_15_MINUTES`(기본 60)이고, 월 비용 한도는 Google Cloud 예산으로
+별도 설정한다. 켠 뒤 `backend/`에서 `uv run --frozen python -m scripts.evaluate_job_analysis --live`로
+합성 시나리오를 확인한다. 시연 경로는 `python3 backend/scripts/smoke_demo_flow.py --base-url 주소`로
+점검한다. 이 스크립트는 합성 계정과 기록을 하나씩 만든다.
+
+## 게이트웨이 한도
+
 스테이징과 프로덕션 바깥 게이트웨이의 요청 한도는 2 MiB다. 앱 프록시는 로그인 16 KiB·일반 관리자
 64 KiB·개인 자료/문서/규칙 256 KiB·개인 일괄 이전 2 MiB처럼 경로별로 더 작게 제한한다.
 바깥 게이트웨이까지 이전의 16 KiB로 두면 큰 요청이 앱 검증에 도달하지 못한다. 두 환경의
