@@ -1,3 +1,7 @@
+import '../course_period_test.dart' as period;
+
+import 'package:university_path_frontend/shared/widgets/field_label.dart';
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -30,8 +34,12 @@ const syntheticEmail = 'synthetic@example.test';
 const syntheticPassword = 'synthetic long password';
 
 Finder labeledField(String label) => find.ancestor(
-  of: find.byWidgetPredicate(
-    (widget) => widget is TextField && widget.decoration?.labelText == label,
+  of: find.byElementPredicate(
+    (element) =>
+        element.widget is TextField &&
+        ((element.widget as TextField).decoration?.labelText == label ||
+            element.findAncestorWidgetOfExactType<FieldLabel>()?.label ==
+                label),
   ),
   matching: find.byType(TextFormField),
 );
@@ -98,7 +106,10 @@ class JourneyGateway implements ApiGateway {
         throw const AuthFailure('다른 변경이 있습니다. 다시 읽어주세요.', status: 409);
       }
       if (method == 'GET' && id == null) {
-        return {'items': [...?records[resource]], 'next_cursor': null};
+        return {
+          'items': [...?records[resource]],
+          'next_cursor': null,
+        };
       }
       if (method == 'POST') {
         final row = _recordRow(body!, records[resource]?.length ?? 0);
@@ -388,11 +399,8 @@ class StudentWorld {
     final server = ensureGateway();
     final api = StudentApi(server, ownerId: userId);
     return PersonalRepositoryScope(
-      records: (kind) => RemotePersonalRecordRepository(
-        api,
-        kind,
-        ensureOpen: () {},
-      ),
+      records: (kind) =>
+          RemotePersonalRecordRepository(api, kind, ensureOpen: () {}),
       portfolio: () =>
           RemotePortfolioWorkspaceRepository(api, ensureOpen: () {}),
       child: Scaffold(body: child),
@@ -427,7 +435,7 @@ class StudentWorld {
           body: OfficialGraduationPage(
             auth: authApi,
             ownerId: userId,
-            onPersonal: () {},
+            onOpenSettings: () {},
             profile: planning?.profile,
           ),
         ),
@@ -503,14 +511,28 @@ class StudentWorld {
     Map<String, String> values,
   ) async {
     for (final entry in values.entries) {
+      if (entry.key == 'course-year' || entry.key == 'term') {
+        await period.enter(tester, entry.key, entry.value);
+        continue;
+      }
       final field = find.byKey(ValueKey('record-field-${entry.key}'));
+      if (field.evaluate().isEmpty &&
+          ['title', 'credits', 'category'].contains(entry.key) &&
+          find
+              .byKey(const ValueKey('record-select-course'))
+              .evaluate()
+              .isNotEmpty) {
+        continue;
+      }
       await tester.ensureVisible(field);
       await tester.enterText(field, entry.value);
     }
   }
 
   Future<void> saveRecord(WidgetTester tester) async {
-    final button = find.text('내 기록에 저장');
+    final button = find.text('내 기록에 저장').evaluate().isNotEmpty
+        ? find.text('내 기록에 저장')
+        : find.widgetWithText(FilledButton, '등록');
     await tester.ensureVisible(button);
     await tester.tap(button);
     await tester.pumpAndSettle();
@@ -554,6 +576,12 @@ class StudentWorld {
         await tester.tap(option.last);
         await tester.pumpAndSettle();
       }
+    }
+    if (find
+        .byKey(const ValueKey('record-select-course'))
+        .evaluate()
+        .isNotEmpty) {
+      await period.pickCourse(tester, values['title']!);
     }
     await fillRecord(tester, values);
     FocusManager.instance.primaryFocus?.unfocus();

@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../auth/auth_api.dart';
+import '../auth/guest_preview_scope.dart';
 import '../api/graduation_api.dart';
+import '../api/rule_program_models.dart';
+import '../planning/planning_profile_cta.dart';
 import '../planning/planning_repository.dart';
 import '../records/personal_record_repository.dart';
-import 'school_context_form.dart';
-import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/external_link_button.dart';
-import '../../shared/widgets/page_header.dart';
-import '../auth/school_workflow_actions.dart';
-import '../../shared/widgets/input_dialog.dart';
+import '../../shared/widgets/feature_actions.dart';
+import '../../shared/widgets/feature_line.dart';
+import '../../shared/widgets/feature_page.dart';
+import '../../shared/widgets/surface_card.dart';
 
 String auditStatus(String value) => switch (value) {
   'satisfied' => '충족',
@@ -29,49 +31,137 @@ String auditIssueLabel(AuditIssue issue) =>
     }[issue.reason] ??
     '${const {'catalog': '적용 규정', 'records': '승인 기록', 'academics': '성적', 'volunteers': '봉사', 'certificates': '자격', 'theses': '논문'}[issue.kind] ?? '근거'} 검토가 필요합니다.';
 
+String officialAuditTrackLabel(String? track) => switch (track) {
+  'single_major' => '단일전공',
+  'double_major' => '복수전공',
+  null || '' => '미입력',
+  _ => track,
+};
+
+String officialAuditProfileSummary(PlanningProfile? profile) {
+  if (profile == null) return '학업 프로필이 없습니다.';
+  final school = profile.school.trim();
+  final department = profile.department.trim();
+  if (school.isEmpty && department.isEmpty && profile.admissionYear == null) {
+    return '학업 프로필이 없습니다.';
+  }
+  return [
+    if (school.isNotEmpty) school else '학교 미입력',
+    if (department.isNotEmpty) department else '학과 미입력',
+    if (profile.admissionYear != null)
+      '${profile.admissionYear}'
+    else
+      '입학연도 미입력',
+    officialAuditTrackLabel(profile.track),
+  ].join(' · ');
+}
+
+GraduationContext? officialAuditContext(PlanningProfile? profile) {
+  if (profile == null || !profile.hasCatalogSchool) return null;
+  final departmentId = profile.departmentId;
+  final curriculumId = profile.curriculumId;
+  final year = profile.admissionYear;
+  final track = profile.track?.trim();
+  if (departmentId == null ||
+      departmentId.isEmpty ||
+      curriculumId == null ||
+      curriculumId.isEmpty ||
+      year == null ||
+      year < 1000 ||
+      year > 9999 ||
+      track == null ||
+      track.isEmpty ||
+      track.length > 64) {
+    return null;
+  }
+  return GraduationContext(
+    institutionId: profile.institutionId!,
+    departmentId: departmentId,
+    curriculumId: curriculumId,
+    admissionYear: year,
+    track: track,
+  );
+}
+
+String? officialAuditAsOf(String raw) {
+  final value = raw.trim();
+  final parsed = DateTime.tryParse(value);
+  final today = DateTime.now();
+  if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value) ||
+      parsed == null ||
+      parsed.toIso8601String().split('T').first != value ||
+      parsed.isAfter(DateTime(today.year, today.month, today.day))) {
+    return null;
+  }
+  return value;
+}
+
 class OfficialGraduationPage extends StatefulWidget {
   const OfficialGraduationPage({
     super.key,
     required this.auth,
     required this.ownerId,
-    required this.onPersonal,
     this.profile,
+    this.profileLoadFailed = false,
+    this.onOpenSettings,
   });
   final AuthApi auth;
   final String ownerId;
-  final VoidCallback onPersonal;
   final PlanningProfile? profile;
+  final bool profileLoadFailed;
+  final VoidCallback? onOpenSettings;
   @override
   State<OfficialGraduationPage> createState() => _OfficialGraduationState();
 }
 
 class _OfficialGraduationState extends State<OfficialGraduationPage> {
   late final _api = GraduationApi.forOwner(widget.auth, widget.ownerId);
-  late final _gateway = widget.auth.forOwner(widget.ownerId);
-  final _context = GlobalKey<SchoolContextFormState>();
+  final _date = TextEditingController(
+    text: DateTime.now().toIso8601String().split('T').first,
+  );
   List<GraduationAuditHeader> _history = [];
   GraduationAuditView? _result;
   String? _cursor, _error, _fingerprint;
   String _clientId = PersonalRecord.newId();
+  List<String> _fields = [];
   bool _busy = false, _loading = true, _uncertain = false;
-  bool get _savedSchool => widget.profile?.hasCatalogSchool ?? false;
-
-  String get _profileNotice => _savedSchool
-      ? '설정에 저장한 등록 학교를 불러왔습니다. 기준일은 이 감사 실행에서 입력합니다.'
-      : '목록에 없는 학교 이름은 이 감사의 학교 ID가 아닙니다.';
-
-  Future<void> _personal() async {
-    if (_busy) return;
-    final form = _context.currentState;
-    final hasDraft =
-        form != null &&
-        (form.hasSelection ||
-            form.year.text.isNotEmpty ||
-            form.track.text.isNotEmpty ||
-            form.hasEditedDate);
-    if (hasDraft && !await confirmInputDiscard(context)) return;
-    if (mounted) widget.onPersonal();
+  final _lineMarks = <String, bool>{};
+  bool _historyFailed = false;
+  List<Widget> _checklist(GraduationAuditView result) {
+    final rows = <Widget>[];
+    for (final program in result.criteria) {
+      for (final rule in program.rules) {
+        final condition = rule.condition;
+        if (condition is! OfficialManualCriterion) continue;
+        for (final raw in condition.instruction.split('\n')) {
+          final line = raw.trim();
+          if (line.isEmpty) continue;
+          final key = '${rule.ruleId}/$line';
+          final mark = _lineMarks[key];
+          rows.add(
+            Row(
+              children: [
+                Expanded(child: Text(line)),
+                TextButton(
+                  onPressed: () => setState(() => _lineMarks[key] = true),
+                  child: Text(mark == true ? '충족' : '충족으로 표시'),
+                ),
+                TextButton(
+                  onPressed: () => setState(() => _lineMarks[key] = false),
+                  child: Text(mark == false ? '미충족' : '미충족으로 표시'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    }
+    if (rows.isEmpty) return const [];
+    return [const Text('한 줄 요건. 학점, 활동, 자격 숫자는 각 메뉴에서 확인합니다.'), ...rows];
   }
+
+  GraduationContext? get _context => officialAuditContext(widget.profile);
+  bool get _ready => !widget.profileLoadFailed && _context != null;
 
   @override
   void initState() {
@@ -79,9 +169,16 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _date.dispose();
+    super.dispose();
+  }
+
   Future<void> _load({bool more = false}) async {
     setState(() {
       _loading = true;
+      _historyFailed = false;
       _error = null;
     });
     try {
@@ -95,11 +192,13 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
+          _historyFailed = true;
           _error = e is AuthFailure
               ? e.message
               : '감사 이력을 읽지 못했습니다. 다시 읽기를 눌러 확인하세요.';
           if (e is AuthFailure && {401, 403, 404}.contains(e.status)) {
             _history = [];
+            _cursor = null;
             _result = null;
           }
         });
@@ -110,12 +209,20 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
   }
 
   Future<void> _run() async {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     if (_busy) return;
-    _context.currentState?.showErrors([]);
-    final selected = _context.currentState?.value;
-    final date = _context.currentState?.asOf;
+    _fields = [];
+    final selected = _context;
+    final date = officialAuditAsOf(_date.text);
     if (selected == null || date == null) {
-      setState(() => _error = '학교·학과·교육과정·입학연도·이수 경로와 올바른 기준일을 확인하세요.');
+      setState(
+        () => _error = selected == null
+            ? '설정에서 등록 학교·학과·교육과정·입학연도·이수 경로를 확인하세요.'
+            : '올바른 기준일을 확인하세요.',
+      );
       return;
     }
     final fingerprint = '${selected.toJson()}|$date';
@@ -151,9 +258,9 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
       });
       await _load();
     } catch (e) {
-      if (e is AuthFailure) _context.currentState?.showErrors(e.fields);
       if (mounted) {
         setState(() {
+          if (e is AuthFailure) _fields = e.fields;
           _uncertain =
               e is! AuthFailure || e.status == null || e.status! >= 500;
           _error = e is AuthFailure
@@ -190,143 +297,176 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
   }
 
   @override
-  Widget build(BuildContext context) => ContentScrollView(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        PageHeader(
-          title: '학교 검토 자료 기준 졸업요건 감사',
-          description: '학교가 검토한 규정과 승인 기록을 비교합니다. 학교의 최종 학위 수여 승인을 대신하지 않습니다.',
-          actions: [
-            TextButton(
-              onPressed: _busy ? null : _personal,
-              child: const Text('내 학교·학과 기준 설정'),
+  Widget build(BuildContext context) => FeaturePage(
+    title: '졸업 요건',
+    description: '학교가 검토한 규정과 승인 기록을 비교합니다.',
+    body: [
+      SurfaceCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const FeatureLine.section(
+              text: '학업 프로필',
+              padTop: false,
+              padBottom: false,
             ),
-          ],
-        ),
-        const SchoolWorkflowActions(),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(_profileNotice),
-                const SizedBox(height: 12),
-                SchoolContextForm(
-                  key: _context,
-                  api: _gateway,
-                  disabled: _busy,
-                  initialInstitutionId: _savedSchool
-                      ? widget.profile?.institutionId
-                      : null,
-                  initialDepartmentId: _savedSchool
-                      ? widget.profile?.departmentId
-                      : null,
-                  initialCurriculumId: _savedSchool
-                      ? widget.profile?.curriculumId
-                      : null,
-                  initialAdmissionYear: widget.profile?.admissionYear,
-                  initialTrack: widget.profile?.track,
-                ),
-              ],
+            FeatureLine.two(
+              primary: widget.profileLoadFailed
+                  ? '학업 프로필을 읽지 못했습니다. 설정에서 다시 확인하세요.'
+                  : officialAuditProfileSummary(widget.profile),
+              secondary: _ready
+                  ? '이수 경로를 포함한 감사 기준은 설정 프로필입니다. 기준일만 이 화면에서 입력합니다.'
+                  : '설정에서 등록 학교와 이수 경로를 저장하면 감사를 실행할 수 있습니다.',
             ),
-          ),
-        ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: FilledButton(
-            onPressed: _busy || _loading ? null : _run,
-            child: Text(_busy ? '처리 중…' : '졸업요건 감사 실행'),
-          ),
-        ),
-        if (_error != null) Semantics(liveRegion: true, child: Text(_error!)),
-        if (_loading || _busy) const LinearProgressIndicator(),
-        if (_result case final r?) ...[
-          const SizedBox(height: 16),
-          Text(
-            '감사 결과 · ${auditStatus(r.status)}',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          Text(
-            '기준일 ${r.evaluatedOn} · 입학연도 ${r.context.admissionYear} · ${r.context.track}',
-          ),
-          Text(
-            r.catalogComplete ? '전체 적용 규정 검토 확인됨' : '전체 적용 규정 검토가 완료되지 않았습니다.',
-          ),
-          Text(
-            r.eligibleAsOf
-                ? '당시 기준일에 요건 충족이 확인됐습니다.'
-                : '당시 기준일의 전체 요건 충족으로 확인되지 않았습니다.',
-          ),
-          Text(
-            r.currentUsable
-                ? '현재 사용할 수 있는 근거입니다.'
-                : '현재 사용할 수 없는 근거입니다. 재검토 후 새 감사를 실행하세요.',
-          ),
-          if (r.issues.isNotEmpty) const Text('감사 당시 확인 필요 사항'),
-          for (final issue in r.issues) Text(auditIssueLabel(issue)),
-          if (r.currentIssues.isNotEmpty) const Text('현재 재검토 사유'),
-          for (final issue in r.currentIssues) Text(auditIssueLabel(issue)),
-          for (final row in r.results)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('${row.title} · ${auditStatus(row.status)}'),
-                    if (row.current != null)
-                      Text(
-                        '확인 값 ${row.current} · 필요 값 ${row.required ?? '미확인'} · 부족 값 ${row.deficit ?? '미확인'}',
-                      ),
-                    if (row.missingCourseIds.isNotEmpty)
-                      Text('미이수 확인 과목 ${row.missingCourseIds.length}개'),
-                    if (row.uncertainCourseIds.isNotEmpty)
-                      Text('확인 필요 과목 ${row.uncertainCourseIds.length}개'),
-                  ],
-                ),
+            if (widget.onOpenSettings != null)
+              PlanningProfileSettingsCta(
+                onOpenSettings: widget.onOpenSettings!,
+                need: PlanningProfileNeed.catalogSchool,
+                profile: widget.profile,
+              ),
+            const FeatureLine.section(text: '기준일'),
+            TextField(
+              controller: _date,
+              enabled: !_busy,
+              decoration: InputDecoration(
+                labelText: '기준일 (YYYY-MM-DD)',
+                errorText:
+                    _fields.any(
+                      (field) => field == 'as_of' || field.endsWith('.as_of'),
+                    )
+                    ? '이 입력을 확인하세요.'
+                    : null,
+                helperText: '미래 날짜는 사용할 수 없습니다.',
               ),
             ),
-          Text('판정 근거', style: Theme.of(context).textTheme.titleMedium),
-          for (final program in r.criteria) ...[
-            Text('${program.name} · 판 ${program.sourceVersion}'),
-            for (final rule in program.rules) ...[
-              Text(rule.title),
-              for (final source in rule.evidence) ...[
+          ],
+        ),
+      ),
+      FeatureActions(
+        children: [
+          FilledButton(
+            onPressed:
+                _busy ||
+                    _loading ||
+                    !_ready ||
+                    GuestPreviewScope.isActive(context)
+                ? null
+                : _run,
+            child: Text(_busy ? '처리 중…' : '졸업요건 감사 실행'),
+          ),
+        ],
+      ),
+      if (_loading || _busy) const LinearProgressIndicator(),
+      if (_error != null || _result != null) ...[
+        SizedBox(height: FeatureLine.slotGap(context)),
+        SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (_error != null)
+                Semantics(liveRegion: true, child: Text(_error!)),
+              if (_result case final r?) ...[
                 Text(
-                  '${source.title} · ${source.page}쪽 · 문서 판 ${source.documentVersion}',
+                  '감사 결과 · ${auditStatus(r.status)}',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-                ExternalLinkButton(url: source.sourceUrl, label: '규정 원문 확인'),
+                Text(
+                  '기준일 ${r.evaluatedOn} · 입학연도 ${r.context.admissionYear} · ${officialAuditTrackLabel(r.context.track)}',
+                ),
+                Text(
+                  r.catalogComplete
+                      ? '전체 적용 규정 검토 확인됨'
+                      : '전체 적용 규정 검토가 완료되지 않았습니다.',
+                ),
+                Text(
+                  r.eligibleAsOf
+                      ? '당시 기준일에 요건 충족이 확인됐습니다.'
+                      : '당시 기준일의 전체 요건 충족으로 확인되지 않았습니다.',
+                ),
+                Text(
+                  r.currentUsable
+                      ? '현재 사용할 수 있는 근거입니다.'
+                      : '현재 사용할 수 없는 근거입니다. 재검토 후 새 감사를 실행하세요.',
+                ),
+                if (r.issues.isNotEmpty) const Text('감사 당시 확인 필요 사항'),
+                for (final issue in r.issues) Text(auditIssueLabel(issue)),
+                if (r.currentIssues.isNotEmpty) const Text('현재 재검토 사유'),
+                for (final issue in r.currentIssues)
+                  Text(auditIssueLabel(issue)),
+                for (final row in r.results)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${row.title} · ${auditStatus(row.status)}'),
+                        if (row.current != null)
+                          Text(
+                            '확인 값 ${row.current} · 필요 값 ${row.required ?? '미확인'} · 부족 값 ${row.deficit ?? '미확인'}',
+                          ),
+                        if (row.missingCourseIds.isNotEmpty)
+                          Text('미이수 확인 과목 ${row.missingCourseIds.length}개'),
+                        if (row.uncertainCourseIds.isNotEmpty)
+                          Text('확인 필요 과목 ${row.uncertainCourseIds.length}개'),
+                      ],
+                    ),
+                  ),
+                Text('판정 근거', style: Theme.of(context).textTheme.titleMedium),
+                ..._checklist(r),
+                for (final program in r.criteria) ...[
+                  Text('${program.name} · 판 ${program.sourceVersion}'),
+                  for (final rule in program.rules) ...[
+                    Text(rule.title),
+                    for (final source in rule.evidence) ...[
+                      Text(
+                        '${source.title} · ${source.page}쪽 · 문서 판 ${source.documentVersion}',
+                      ),
+                      ExternalLinkButton(
+                        url: source.sourceUrl,
+                        label: '규정 원문 확인',
+                      ),
+                    ],
+                  ],
+                ],
+                for (final evidence in r.recordEvidence)
+                  Text('승인 기록 근거 · 원본 ${evidence.sourcePage}쪽'),
+                if (r.criteria.isEmpty) const Text('사용한 규정 근거가 없습니다.'),
               ],
             ],
-          ],
-          for (final evidence in r.recordEvidence)
-            Text('승인 기록 근거 · 원본 ${evidence.sourcePage}쪽'),
-          if (r.criteria.isEmpty) const Text('사용한 규정 근거가 없습니다.'),
-        ],
-        const SizedBox(height: 20),
-        Text('감사 이력', style: Theme.of(context).textTheme.titleLarge),
-        TextButton(
-          onPressed: _busy || _loading ? null : _load,
-          child: const Text('감사 이력 다시 읽기'),
+          ),
         ),
-        if (!_loading && _history.isEmpty) const Text('저장된 감사 이력이 없습니다.'),
-        for (final row in _history)
-          Card(
-            child: ListTile(
-              title: Text('${row.evaluatedOn} · ${auditStatus(row.status)}'),
-              subtitle: const Text('당시 결과입니다. 상세에서 현재 사용 가능 여부를 확인하세요.'),
-              onTap: _busy ? null : () => _detail(row.id),
-            ),
-          ),
-        if (_cursor != null)
-          TextButton(
-            onPressed: _busy || _loading ? null : () => _load(more: true),
-            child: const Text('감사 이력 더 보기'),
-          ),
       ],
-    ),
+      SizedBox(height: FeatureLine.slotGap(context)),
+      SurfaceCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            FeatureLine.section(
+              text: '감사 이력',
+              padTop: false,
+              padBottom: false,
+              trailing: FeatureLine.reload(
+                onPressed: _busy || _loading ? null : _load,
+              ),
+            ),
+            if (!_loading && !_historyFailed && _history.isEmpty)
+              const FeatureLine.one(text: '저장된 감사 이력이 없습니다.'),
+            for (final row in _history)
+              InkWell(
+                onTap: _busy ? null : () => _detail(row.id),
+                child: FeatureLine.two(
+                  primary: '${row.evaluatedOn} · ${auditStatus(row.status)}',
+                  secondary: '당시 결과입니다. 상세에서 현재 사용 가능 여부를 확인하세요.',
+                ),
+              ),
+            if (_cursor != null)
+              TextButton(
+                onPressed: _busy || _loading ? null : () => _load(more: true),
+                child: const Text('감사 이력 더 보기'),
+              ),
+          ],
+        ),
+      ),
+    ],
   );
 }

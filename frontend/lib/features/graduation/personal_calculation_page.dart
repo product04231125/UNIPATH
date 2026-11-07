@@ -1,19 +1,32 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/widgets/anchored_select_field.dart';
-import '../../shared/widgets/content_scroll_view.dart';
-import '../../shared/widgets/page_header.dart';
+import '../../shared/widgets/feature_actions.dart';
+import '../../shared/widgets/feature_line.dart';
+import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/surface_card.dart';
 import '../api/personal_evaluation_api.dart';
 import '../api/student_api.dart';
 import '../api/student_api_models.dart';
+import '../auth/guest_preview_scope.dart';
 import 'personal_calculation_controller.dart';
 import 'personal_calculation_draft.dart';
 import 'personal_condition_fields.dart';
 
 class PersonalCalculationPage extends StatefulWidget {
-  const PersonalCalculationPage({super.key, required this.controller});
+  const PersonalCalculationPage({
+    super.key,
+    required this.controller,
+    this.title = '개인 기준 계산',
+    this.description = '본인 자료와 직접 정한 조건으로 계산합니다.',
+    this.onOpenSettings,
+  });
   final PersonalCalculationController controller;
+  final String title;
+  final String description;
+
+  /// When set (e.g. 졸업 요건 메뉴), empty curricula point to Settings workbench.
+  final VoidCallback? onOpenSettings;
   @override
   State<PersonalCalculationPage> createState() =>
       _PersonalCalculationPageState();
@@ -37,6 +50,10 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
   }
 
   Future<void> _calculate() async {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     await c.calculate();
     await _revealResult();
   }
@@ -49,10 +66,41 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
   @override
   void initState() {
     super.initState();
+    _loadInitialData();
+  }
+
+  @override
+  void didUpdateWidget(PersonalCalculationPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != c) _loadInitialData();
+  }
+
+  void _loadInitialData() {
     if (c.curricula.isEmpty && c.sources == null && !c.loading) {
       c.loadCurricula();
     }
     if (c.history.isEmpty && !c.historyLoading) c.loadHistory();
+  }
+
+  Future<void> _reloadSources() async {
+    if (c.locked) return;
+    final controller = c;
+    final selectedId = controller.sources?.curriculum.id;
+    if (controller.hasDraft &&
+        !await _confirm(
+          '조건을 다시 준비할까요?',
+          '현재 작성한 계산 조건을 비우고 교육과정 목록과 서버 자료를 다시 읽습니다. 저장된 기록과 계산 이력은 유지합니다.',
+          '다시 불러오기',
+        )) {
+      return;
+    }
+    if (!mounted || controller != c) return;
+    await controller.loadCurricula(preserveSelection: true);
+    if (!mounted || controller != c || controller.sourceError != null) return;
+    if (selectedId != null &&
+        controller.curricula.any((row) => row.id == selectedId)) {
+      await controller.select(selectedId);
+    }
   }
 
   Future<bool> _confirm(String title, String message, String action) async =>
@@ -109,193 +157,201 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: c,
-    builder: (context, _) => ContentScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const PageHeader(
-            title: '개인 기준 계산',
-            contextLabel: PersonalEvaluationSummary.personalLabel,
-            description: '서버에 저장한 본인 자료와 아래에서 직접 정한 조건으로 계산합니다. 학교 확인·승인이나 공식 졸업 판정을 대신하지 않습니다.',
+    builder: (context, _) => FeaturePage(
+      title: widget.title,
+      description: widget.description,
+      body: [
+        SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FeatureLine.section(
+                text: '1. 교육과정과 기준일',
+                padTop: false,
+                padBottom: false,
+                trailing: FeatureLine.reload(
+                  onPressed: c.locked ? null : _reloadSources,
+                  label: '자료 다시 불러오기',
+                ),
+              ),
+              if (c.loading) const LinearProgressIndicator(),
+              if (c.curricula.isNotEmpty)
+                Semantics(
+                  enabled: !c.locked,
+                  child: IgnorePointer(
+                    ignoring: c.locked,
+                    child: ExcludeFocus(
+                      excluding: c.locked,
+                      child: AnchoredSelectField<String>(
+                        value: c.sources?.curriculum.id ?? '',
+                        label: '계산할 개인 교육과정',
+                        externalLabel: true,
+                        searchable: true,
+                        options: [
+                          const SelectOption('', '교육과정을 선택하세요'),
+                          for (final row in c.curricula)
+                            SelectOption(
+                              row.id,
+                              '${row.data.title} · ${row.data.curriculumYear} · ${_id(row.id)}',
+                            ),
+                        ],
+                        onChanged: (id) {
+                          if (id.isNotEmpty) _select(id);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              if (!c.loading && c.curricula.isEmpty && c.sourceError == null)
+                widget.onOpenSettings == null
+                    ? const Text('계산할 교육과정이 없습니다. 교육과정 탭에서 먼저 등록하세요.')
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '계산할 교육과정이 없습니다. 설정 · 개인 교육과정 작업에서 먼저 등록하세요.',
+                          ),
+                          const SizedBox(height: 12),
+                          FilledButton.tonal(
+                            onPressed: widget.onOpenSettings,
+                            child: const Text('설정 · 개인 교육과정 작업'),
+                          ),
+                        ],
+                      ),
+              _error(c.sourceError),
+              TextFormField(
+                key: ValueKey((c, 'calculation-as-of')),
+                initialValue: c.asOf,
+                readOnly: c.locked,
+                decoration: InputDecoration(
+                  labelText: '계산 기준일 · YYYY-MM-DD',
+                  helperText: '초기값은 UTC 오늘입니다. 이 날짜에 활성인 모든 규칙을 결과에 포함합니다.',
+                  helperMaxLines: 4,
+                  errorText: validateCalculationDay(c.asOf),
+                ),
+                onChanged: (value) => setState(() => c.asOf = value),
+                validator: validateCalculationDay,
+              ),
+              if (c.sources case final sources?) ...[
+                Text(
+                  '불러온 교육과정 버전 ${sources.curriculum.version} · 과목 ${sources.links.length}개 · 규칙 ${sources.rules.length}개',
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '조건 설명·필요한 값·현재 값·문자 성적은 자동 해석하지 않습니다. 조건을 지정하지 않은 활성 규칙은 확인 필요로 남습니다. 선택하지 않은 자료는 합산하지 않습니다.',
+                ),
+              ],
+            ],
           ),
-          const SizedBox(height: 12),
-          SurfaceCard(
+        ),
+        SizedBox(height: FeatureLine.slotGap(context)),
+        if (c.sources case final sources?)
+          Form(
+            key: _form,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _heading('1. 교육과정과 기준일'),
-                if (c.loading) const LinearProgressIndicator(),
-                if (c.curricula.isNotEmpty)
-                  Semantics(
-                    enabled: !c.locked,
-                    child: IgnorePointer(
-                      ignoring: c.locked,
-                      child: ExcludeFocus(
-                        excluding: c.locked,
-                        child: AnchoredSelectField<String>(
-                          value: c.sources?.curriculum.id ?? '',
-                          label: '계산할 개인 교육과정',
-                          externalLabel: true,
-                          searchable: true,
-                          options: [
-                            const SelectOption('', '교육과정을 선택하세요'),
-                            for (final row in c.curricula)
-                              SelectOption(
-                                row.id,
-                                '${row.data.title} · ${row.data.curriculumYear} · ${_id(row.id)}',
+                _heading('2. 규칙별 명시적 조건'),
+                if (sources.rules.isEmpty)
+                  const Text('이 교육과정에 규칙이 없습니다. 계산하면 적용 규칙 없음으로 저장합니다.'),
+                if (validateCalculationDay(c.asOf) != null)
+                  const Text('기준일을 확인하세요. 유효한 날짜를 입력하면 적용 규칙을 표시합니다.'),
+                for (final rule in sources.rules)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: SurfaceCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            rule.data.title,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          Text(
+                            '규칙 버전 ${rule.version} · ${rule.data.effectiveFrom ?? '시작 제한 없음'} ~ ${rule.data.effectiveTo ?? '종료 제한 없음'}',
+                          ),
+                          Text('기록한 조건 설명: ${rule.data.condition}'),
+                          if (validateCalculationDay(c.asOf) == null &&
+                              sources.active(rule, c.asOf))
+                            Semantics(
+                              enabled: !c.locked,
+                              child: IgnorePointer(
+                                ignoring: c.locked,
+                                child: ExcludeFocus(
+                                  excluding: c.locked,
+                                  child: _condition(
+                                    rule,
+                                    sources,
+                                    c.drafts[rule.id]!,
+                                  ),
+                                ),
                               ),
-                          ],
-                          onChanged: (id) {
-                            if (id.isNotEmpty) _select(id);
-                          },
-                        ),
+                            )
+                          else
+                            const Text('기준일에 적용되지 않는 규칙 · 이번 계산에서 제외합니다.'),
+                        ],
                       ),
                     ),
                   ),
-                if (!c.loading && c.curricula.isEmpty && c.sourceError == null)
-                  const Text('계산할 교육과정이 없습니다. 교육과정 탭에서 먼저 등록하세요.'),
-                _error(c.sourceError),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: c.locked
-                        ? null
-                        : () => c.sources == null
-                              ? c.loadCurricula()
-                              : _select(c.sources!.curriculum.id),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('자료 다시 불러오기'),
-                  ),
-                ),
-                TextFormField(
-                  key: const ValueKey('calculation-as-of'),
-                  initialValue: c.asOf,
-                  readOnly: c.locked,
-                  decoration: InputDecoration(
-                    labelText: '계산 기준일 · YYYY-MM-DD',
-                    helperText: '초기값은 UTC 오늘입니다. 이 날짜에 활성인 모든 규칙을 결과에 포함합니다.',
-                    helperMaxLines: 4,
-                    errorText: validateCalculationDay(c.asOf),
-                  ),
-                  onChanged: (value) => setState(() => c.asOf = value),
-                  validator: validateCalculationDay,
-                ),
-                if (c.sources case final sources?) ...[
-                  Text(
-                    '불러온 교육과정 버전 ${sources.curriculum.version} · 과목 ${sources.links.length}개 · 규칙 ${sources.rules.length}개',
-                  ),
-                  const SizedBox(height: 8),
+                _error(c.actionError),
+                if (c.pending != null)
                   const Text(
-                    '조건 설명·필요한 값·현재 값·문자 성적은 자동 해석하지 않습니다. 조건을 지정하지 않은 활성 규칙은 확인 필요로 남습니다. 선택하지 않은 자료는 합산하지 않습니다.',
+                    '전송한 조건과 자료 버전은 고정되어 있습니다. 응답 확인 실패 시 같은 요청으로 재시도하세요. 앱을 종료하면 작성 중 조건은 사라지므로, 다시 시작한 뒤에는 저장 이력을 먼저 확인하세요.',
                   ),
-                ],
+                FeatureActions(
+                  children: [
+                    FilledButton.icon(
+                      onPressed:
+                          c.busy ||
+                              c.loading ||
+                              c.sourceError != null ||
+                              GuestPreviewScope.isActive(context)
+                          ? null
+                          : () {
+                              if (c.pending != null ||
+                                  (_form.currentState?.validate() ?? false)) {
+                                _calculate();
+                              }
+                            },
+                      icon: const Icon(Icons.calculate_outlined),
+                      label: Text(
+                        c.busy
+                            ? '확인 중…'
+                            : c.pending == null
+                            ? '계산하고 결과 저장'
+                            : '같은 요청으로 다시 확인',
+                      ),
+                    ),
+                  ],
+                ),
+                if (c.pending != null)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton(
+                      onPressed: c.busy
+                          ? null
+                          : () async {
+                              if (await _confirm(
+                                    '새 계산을 준비할까요?',
+                                    '이전 요청이 이미 저장되었을 수 있습니다. 아래 이력을 먼저 확인하세요. 새 계산은 별도 결과를 생성하며 기존 이력을 삭제하지 않습니다.',
+                                    '새 계산 준비',
+                                  ) &&
+                                  mounted) {
+                                c.newCalculation();
+                              }
+                            },
+                      child: const Text('새 계산 준비'),
+                    ),
+                  ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          if (c.sources case final sources?)
-            Form(
-              key: _form,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _heading('2. 규칙별 명시적 조건'),
-                  if (sources.rules.isEmpty)
-                    const Text('이 교육과정에 규칙이 없습니다. 계산하면 적용 규칙 없음으로 저장합니다.'),
-                  if (validateCalculationDay(c.asOf) != null)
-                    const Text('기준일을 확인하세요. 유효한 날짜를 입력하면 적용 규칙을 표시합니다.'),
-                  for (final rule in sources.rules)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: SurfaceCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              rule.data.title,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            Text(
-                              '규칙 버전 ${rule.version} · ${rule.data.effectiveFrom ?? '시작 제한 없음'} ~ ${rule.data.effectiveTo ?? '종료 제한 없음'}',
-                            ),
-                            Text('기록한 조건 설명: ${rule.data.condition}'),
-                            if (validateCalculationDay(c.asOf) == null &&
-                                sources.active(rule, c.asOf))
-                              Semantics(
-                                enabled: !c.locked,
-                                child: IgnorePointer(
-                                  ignoring: c.locked,
-                                  child: ExcludeFocus(
-                                    excluding: c.locked,
-                                    child: _condition(
-                                      rule,
-                                      sources,
-                                      c.drafts[rule.id]!,
-                                    ),
-                                  ),
-                                ),
-                              )
-                            else
-                              const Text('기준일에 적용되지 않는 규칙 · 이번 계산에서 제외합니다.'),
-                          ],
-                        ),
-                      ),
-                    ),
-                  _error(c.actionError),
-                  if (c.pending != null)
-                    const Text(
-                      '전송한 조건과 자료 버전은 고정되어 있습니다. 응답 확인 실패 시 같은 요청으로 재시도하세요. 앱을 종료하면 작성 중 조건은 사라지므로, 다시 시작한 뒤에는 저장 이력을 먼저 확인하세요.',
-                    ),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      FilledButton.icon(
-                        onPressed: c.busy || c.loading || c.sourceError != null
-                            ? null
-                            : () {
-                                if (c.pending != null ||
-                                    (_form.currentState?.validate() ?? false)) {
-                                  _calculate();
-                                }
-                              },
-                        icon: const Icon(Icons.calculate_outlined),
-                        label: Text(
-                          c.busy
-                              ? '확인 중…'
-                              : c.pending == null
-                              ? '계산하고 결과 저장'
-                              : '같은 요청으로 다시 확인',
-                        ),
-                      ),
-                      if (c.pending != null)
-                        OutlinedButton(
-                          onPressed: c.busy
-                              ? null
-                              : () async {
-                                  if (await _confirm(
-                                        '새 계산을 준비할까요?',
-                                        '이전 요청이 이미 저장되었을 수 있습니다. 아래 이력을 먼저 확인하세요. 새 계산은 별도 결과를 생성하며 기존 이력을 삭제하지 않습니다.',
-                                        '새 계산 준비',
-                                      ) &&
-                                      mounted) {
-                                    c.newCalculation();
-                                  }
-                                },
-                          child: const Text('새 계산 준비'),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          if (c.sources == null) _error(c.actionError),
-          const SizedBox(height: 16),
-          if (c.result case final result?) _result(result),
-          const SizedBox(height: 12),
-          _history(),
-        ],
-      ),
+        if (c.sources == null) _error(c.actionError),
+        const SizedBox(height: 16),
+        if (c.result case final result?) _result(result),
+        const SizedBox(height: 12),
+        _history(),
+      ],
     ),
   );
 
@@ -317,7 +373,9 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _heading('계산 결과'),
-        const Text(PersonalEvaluationSummary.personalLabel),
+        const FeatureLine.one(
+          text: PersonalEvaluationSummary.personalDisplayLabel,
+        ),
         Text(
           '${result.curriculumTitle} · 기준일 ${result.evaluatedOn} · 교육과정 버전 ${result.curriculumVersion}',
         ),
@@ -388,17 +446,17 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _heading('저장된 계산 이력'),
-        const Text(
-          '삭제된 교육과정의 과거 결과도 조회할 수 있습니다. 결과를 삭제해도 수강·활동 등 원본 기록은 남습니다.',
-        ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
+        FeatureLine.section(
+          text: '저장된 계산 이력',
+          padTop: false,
+          padBottom: false,
+          trailing: FeatureLine.reload(
             onPressed: c.historyLoading ? null : () => c.loadHistory(),
-            icon: const Icon(Icons.refresh),
-            label: const Text('이력 다시 불러오기'),
+            label: '이력 다시 불러오기',
           ),
+        ),
+        const FeatureLine.one(
+          text: '삭제된 교육과정의 과거 결과도 조회할 수 있습니다. 결과를 삭제해도 수강·활동 등 원본 기록은 남습니다.',
         ),
         if (c.historyLoading) const LinearProgressIndicator(),
         _error(c.historyError),
@@ -423,15 +481,23 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
                       child: const Text('결과 보기'),
                     ),
                     TextButton(
-                      onPressed: c.busy
+                      onPressed: c.busy || GuestPreviewScope.isActive(context)
                           ? null
                           : () async {
+                              if (GuestPreviewScope.isActive(context)) {
+                                GuestPreviewScope.showBlockedMessage(context);
+                                return;
+                              }
                               if (await _confirm(
                                     '이 계산 결과를 삭제할까요?',
                                     '${row.curriculumTitle} · ${row.evaluatedOn}의 저장된 결과만 삭제합니다. 원본 기록은 유지합니다.',
                                     '결과 삭제',
                                   ) &&
                                   mounted) {
+                                if (GuestPreviewScope.isActive(context)) {
+                                  GuestPreviewScope.showBlockedMessage(context);
+                                  return;
+                                }
                                 await c.remove(row);
                               }
                             },
@@ -504,9 +570,8 @@ String describePersonalCondition(
   ].join('\n'),
   PersonalThesisCondition(
     :final thesisType,
-    :final requiresApproval,
     :final acceptedGrades,
     :final records,
   ) =>
-    '유형 $thesisType · 승인 ${requiresApproval ? '필요' : '불필요'} · 허용 성적 ${acceptedGrades.isEmpty ? '제한 없음' : acceptedGrades.join(', ')}\n${[for (final row in records) '성과 ${row.achievementId} · 완료 ${row.completion} · 승인 ${row.approval}'].join('\n')}',
+    '유형 $thesisType · 허용 성적 ${acceptedGrades.isEmpty ? '제한 없음' : acceptedGrades.join(', ')}\n${[for (final row in records) '성과 ${row.achievementId} · 완료 ${row.completion}'].join('\n')}',
 };

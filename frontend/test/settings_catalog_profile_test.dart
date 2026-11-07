@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,6 +8,7 @@ import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
 import 'package:university_path_frontend/features/planning/remote_planning_repository.dart';
 import 'package:university_path_frontend/features/settings/settings_page.dart';
+import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
 
 import 'support/auth_fixture.dart';
 
@@ -74,7 +77,7 @@ Future<void> choose(WidgetTester tester, String from, String to) async {
 }
 
 Future<void> saveSettings(WidgetTester tester) async {
-  final save = find.text('서버에 저장');
+  final save = find.text('저장');
   await tester.ensureVisible(save);
   await tester.tap(save);
   await tester.pumpAndSettle();
@@ -108,7 +111,13 @@ void main() {
     tester,
   ) async {
     final repository = await pumpSettings(tester, SettingsCatalogServer());
-    expect(find.textContaining('목록에 없으면 학교를 만들지 않습니다'), findsOneWidget);
+    expect(find.textContaining('목록에 없으면 만들지 않습니다'), findsOneWidget);
+    expect(
+      find.textContaining('등록 학교 목록에 없으면 여기서 교육과정·규칙을 직접 만듭니다.'),
+      findsOneWidget,
+    );
+    expect(find.widgetWithText(FilledButton, '개인 교육과정 작업'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, '개인 교육과정 작업'), findsNothing);
     expect(find.text('학교 선택'), findsOneWidget);
     expect(find.text('목록에 없는 학교 직접 입력'), findsNothing);
     repository.dispose();
@@ -128,6 +137,7 @@ void main() {
     expect(repository.profile.curriculumId, otherId);
     expect(repository.profile.school, '검증 대학');
     expect(repository.profile.department, '검증 학과');
+    expect(find.text('등록된 학교 · 검증 대학 · 검증 학과'), findsOneWidget);
     await choose(tester, '검증 대학', '학교 선택');
     await saveSettings(tester);
     expect(repository.profile.school, isEmpty);
@@ -135,6 +145,36 @@ void main() {
     expect(repository.profile.departmentId, isNull);
     expect(repository.profile.curriculumId, isNull);
     expect(server.profile['institution_id'], isNull);
+    repository.dispose();
+  });
+
+  testWidgets('admission year is a searchable select up to the current year', (
+    tester,
+  ) async {
+    final repository = await pumpSettings(tester, SettingsCatalogServer());
+    final current = DateTime.now().year;
+    final field = find.byKey(const Key('settings-admission-year-select'));
+    expect(field, findsOneWidget);
+    final select = tester.widget<AnchoredSelectField<int?>>(field);
+    expect(select.searchable, isTrue);
+    expect(select.options.map((option) => option.value), contains(null));
+    expect(select.options.map((option) => option.value), contains(1900));
+    expect(select.options.map((option) => option.value), contains(current));
+    expect(
+      select.options.map((option) => option.value),
+      isNot(contains(current + 1)),
+    );
+    await tester.tap(field);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('select-search-input')),
+      '$current',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(MenuItemButton, '$current년'));
+    await tester.pumpAndSettle();
+    await saveSettings(tester);
+    expect(repository.profile.admissionYear, current);
     repository.dispose();
   });
 
@@ -162,11 +202,43 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('개인 기준에서 가져온 학교: 미등록 대학 · 미등록 학과'), findsOneWidget);
+    expect(find.text('개인 설정 · 미등록 대학 · 미등록 학과'), findsOneWidget);
     expect(find.text('학교 선택'), findsOneWidget);
     await saveSettings(tester);
     expect(repository.profile.school, '미등록 대학');
     expect(repository.profile.institutionId, isNull);
     repository.dispose();
+  });
+
+  testWidgets('saving settings releases keyboard focus from profile inputs', (
+    tester,
+  ) async {
+    final write = Completer<bool>();
+    final repository = PlanningRepository(writer: (_, _) => write.future);
+    addTearDown(repository.dispose);
+    await repository.load();
+    await tester.binding.setSurfaceSize(const Size(1200, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: SettingsPage(repository: repository)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, '검증 대학');
+    final input = tester.widget<EditableText>(find.byType(EditableText).first);
+    expect(input.focusNode.hasFocus, isTrue);
+
+    // Invoke the same save action without moving focus through a pointer tap.
+    tester
+        .widget<FilledButton>(find.widgetWithText(FilledButton, '저장'))
+        .onPressed!();
+    await tester.pump();
+    final focusedDuringSave = input.focusNode.hasFocus;
+    write.complete(true);
+    await tester.pumpAndSettle();
+    expect(focusedDuringSave, isFalse);
+    expect(repository.profile.school, '검증 대학');
+    expect(find.text('저장되었습니다.'), findsOneWidget);
   });
 }

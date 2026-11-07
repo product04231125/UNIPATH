@@ -92,6 +92,8 @@
 
 ## 현재 구현
 
+2026-10-23 기준. 계약 원본은 [OpenAPI](openapi.json)다.
+[학교관리자 신청·수동 검토 승인](school-admin-applications.md)은 별도 API로 구현했다.
 [최초 학교관리자 가입](initial-school-admin-signups.md)은 계정·학교 신청을 원자적으로
 접수한다. 승인 전에는 일반 계정이며 학교 등록·학교관리자 역할·범위 부여는 슈퍼관리자의
 명시적 신원/소속 확인과 승인에서 함께 처리한다. 기존 계정의 미등록 학교 신청도 제공한다.
@@ -119,7 +121,10 @@
   쿠키를 설정한다. staging/production은 Secure와 `__Host-unipath_session` 이름을 사용한다.
   local HTTP만 `unipath_session` 이름이다. 쿠키 변경 요청·쿠키 로그인/가입에는 Origin이
   필요하며 `CORS_ORIGINS`에 정확히 일치해야 한다. Web HTTP 클라이언트는 credentials를
-  포함한다. 로컬 Web/API는 모두 `localhost`로 접속하고 127.0.0.1과 혼용하지 않는다.
+  포함한다.   로컬 Web 원점은 기본으로 `http://localhost:3000`과
+  `http://127.0.0.1:3000`을 허용한다. 같은 세션에서는 주소창 호스트를 바꿔 가며
+  쓰지 않는다(쿠키·Origin이 호스트마다 다르다). 프론트 Web은 페이지와 API가 모두
+  루프백일 때 API 호스트를 페이지 호스트에 맞춰 Strict 쿠키가 같은 사이트에 남게 한다.
 - Windows는 `session_mode=bearer`를 보내고 응답 `access_token`을 실행 중 메모리에만 둔다.
   `Authorization: Bearer ...`로 전송하며 재시작 후 다시 로그인한다. 쿠키용 토큰을 bearer로
   사용할 수 없다. 네이티브 bearer 요청은 Origin 생략을 허용하지만 다른 Origin은 거부한다.
@@ -135,7 +140,7 @@
 갱신하고 현재를 포함한 모든 세션을 폐기하므로 새 비밀번호로 다시 로그인해야 한다.
 감사에는 변경 행동만 남기며 이메일 발송·비밀번호 재설정·기존 개인 자료 삭제는 수행하지 않는다.
 
-실제 학생·학교관리자·슈퍼관리자는 공통 제목표시줄의 [계정 보안 화면](account-security-integration.md)에서
+실제 학생·학교관리자·슈퍼관리자는 설정의 [계정 보안 화면](account-security-integration.md)에서
 비밀번호 변경·모든 기기 로그아웃을 호출한다. 응답 유실은 성공으로 표시하지 않으며 확인된 204만
 완료로 안내한다. 세션 종료 후 새 비밀번호 또는 기존 비밀번호로 다시 로그인한다.
 
@@ -155,6 +160,7 @@
 | --- | --- |
 | GET `/admin/users?cursor=&limit=` | 슈퍼관리자, UUID cursor·최대 100, `items/next_cursor` |
 | PATCH `/admin/users/{id}/role` | `role`, `expected_version` |
+| PATCH `/admin/users/{id}/access` | `role`, `account_status`, `expected_version`을 함께 변경. 현재 FE 사용자 수정 폼이 사용 |
 | PATCH `/admin/users/{id}/status` | `account_status: active/suspended`, `expected_version` |
 | GET/POST `/admin/institutions` | 허용 학교 목록(cursor/최대 100, `query` 검색), 생성은 슈퍼관리자·`name` |
 | GET `/admin/institutions/{id}` | 직접 ID 접근에도 범위 확인 |
@@ -196,11 +202,11 @@ uv run --frozen python -m app.operations.users --environment staging \
 - Web은 쿠키로 신원을 복원하고 60초 간격/앱 복귀 시 갱신한다. 401이면 로그인으로 돌아가며
   통신 실패를 세션 폐기로 간주하지 않는다. API 권한은 매 요청 서버가 확인한다.
 - 실제 일반 계정의 개인 프로필·일정·기록·포트폴리오는 서버 저장이다. 기기 원본은 사용자 UUID별 키로 분리하고
-  객체는 생성 당시 계정을 유지해 지연 저장이 다른 계정을 덮어쓰지 않는다. 기존 익명 자료는
+  객체는 생성 당시 계정을 유지해 지연 저장이 다른 계정을 덮어쓰지 않는다. 자료 메뉴의 설명/PDF 파일 보관은 이 서버 기록 계약과 별개로 기기 저장이며 개인 PDF 업로드·추출 계약은 미연결이다. 기존 익명 자료는
   자동 귀속·업로드·삭제하지 않는다. namespace는 암호화/공유 OS 접근 통제를 대신하지 않는다.
 - [개인 자료 API](personal.md)와 [학생용 학사 조회](student-catalog.md)는 서버에 구현했다.
   생성 DTO/프론트 전송 adapter와 [프로필·일정 화면 연결/동의 이전](planning-integration.md)을 제공한다. [나머지 개인 기록·구성·문서 화면](personal-workspace-integration.md)도 서버 저장과 동의 이전에 연결했다.
-- 이메일 검증/복구·MFA·학교 담당자 심사·자동 실시간 동기화·세션/한도 데이터
+- 이메일 검증/복구·MFA·자동 학교 신원 확인·자동 실시간 동기화·세션/한도 데이터
   정리 주기는 후속이다. 공식 학적/학교 자격을 검증했다고 표시하지 않는다.
 
 검증은 합성 데이터와 독립 PostgreSQL 스키마로 수행한다. 권한 우회·CSRF·쿠키 속성·토큰

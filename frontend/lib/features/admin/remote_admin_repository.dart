@@ -105,14 +105,21 @@ class RemoteAdminRepository extends AdminRepository {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _pages(String path) async {
+  Future<List<Map<String, dynamic>>> _pages(
+    String path, {
+    Map<String, String>? query,
+  }) async {
     final result = <Map<String, dynamic>>[];
     final seen = <String>{};
     String? cursor;
     do {
-      final query = Uri(queryParameters: {'limit': '100', 'cursor': ?cursor})
-          .query;
-      final response = (await _request('GET', '$path?$query'))!;
+      final params = <String, String>{
+        'limit': '100',
+        'cursor': ?cursor,
+        ...?query,
+      };
+      final encoded = Uri(queryParameters: params).query;
+      final response = (await _request('GET', '$path?$encoded'))!;
       result.addAll(List<Map<String, dynamic>>.from(response['items'] as List));
       cursor = response['next_cursor'] as String?;
       if (cursor != null && !seen.add(cursor)) {
@@ -178,19 +185,18 @@ class RemoteAdminRepository extends AdminRepository {
     try {
       final identity = await auth.me();
       if (_disposed || epoch != _loadEpoch) return;
-      if (identity == null ||
-          identity.id != userId ||
-          identity.role == AppRole.user) {
+      if (identity == null) {
         _records = [];
         _history = [];
         _notify();
-        final gateway = auth;
+        throw StateError('로그인 세션을 확인하지 못했습니다. 같은 주소로 다시 로그인해 주세요.');
+      }
+      if (identity.id != userId || identity.role == AppRole.user) {
+        _records = [];
+        _history = [];
+        _notify();
         throw StateError(
-          identity == null
-              ? gateway is AuthApi
-                    ? gateway.missingSessionMessage
-                    : '세션을 확인하지 못했습니다. 다시 로그인해 주세요.'
-              : identity.id != userId
+          identity.id != userId
               ? '계정이 변경되었습니다. 다시 로그인해 주세요.'
               : '관리 권한이 변경되었습니다. 다시 로그인해 주세요.',
         );

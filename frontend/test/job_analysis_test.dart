@@ -192,7 +192,7 @@ void main() {
               'priority': 'required',
               'requirement': '개발 경험',
               'status': 'supported',
-              'posting_evidence': {'start': 0, 'end': 2, 'excerpt': '개발'},
+              'posting_evidence': {'start': 0, 'end': 2, 'excerpt': '합성'},
               'personal_evidence': [
                 {
                   'kind': 'experience',
@@ -211,7 +211,7 @@ void main() {
       await execute(tester);
       expect(find.text('분석 완료'), findsOneWidget);
       expect(find.text('근거 있음'), findsOneWidget);
-      expect(find.text('공고 근거: 개발'), findsOneWidget);
+      expect(find.text('공고 근거: 합성'), findsOneWidget);
       expect(find.textContaining('내 기록 근거 (버전 2)'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       p.dispose();

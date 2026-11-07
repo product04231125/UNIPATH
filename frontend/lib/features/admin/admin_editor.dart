@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/drafts/form_draft_picker.dart';
+import '../../shared/drafts/form_draft_store.dart';
+import '../../shared/widgets/external_link_button.dart';
+import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/responsive_columns.dart';
 import '../../shared/widgets/responsive_panels.dart';
 import '../../shared/widgets/field_label.dart';
+import '../../shared/widgets/field_requirement.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../records/personal_record_repository.dart';
 import 'admin_models.dart';
@@ -11,6 +16,8 @@ import 'admin_fields.dart';
 import 'admin_repository.dart';
 import 'remote_admin_repository.dart';
 import 'admin_rule_execution_panel.dart';
+import 'school_classification_drafts.dart';
+import 'school_classification_widgets.dart';
 
 class AdminEditor extends StatefulWidget {
   const AdminEditor({
@@ -23,6 +30,9 @@ class AdminEditor extends StatefulWidget {
     this.revoke = false,
     this.inline = false,
     this.list,
+    this.onRevokeRequested,
+    this.onClosed,
+    this.classificationDrafts,
   });
   final AdminRepository repository;
   final String actorId, schoolId;
@@ -31,6 +41,9 @@ class AdminEditor extends StatefulWidget {
   final bool revoke;
   final bool inline;
   final Widget? list;
+  final VoidCallback? onRevokeRequested;
+  final VoidCallback? onClosed;
+  final SchoolClassificationDrafts? classificationDrafts;
   @override
   State<AdminEditor> createState() => AdminEditorState();
 }
@@ -41,10 +54,24 @@ class AdminEditorState extends State<AdminEditor> {
   late final Map<String, TextEditingController> _controllers;
   late final Map<String, String> _initial;
   bool _saving = false, _panelBusy = false;
+  AdminRecord? _editingRecord;
   AdminRecord? _savedRecord;
   var _executionKey = GlobalKey<AdminRuleExecutionPanelState>();
   final _conditionChanges = ValueNotifier<int>(0);
   bool get _isRule => widget.kind == AdminKind.rule && !widget.revoke;
+  bool get _isSchoolKind =>
+      widget.kind == AdminKind.institution ||
+      widget.kind == AdminKind.department;
+  AdminRecord? get _activeRecord =>
+      _isSchoolKind ? _editingRecord : _editingRecord ?? widget.record;
+  bool get _isCurriculumKind =>
+      widget.kind == AdminKind.curriculum ||
+      widget.kind == AdminKind.course ||
+      widget.kind == AdminKind.curriculumCourse;
+  AdminRecord? get _currentRecord =>
+      _isCurriculumKind ? _editingRecord : _activeRecord;
+  AdminRecord? get activeRecord => _currentRecord;
+  bool get _isEditing => _currentRecord != null;
   AdminRecord? get _rule =>
       widget.repository.records
           .where((r) => r.id == _savedRecord?.id)
@@ -54,39 +81,174 @@ class AdminEditorState extends State<AdminEditor> {
   bool get _metadataDirty =>
       _fields.any((f) => _value(f.key) != (_initial[f.key] ?? ''));
   String? _error, _message;
+  String? _loadedDraftId;
+  final _classificationDraftId = PersonalRecord.newId();
+  String get _classificationTarget => '${widget.kind.name}:${(_isRule ? _rule : _currentRecord)?.id ?? _classificationDraftId}';
+  bool get _usesClassifications => [AdminKind.course, AdminKind.curriculumCourse, AdminKind.ruleSet, AdminKind.rule].contains(widget.kind);
+  final _drafts = FormDraftStore.instance;
   bool get saving => _saving || _panelBusy;
   bool get dirty =>
       _metadataDirty || (_executionKey.currentState?.dirty ?? false);
+  String get _draftCollectionKey =>
+      formDraftCollectionKey('admin.${widget.kind.name}');
   Future<bool> allowLeave() async {
     if (saving) return false;
-    return !dirty || await confirmInputDiscard(context);
+    return !dirty ||
+        await confirmInputDiscardAllowsLeave(
+          context,
+          onTempSave: _saveDraftQuiet,
+        );
   }
 
-  void _reset() {
-    for (final f in _fields) {
-      _initial[f.key] =
-          widget.record?.value(f.key) ??
-          (f.key == 'institutionId'
-              ? widget.schoolId
-              : f.key == 'scopeType'
-              ? 'institution'
-              : '');
+  Map<String, String> _draftValues() => {
+    for (final f in _fields) f.key: _value(f.key).trim(),
+  };
+
+  Future<bool> _saveDraftQuiet() async {
+    try {
+      final values = _draftValues();
+      final entry = await _drafts.add(
+        _draftCollectionKey,
+        summary: formDraftSummaryFromValues(values),
+        payload: values,
+      );
+      _loadedDraftId = entry.id;
+      return true;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('임시저장하지 못했습니다. 입력은 유지됩니다.')),
+        );
+      }
+      return false;
     }
-    _savedRecord = widget.record;
-    _executionKey = GlobalKey<AdminRuleExecutionPanelState>();
-    for (final f in _fields) {
-      _controllers[f.key]!.text = _initial[f.key] ?? '';
+  }
+
+  Future<void> _saveDraft() async {
+    if (saving) return;
+    final ok = await _saveDraftQuiet();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ok ? '임시저장했습니다.' : '임시저장하지 못했습니다. 입력은 유지됩니다.'),
+      ),
+    );
+  }
+
+  Future<void> _loadDraft() async {
+    if (saving) return;
+    if (dirty) {
+      final overwrite = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('임시저장 불러오기'),
+          content: const Text('지금 작성 중인 내용을 덮어쓸까요?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('덮어쓰기'),
+            ),
+          ],
+        ),
+      );
+      if (overwrite != true || !mounted) return;
     }
-    _form.currentState?.reset();
+    final entry = await showFormDraftPicker(
+      context: context,
+      collectionKey: _draftCollectionKey,
+    );
+    if (!mounted || entry == null) return;
+    for (final field in _fields) {
+      final raw = entry.payload[field.key];
+      _controllers[field.key]!.text = raw == null ? '' : '$raw';
+    }
+    _loadedDraftId = entry.id;
     setState(() {
-      _saving = false;
       _error = null;
+      _message = '임시저장을 불러왔습니다.';
     });
   }
 
+  String _defaultValue(AdminField field) {
+    if (field.key == 'institutionId') return widget.schoolId;
+    if (field.key == 'scopeType') return 'institution';
+    return '';
+  }
+
+  void _fill(AdminRecord? record) {
+    for (final f in _fields) {
+      _initial[f.key] = record?.value(f.key) ?? _defaultValue(f);
+      _controllers[f.key]!.text = _initial[f.key] ?? '';
+    }
+    // Form.reset() restores controller fields to the previous build's
+    // initialValue and can leave validation using stale text. Clear the
+    // error display after the controllers already hold the new values.
+    if (_isSchoolKind || _isCurriculumKind) {
+      _form.currentState?.clearError();
+    }
+    _savedRecord = record;
+    _executionKey = GlobalKey<AdminRuleExecutionPanelState>();
+  }
+
+  void showRecord(AdminRecord record) {
+    _editingRecord = record;
+    _savedRecord = record;
+    _fill(record);
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      _error = null;
+      _message = null;
+    });
+  }
+
+  Future<void> loadRecord(AdminRecord record) async {
+    if (!mounted) return;
+    if (_currentRecord?.id == record.id) {
+      _editingRecord = record;
+      _savedRecord = record;
+      if (!dirty) _fill(record);
+      setState(() {});
+      return;
+    }
+    if (!await allowLeave() || !mounted) return;
+    _editingRecord = record;
+    _fill(record);
+    setState(() {
+      _saving = false;
+      _error = null;
+      _message = null;
+    });
+  }
+
+  void abandonToCreate() {
+    _editingRecord = null;
+    _fill(null);
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      _error = null;
+      _message = null;
+    });
+  }
+
+  Future<void> clearToCreate() async {
+    if (!await allowLeave() || !mounted) return;
+    abandonToCreate();
+  }
+
   Future<void> _cancel() async {
+    if (widget.onClosed != null) {
+      if (!await allowLeave() || !mounted) return;
+      widget.onClosed!();
+      return;
+    }
     if (widget.inline) {
-      if (await allowLeave() && mounted) _reset();
+      await clearToCreate();
     } else {
       if (mounted) await InputDialog.cancel<String>(context);
     }
@@ -95,6 +257,8 @@ class AdminEditorState extends State<AdminEditor> {
   @override
   void initState() {
     super.initState();
+    if (_isSchoolKind) _editingRecord = widget.record;
+    if (_isCurriculumKind) _editingRecord = widget.record;
     _savedRecord = widget.record;
     _fields = widget.revoke
         ? [const AdminField('reason', '회수 사유', multiline: true)]
@@ -135,6 +299,48 @@ class AdminEditorState extends State<AdminEditor> {
   }
 
   String _value(String key) => _controllers[key]?.text ?? '';
+
+  String _choiceLabel(AdminRecord record) {
+    final label =
+        '${record.name}${record.kind.versioned ? ' · v${record.revision}' : ''}';
+    if (widget.schoolId.isNotEmpty || record.kind == AdminKind.institution) {
+      return label;
+    }
+    final schoolId = widget.repository.school(record);
+    final schoolName = widget.repository.records
+        .where((item) => item.id == schoolId)
+        .map((item) => item.name)
+        .firstOrNull;
+    if (schoolName == null || schoolName.isEmpty || schoolName == record.name) {
+      return label;
+    }
+    return '$label · $schoolName';
+  }
+
+  /// A selected title-bar school wins. Otherwise the form's school field, or
+  /// the school of the department or curriculum the user picked.
+  String _resolvedInstitution() {
+    if (_controllers.containsKey('institutionId')) {
+      return _value('institutionId');
+    }
+    if (widget.schoolId.isNotEmpty) return widget.schoolId;
+    final departmentId = _value('departmentId');
+    if (departmentId.isNotEmpty) {
+      final department = widget.repository.records
+          .where((record) => record.id == departmentId)
+          .firstOrNull;
+      if (department != null) return widget.repository.school(department);
+    }
+    final curriculumId = _value('curriculumId');
+    if (curriculumId.isNotEmpty) {
+      final curriculum = widget.repository.records
+          .where((record) => record.id == curriculumId)
+          .firstOrNull;
+      if (curriculum != null) return widget.repository.school(curriculum);
+    }
+    return '';
+  }
+
   Iterable<AdminRecord> _choices(AdminField field) =>
       widget.repository.records.where((r) {
         if (r.kind != field.relation ||
@@ -179,24 +385,25 @@ class AdminEditorState extends State<AdminEditor> {
           _value('reason'),
         );
       } else {
+        final bindingTarget = _classificationTarget;
         final values = {
-          ...?(_isRule ? _rule : widget.record)?.values,
+          ...?(_isRule ? _rule : _currentRecord)?.values,
           for (final f in _fields) f.key: _value(f.key).trim(),
           if (widget.repository.live && widget.kind != AdminKind.institution)
-            'institutionId': _controllers.containsKey('institutionId')
-                ? _value('institutionId')
-                : widget.schoolId,
+            'institutionId': _resolvedInstitution(),
         };
         final record =
-            (_isRule ? _rule : widget.record)?.copy(values: values) ??
+            (_isRule ? _rule : _currentRecord)?.copy(values: values) ??
             AdminRecord(
               id: 'mock-${PersonalRecord.newId()}',
               kind: widget.kind,
               values: values,
             );
-        if (_isRule && widget.repository is RemoteAdminRepository) {
+        var savedId = record.id;
+        if ((_isRule || _usesClassifications && widget.classificationDrafts != null) && widget.repository is RemoteAdminRepository) {
           _savedRecord = await (widget.repository as RemoteAdminRepository)
               .saveWithResult(widget.actorId, record);
+          savedId = _savedRecord!.id;
         } else {
           await widget.repository.save(widget.actorId, record);
           if (_isRule) {
@@ -204,6 +411,12 @@ class AdminEditorState extends State<AdminEditor> {
                 .where((r) => r.id == record.id)
                 .firstOrNull;
           }
+        }
+        widget.classificationDrafts?.moveBinding(_resolvedInstitution(), bindingTarget, '${widget.kind.name}:$savedId');
+        final draftId = _loadedDraftId;
+        if (draftId != null) {
+          await _drafts.delete(_draftCollectionKey, draftId);
+          _loadedDraftId = null;
         }
       }
       if (mounted) {
@@ -215,9 +428,24 @@ class AdminEditorState extends State<AdminEditor> {
             _saving = false;
             _message = '요건 설명을 저장했습니다. 아래에서 계산 조건을 이어서 저장하세요.';
           });
+        } else if (widget.onClosed != null) {
+          for (final field in _fields) {
+            _initial[field.key] = _value(field.key);
+          }
+          setState(() {
+            _saving = false;
+            _message = '저장했습니다.';
+          });
         } else if (widget.inline) {
-          _reset();
-          setState(() => _message = '등록했습니다. 다음 내용을 입력할 수 있습니다.');
+          final edited = _isEditing;
+          _editingRecord = null;
+          _fill(null);
+          setState(() {
+            _saving = false;
+            _message = edited
+                ? '저장했습니다. 다음 내용을 입력할 수 있습니다.'
+                : '등록했습니다. 다음 내용을 입력할 수 있습니다.';
+          });
         } else {
           Navigator.pop(context);
         }
@@ -239,14 +467,14 @@ class AdminEditorState extends State<AdminEditor> {
     if (widget.inline && widget.list != null) return _mixedLayout();
     return _shell(
       changes: Listenable.merge([..._controllers.values, _conditionChanges]),
-      editing: widget.record != null,
+      editing: _isEditing,
       saving: saving,
       hasContent: () => dirty,
       hasUnsavedChanges: () => dirty,
       title: Text(
         widget.revoke
             ? '관리 범위 회수'
-            : '${widget.kind.label} ${widget.record == null ? '등록' : '수정'}',
+            : '${widget.kind.label} ${_isEditing ? '수정' : '등록'}',
       ),
       content: Form(
         key: _form,
@@ -280,7 +508,19 @@ class AdminEditorState extends State<AdminEditor> {
       ),
       actions: [
         ..._lifecycleButtons(),
+        if (!widget.revoke)
+          OutlinedButton(
+            key: const Key('admin-editor-load-draft'),
+            onPressed: saving ? null : _loadDraft,
+            child: const Text('불러오기'),
+          ),
         TextButton(onPressed: saving ? null : _cancel, child: const Text('취소')),
+        if (!widget.revoke)
+          TextButton(
+            key: const Key('admin-editor-temp-save'),
+            onPressed: saving || _metadataLocked ? null : _saveDraft,
+            child: const Text('임시저장'),
+          ),
         FilledButton(
           onPressed: saving || _metadataLocked ? null : _save,
           child: Text(
@@ -290,12 +530,12 @@ class AdminEditorState extends State<AdminEditor> {
                 ? '범위 회수'
                 : _isRule
                 ? '요건 설명 저장'
-                : widget.inline
-                ? '등록'
-                : '저장',
+                : widget.onClosed != null || !widget.inline
+                ? '저장'
+                : '등록',
           ),
         ),
-      ],
+      ], // 불러오기는 팝업 옆(액션 선행), 안쪽은 취소→임시저장→저장
     );
   }
 
@@ -340,11 +580,7 @@ class AdminEditorState extends State<AdminEditor> {
       const SelectOption('', '미선택'),
       for (final entry in field.options.entries)
         SelectOption(entry.key, entry.value),
-      for (final r in _choices(field))
-        SelectOption(
-          r.id,
-          '${r.name}${r.kind.versioned ? ' · v${r.revision}' : ''}',
-        ),
+      for (final r in _choices(field)) SelectOption(r.id, _choiceLabel(r)),
       if (_value(field.key).isNotEmpty &&
           !field.options.containsKey(_value(field.key)) &&
           !_choices(field).any((r) => r.id == _value(field.key)))
@@ -356,7 +592,7 @@ class AdminEditorState extends State<AdminEditor> {
     padding: const EdgeInsets.only(bottom: 14),
     child: !_isSelect(field)
         ? FieldLabel(
-            label: '${field.label}${field.required ? ' *' : ' (선택)'}',
+            label: fieldRequirementLabel(field.label, required: field.required),
             child: Semantics(
               label: field.label,
               child: TextFormField(
@@ -364,7 +600,12 @@ class AdminEditorState extends State<AdminEditor> {
                 controller: _controllers[field.key],
                 enabled: !saving && !_metadataLocked,
                 maxLines: field.multiline ? 3 : 1,
-                decoration: const InputDecoration(),
+                decoration: InputDecoration(
+                  helperText: widget.kind == AdminKind.rule && field.key == 'sourceUrl'
+                      ? '공개 가능한 학교 규정 주소를 입력하세요. 관리자가 원문을 확인하며, 현재 학생 화면에는 이 주소를 표시하지 않습니다.'
+                      : null,
+                  helperMaxLines: 3,
+                ),
                 validator: (v) =>
                     field.required && (v == null || v.trim().isEmpty)
                     ? '${field.label}을 입력하세요.'
@@ -386,7 +627,10 @@ class AdminEditorState extends State<AdminEditor> {
                     externalLabel: true,
                     key: ValueKey('admin-field-${field.key}'),
                     value: _value(field.key),
-                    label: '${field.label}${field.required ? ' *' : ' (선택)'}',
+                    label: fieldRequirementLabel(
+                      field.label,
+                      required: field.required,
+                    ),
                     searchable: true,
                     searchLabel: field.key == 'year' ? '연도 검색' : '검색',
                     options: _selectOptions(field),
@@ -421,6 +665,14 @@ class AdminEditorState extends State<AdminEditor> {
                       color: Theme.of(context).colorScheme.error,
                     ),
                   ),
+                if (field.key == 'ruleSetId')
+                  Text(
+                    _choices(field).isEmpty
+                        ? '선택할 초안이 없습니다. 이 화면 위쪽의 「규칙 묶음」에서 먼저 등록하세요. 묶음 없이 요건만 등록해도 됩니다.'
+                        : '같은 학교의 규칙 묶음 초안만 선택합니다. 선택하면 묶음의 학교·학과·교육과정 범위를 따릅니다. 묶음은 여러 요건을 함께 적용할 때 사용합니다.',
+                    key: const ValueKey('admin-rule-set-help'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
               ],
             ),
           ),
@@ -430,21 +682,85 @@ class AdminEditorState extends State<AdminEditor> {
     key: key,
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Semantics(
-        header: true,
-        child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-      ),
-      const SizedBox(height: 16),
+      FeatureLine.section(text: title, padTop: false, padBottom: false),
+      const SizedBox(height: 8),
       content,
     ],
   );
 
-  Widget _compactDetails(List<AdminField> fields) {
+  /// Full rectangle around the list. Wide layout keeps the list on the left.
+  Widget _listRail({required Widget child}) {
+    final color = Theme.of(context).colorScheme.outlineVariant;
+    const radius = BorderRadius.all(Radius.circular(20));
+    return DecoratedBox(
+      key: ValueKey('admin-list-panel-${widget.kind.name}'),
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        border: Border.all(color: color),
+      ),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  /// Scope / leftover identity fields sit beside the list under basic info.
+  /// Source, period, rule, and settings fields stay in the full-width block.
+  bool _besideDetailsField(AdminField field) => switch (field.key) {
+    'departmentId' ||
+    'curriculumId' ||
+    'userId' ||
+    'scopeType' => true,
+    'sourceUrl' ||
+    'officialUrl' ||
+    'documentType' ||
+    'ruleId' ||
+    'ruleSetId' ||
+    'effectiveFrom' ||
+    'effectiveTo' ||
+    'ruleType' ||
+    'definition' ||
+    'category' ||
+    'required' ||
+    'courseId' ||
+    'reason' ||
+    'accountStatus' => false,
+    _ => true,
+  };
+
+  Widget _compactDetails(
+    List<AdminField> fields, {
+    bool pairInNarrowColumn = false,
+  }) {
     final rows = <Widget>[];
     final shortFields = <Widget>[];
     void flush() {
       if (shortFields.isEmpty) return;
-      rows.add(ResponsivePanels(children: List.of(shortFields)));
+      if (pairInNarrowColumn) {
+        for (var i = 0; i < shortFields.length; i += 2) {
+          if (i > 0) rows.add(const SizedBox(height: 24));
+          if (i + 1 < shortFields.length) {
+            rows.add(
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: shortFields[i]),
+                  const SizedBox(width: 24),
+                  Expanded(child: shortFields[i + 1]),
+                ],
+              ),
+            );
+          } else {
+            rows.add(shortFields[i]);
+          }
+        }
+      } else {
+        rows.add(ResponsivePanels(children: List.of(shortFields)));
+      }
       shortFields.clear();
     }
 
@@ -468,6 +784,30 @@ class AdminEditorState extends State<AdminEditor> {
         .where((f) => f.key == 'name' || f.key == 'institutionId')
         .toList();
     final remaining = _fields.where((f) => !basic.contains(f)).toList();
+    final beside = remaining.where(_besideDetailsField).toList();
+    final below = remaining.where((f) => !_besideDetailsField(f)).toList();
+    final gap = FeatureLine.slotGap(context);
+    final rightColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _panel(
+          _isEditing ? '수정 기본 정보' : '등록 기본 정보',
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [for (final field in basic) _field(field)],
+          ),
+          key: ValueKey('admin-basic-${widget.kind.name}'),
+        ),
+        if (beside.isNotEmpty) ...[
+          SizedBox(height: gap),
+          _panel(
+            '적용 범위',
+            _compactDetails(beside, pairInNarrowColumn: true),
+            key: ValueKey('admin-details-beside-${widget.kind.name}'),
+          ),
+        ],
+      ],
+    );
     return Form(
       key: _form,
       child: Column(
@@ -476,27 +816,41 @@ class AdminEditorState extends State<AdminEditor> {
           ResponsiveColumns(
             enabled: true,
             // Keep search/filter fields outside the registration FormState.
-            first: Form(child: widget.list!),
-            second: _panel(
-              '등록 기본 정보',
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [for (final field in basic) _field(field)],
-              ),
-              key: ValueKey('admin-basic-${widget.kind.name}'),
-            ),
+            first: _listRail(child: Form(child: widget.list!)),
+            second: rightColumn,
           ),
-          const Divider(height: 40),
+          SizedBox(height: gap),
           _panel(
             '적용 범위·상세',
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _compactDetails([
-                  for (final group in adminFieldGroups(remaining).values)
-                    ...group,
-                ]),
+                if (_lifecycleButtons().isNotEmpty) ...[
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _lifecycleButtons(),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (_isEditing && _activeRecord!.value('sourceUrl').isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: ExternalLinkButton(
+                      url: _activeRecord!.value('sourceUrl'),
+                      label: '원문 열기',
+                    ),
+                  ),
+                if (below.isNotEmpty)
+                  _compactDetails([
+                    for (final group in adminFieldGroups(below).values) ...group,
+                  ]),
                 if (_isRule) _executionPanel(),
+                if (_usesClassifications && widget.classificationDrafts != null)
+                  SchoolClassificationBindingFields(
+                    drafts: widget.classificationDrafts!, schoolId: _resolvedInstitution(), target: _classificationTarget,
+                    locked: saving || _metadataLocked,
+                  ),
                 if (_message != null)
                   Semantics(liveRegion: true, child: Text(_message!)),
                 if (_error != null)
@@ -511,7 +865,6 @@ class AdminEditorState extends State<AdminEditor> {
                   ),
                 const Divider(height: 24),
                 Wrap(
-                  alignment: WrapAlignment.end,
                   spacing: 8,
                   runSpacing: 8,
                   children: [
@@ -526,8 +879,20 @@ class AdminEditorState extends State<AdminEditor> {
                             ? '저장 중…'
                             : _isRule
                             ? '요건 설명 저장'
+                            : _isEditing
+                            ? '저장'
                             : '등록',
                       ),
+                    ),
+                    TextButton(
+                      key: const Key('admin-editor-temp-save-inline'),
+                      onPressed: saving || _metadataLocked ? null : _saveDraft,
+                      child: const Text('임시저장'),
+                    ),
+                    OutlinedButton(
+                      key: const Key('admin-editor-load-draft-inline'),
+                      onPressed: saving ? null : _loadDraft,
+                      child: const Text('불러오기'),
                     ),
                   ],
                 ),
@@ -541,10 +906,10 @@ class AdminEditorState extends State<AdminEditor> {
   }
 
   AdminRecord? get _targetRecord {
-    final id = widget.record?.id;
-    if (id == null) return widget.record;
+    final id = _activeRecord?.id;
+    if (id == null) return _activeRecord;
     return widget.repository.records.where((r) => r.id == id).firstOrNull ??
-        widget.record;
+        _activeRecord;
   }
 
   Future<void> _confirmLifecycle(
@@ -582,7 +947,17 @@ class AdminEditorState extends State<AdminEditor> {
     });
     try {
       await run();
-      if (mounted) Navigator.pop(context);
+      if (!mounted) return;
+      if (widget.inline) {
+        final updated = _targetRecord;
+        if (updated != null) {
+          _editingRecord = updated;
+          _savedRecord = updated;
+        }
+        setState(() => _saving = false);
+      } else {
+        Navigator.pop(context);
+      }
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -597,7 +972,7 @@ class AdminEditorState extends State<AdminEditor> {
 
   List<Widget> _lifecycleButtons() {
     final record = _targetRecord;
-    if (record == null || widget.inline || widget.revoke) return const [];
+    if (record == null || widget.revoke) return const [];
     return [
       if (record.kind.versioned &&
           record.value('ruleSetId').isEmpty &&
@@ -627,7 +1002,13 @@ class AdminEditorState extends State<AdminEditor> {
         OutlinedButton(
           onPressed: saving
               ? null
-              : () => InputDialog.cancel<String>(context, 'revoke'),
+              : () {
+                  if (widget.inline) {
+                    widget.onRevokeRequested?.call();
+                  } else {
+                    InputDialog.cancel<String>(context, 'revoke');
+                  }
+                },
           child: const Text('범위 회수'),
         ),
     ];
@@ -650,6 +1031,7 @@ class AdminEditorState extends State<AdminEditor> {
         saving: saving,
         hasContent: hasContent,
         hasUnsavedChanges: hasUnsavedChanges,
+        onTempSave: widget.revoke ? null : _saveDraftQuiet,
         title: title,
         content: content,
         actions: actions,

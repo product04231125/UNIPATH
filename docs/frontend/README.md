@@ -47,10 +47,10 @@ OpenAPI(`/api/v1/docs`)가 기준이다.
 | 졸업 요건 | [graduation](features/graduation.md) | 학교 검토 졸업감사 실행·근거·이력, 별도 개인 기준 작업 공간 |
 | 학교 발급 자료 | [official-records](features/official-records.md) | 본인 PDF 제출·이력, 관리자 원본/학생 기록 검토·승인 |
 | 학교 문서 검색 | [school-document-search](features/school-document-search.md) | 등록 학교 문맥 검색·발췌·출처·근거 부족 |
-| 활동 | [activity](features/activity.md) | 사이드바 활동 하나에서 기존 활동·경험 기록을 함께 보임. API는 분리 유지 |
-| 경험 | [experience](features/experience.md) | 별도 메뉴 없음. 활동 추가 때 프로젝트·인턴·동아리를 고르면 기존 경험 API에 저장 |
+| 활동 | [activity](features/activity.md) | 실제 계정 서버 개인 활동·봉사 CRUD |
+| 경험 | [experience](features/experience.md) | 학생 메뉴에서 제외. 페이지 파일과 서버 경험 CRUD는 유지 |
 | 자격 | [credential](features/credential.md) | 실제 계정 서버 개인 자격 CRUD |
-| 자료 | [portfolio](features/portfolio.md) | 종류가 있는 기기 PDF·설명 보관 |
+| 자료 | [portfolio](features/portfolio.md) | 종류·이름·설명 또는 PDF를 기기에 보관 |
 | 채용공고 분석 | [portfolio](features/portfolio.md) | 텍스트·주소·PDF/캡처 중 하나. 불가 이유만 표시하고 결과는 계약 대기 |
 | AI 도우미 | [assistant](features/assistant.md) | 학교 질의 API·상태/인용 표시·창별 메모리 대화 |
 | 설정 | [settings](features/settings.md) | 실제 계정 서버 학업과 계획·기기 원본 보존 |

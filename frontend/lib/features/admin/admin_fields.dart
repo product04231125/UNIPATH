@@ -177,10 +177,20 @@ List<AdminField> adminFields(AdminKind kind) => [
     ),
     const AdminField('reason', '부여·변경 사유', multiline: true),
   ],
-  if (kind == AdminKind.account)
+  if (kind == AdminKind.account) ...[
+    const AdminField(
+      'role',
+      '역할',
+      options: {
+        'user': '일반 사용자',
+        'school_admin': '학교관리자',
+        'super_admin': '슈퍼관리자',
+      },
+    ),
     const AdminField(
       'accountStatus',
       '계정 상태',
       options: {'active': '활성', 'suspended': '정지'},
     ),
+  ],
 ];

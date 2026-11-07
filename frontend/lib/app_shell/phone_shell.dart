@@ -17,16 +17,96 @@ class PhoneChromeScope extends InheritedWidget {
 
   final bool active;
 
+  /// Density follows the published [active] flag only. A missing scope is not
+  /// inferred from viewport size.
   static bool of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<PhoneChromeScope>()?.active ??
-      isPhonePortraitShell(MediaQuery.sizeOf(context));
+      false;
 
   @override
   bool updateShouldNotify(PhoneChromeScope oldWidget) =>
       active != oldWidget.active;
 }
 
-const studentPhonePrimaryLabels = ['홈', '일정', '수강 관리', '활동'];
+/// Phone-only density. Do not apply through global ThemeData.
+const phoneNavigationBarHeight = 56.0;
+const phoneNavigationIconSize = 20.0;
+const phoneNavigationLabelSize = 11.0;
+const phoneMoreChipWidth = 64.0;
+const phoneMoreChipPadding = 8.0;
+const phonePageTitleSize = 22.0;
+const phonePageHeaderBottomGap = 12.0;
+const phoneBodyPadding = 12.0;
+const phoneCardPadding = 12.0;
+const phoneListGap = 8.0;
+const phoneMinTapTarget = 48.0;
+
+double phoneAwareGap(
+  BuildContext context, {
+  required double wide,
+  double phone = phoneListGap,
+}) => PhoneChromeScope.of(context) ? phone : wide;
+
+EdgeInsets phoneAwarePadding(BuildContext context, {double wide = 18}) =>
+    EdgeInsets.all(PhoneChromeScope.of(context) ? phoneCardPadding : wide);
+
+Widget withPhoneListDensity(BuildContext context, Widget child) {
+  final theme = Theme.of(context);
+  return Theme(
+    data: theme.copyWith(
+      listTileTheme: theme.listTileTheme.copyWith(
+        minVerticalPadding: phoneListGap,
+        minTileHeight: phoneMinTapTarget,
+        visualDensity: VisualDensity.compact,
+      ),
+    ),
+    child: child,
+  );
+}
+
+class PhoneNavigationBar extends StatelessWidget {
+  const PhoneNavigationBar({
+    super.key,
+    required this.selectedIndex,
+    required this.destinations,
+    required this.onDestinationSelected,
+  });
+
+  final int selectedIndex;
+  final List<NavigationDestination> destinations;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Theme(
+      data: theme.copyWith(
+        navigationBarTheme: NavigationBarThemeData(
+          height: phoneNavigationBarHeight,
+          iconTheme: WidgetStateProperty.all(
+            const IconThemeData(size: phoneNavigationIconSize),
+          ),
+          labelTextStyle: WidgetStateProperty.resolveWith(
+            (states) => TextStyle(
+              fontSize: phoneNavigationLabelSize,
+              fontWeight: states.contains(WidgetState.selected)
+                  ? FontWeight.w700
+                  : FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+      child: NavigationBar(
+        height: phoneNavigationBarHeight,
+        selectedIndex: selectedIndex,
+        destinations: destinations,
+        onDestinationSelected: onDestinationSelected,
+      ),
+    );
+  }
+}
+
+const studentPhonePrimaryLabels = ['일정', '졸업 요건', '홈', '자료', '채용공고 분석'];
 
 const adminPhonePrimaryPaths = [
   '/admin/overview',
@@ -128,35 +208,46 @@ class _PhoneMoreChip extends StatelessWidget {
           key: destination.key,
           borderRadius: BorderRadius.circular(16),
           onTap: destination.enabled ? destination.onTap : null,
-          child: SizedBox(
-            width: 84,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    destination.icon,
-                    size: 22,
-                    color: destination.enabled
-                        ? scheme.onSurface
-                        : scheme.onSurface.withValues(alpha: 0.38),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    destination.label,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minHeight: phoneMinTapTarget,
+              minWidth: phoneMoreChipWidth,
+            ),
+            child: SizedBox(
+              width: phoneMoreChipWidth,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: phoneMoreChipPadding,
+                  horizontal: 4,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      destination.icon,
+                      size: phoneNavigationIconSize,
                       color: destination.enabled
                           ? scheme.onSurface
                           : scheme.onSurface.withValues(alpha: 0.38),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      destination.label,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: phoneNavigationLabelSize,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                        color: destination.enabled
+                            ? scheme.onSurface
+                            : scheme.onSurface.withValues(alpha: 0.38),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

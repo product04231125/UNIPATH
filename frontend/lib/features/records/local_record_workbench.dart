@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/app_style.dart';
+import '../../shared/drafts/form_draft_picker.dart';
+import '../../shared/drafts/form_draft_store.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/field_label.dart';
+import '../../shared/widgets/field_requirement.dart';
 import '../../shared/widgets/input_dialog.dart';
+import '../../shared/widgets/feature_actions.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/responsive_columns.dart';
+import '../../shared/widgets/status_badge.dart';
+import '../../shared/widgets/surface_card.dart';
 import '../../shared/widgets/responsive_panels.dart';
+import '../auth/guest_preview_scope.dart';
 import 'personal_record_fields.dart';
+import 'personal_record_form.dart';
 import 'personal_record_repository.dart';
 import '../graduation/personal_requirement_panel.dart';
 
@@ -47,8 +55,95 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
     (e) => e.value.text != (_editing?.value(e.key) ?? ''),
   );
   bool get dirty => _metadataDirty || (_rulePanel.currentState?.dirty ?? false);
+  String? _loadedDraftId;
+  final _drafts = FormDraftStore.instance;
+  String get _draftCollectionKey => formDraftCollectionKey(
+    personalRecordDraftScreenId(widget.kind),
+  );
   Future<bool> allowLeave() async =>
-      !_saving && (!dirty || await confirmInputDiscard(context));
+      !_saving &&
+      (!dirty ||
+          await confirmInputDiscardAllowsLeave(
+            context,
+            onTempSave: _saveDraftQuiet,
+          ));
+
+  Map<String, String> _draftValues() => {
+    for (final e in _controllers.entries) e.key: e.value.text.trim(),
+  };
+
+  Future<bool> _saveDraftQuiet() async {
+    try {
+      final values = _draftValues();
+      final entry = await _drafts.add(
+        _draftCollectionKey,
+        summary: formDraftSummaryFromValues(values),
+        payload: values,
+      );
+      _loadedDraftId = entry.id;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _saveDraft() async {
+    if (_saving || GuestPreviewScope.isActive(context)) {
+      if (GuestPreviewScope.isActive(context)) {
+        GuestPreviewScope.showBlockedMessage(context);
+      }
+      return;
+    }
+    final ok = await _saveDraftQuiet();
+    if (!mounted) return;
+    setState(() {
+      _message = ok ? '임시저장했습니다.' : '임시저장하지 못했습니다. 입력은 유지됩니다.';
+      _error = null;
+    });
+  }
+
+  Future<void> _loadDraft() async {
+    if (_saving || GuestPreviewScope.isActive(context)) {
+      if (GuestPreviewScope.isActive(context)) {
+        GuestPreviewScope.showBlockedMessage(context);
+      }
+      return;
+    }
+    if (dirty) {
+      final overwrite = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('임시저장 불러오기'),
+          content: const Text('지금 작성 중인 내용을 덮어쓸까요?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('덮어쓰기'),
+            ),
+          ],
+        ),
+      );
+      if (overwrite != true || !mounted) return;
+    }
+    final entry = await showFormDraftPicker(
+      context: context,
+      collectionKey: _draftCollectionKey,
+    );
+    if (!mounted || entry == null) return;
+    for (final e in _controllers.entries) {
+      final raw = entry.payload[e.key];
+      e.value.text = raw == null ? '' : '$raw';
+    }
+    _loadedDraftId = entry.id;
+    setState(() {
+      _message = '임시저장을 불러왔습니다.';
+      _error = null;
+    });
+  }
   @override
   void initState() {
     super.initState();
@@ -104,6 +199,10 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
   }
 
   Future<void> _save() async {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     if (_saving || !_form.currentState!.validate()) return;
     if (_isRule && !(_rulePanel.currentState?.validateForMetadata() ?? false)) {
       return;
@@ -123,11 +222,21 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
     });
     try {
       final linkError = await widget.validateValues?.call(values);
+      if (!mounted) return;
+      if (GuestPreviewScope.isActive(context)) {
+        GuestPreviewScope.showBlockedMessage(context);
+        return;
+      }
       if (linkError != null) throw StateError(linkError);
       final id = _editing?.id ?? PersonalRecord.newId();
       await _repo.save(
         PersonalRecord(id: id, version: _editing?.version, values: values),
       );
+      final draftId = _loadedDraftId;
+      if (draftId != null) {
+        await _drafts.delete(_draftCollectionKey, draftId);
+        _loadedDraftId = null;
+      }
       if (mounted) {
         if (_isRule) {
           _editing = _repo.records.where((r) => r.id == id).first;
@@ -153,6 +262,10 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
   }
 
   Future<void> _delete(PersonalRecord record) async {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     if (_saving || !await allowLeave() || !mounted) return;
     final yes = await showDialog<bool>(
       context: context,
@@ -177,6 +290,10 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
       ),
     );
     if (yes != true || !mounted) return;
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     setState(() => _saving = true);
     try {
       await _repo.delete(record.id, expectedVersion: record.version);
@@ -194,8 +311,10 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
       padding: const EdgeInsets.only(bottom: 16),
       child: f.options.isEmpty
           ? FieldLabel(
-              label:
-                  '${_isRule && f.key == 'condition' ? '요건 설명' : f.label}${f.required ? ' *' : ' (선택)'}',
+              label: fieldRequirementLabel(
+                _isRule && f.key == 'condition' ? '요건 설명' : f.label,
+                required: f.required,
+              ),
               child: Semantics(
                 label: f.label,
                 child: TextFormField(
@@ -224,8 +343,10 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                     externalLabel: true,
                     key: ValueKey('record-select-${f.key}'),
                     value: c.text,
-                    label:
-                        '${_isRule && f.key == 'condition' ? '요건 설명' : f.label}${f.required ? ' *' : ' (선택)'}',
+                    label: fieldRequirementLabel(
+                      _isRule && f.key == 'condition' ? '요건 설명' : f.label,
+                      required: f.required,
+                    ),
                     options: [
                       const SelectOption('', '미선택'),
                       for (final value in f.options.where((v) => v.isNotEmpty))
@@ -299,12 +420,28 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  r.value('title'),
-                  style: Theme.of(context).textTheme.titleMedium,
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      r.value('title'),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    StatusBadge(
+                      status: widget.kind == PersonalRecordKind.activity
+                          ? '개인 기록'
+                          : '개인 설정',
+                    ),
+                  ],
                 ),
                 for (final f in _fields.where(
-                  (f) => f.key != 'title' && r.value(f.key).isNotEmpty,
+                  (f) =>
+                      f.key != 'title' &&
+                      r.value(f.key).isNotEmpty &&
+                      (widget.kind != PersonalRecordKind.activity ||
+                          activityVisibleKeys.contains(f.key)),
                 ))
                   Text(
                     '${f.label}: ${f.options.isEmpty ? r.value(f.key) : f.optionLabels[r.value(f.key)] ?? '연결 대상 없음 · 다시 선택하세요'}',
@@ -329,6 +466,10 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                         onPressed: _saving
                             ? null
                             : () async {
+                                if (GuestPreviewScope.isActive(context)) {
+                                  GuestPreviewScope.showBlockedMessage(context);
+                                  return;
+                                }
                                 setState(() => _saving = true);
                                 try {
                                   await widget.onUse!(r);
@@ -388,12 +529,7 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
         .where(
           (f) =>
               !_isRule ||
-              ![
-                'ruleType',
-                'requiredValue',
-                'currentValue',
-                'unit',
-              ].contains(f.key),
+              !['requiredValue', 'currentValue', 'unit'].contains(f.key),
         )
         .toList();
     final short = fields
@@ -420,106 +556,121 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
       PersonalRecordKind.personalGraduationRule => 'curriculumId',
       _ => '',
     };
-    final basic = _fields
+    final shown = _fields.where((f) {
+      if (widget.kind == PersonalRecordKind.activity) {
+        return activityVisibleKeys.contains(f.key);
+      }
+      if (widget.kind == PersonalRecordKind.portfolio) {
+        return !portfolioHiddenKeys.contains(f.key);
+      }
+      return true;
+    });
+    final basic = shown
         .where((f) => f.key == 'title' || f.key == relation)
         .toList();
-    final details = _fields.where((f) => !basic.contains(f)).toList();
-    return Card(
+    final details = shown.where((f) => !basic.contains(f)).toList();
+    return SurfaceCard(
       key: ValueKey('personal-frame-${widget.kind.name}'),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _form,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ResponsiveColumns(
-                enabled: true,
-                first: _list(),
-                second: _section(
-                  '${widget.title} ${_editing == null ? '추가' : '수정'}',
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [for (final f in basic) _input(f)],
-                  ),
-                  key: ValueKey('personal-basic-${widget.kind.name}'),
-                ),
-              ),
-              const Divider(height: 40),
-              _section(
-                '적용 범위·상세',
+      child: Form(
+        key: _form,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ResponsiveColumns(
+              enabled: true,
+              first: _list(),
+              second: _section(
+                '등록 기본 정보',
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _details(details),
-                    if (_isRule)
-                      PersonalRequirementPanel(
-                        key: _rulePanel,
-                        curriculumId: _controllers['curriculumId']?.text ?? '',
-                        rule: _editing,
-                        metadataDirty: _metadataDirty,
-                        onBusy: (busy) {
-                          if (mounted) setState(() => _saving = busy);
-                        },
-                        onChanged: (draft) {
-                          if (draft.kind != 'none') {
-                            _controllers['ruleType']!.text = draft.kind;
-                          }
-                          _controllers['requiredValue']!.text =
-                              draft.values['minimum'] ?? '';
-                          _controllers['unit']!.text =
-                              draft.kind == 'minimum_credits'
-                              ? '학점'
-                              : draft.kind == 'minimum_volunteer_hours'
-                              ? '시간'
-                              : '';
-                        },
-                      ),
-                    if (_message != null)
-                      Semantics(liveRegion: true, child: Text(_message!)),
-                    if (_error != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Semantics(
-                          liveRegion: true,
-                          child: Text(
-                            _error!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
+                  children: [for (final f in basic) _input(f)],
+                ),
+                key: ValueKey('personal-basic-${widget.kind.name}'),
+              ),
+            ),
+            const Divider(height: 40),
+            _section(
+              '적용 범위·상세',
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _details(details),
+                  if (_isRule)
+                    PersonalRequirementPanel(
+                      key: _rulePanel,
+                      curriculumId: _controllers['curriculumId']?.text ?? '',
+                      rule: _editing,
+                      metadataDirty: _metadataDirty,
+                      onBusy: (busy) {
+                        if (mounted) setState(() => _saving = busy);
+                      },
+                      onChanged: (draft) {
+                        _controllers['requiredValue']!.text =
+                            draft.values['minimum'] ?? '';
+                        _controllers['unit']!.text =
+                            draft.kind == 'minimum_credits'
+                            ? '학점'
+                            : draft.kind == 'minimum_volunteer_hours'
+                            ? '시간'
+                            : '';
+                      },
+                    ),
+                  if (_message != null)
+                    Semantics(liveRegion: true, child: Text(_message!)),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
                           ),
                         ),
                       ),
-                    const Divider(height: 24),
-                    Wrap(
-                      alignment: WrapAlignment.end,
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        TextButton(
-                          onPressed: _saving
-                              ? null
-                              : () async {
-                                  if (await allowLeave() && mounted) _reset();
-                                },
-                          child: const Text('취소'),
-                        ),
-                        FilledButton(
-                          onPressed: _saving ? null : _save,
-                          child: Text(_saving ? '저장 중…' : '내 기록에 저장'),
-                        ),
-                      ],
                     ),
-                  ],
-                ),
-                key: ValueKey('personal-details-${widget.kind.name}'),
+                  const Divider(height: 24),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      onPressed: _saving
+                          ? null
+                          : () async {
+                              if (await allowLeave() && mounted) _reset();
+                            },
+                      child: const Text('취소'),
+                    ),
+                  ),
+                  FeatureActions(
+                    children: [
+                      FilledButton(
+                        onPressed: _saving ? null : _save,
+                        child: Text(
+                          _saving
+                              ? '저장 중…'
+                              : _isRule
+                              ? '요건 설명 저장'
+                              : '등록',
+                        ),
+                      ),
+                      TextButton(
+                        key: const Key('local-record-temp-save'),
+                        onPressed: _saving ? null : _saveDraft,
+                        child: const Text('임시저장'),
+                      ),
+                      OutlinedButton(
+                        key: const Key('local-record-load-draft'),
+                        onPressed: _saving ? null : _loadDraft,
+                        child: const Text('불러오기'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
+              key: ValueKey('personal-details-${widget.kind.name}'),
+            ),
+          ],
         ),
       ),
     );
@@ -530,10 +681,7 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        PageHeader(
-          title: widget.title,
-          description: '내가 직접 관리하는 개인 학업 정보 · 학교 공식 데이터나 졸업 판정이 아닙니다.',
-        ),
+        PageHeader(title: widget.title, description: '내가 직접 관리하는 개인 학업 정보입니다.'),
         if (_loading)
           const LinearProgressIndicator()
         else if (_fields.isEmpty) ...[

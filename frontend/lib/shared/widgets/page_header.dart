@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app_shell/phone_shell.dart';
 import '../app_typography.dart';
 
 /// Presentation only: the feature supplies its title and any real context.
@@ -20,11 +21,15 @@ class PageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final phone = PhoneChromeScope.of(context);
+    final titleStyle = phone
+        ? AppTypography.pageStyle.copyWith(fontSize: phonePageTitleSize)
+        : AppTypography.pageStyle;
     final heading = Semantics(
       header: true,
       child: Text(
         title,
-        style: theme.textTheme.headlineMedium?.merge(AppTypography.pageStyle),
+        style: theme.textTheme.headlineMedium?.merge(titleStyle),
       ),
     );
     return SizedBox(
@@ -73,7 +78,7 @@ class PageHeader extends StatelessWidget {
                   ),
                 ),
               ],
-              const SizedBox(height: 16),
+              SizedBox(height: phone ? phonePageHeaderBottomGap : 16),
             ],
           );
         },

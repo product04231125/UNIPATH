@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/graduation/personal_requirement_panel.dart';
 import 'package:university_path_frontend/features/graduation/personal_calculation_controller.dart';
@@ -56,6 +57,8 @@ void main() {
       await tester.pumpWidget(page());
       await tester.pumpAndSettle();
       expect(gateway.posted, isEmpty);
+      final picker = tester.widget<AnchoredSelectField<String>>(find.byWidgetPredicate((w) => w is AnchoredSelectField<String> && w.label == '실행할 계산 조건'));
+      expect(picker.options.any((o) => o.value == 'thesis'), isFalse);
       await tester.tap(find.text('조건 미지정 · 확인 필요'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(MenuItemButton, '최소 학점'));

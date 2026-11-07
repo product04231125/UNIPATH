@@ -6,6 +6,7 @@ import 'package:university_path_frontend/features/graduation/personal_graduation
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_record_codec.dart';
 import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
+import 'package:university_path_frontend/shared/widgets/surface_card.dart';
 
 import 'personal_graduation_test.dart' as fixture;
 import 'remote_personal_ui_test.dart' as server;
@@ -34,7 +35,9 @@ Future<void> showWorkspace(WidgetTester tester) async {
 }
 
 Future<void> save(WidgetTester tester) async {
-  final action = find.widgetWithText(FilledButton, '내 기록에 저장');
+  final action = find.widgetWithText(FilledButton, '등록').evaluate().isNotEmpty
+      ? find.widgetWithText(FilledButton, '등록')
+      : find.widgetWithText(FilledButton, '요건 설명 저장');
   await tester.ensureVisible(action);
   await tester.tap(action);
   await tester.pumpAndSettle();
@@ -51,7 +54,7 @@ void main() {
         '학과': PersonalRecordKind.personalDepartment,
         '교육과정': PersonalRecordKind.personalCurriculum,
         '교육과정 과목': PersonalRecordKind.personalCurriculumCourse,
-        '개인 규칙': PersonalRecordKind.personalGraduationRule,
+        '규칙': PersonalRecordKind.personalGraduationRule,
       }.entries) {
         await tester.tap(find.widgetWithText(OutlinedButton, entry.key));
         await tester.pumpAndSettle();
@@ -92,19 +95,21 @@ void main() {
         expect(find.text('등록한 항목 0개'), findsOneWidget);
         expect(find.text('등록된 자료가 없습니다.'), findsOneWidget);
         expect(
-          find.descendant(of: details, matching: find.text('내 기록에 저장')),
+          find.descendant(
+            of: details,
+            matching: find.text(
+              entry.value == PersonalRecordKind.personalGraduationRule
+                  ? '요건 설명 저장'
+                  : '등록',
+            ),
+          ),
           findsOneWidget,
         );
         final fields = await personalGraduationFields(entry.value);
         for (final field in fields.where(
           (f) =>
               entry.value != PersonalRecordKind.personalGraduationRule ||
-              ![
-                'ruleType',
-                'requiredValue',
-                'currentValue',
-                'unit',
-              ].contains(f.key),
+              !['requiredValue', 'currentValue', 'unit'].contains(f.key),
         )) {
           expect(
             find.byKey(
@@ -153,7 +158,7 @@ void main() {
       await tester.tap(find.widgetWithText(OutlinedButton, '교육과정'));
       await tester.pumpAndSettle();
       expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-      await tester.tap(find.text('계속 작성'));
+      await tester.tap(find.byKey(const Key('input-discard-cancel')));
       await tester.pumpAndSettle();
       expect(
         tester
@@ -180,7 +185,8 @@ void main() {
       expect(repo.records.single.value('schoolId'), 'school');
       expect(repo.records.single.value('code'), 'CS');
       expect(find.text('등록한 항목 1개'), findsOneWidget);
-      expect(find.byType(Card), findsOneWidget);
+      expect(find.text('개인 설정'), findsOneWidget);
+      expect(find.byType(SurfaceCard), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

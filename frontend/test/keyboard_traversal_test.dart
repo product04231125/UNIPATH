@@ -123,7 +123,7 @@ void main() {
                   order: const NumericFocusOrder(1),
                   child: TaskFocusGroup(
                     child: WorkspaceTitleBar(
-                      title: '슈퍼관리자 · UniversityPath',
+                      statusLabel: '슈퍼관리자',
                       onToggleSidebar: () {},
                     ),
                   ),

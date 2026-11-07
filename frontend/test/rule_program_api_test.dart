@@ -95,6 +95,30 @@ Map<String, dynamic> certificate() => {
 };
 
 void main() {
+  test('public manual checklists allow no evidence while calculated criteria require it', () async {
+    final gateway = Gateway();
+    final api = OfficialProgramApi(gateway);
+    final manual = program();
+    final rule = (manual['rules'] as List).single as Map<String, dynamic>;
+    rule['condition'] = {'kind': 'manual_review', 'instruction': '학생 직접 확인'};
+    rule['evidence'] = [];
+    gateway.response = manual;
+    expect((await api.get(identifier)).rules.single.condition, isA<OfficialManualCriterion>());
+    gateway.response = {
+      ...selection(), 'status': 'needs_review',
+      'programs': [manual],
+    };
+    final selected = await api.select(scope);
+    expect(selected.status, 'needs_review');
+    expect(selected.programs.single.rules.single.evidence, isEmpty);
+    final calculated = program();
+    ((calculated['rules'] as List).single as Map)['evidence'] = [];
+    gateway.response = calculated;
+    await expectLater(api.get(identifier), throwsFormatException);
+    gateway.response = {...selection(), 'programs': [calculated]};
+    await expectLater(api.select(scope), throwsFormatException);
+  });
+
   test('closed condition types preserve decimals and versioned identities', () {
     final values = <Map<String, dynamic>>[
       {'kind': 'minimum_credits', 'minimum': '130.001', 'category': null},

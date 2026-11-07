@@ -223,6 +223,7 @@ void main() {
       ),
       baseUrl: Uri.parse('http://127.0.0.1:8010'),
       cookieMode: true,
+      pageUrl: Uri(),
     );
     await tester.pumpWidget(UniversityPathApp(authGateway: api));
     await tester.pumpAndSettle();

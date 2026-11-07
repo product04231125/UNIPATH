@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:university_path_frontend/features/admin/school_classification_drafts.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:university_path_frontend/features/admin/admin_models.dart';
 import 'package:university_path_frontend/features/admin/admin_repository.dart';
 import 'package:university_path_frontend/features/admin/admin_workspace.dart';
+import 'package:university_path_frontend/features/admin/admin_rule_execution_panel.dart';
+import 'package:university_path_frontend/features/admin/graduation_certification.dart';
 import 'package:university_path_frontend/features/admin/graduation_certification_page.dart';
 import 'package:university_path_frontend/features/admin/graduation_credit_grid.dart';
 import 'package:university_path_frontend/features/admin/graduation_credit_grid_page.dart';
 import 'package:university_path_frontend/features/auth/app_role.dart';
+import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
 
 Widget host(Widget child) => MaterialApp(home: Scaffold(body: child));
 
@@ -19,6 +24,288 @@ List<AdminRecord> departments() => [
 ];
 
 void main() {
+  testWidgets('credit grid exposes mouse horizontal scrolling after adding columns and resizing', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final taxonomy = SchoolClassificationDrafts();
+    addTearDown(taxonomy.dispose);
+    final grid = GraduationCreditGrid(
+      admissionYear: '2026', departmentId: 'dept-cs',
+      columns: [GraduationCreditColumn(id: 'first', label: '첫 열')],
+      rows: [GraduationCreditRow(id: 'row', label: '이수 경로')],
+    );
+    await tester.pumpWidget(host(GraduationCreditGridPage(
+      schoolName: '합성 대학', departments: departments(), initial: grid, scrollable: true,
+      classificationDrafts: taxonomy, institutionId: 'school-a',
+    )));
+    await tester.pumpAndSettle();
+    final bar = find.byKey(const ValueKey('credit-grid-horizontal-scrollbar'));
+    final add = find.byKey(const ValueKey('credit-grid-add-column'));
+    for (var i = 0; i < 6; i++) {
+      await tester.ensureVisible(add);
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+    }
+    await tester.binding.setSurfaceSize(const Size(760, 1000));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(bar);
+    await tester.pumpAndSettle();
+    final scrollbar = tester.widget<Scrollbar>(bar);
+    expect(scrollbar.thumbVisibility, isTrue);
+    expect(scrollbar.interactive, isTrue);
+    final controller = scrollbar.controller!;
+    expect(controller.position.maxScrollExtent, greaterThan(0));
+    // Drag the bottom thumb, outside the interactive classification fields.
+    final bounds = tester.getRect(bar);
+    final mouse = await tester.startGesture(Offset(bounds.left + 24, bounds.bottom - 4), kind: PointerDeviceKind.mouse);
+    await mouse.moveBy(const Offset(220, 0));
+    await mouse.up();
+    await tester.pumpAndSettle();
+    expect(controller.offset, greaterThan(0));
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await tester.pumpAndSettle();
+    final note = find.byKey(const ValueKey('credit-grid-note-row'));
+    expect(note.hitTestable(), findsOneWidget);
+    await tester.enterText(note, '오른쪽 비고 입력');
+    expect(tester.widget<TextField>(note).controller!.text, '오른쪽 비고 입력');
+    expect(tester.takeException(), isNull);
+  });
+
+  test('fractional credit cells retain exact thousandth sums', () {
+    final grid = GraduationCreditGrid(admissionYear: '2026', departmentId: 'dept', rows: [GraduationCreditRow(id: 'row', label: '행')]);
+    final group = GraduationCreditColumnGroup(id: 'decimal', label: '소수');
+    grid.groups.add(group);
+    final row = grid.rows.first;
+    for (final entry in {'d1': '0.1', 'd2': '0.2', 'd3': '1.125'}.entries) {
+      grid.columns.add(GraduationCreditColumn(id: entry.key, label: entry.key, groupId: group.id));
+      grid.cellFor(row.id, entry.key)..kind = GraduationCreditCellKind.number..value = entry.value;
+    }
+    expect(summedLeafCredits(grid, row, group.id), 1.425);
+    expect(parseCreditNumber('3.000'), 3);
+    for (final invalid in ['-1', 'NaN', '1e3', '1.2345', '.', '']) {
+      expect(parseCreditNumber(invalid), isNull, reason: invalid);
+    }
+  });
+
+  testWidgets('decimal credit entry survives editing and document preview', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final grid = GraduationCreditGrid(
+      admissionYear: '2026', departmentId: 'dept-cs',
+      columns: [GraduationCreditColumn(id: 'c', label: '학점')],
+      rows: [GraduationCreditRow(id: 'r', label: '경로')],
+    );
+    grid.cellFor('r', 'c')..kind = GraduationCreditCellKind.number..value = '3';
+    await tester.pumpWidget(host(GraduationCreditGridPage(
+      schoolName: '합성 대학', departments: departments(), initial: grid, scrollable: true,
+    )));
+    final field = find.byKey(const ValueKey('credit-grid-cell-r/c'));
+    await tester.ensureVisible(field);
+    await tester.enterText(field, '1.125');
+    await tester.pump();
+    expect(tester.widget<TextField>(field).controller!.text, '1.125');
+    await tester.enterText(field, '1.1254');
+    expect(tester.widget<TextField>(field).controller!.text, '1.125');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    final preview = find.byKey(const ValueKey('credit-grid-preview'));
+    await tester.ensureVisible(preview);
+    await tester.tap(preview);
+    await tester.pumpAndSettle();
+    expect(find.text('1.125'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  test(
+    'credit grid copy keeps IDs unique and leaves sparse source unchanged',
+    () {
+      final grid = GraduationCreditGrid(
+        admissionYear: '2026',
+        departmentId: 'dept-cs',
+        groups: [
+          for (var i = 0; i < 100; i++)
+            GraduationCreditColumnGroup(id: 'g$i', label: '묶음 $i'),
+        ],
+        columns: [
+          for (var i = 0; i < 100; i++)
+            GraduationCreditColumn(id: 'c$i', label: '열 $i', groupId: 'g$i'),
+        ],
+        rows: [GraduationCreditRow(id: 'r1', label: '경로')],
+      );
+      final copy = copyCreditGrid(grid);
+      expect(copy.groups.map((g) => g.id).toSet(), hasLength(100));
+      expect(copy.columns.map((c) => c.id).toSet(), hasLength(100));
+      for (var i = 0; i < 100; i++) {
+        expect(copy.columns[i].groupId, copy.groups[i].id);
+      }
+      copy.cellFor(copy.rows.single.id, copy.columns.first.id).value = '9';
+      expect(grid.cells, isEmpty);
+    },
+  );
+
+  test('certification IDs stay unique during rapid creation', () {
+    expect({
+      for (var i = 0; i < 1000; i++) GraduationCertificationDraft.newId(),
+    }, hasLength(1000));
+  });
+
+  testWidgets(
+    'credit draft isolates initial data and detects edit and revert',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final grid = GraduationCreditGrid(
+        admissionYear: '2026',
+        departmentId: 'dept-cs',
+      );
+      final key = GlobalKey<GraduationCreditGridPageState>();
+      await tester.pumpWidget(
+        host(
+          GraduationCreditGridPage(
+            key: key,
+            schoolName: '학교',
+            departments: departments(),
+            initial: grid,
+          ),
+        ),
+      );
+      expect(key.currentState!.dirty, isFalse);
+      await tester.enterText(
+        find.byKey(const ValueKey('credit-grid-year')),
+        '2027',
+      );
+      expect(key.currentState!.dirty, isTrue);
+      expect(grid.admissionYear, '2026');
+      await tester.enterText(
+        find.byKey(const ValueKey('credit-grid-year')),
+        '2026',
+      );
+      expect(key.currentState!.dirty, isFalse);
+    },
+  );
+
+  testWidgets(
+    'certification draft isolates nested initial data and tracks revert',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final nested = GraduationCertificationGroup(id: 'child', label: '안쪽');
+      final initial = GraduationCertificationDraft(
+        departmentId: 'dept-cs',
+        groups: [
+          GraduationCertificationGroup(id: 'parent', groups: [nested]),
+        ],
+      );
+      final key = GlobalKey<GraduationCertificationPageState>();
+      await tester.pumpWidget(
+        host(
+          GraduationCertificationPage(
+            key: key,
+            schoolName: '학교',
+            departments: departments(),
+            initial: initial,
+            scrollable: true,
+          ),
+        ),
+      );
+      expect(key.currentState!.dirty, isFalse);
+      final field = find.byKey(const ValueKey('certification-group-child'));
+      await tester.enterText(field, '수정');
+      expect(key.currentState!.dirty, isTrue);
+      expect(nested.label, '안쪽');
+      await tester.enterText(field, '안쪽');
+      expect(key.currentState!.dirty, isFalse);
+    },
+  );
+
+  testWidgets('cell kind changes clear the displayed and previewed number', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final grid = GraduationCreditGrid(
+      admissionYear: '2026',
+      departmentId: 'dept-cs',
+      columns: [GraduationCreditColumn(id: 'c', label: '학점')],
+      rows: [GraduationCreditRow(id: 'r', label: '경로')],
+    );
+    grid.cellFor('r', 'c')
+      ..kind = GraduationCreditCellKind.number
+      ..value = '7';
+    final key = GlobalKey<GraduationCreditGridPageState>();
+    await tester.pumpWidget(
+      host(
+        GraduationCreditGridPage(
+          key: key,
+          schoolName: '학교',
+          departments: departments(),
+          initial: grid,
+          scrollable: true,
+        ),
+      ),
+    );
+    expect(key.currentState!.dirty, isFalse);
+    await tester.tap(find.byKey(const ValueKey('credit-grid-kind-r/c-empty')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('credit-grid-kind-r/c-number')));
+    await tester.pump();
+    final field = tester.widget<TextField>(
+      find.byKey(const ValueKey('credit-grid-cell-r/c')),
+    );
+    expect(field.controller!.text, isEmpty);
+    expect(grid.cellFor('r', 'c').value, '7');
+    await tester.enterText(
+      find.byKey(const ValueKey('credit-grid-cell-r/c')),
+      '8',
+    );
+    await tester.tap(find.byKey(const ValueKey('credit-grid-preview')));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('template-preview-dialog')),
+        matching: find.text('8'),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('execution draft resets when school context changes', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = FakeAdminRepository();
+    addTearDown(repo.dispose);
+    final key = GlobalKey<AdminRuleExecutionPanelState>();
+    Widget panel(String school) => host(
+      AdminRuleExecutionPanel(
+        key: key,
+        repository: repo,
+        actorId: '',
+        schoolId: school,
+        ruleType: 'credits',
+        description: '',
+        rule: null,
+        metadataDirty: false,
+        onBusy: (_) {},
+        onChanged: () {},
+      ),
+    );
+    await tester.pumpWidget(panel('school-a'));
+    await tester.enterText(find.byType(TextFormField).first, '30');
+    expect(key.currentState!.dirty, isTrue);
+    await tester.pumpWidget(panel('school-b'));
+    expect(key.currentState!.draft.values, isEmpty);
+    expect(key.currentState!.dirty, isFalse);
+    expect(
+      tester
+          .widget<TextFormField>(find.byType(TextFormField).first)
+          .initialValue,
+      isEmpty,
+    );
+  });
+
   testWidgets('credit grid keeps empty, number, and not-applicable cells', (
     tester,
   ) async {
@@ -140,6 +427,7 @@ void main() {
         ),
         '창의영역',
       );
+      await tester.ensureVisible(find.text('기준 추가'));
       await tester.tap(find.text('기준 추가'));
       await tester.pump();
       await tester.tap(find.text('면제 대상 추가'));
@@ -157,6 +445,89 @@ void main() {
       expect(find.text('인증 요건 미리보기'), findsNothing);
     },
   );
+
+  testWidgets('invalid pick-N shows an error and still opens the preview', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      host(
+        GraduationCertificationPage(
+          schoolName: '경동대학교',
+          departments: departments(),
+          scrollable: true,
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('certification-add-group')));
+    await tester.pump();
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'certification-choice-',
+            ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(MenuItemButton, '택 N'));
+    await tester.pumpAndSettle();
+
+    const overEmpty = '기준은 0개입니다. 택하는 개수는 기준 수를 넘지 않게 입력하세요.';
+    expect(find.text(overEmpty), findsOneWidget);
+    final preview = find.byKey(const ValueKey('certification-preview'));
+    expect(tester.widget<OutlinedButton>(preview).onPressed, isNotNull);
+    await tester.tap(preview);
+    await tester.pumpAndSettle();
+    expect(find.text('인증 요건 미리보기'), findsOneWidget);
+    expect(find.text('묶음 (택 1)'), findsOneWidget);
+    expect(find.text(overEmpty), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('template-preview-close')));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('기준 추가'));
+    await tester.tap(find.text('기준 추가'));
+    await tester.pumpAndSettle();
+    expect(find.text(overEmpty), findsNothing);
+
+    final pick = find.byWidgetPredicate(
+      (widget) =>
+          widget.key is ValueKey<String> &&
+          (widget.key! as ValueKey<String>).value.startsWith(
+            'certification-pick-',
+          ),
+    );
+    await tester.enterText(pick, '');
+    await tester.pump();
+    expect(find.text('택하는 개수를 입력하세요.'), findsOneWidget);
+    await tester.tap(preview);
+    await tester.pumpAndSettle();
+    expect(find.text('인증 요건 미리보기'), findsOneWidget);
+    expect(find.text('묶음 (택 미입력)'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('template-preview-close')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(pick, '0');
+    await tester.pump();
+    expect(find.text('택하는 개수는 1 이상의 숫자로 입력하세요.'), findsOneWidget);
+    await tester.tap(preview);
+    await tester.pumpAndSettle();
+    expect(find.text('묶음 (택 0)'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('template-preview-close')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(pick, '2');
+    await tester.pump();
+    const overItems = '기준은 1개입니다. 택하는 개수는 기준 수를 넘지 않게 입력하세요.';
+    expect(find.text(overItems), findsOneWidget);
+    await tester.tap(preview);
+    await tester.pumpAndSettle();
+    expect(find.text('인증 요건 미리보기'), findsOneWidget);
+    expect(find.text('묶음 (택 2)'), findsOneWidget);
+    expect(find.text(overItems), findsOneWidget);
+  });
 
   testWidgets(
     'rules menu keeps line editor beside credit and certification views',
@@ -177,17 +548,25 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('한 줄 요건'), findsOneWidget);
-      expect(find.text('학점표'), findsOneWidget);
-      expect(find.text('인증 요건'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, '한 줄 요건'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, '학점표'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, '인증 요건'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('admin-section-ruleSet')),
         findsOneWidget,
       );
+      tester
+          .widget<AnchoredSelectField<String>>(
+            find.byKey(const ValueKey('admin-school-selector')),
+          )
+          .onChanged('school-a');
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.byKey(const ValueKey('rule-view-grid')));
       await tester.tap(find.byKey(const ValueKey('rule-view-grid')));
       await tester.pumpAndSettle();
       expect(find.text('학점표 저장 불가 · 연결 전'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, '학점표'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, '한 줄 요건'), findsOneWidget);
       expect(find.byKey(const ValueKey('admin-section-ruleSet')), findsNothing);
       await tester.ensureVisible(find.byKey(const ValueKey('rule-view-cert')));
       await tester.tap(find.byKey(const ValueKey('rule-view-cert')));
@@ -202,4 +581,96 @@ void main() {
       );
     },
   );
+
+  testWidgets('added credit rows and certification groups can be removed', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      host(
+        GraduationCreditGridPage(
+          schoolName: '경동대학교',
+          departments: departments(),
+          scrollable: true,
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('credit-grid-add-group')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'credit-grid-remove-group-',
+            ),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'credit-grid-remove-group-',
+            ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('열 묶음이나 이수 경로 행을 추가'), findsOneWidget);
+
+    await tester.pumpWidget(
+      host(
+        GraduationCertificationPage(
+          schoolName: '경동대학교',
+          departments: departments(),
+          scrollable: true,
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('certification-add-group')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'certification-add-item-',
+            ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'certification-remove-item-',
+            ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'certification-remove-item-',
+            ),
+      ),
+      findsNothing,
+    );
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'certification-remove-group-',
+            ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('묶음을 추가해 인증 요건을 적으세요'), findsOneWidget);
+  });
 }

@@ -1,6 +1,7 @@
 import '../auth/auth_api.dart';
 import 'academic_guidance_models.dart';
 import 'job_analysis_models.dart';
+import 'job_analysis_api.dart';
 import 'graduation_models.dart';
 import '../auth/guidance_asset_gateway.dart';
 
@@ -63,8 +64,6 @@ class GuidanceApi {
     (await api.request('POST', 'me/personalized-guidance', value.toJson()))!,
   );
 
-  Future<JobAnalysisResponse> analyze(JobAnalysisRequest value) async =>
-      JobAnalysisResponse.fromJson(
-        (await api.request('POST', 'me/job-analyses', value.toJson()))!,
-      );
+  Future<JobAnalysisResponse> analyze(JobAnalysisRequest value) =>
+      JobAnalysisApi(api).analyze(value);
 }

@@ -296,15 +296,19 @@ Future<GlobalKey<AdminEditorState>> open(
   return key;
 }
 
+Future<void> line(WidgetTester t, String value) async {
+  final field = find.byKey(const ValueKey('execution-line-0'));
+  await t.ensureVisible(field);
+  await t.enterText(field, value);
+  await t.pumpAndSettle();
+}
+
 Future<void> criteria(WidgetTester t) async {
-  await text(t, '최소 필요 학점 *', '120');
-  await text(t, '적용 입학연도 시작 *', '2026');
-  await text(t, '적용 입학연도 종료 *', '2026');
-  await text(t, '이수 경로 (쉼표 구분) *', 'single_major');
-  await tap(t, find.text('근거·초안 다시 읽기'));
-  await select(t, '검토된 근거 문서', knowledge.document);
-  await select<int?>(t, '근거 페이지', 1);
-  await tap(t, find.widgetWithText(CheckboxListTile, '최소 120학점').first);
+  await text(t, '적용 입학연도 시작 (필수)', '2026');
+  await text(t, '적용 입학연도 종료 (필수)', '2026');
+  await text(t, '이 조건을 적용할 학생 (필수)', 'single_major');
+  await tap(t, find.text('초안 다시 읽기'));
+  await line(t, '최소 120학점');
 }
 
 void main() {
@@ -315,21 +319,29 @@ void main() {
       final server = RequirementServer(empty: true);
       final key = await open(t, server);
       await t.enterText(find.byKey(const ValueKey('admin-field-name')), '총 학점');
-      await select(t, '규칙 종류 *', 'credits');
+      await select(t, '규칙 종류 (필수)', 'credits');
       await t.enterText(
         find.byKey(const ValueKey('admin-field-definition')),
         '졸업에 필요한 학점',
       );
-      await text(t, '최소 필요 학점 *', '120');
+      await line(t, '최소 120학점');
       await tap(t, find.text('요건 설명 저장'));
       expect(server.data['rules'], hasLength(1));
       expect(server.writes, isEmpty);
       expect(find.byType(AdminRuleExecutionPanel), findsOneWidget);
-      expect(t.widget<TextFormField>(input('최소 필요 학점 *')).initialValue, '120');
+      expect(
+        t
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('execution-line-0')),
+            )
+            .controller!
+            .text,
+        '최소 120학점',
+      );
       await tap(t, find.text('요건 검토·적용'));
       await tap(t, find.widgetWithText(FilledButton, '검토·적용'));
       await criteria(t);
-      await tap(t, find.text('계산 조건 초안 저장'));
+      await tap(t, find.text('한 줄 요건 저장'));
       expect(server.writes, hasLength(1));
       final body = jsonDecode(server.writes.single.body) as Map;
       expect(body['rule_id'], fixture.newId);
@@ -337,18 +349,14 @@ void main() {
       expect((body['rules'] as List).single, {
         'rule_id': fixture.newId,
         'expected_version': 2,
-        'condition': {
-          'kind': 'minimum_credits',
-          'minimum': '120',
-          'category': null,
-        },
-        'evidence_chunk_ids': [knowledge.chunk],
+        'condition': {'kind': 'manual_review', 'instruction': '최소 120학점'},
+        'evidence_chunk_ids': <String>[],
       });
       expect(body['admission_year_from'], 2026);
       expect(body['tracks'], ['single_major']);
       expect(key.currentState!.dirty, isFalse);
-      await text(t, '최소 필요 학점 *', '130');
-      await tap(t, find.text('계산 조건 초안 저장'));
+      await line(t, '최소 130학점');
+      await tap(t, find.text('한 줄 요건 저장'));
       expect(server.writes.last.method, 'PUT');
       expect(jsonDecode(server.writes.last.body)['expected_version'], 1);
       expect(server.data['rules'], hasLength(1));
@@ -367,7 +375,7 @@ void main() {
         {
           'rule_id': ruleId,
           'expected_version': 1,
-          'condition': {'kind': 'minimum_credits', 'minimum': '100'},
+          'condition': {'kind': 'manual_review', 'instruction': '최소 100학점'},
         },
         {
           'rule_id': otherRuleId,
@@ -377,10 +385,10 @@ void main() {
       ],
     }, version: 7);
     await open(t, server);
-    await tap(t, find.text('근거·초안 다시 읽기'));
-    await select(t, '저장할 실행 초안', programId);
-    await text(t, '최소 필요 학점 *', '120');
-    await tap(t, find.text('계산 조건 초안 저장'));
+    await tap(t, find.text('초안 다시 읽기'));
+    await select(t, '저장 위치', programId);
+    await line(t, '최소 120학점');
+    await tap(t, find.text('한 줄 요건 저장'));
     final body = jsonDecode(server.writes.single.body) as Map;
     expect(server.writes.single.method, 'PUT');
     expect(body['expected_version'], 7);
@@ -390,31 +398,33 @@ void main() {
       'kind': 'minimum_volunteer_hours',
       'minimum': '30',
     });
-    expect(rules.last['condition']['minimum'], '120');
+    expect(rules.last['condition']['instruction'], '최소 120학점');
     server.fail = 409;
-    await text(t, '최소 필요 학점 *', '125');
-    await tap(t, find.text('계산 조건 초안 저장'));
+    await line(t, '최소 125학점');
+    await tap(t, find.text('한 줄 요건 저장'));
     expect(
       t
-          .widget<FilledButton>(
-            find.widgetWithText(FilledButton, '계산 조건 초안 저장'),
-          )
+          .widget<FilledButton>(find.widgetWithText(FilledButton, '한 줄 요건 저장'))
           .onPressed,
       isNull,
     );
     server.fail = null;
-    await tap(t, find.text('근거·초안 다시 읽기'));
-    await select(t, '저장할 실행 초안', programId);
-    await tap(t, find.text('내용 폐기'));
+    await tap(t, find.text('초안 다시 읽기'));
+    await select(t, '저장 위치', programId);
+    await tap(t, find.byKey(const Key('input-discard-delete')));
     expect(
       t
-          .widget<FilledButton>(
-            find.widgetWithText(FilledButton, '계산 조건 초안 저장'),
-          )
+          .widget<FilledButton>(find.widgetWithText(FilledButton, '한 줄 요건 저장'))
           .onPressed,
       isNotNull,
     );
-    expect(t.widget<TextFormField>(input('최소 필요 학점 *')).initialValue, '120');
+    expect(
+      t
+          .widget<TextFormField>(find.byKey(const ValueKey('execution-line-0')))
+          .controller!
+          .text,
+      '최소 120학점',
+    );
     expect(t.takeException(), isNull);
   });
   for (final status in [422, 409, 503]) {
@@ -424,7 +434,7 @@ void main() {
         final server = RequirementServer()..fail = status;
         await open(t, server);
         await criteria(t);
-        await tap(t, find.text('계산 조건 초안 저장'));
+        await tap(t, find.text('한 줄 요건 저장'));
         expect(server.writes, hasLength(1));
         expect(
           find.text(
@@ -437,11 +447,16 @@ void main() {
           findsOneWidget,
         );
         expect(
-          t.widget<TextFormField>(input('최소 필요 학점 *')).initialValue,
-          '120',
+          t
+              .widget<TextFormField>(
+                find.byKey(const ValueKey('execution-line-0')),
+              )
+              .controller!
+              .text,
+          '최소 120학점',
         );
         final button = t.widget<FilledButton>(
-          find.widgetWithText(FilledButton, '계산 조건 초안 저장'),
+          find.widgetWithText(FilledButton, '한 줄 요건 저장'),
         );
         if (status == 422) {
           expect(button.onPressed, isNotNull);
@@ -452,14 +467,14 @@ void main() {
           expect(server.writes, hasLength(1));
           if (status == 503) {
             server.fail = null;
-            await tap(t, find.text('근거·초안 다시 읽기'));
-            await select(t, '저장할 실행 초안', programId);
+            await tap(t, find.text('초안 다시 읽기'));
+            await select(t, '저장 위치', programId);
             await tap(
               t,
-              find.text('내용 폐기'),
+              find.byKey(const Key('input-discard-delete')),
             ); // Explicitly replace the local draft with the saved response.
-            await text(t, '최소 필요 학점 *', '125');
-            await tap(t, find.text('계산 조건 초안 저장'));
+            await line(t, '최소 125학점');
+            await tap(t, find.text('한 줄 요건 저장'));
             expect(server.writes.last.method, 'PUT');
             expect(
               server.writes.where((r) => r.method == 'POST'),
@@ -477,17 +492,23 @@ void main() {
       final server = RequirementServer(empty: true);
       final key = await open(t, server);
       expect(key.currentState!.dirty, isFalse);
-      await select(t, '규칙 종류 *', 'credits');
-      await text(t, '최소 필요 학점 *', '120');
-      await select(t, '규칙 종류 *', 'volunteer');
-      await text(t, '최소 필요 봉사시간 *', '30');
-      await select(t, '규칙 종류 *', 'credits');
-      expect(t.widget<TextFormField>(input('최소 필요 학점 *')).initialValue, '120');
+      await select(t, '규칙 종류 (필수)', 'credits');
+      await line(t, '최소 120학점');
+      await select(t, '규칙 종류 (필수)', 'volunteer');
+      expect(
+        t
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('execution-line-0')),
+            )
+            .controller!
+            .text,
+        '최소 120학점',
+      );
       await tap(t, find.text('취소'));
-      await tap(t, find.text('계속 작성'));
+      await tap(t, find.byKey(const Key('input-discard-cancel')));
       expect(key.currentState!.dirty, isTrue);
       await tap(t, find.text('취소'));
-      await tap(t, find.text('내용 폐기'));
+      await tap(t, find.byKey(const Key('input-discard-delete')));
       expect(key.currentState!.dirty, isFalse);
       expect(server.writes, isEmpty);
       expect(server.data['rules'], isEmpty);
@@ -499,9 +520,9 @@ void main() {
       final server = RequirementServer()..fail = 403;
       await open(t, server);
       await criteria(t);
-      await tap(t, find.text('계산 조건 초안 저장'));
+      await tap(t, find.text('한 줄 요건 저장'));
       expect(find.text('이 작업을 수행할 권한이 없습니다.'), findsOneWidget);
-      expect(find.text('계산 조건 초안을 서버에 저장했습니다. 아직 승인되지 않았습니다.'), findsNothing);
+      expect(find.text('한 줄 요건을 저장했습니다. 아직 승인되지 않았습니다.'), findsNothing);
       expect(find.widgetWithText(CheckboxListTile, '최소 120학점'), findsNothing);
       expect(server.writes, hasLength(1));
       expect(t.takeException(), isNull);
@@ -513,22 +534,42 @@ void main() {
       final server = RequirementServer(schoolAdmin: true);
       await open(t, server);
       await criteria(t);
-      await tap(t, find.text('계산 조건 초안 저장'));
+      await tap(t, find.text('한 줄 요건 저장'));
       expect(server.writes, hasLength(1));
       expect(server.writes.single.url.path, '/api/v1/admin/rule-programs');
       expect(server.writes.single.headers['Authorization'], 'Bearer $token');
       expect(jsonDecode(server.writes.single.body)['rule_id'], ruleId);
-      expect(find.text('계산 조건 초안을 서버에 저장했습니다. 아직 승인되지 않았습니다.'), findsOneWidget);
+      expect(find.text('한 줄 요건을 저장했습니다. 아직 승인되지 않았습니다.'), findsOneWidget);
       expect(t.takeException(), isNull);
     },
   );
-  testWidgets('changed evidence page is rejected without write', (t) async {
-    final server = RequirementServer()..changedPage = true;
+  testWidgets('choosing a new save keeps the typed line', (t) async {
+    final server = RequirementServer();
+    server.savedProgram = server.program({
+      'admission_year_from': 2026,
+      'admission_year_to': 2026,
+      'tracks': ['single_major'],
+      'rules': [
+        {
+          'rule_id': ruleId,
+          'expected_version': 1,
+          'condition': {'kind': 'manual_review', 'instruction': '저장된 줄'},
+        },
+      ],
+    });
     await open(t, server);
-    await tap(t, find.text('근거·초안 다시 읽기'));
-    await select(t, '검토된 근거 문서', knowledge.document);
-    await select<int?>(t, '근거 페이지', 1);
-    expect(find.textContaining('요청과 다른 근거 페이지'), findsOneWidget);
+    await tap(t, find.text('초안 다시 읽기'));
+    await select(t, '저장 위치', programId);
+    await line(t, '적은 줄');
+    await select(t, '저장 위치', '');
+    expect(find.byKey(const Key('input-discard-delete')), findsNothing);
+    expect(
+      t
+          .widget<TextFormField>(find.byKey(const ValueKey('execution-line-0')))
+          .controller!
+          .text,
+      '적은 줄',
+    );
     expect(server.writes, isEmpty);
   });
   test('all typed criteria roundtrip and reject changed master versions', () {

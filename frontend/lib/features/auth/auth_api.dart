@@ -10,7 +10,10 @@ import 'app_role.dart';
 import 'account_security_gateway.dart';
 import 'auth_http_stub.dart' if (dart.library.js_interop) 'auth_http_web.dart';
 import 'record_files_gateway.dart';
+import '../api/api_base_url.dart';
 import '../api/school_signup_models.dart';
+import '../../shared/drafts/form_draft_store.dart';
+import 'local_data_owner.dart';
 
 class SchoolSignupResult {
   const SchoolSignupResult(this.identity, this.signup);
@@ -115,13 +118,7 @@ class AuthApi implements AuthGateway, ApiGateway {
     : _cookieMode = cookieMode,
       _pageHost = (pageUrl ?? Uri.base).host.toLowerCase(),
       _base = resolveCookieApiBase(
-        baseUrl ??
-            Uri.parse(
-              const String.fromEnvironment(
-                'API_BASE_URL',
-                defaultValue: 'http://localhost:8010',
-              ),
-            ),
+        resolveApiBaseUrl(baseUrl ?? configuredApiBaseUrl()),
         cookieMode: cookieMode,
         pageUrl: pageUrl,
       );
@@ -338,8 +335,14 @@ class AuthApi implements AuthGateway, ApiGateway {
   }
 
   void _setOwner(String? value) {
+    final previous = _ownerId;
     if (_ownerId != value) _sessionEpoch++;
     _ownerId = value;
+    LocalDataOwner.currentUserId = value;
+    if (previous != null && previous != value) {
+      // Fire-and-forget: draft wipe must not block logout/session switch.
+      unawaited(FormDraftStore.instance.clearForOwner(previous));
+    }
   }
 
   @override

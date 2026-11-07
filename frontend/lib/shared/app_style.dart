@@ -260,8 +260,12 @@ ThemeData buildAppTheme(AppPalette palette) {
       );
   final button = ButtonStyle(
     shape: WidgetStatePropertyAll(shape),
-    minimumSize: const WidgetStatePropertyAll(Size(0, 44)),
-    textStyle: WidgetStatePropertyAll(text.labelLarge),
+    minimumSize: const WidgetStatePropertyAll(Size(0, 48)),
+    padding: const WidgetStatePropertyAll(
+      EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    ),
+    textStyle: WidgetStatePropertyAll(text.labelLarge?.copyWith(height: 1.0)),
+    iconSize: const WidgetStatePropertyAll(18),
     elevation: const WidgetStatePropertyAll(0),
     side: WidgetStateProperty.resolveWith(
       (states) => states.contains(WidgetState.focused)

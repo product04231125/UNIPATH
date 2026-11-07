@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/horizontal_scroll_area.dart';
+import '../../shared/widgets/surface_card.dart';
 
 import 'planning_dates.dart';
 import 'planning_repository.dart';
@@ -41,46 +43,41 @@ class _WeeklyScheduleState extends State<WeeklySchedule> {
       DateTime.now().add(Duration(days: _offset * 7)),
       widget.startsOn,
     );
-    return Card(
-      margin: const EdgeInsets.all(4),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              spacing: 16,
+    return SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FeatureLine.section(
+            text: '이번 주 일정',
+            padTop: false,
+            padBottom: false,
+            trailing: Wrap(
+              spacing: 8,
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text('이번 주 일정', style: Theme.of(context).textTheme.titleLarge),
                 Text(
                   '${days.first.month}.${days.first.day}–${days.last.month}.${days.last.day}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    IconButton(
-                      tooltip: '이전 주',
-                      icon: const Icon(Icons.chevron_left),
-                      onPressed: () => setState(() => _offset--),
-                    ),
-                    TextButton(
-                      onPressed: () => setState(() => _offset = 0),
-                      child: const Text('오늘'),
-                    ),
-                    IconButton(
-                      tooltip: '다음 주',
-                      icon: const Icon(Icons.chevron_right),
-                      onPressed: () => setState(() => _offset++),
-                    ),
-                  ],
+                IconButton.filledTonal(
+                  tooltip: '이전 주',
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: () => setState(() => _offset--),
+                ),
+                FilledButton.tonal(
+                  onPressed: () => setState(() => _offset = 0),
+                  child: const Text('오늘'),
+                ),
+                IconButton.filledTonal(
+                  tooltip: '다음 주',
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: () => setState(() => _offset++),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            LayoutBuilder(
+          ),
+          LayoutBuilder(
               builder: (context, constraints) {
                 final width = ((constraints.maxWidth - 48) / 7).clamp(
                   92.0,
@@ -101,8 +98,7 @@ class _WeeklyScheduleState extends State<WeeklySchedule> {
                 );
               },
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

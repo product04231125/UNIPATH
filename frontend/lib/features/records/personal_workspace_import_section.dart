@@ -35,7 +35,6 @@ class _PersonalWorkspaceImportSectionState
             '수강·활동·포트폴리오 자료',
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          const Text('새 개인 기록은 본인 계정 서버에 저장합니다. 기존 기기 자료는 동의 전까지 전송하지 않습니다.'),
           if (data.loading)
             const LinearProgressIndicator()
           else if (data.failed)
@@ -115,7 +114,6 @@ class _ImportDialogState extends State<_ImportDialog> {
         const SizedBox(height: 12),
         const Text(
           '기존 서버 자료를 덮어쓰거나 기기 원본을 지우지 않습니다. '
-          '이전은 학교의 승인·공식 판정·온라인 게시·지원처 제출을 뜻하지 않습니다. '
           '실패하면 같은 요청으로 결과를 다시 확인합니다.',
         ),
         CheckboxListTile(
