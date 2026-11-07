@@ -63,12 +63,12 @@ void main() {
         expect(tester.getSize(list).height, inInclusiveRange(180, 360));
         final basic = find.byKey(const ValueKey('admin-basic-ruleSet'));
         expect(
-          tester.getBottomLeft(basic).dy,
-          lessThanOrEqualTo(tester.getTopLeft(list).dy),
+          tester.getTopLeft(list).dx,
+          lessThan(tester.getTopLeft(basic).dx),
         );
         expect(
-          (tester.getTopLeft(list).dx - tester.getTopLeft(basic).dx).abs(),
-          lessThanOrEqualTo(16),
+          (tester.getTopLeft(list).dy - tester.getTopLeft(basic).dy).abs(),
+          lessThanOrEqualTo(24),
         );
         expect(find.widgetWithText(FilledButton, '규칙 묶음 등록'), findsNothing);
         expect(
@@ -231,6 +231,11 @@ void main() {
       find.byKey(const ValueKey('admin-list-panel-department')),
       findsOneWidget,
     );
+    final beside = find.byKey(const ValueKey('admin-details-beside-department'));
+    expect(
+      find.descendant(of: form, matching: find.text('적용 범위')),
+      findsOneWidget,
+    );
     expect(
       find.descendant(of: form, matching: find.text('적용 범위·상세')),
       findsOneWidget,
@@ -261,17 +266,36 @@ void main() {
     expect(railRadius.topLeft, const Radius.circular(20));
     expect(railRadius.bottomLeft, const Radius.circular(20));
     expect(
-      tester.getBottomLeft(basic).dy,
-      lessThanOrEqualTo(tester.getTopLeft(list).dy),
+      tester.getTopLeft(list).dx,
+      lessThan(tester.getTopLeft(basic).dx),
     );
     expect(
-      tester.getBottomLeft(list).dy,
-      lessThanOrEqualTo(tester.getTopLeft(details).dy),
+      (tester.getTopLeft(list).dy - tester.getTopLeft(basic).dy).abs(),
+      lessThanOrEqualTo(24),
+    );
+    expect(
+      tester.getBottomLeft(basic).dy,
+      lessThanOrEqualTo(tester.getTopLeft(beside).dy),
+    );
+    expect(
+      tester.getTopLeft(beside).dx,
+      closeTo(tester.getTopLeft(basic).dx, 1),
+    );
+    expect(
+      tester.getTopLeft(details).dy,
+      greaterThan(tester.getBottomLeft(list).dy - 1),
+    );
+    expect(
+      tester.getTopLeft(details).dy,
+      greaterThan(tester.getBottomLeft(beside).dy - 1),
     );
     expect(tester.getTopLeft(details).dx, tester.getTopLeft(rail).dx);
     expect(
       tester.getSize(details).width,
-      closeTo(tester.getSize(rail).width, 1),
+      closeTo(
+        tester.getSize(rail).width + 24 + tester.getSize(basic).width,
+        2,
+      ),
     );
     for (final field in repo.fields(AdminKind.department)) {
       expect(
@@ -287,7 +311,7 @@ void main() {
       matching: find.byKey(const ValueKey('admin-field-name')),
     );
     final code = find.descendant(
-      of: details,
+      of: beside,
       matching: find.byKey(const ValueKey('admin-field-code')),
     );
     tester

@@ -144,16 +144,16 @@ void main() {
         expect(find.descendant(of: frame, matching: first), findsOneWidget);
         expect(find.descendant(of: frame, matching: details), findsOneWidget);
         expect(
-          tester.getBottomLeft(second).dy,
-          lessThanOrEqualTo(tester.getTopLeft(first).dy),
+          tester.getTopLeft(first).dx,
+          lessThan(tester.getTopLeft(second).dx),
         );
         expect(
-          (tester.getTopLeft(first).dx - tester.getTopLeft(second).dx).abs(),
-          lessThanOrEqualTo(16),
+          (tester.getTopLeft(first).dy - tester.getTopLeft(second).dy).abs(),
+          lessThanOrEqualTo(24),
         );
         expect(
           tester.getTopLeft(details).dy,
-          greaterThan(tester.getBottomLeft(first).dy),
+          greaterThan(tester.getBottomLeft(first).dy - 1),
         );
         expect(
           tester.getBottomLeft(frame).dy,

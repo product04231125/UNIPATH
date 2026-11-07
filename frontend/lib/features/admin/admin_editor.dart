@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../shared/widgets/external_link_button.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/input_dialog.dart';
+import '../../shared/widgets/responsive_columns.dart';
 import '../../shared/widgets/responsive_panels.dart';
 import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/field_requirement.dart';
@@ -563,7 +564,7 @@ class AdminEditorState extends State<AdminEditor> {
     ],
   );
 
-  /// Full rectangle around the list. The list sits under the basic fields.
+  /// Full rectangle around the list. Wide layout keeps the list on the left.
   Widget _listRail({required Widget child}) {
     final color = Theme.of(context).colorScheme.outlineVariant;
     const radius = BorderRadius.all(Radius.circular(20));
@@ -583,12 +584,59 @@ class AdminEditorState extends State<AdminEditor> {
     );
   }
 
-  Widget _compactDetails(List<AdminField> fields) {
+  /// Scope / leftover identity fields sit beside the list under basic info.
+  /// Source, period, rule, and settings fields stay in the full-width block.
+  bool _besideDetailsField(AdminField field) => switch (field.key) {
+    'departmentId' ||
+    'curriculumId' ||
+    'userId' ||
+    'scopeType' => true,
+    'sourceUrl' ||
+    'officialUrl' ||
+    'documentType' ||
+    'ruleId' ||
+    'ruleSetId' ||
+    'effectiveFrom' ||
+    'effectiveTo' ||
+    'ruleType' ||
+    'definition' ||
+    'category' ||
+    'required' ||
+    'courseId' ||
+    'reason' ||
+    'accountStatus' => false,
+    _ => true,
+  };
+
+  Widget _compactDetails(
+    List<AdminField> fields, {
+    bool pairInNarrowColumn = false,
+  }) {
     final rows = <Widget>[];
     final shortFields = <Widget>[];
     void flush() {
       if (shortFields.isEmpty) return;
-      rows.add(ResponsivePanels(children: List.of(shortFields)));
+      if (pairInNarrowColumn) {
+        for (var i = 0; i < shortFields.length; i += 2) {
+          if (i > 0) rows.add(const SizedBox(height: 24));
+          if (i + 1 < shortFields.length) {
+            rows.add(
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: shortFields[i]),
+                  const SizedBox(width: 24),
+                  Expanded(child: shortFields[i + 1]),
+                ],
+              ),
+            );
+          } else {
+            rows.add(shortFields[i]);
+          }
+        }
+      } else {
+        rows.add(ResponsivePanels(children: List.of(shortFields)));
+      }
       shortFields.clear();
     }
 
@@ -612,23 +660,42 @@ class AdminEditorState extends State<AdminEditor> {
         .where((f) => f.key == 'name' || f.key == 'institutionId')
         .toList();
     final remaining = _fields.where((f) => !basic.contains(f)).toList();
+    final beside = remaining.where(_besideDetailsField).toList();
+    final below = remaining.where((f) => !_besideDetailsField(f)).toList();
+    final gap = FeatureLine.slotGap(context);
+    final rightColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _panel(
+          _isEditing ? '수정 기본 정보' : '등록 기본 정보',
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [for (final field in basic) _field(field)],
+          ),
+          key: ValueKey('admin-basic-${widget.kind.name}'),
+        ),
+        if (beside.isNotEmpty) ...[
+          SizedBox(height: gap),
+          _panel(
+            '적용 범위',
+            _compactDetails(beside, pairInNarrowColumn: true),
+            key: ValueKey('admin-details-beside-${widget.kind.name}'),
+          ),
+        ],
+      ],
+    );
     return Form(
       key: _form,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _panel(
-            _isEditing ? '수정 기본 정보' : '등록 기본 정보',
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [for (final field in basic) _field(field)],
-            ),
-            key: ValueKey('admin-basic-${widget.kind.name}'),
+          ResponsiveColumns(
+            enabled: true,
+            // Keep search/filter fields outside the registration FormState.
+            first: _listRail(child: Form(child: widget.list!)),
+            second: rightColumn,
           ),
-          SizedBox(height: FeatureLine.slotGap(context)),
-          // Keep search/filter fields outside the registration FormState.
-          _listRail(child: Form(child: widget.list!)),
-          SizedBox(height: FeatureLine.slotGap(context)),
+          SizedBox(height: gap),
           _panel(
             '적용 범위·상세',
             Column(
@@ -650,10 +717,10 @@ class AdminEditorState extends State<AdminEditor> {
                       label: '원문 열기',
                     ),
                   ),
-                _compactDetails([
-                  for (final group in adminFieldGroups(remaining).values)
-                    ...group,
-                ]),
+                if (below.isNotEmpty)
+                  _compactDetails([
+                    for (final group in adminFieldGroups(below).values) ...group,
+                  ]),
                 if (_isRule) _executionPanel(),
                 if (_message != null)
                   Semantics(liveRegion: true, child: Text(_message!)),
