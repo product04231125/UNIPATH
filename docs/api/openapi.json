@@ -47505,8 +47505,7 @@
         "required": [
           "rule_id",
           "expected_version",
-          "condition",
-          "evidence_chunk_ids"
+          "condition"
         ],
         "title": "ProgramRuleInput"
       },

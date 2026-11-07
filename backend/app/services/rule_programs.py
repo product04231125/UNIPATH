@@ -456,17 +456,15 @@ def _dependencies_valid(db, item, on, *, strict_references=False):
         if {row.rule_id for row in rows} != required.keys():
             return False
         for row in rows:
-            if (
-                row.source_version != required[row.rule_id].version
-                or row.kind != KINDS[required[row.rule_id].rule_type]
-            ):
+            if row.source_version != required[row.rule_id].version:
                 return False
             condition = dto.condition_adapter.validate_python(row.condition_json)
             refs = list(
                 db.scalars(select(ProgramEvidence).where(ProgramEvidence.program_rule_id == row.id))
             )
             records = evidence_records(db, [ref.chunk_id for ref in refs])
-            if not refs:
+            checklist = condition.kind == "manual_review" and not refs
+            if not checklist and (not refs or row.kind != KINDS[required[row.rule_id].rule_type]):
                 return False
             for ref in refs:
                 chunk, document, meta = records[ref.chunk_id]
