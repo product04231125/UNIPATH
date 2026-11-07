@@ -799,6 +799,48 @@ void main() {
     }),
   );
 
+  testWidgets(
+    'searchable menu open does not hit RenderBox hasSize assert',
+    (tester) async {
+      // MenuAnchor measures intrinsic width; without an explicit menu width
+      // the lazy ListView fails that query and spam-asserts hasSize.
+      await tester.binding.setSurfaceSize(const Size(900, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: universityPathTheme(),
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 320,
+                child: AnchoredSelectField<String>(
+                  value: 'a',
+                  label: '학교',
+                  searchable: true,
+                  searchLabel: '학교 검색',
+                  options: const [
+                    SelectOption('a', 'A 대학'),
+                    SelectOption('b', 'B 대학'),
+                    SelectOption('c', 'C 대학'),
+                  ],
+                  onChanged: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byType(AnchoredSelectField<String>));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('select-search-input')), findsOneWidget);
+      expect(find.text('B 대학'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('B 대학'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('search stays on screen while only options scroll', (
     tester,
   ) async {

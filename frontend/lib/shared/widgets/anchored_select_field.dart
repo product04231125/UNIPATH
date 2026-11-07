@@ -118,6 +118,9 @@ class _AnchoredSelectFieldState<T> extends State<AnchoredSelectField<T>> {
         menuChildren: [
           if (widget.searchable)
             SizedBox(
+              // MenuAnchor measures intrinsic width even when its outer width
+              // is constrained. Keep that query out of the lazy ListView.
+              width: math.max(0, constraints.maxWidth - 16),
               height: menuHeight - 16,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
