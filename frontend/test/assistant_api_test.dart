@@ -40,6 +40,33 @@ const school = SchoolQueryContext(
 
 void main() {
   test(
+    'school diagnostics separate retrieval, approval and AI configuration',
+    () {
+      final missing = AssistantResult.fromJson(
+        Map<String, dynamic>.from(result()),
+      );
+      expect(missing.label, '학교 자료 검색 결과 없음');
+      expect(missing.message, contains('학교 자료 검색 API는 응답했지만'));
+      expect(missing.message, contains('문서 등록·승인·적용 범위'));
+      expect(missing.message, isNot(contains('UUID가 잘못')));
+      final model = AssistantResult.fromJson(
+        Map<String, dynamic>.from(
+          result(status: 'failed', reason: 'answer_generator_not_configured'),
+        ),
+      );
+      expect(model.label, '외부 AI 연결 설정 필요');
+      expect(model.message, contains('Vertex AI 연결 설정'));
+      expect(
+        schoolQueryDiagnostic('document_context_not_approved_or_incomplete'),
+        contains('승인 또는 적용 범위'),
+      );
+      expect(
+        schoolQueryDiagnostic('rag_processing_failed'),
+        contains('조회·검색 처리에 실패'),
+      );
+    },
+  );
+  test(
     'sends only snake_case question/context and reads Korean response',
     () async {
       final api = AssistantApi(
@@ -63,7 +90,7 @@ void main() {
         }),
       );
       final value = await api.query('사회봉사 조건은?', school);
-      expect(value.label, '공식 근거 부족');
+      expect(value.label, '학교 자료 검색 결과 없음');
       expect(value.answer, isNull);
       api.close();
     },
@@ -377,7 +404,7 @@ void main() {
     await tester.enterText(find.byType(TextField), '사회봉사 조건은?');
     await tester.tap(find.text('보내기'));
     await tester.pumpAndSettle();
-    expect(find.text('공식 근거 부족'), findsOneWidget);
+    expect(find.text('학교 자료 검색 결과 없음'), findsOneWidget);
     expect(find.textContaining('AI 답변:'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });

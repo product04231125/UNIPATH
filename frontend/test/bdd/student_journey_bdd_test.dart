@@ -645,7 +645,7 @@ void main() {
         await tester.pumpAndSettle();
       },
       '목업 답변이나 졸업 기준으로 대체하지 않는다': (tester, world) async {
-        expect(find.text('공식 근거 부족'), findsOneWidget);
+        expect(find.text('학교 자료 검색 결과 없음'), findsOneWidget);
         expect(find.textContaining('AI 답변:'), findsNothing);
         expect(find.text('감사 결과 · 충족'), findsNothing);
       },

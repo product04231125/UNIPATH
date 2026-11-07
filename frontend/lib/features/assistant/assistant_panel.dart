@@ -486,12 +486,17 @@ class AssistantPanelState extends State<AssistantPanel> {
     }
     if (turn.personalized != null) {
       final result = turn.personalized!;
-      final statusText = switch (result.status) {
-        'grounded' => '학교 자료와 내 기록을 바탕으로 한 안내',
-        'evidence_only' => '답변 생성 준비 중 · 조회한 자료',
-        'needs_user_input' => '추가 입력 필요',
-        'insufficient_evidence' => '답변 근거 부족',
-        _ => '맞춤 안내 처리 실패',
+      final statusText = switch (result.reason) {
+        'generator_not_configured' => '외부 AI 연결 설정 필요',
+        'school_evidence_unavailable' => '학교 자료 확인 필요',
+        'generation_failed' => '외부 AI 답변 생성 실패',
+        _ => switch (result.status) {
+          'grounded' => '학교 자료와 내 기록을 바탕으로 한 안내',
+          'evidence_only' => '답변 생성 준비 중 · 조회한 자료',
+          'needs_user_input' => '추가 입력 필요',
+          'insufficient_evidence' => '답변 근거 부족',
+          _ => '맞춤 안내 처리 실패',
+        },
       };
       final reasonText = switch (result.reason) {
         'external_processing_consent_required' => '외부 전송 동의를 확인해 주세요.',
@@ -501,10 +506,12 @@ class AssistantPanelState extends State<AssistantPanel> {
           'academic_scope_required' => '설정에서 입학연도와 이수경로를 확인해 주세요.',
           'conflicting_admission_year' =>
             '질문 속 입학연도와 설정의 입학연도가 다릅니다. 입력을 확인해 주세요.',
-          _ => '현재 질문에 사용할 학교 문서 근거가 준비되지 않았습니다.',
+          _ => schoolQueryDiagnostic(result.school.reason) ?? '학교 자료 조회를 완료하지 못했습니다. 관리자에서 학교·학과 연결과 문서 검색 상태를 확인해야 합니다. 현재 응답만으로 UUID 오류인지 자료 부재인지는 구분할 수 없습니다.',
         },
-        'generator_not_configured' =>
-          '답변 생성 기능이 준비 중입니다. 조회된 학교 자료와 내 기록을 확인할 수 있습니다.',
+        'generator_not_configured' => '학교 자료와 내 기록은 조회됐지만 외부 AI 답변 생성기가 설정되지 않았습니다. 백엔드의 Vertex AI 연결 설정이 필요합니다.',
+        'generation_failed' => '외부 AI 답변 생성 또는 응답 검증에 실패했습니다. 다시 시도하고 문제가 계속되면 백엔드의 AI 연결·응답 처리를 확인해야 합니다.',
+        'generator_reported_insufficient_evidence' =>
+          '외부 AI가 조회된 학교 자료와 개인 기록만으로는 답변할 수 없다고 응답했습니다. 질문과 선택한 자료를 확인해 주세요.',
         _ => '받은 자료만 표시합니다. 입력을 유지하고 다시 시도할 수 있습니다.',
       };
       return Column(

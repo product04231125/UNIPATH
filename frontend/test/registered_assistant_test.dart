@@ -429,39 +429,59 @@ void main() {
     p.dispose();
     await updates.close();
   });
-  testWidgets('registered panel offers modes and shows evidence-only safely', (
-    tester,
-  ) async {
-    final api = Api(), p = await permissions();
-    final c = conversation(api, p);
-    c.setMode(AssistantMode.personalized);
-    await c.refreshRecords();
-    c.selectRecord(record.key, true);
-    c.input.text = '질문';
-    await c.permit(AssistantMode.personalized, remember: false);
-    await c.send();
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 480,
-            height: 850,
-            child: AssistantPanel(conversation: c, onClose: () {}, width: 480),
+  for (final missingSchool in [false, true]) {
+    testWidgets('registered panel diagnoses missingSchool=$missingSchool', (
+      tester,
+    ) async {
+      final api = Api(), p = await permissions();
+      if (missingSchool) {
+        api.personalizedStatus = 'insufficient_evidence';
+        api.personalizedReason = 'school_evidence_unavailable';
+      }
+      final c = conversation(api, p);
+      c.setMode(AssistantMode.personalized);
+      await c.refreshRecords();
+      c.selectRecord(record.key, true);
+      c.input.text = '질문';
+      await c.permit(AssistantMode.personalized, remember: false);
+      await c.send();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 480,
+              height: 850,
+              child: AssistantPanel(
+                conversation: c,
+                onClose: () {},
+                width: 480,
+              ),
+            ),
           ),
         ),
-      ),
-    );
-    expect(find.widgetWithText(ChoiceChip, '내 자료로 질문'), findsOneWidget);
-    expect(
-      tester.widget<TextField>(find.byType(TextField)).decoration!.labelText,
-      '내 자료로 질문',
-    );
-    expect(find.text('학교 문서'), findsOneWidget);
-    expect(find.text('내 기록'), findsOneWidget);
-    expect(find.textContaining('답변 생성 준비 중'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox.shrink());
-    c.dispose();
-    p.dispose();
-  });
+      );
+      expect(find.widgetWithText(ChoiceChip, '내 자료로 질문'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).decoration!.labelText,
+        '내 자료로 질문',
+      );
+      expect(find.text('학교 문서'), findsOneWidget);
+      expect(find.text('내 기록'), findsOneWidget);
+      expect(
+        find.text(missingSchool ? '학교 자료 확인 필요' : '외부 AI 연결 설정 필요'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(
+          missingSchool ? '학교 자료 검색 API는 응답했지만' : 'Vertex AI 연결 설정',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('답변 근거 부족'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      c.dispose();
+      p.dispose();
+    });
+  }
 }
