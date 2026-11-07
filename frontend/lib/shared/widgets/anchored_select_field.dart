@@ -141,9 +141,9 @@ class _AnchoredSelectFieldState<T> extends State<AnchoredSelectField<T>> {
                   Expanded(
                     child: _filtered.isEmpty
                         ? const Text('검색에 맞는 항목이 없습니다.')
-                      : ListView(
-                          primary: false,
-                          children: [
+                        : ListView(
+                            primary: false,
+                            children: [
                               for (final option in _filtered)
                                 _optionButton(context, option),
                             ],
@@ -181,8 +181,10 @@ class _AnchoredSelectFieldState<T> extends State<AnchoredSelectField<T>> {
                   Expanded(
                     child: Text(
                       widget.options
-                          .firstWhere((option) => option.value == widget.value)
-                          .label,
+                              .where((option) => option.value == widget.value)
+                              .firstOrNull
+                              ?.label ??
+                          widget.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
