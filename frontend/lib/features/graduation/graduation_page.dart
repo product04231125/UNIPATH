@@ -1,285 +1,136 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
-import '../../shared/app_typography.dart';
-import '../../shared/widgets/status_badge.dart';
-import '../../shared/widgets/page_header.dart';
+import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/surface_card.dart';
-import '../../shared/widgets/content_scroll_view.dart';
-import '../../shared/widgets/horizontal_scroll_area.dart';
-import 'graduation_mock_fixture.dart';
-import 'personal_graduation_workspace.dart';
+import '../planning/planning_profile_cta.dart';
 import '../planning/planning_repository.dart';
 import '../auth/school_workflow_session.dart';
+import '../records/personal_repository_scope.dart';
 import 'official_graduation_page.dart';
+import 'personal_calculation_page.dart';
 
-class GraduationPage extends StatefulWidget {
-  const GraduationPage({
-    super.key,
-    this.showMockData = true,
-    this.onMinimumWidthChanged,
-    this.planning,
-  });
-  final bool showMockData;
+class GraduationPage extends StatelessWidget {
+  const GraduationPage({super.key, this.planning, this.onOpenSettings});
   final PlanningRepository? planning;
-  final ValueChanged<double>? onMinimumWidthChanged;
-  @override
-  State<GraduationPage> createState() => _GraduationPageState();
-}
-
-class _GraduationPageState extends State<GraduationPage> {
-  final _curriculumScrollController = ScrollController();
-  var _tab = '대학 공통';
-  bool _personal = false;
-  @override
-  void dispose() {
-    _curriculumScrollController.dispose();
-    super.dispose();
-  }
+  final VoidCallback? onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
-    if (_personal) {
-      return PersonalGraduationWorkspace(
-        planning: widget.planning,
-        onBack: () {
-          setState(() => _personal = false);
-          _reportMinimumWidth();
-        },
+    final session = SchoolWorkflowSession.maybeOf(context);
+    if (session == null) {
+      return FeaturePage(
+        title: '졸업 요건',
+        description: '설정한 학업 기준으로 요건을 확인합니다.',
+        body: [
+          if (onOpenSettings != null)
+            PlanningProfileSettingsCta(
+              onOpenSettings: onOpenSettings!,
+              need: PlanningProfileNeed.configured,
+              profile: planning?.profile,
+            ),
+          const SurfaceCard(
+            child: Text('학교 기준을 가져오는 API가 아직 연결되지 않았습니다.'),
+          ),
+        ],
       );
     }
-    final session = SchoolWorkflowSession.maybeOf(context);
-    if (session != null) {
-      final planning = widget.planning;
-      if (planning != null && planning.isLoading) {
-        return const ContentScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              PageHeader(title: '학교 검토 자료 기준 졸업요건 감사'),
-              LinearProgressIndicator(),
-            ],
-          ),
-        );
-      }
+    final repo = planning;
+    if (repo == null) {
       return OfficialGraduationPage(
+        key: ValueKey((session.auth, session.identity.id)),
         auth: session.auth,
         ownerId: session.identity.id,
-        profile: planning == null || planning.loadFailed ? null : planning.profile,
-        onPersonal: () {
-          setState(() => _personal = true);
-          _reportMinimumWidth();
-        },
+        profile: null,
+        profileLoadFailed: false,
+        onOpenSettings: onOpenSettings,
       );
     }
-    return ContentScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          PageHeader(
+    return AnimatedBuilder(
+      animation: repo,
+      builder: (context, _) {
+        if (repo.isLoading) {
+          return const FeaturePage(
             title: '졸업 요건',
-            contextLabel: '학교 연동·공식 판정 API 미연결',
-            actions: [
-              OutlinedButton.icon(
-                onPressed: () {
-                  setState(() => _personal = true);
-                  _reportMinimumWidth();
-                },
-                icon: const Icon(Icons.tune, size: 18),
-                label: const Text('내 학교·학과 기준 설정'),
+            description: '설정한 학업 기준으로 요건을 확인합니다.',
+            body: [LinearProgressIndicator()],
+          );
+        }
+        final failed = repo.loadFailed;
+        if (failed) {
+          return FeaturePage(
+            title: '졸업 요건',
+            description: '설정한 학업 기준으로 요건을 확인합니다.',
+            body: [
+              const Text('학업 프로필을 읽지 못했습니다. 다시 불러오거나 설정에서 확인하세요.'),
+              TextButton(
+                onPressed: repo.load,
+                child: const Text('학업 프로필 다시 불러오기'),
               ),
+              if (onOpenSettings != null)
+                PlanningProfileSettingsCta(
+                  onOpenSettings: onOpenSettings!,
+                  need: PlanningProfileNeed.configured,
+                  profile: null,
+                ),
             ],
-          ),
-          SurfaceCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          );
+        }
+        final profile = repo.profile;
+        if (profile.hasCatalogSchool) {
+          return OfficialGraduationPage(
+            key: ValueKey((session.auth, session.identity.id, 'official')),
+            auth: session.auth,
+            ownerId: session.identity.id,
+            profile: profile,
+            profileLoadFailed: failed,
+            onOpenSettings: onOpenSettings,
+          );
+        }
+        if (profile.isConfigured) {
+          final calculations =
+              PersonalRepositoryScope.read(context)?.calculations;
+          if (calculations == null) {
+            return FeaturePage(
+              title: '졸업 요건',
+              description: '설정한 개인 기준으로 계산합니다.',
+              body: [
                 const Text(
-                  '기준 선택',
-                  style: TextStyle(
-                    fontSize: AppTypography.section,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  '개인 기준 계산을 열려면 로그인된 학생 작업 공간이 필요합니다.',
                 ),
-                const Text('학교 공식 졸업 판정이 아닙니다. 내 자료는 개인 기준 설정에서 입력하세요.'),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    for (final value in ['대학 공통', '내 교육과정', '학과 기준'])
-                      OutlinedButton(
-                        onPressed: () {
-                          setState(() => _tab = value);
-                          _reportMinimumWidth();
-                        },
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: _tab == value
-                              ? Theme.of(context).colorScheme.secondaryContainer
-                              : null,
-                        ),
-                        child: Text(value),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (widget.showMockData)
-            _table()
-          else
-            const SurfaceCard(
-              child: Text(
-                '학교 기준을 가져오는 API가 아직 연결되지 않았습니다. 내 학교·학과 기준 설정에서 개인 자료를 기록하세요.',
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  void _reportMinimumWidth() => widget.onMinimumWidthChanged?.call(
-    !_personal && _tab == '내 교육과정'
-        ? 92 +
-              58.0 * (curriculumHeaders.length - 1) +
-              SurfaceCard.horizontalInsets
-        : 0,
-  );
-
-  Widget _table() {
-    final (title, headers, rows) = switch (_tab) {
-      '대학 공통' => ('대학 공통 기준', commonRuleHeaders, commonRuleRows),
-      '내 교육과정' => ('내 교육과정 학점 현황', curriculumHeaders, curriculumRows),
-      _ => ('학과 졸업인증', departmentHeaders, departmentRows),
-    };
-    final compact = _tab == '내 교육과정';
-    return SurfaceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: AppTypography.section,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 14),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              if (!compact &&
-                  (constraints.maxWidth < 600 ||
-                      MediaQuery.textScalerOf(context).scale(14) > 18)) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (final row in rows)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              row.first,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            for (var i = 1; i < row.length; i++)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 6),
-                                child: Wrap(
-                                  spacing: 8,
-                                  runSpacing: 4,
-                                  children: [
-                                    Text('${headers[i]}:'),
-                                    if (headers[i] == '판정' ||
-                                        headers[i] == '상태')
-                                      StatusBadge(status: row[i])
-                                    else
-                                      Text(row[i]),
-                                  ],
-                                ),
-                              ),
-                            const Divider(),
-                          ],
-                        ),
-                      ),
-                  ],
-                );
-              }
-              final cellWidth = math.max(
-                58.0,
-                (constraints.maxWidth - 92) / (headers.length - 1),
-              );
-              final table = Table(
-                border: TableBorder.all(color: Theme.of(context).dividerColor),
-                columnWidths: compact
-                    ? {
-                        0: const FixedColumnWidth(92),
-                        for (var i = 1; i < headers.length; i++)
-                          i: FixedColumnWidth(cellWidth),
-                      }
-                    : {
-                        0: const FlexColumnWidth(1.9),
-                        for (var i = 1; i < headers.length; i++)
-                          i: const FlexColumnWidth(),
-                      },
-                children: [
-                  TableRow(
-                    children: [
-                      for (final header in headers)
-                        _cell(header, header: true, compact: compact),
-                    ],
+                if (onOpenSettings != null) ...[
+                  const SizedBox(height: 12),
+                  PlanningProfileSettingsCta(
+                    onOpenSettings: onOpenSettings!,
+                    need: PlanningProfileNeed.configured,
+                    profile: profile,
                   ),
-                  for (final row in rows)
-                    TableRow(
-                      children: [
-                        for (var i = 0; i < row.length; i++)
-                          _cell(
-                            row[i],
-                            compact: compact,
-                            status: headers[i] == '판정' || headers[i] == '상태',
-                          ),
-                      ],
-                    ),
                 ],
-              );
-              if (!compact) return table;
-              final width = 92 + cellWidth * (headers.length - 1);
-              return HorizontalScrollArea(
-                controller: _curriculumScrollController,
-                child: SizedBox(width: width, child: table),
-              );
-            },
-          ),
-        ],
-      ),
+              ],
+            );
+          }
+          return PersonalCalculationPage(
+            key: ValueKey((session.identity.id, 'personal-calc')),
+            controller: calculations,
+            title: '졸업 요건',
+            description: '설정한 개인 기준으로 계산합니다.',
+            onOpenSettings: onOpenSettings,
+          );
+        }
+        return FeaturePage(
+          title: '졸업 요건',
+          description: '설정한 학업 기준으로 요건을 확인합니다.',
+          body: [
+            if (onOpenSettings != null)
+              PlanningProfileSettingsCta(
+                onOpenSettings: onOpenSettings!,
+                need: PlanningProfileNeed.configured,
+                profile: profile,
+              )
+            else
+              const Text('설정에서 학업 프로필을 등록하면 이 화면에서 사용합니다.'),
+          ],
+        );
+      },
     );
   }
-
-  Widget _cell(
-    String value, {
-    bool header = false,
-    bool compact = false,
-    bool status = false,
-  }) => Padding(
-    padding: EdgeInsets.symmetric(
-      horizontal: compact ? 6 : 10,
-      vertical: compact ? 9 : 12,
-    ),
-    child: status
-        ? Align(
-            alignment: Alignment.centerLeft,
-            child: StatusBadge(status: value),
-          )
-        : Text(
-            value,
-            textAlign: compact ? TextAlign.center : TextAlign.left,
-            style: TextStyle(
-              fontSize: AppTypography.caption,
-              fontWeight: header ? FontWeight.w800 : FontWeight.w500,
-            ),
-          ),
-  );
 }

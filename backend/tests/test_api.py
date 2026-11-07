@@ -104,11 +104,15 @@ def test_unavailable_database_or_missing_extension_returns_503(client, broken_co
 
 
 def test_cors_only_allows_configured_origins(client):
-    headers = {"Origin": "http://localhost:3000", "Access-Control-Request-Method": "GET"}
-    response = client.options("/api/v1/health", headers=headers)
-    assert response.status_code == 200
-    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
-    headers["Origin"] = "https://untrusted.example"
+    for origin in ("http://localhost:3000", "http://127.0.0.1:3000"):
+        headers = {"Origin": origin, "Access-Control-Request-Method": "GET"}
+        response = client.options("/api/v1/health", headers=headers)
+        assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] == origin
+    headers = {
+        "Origin": "https://untrusted.example",
+        "Access-Control-Request-Method": "GET",
+    }
     response = client.options("/api/v1/health", headers=headers)
     assert response.status_code == 400
     assert "access-control-allow-origin" not in response.headers

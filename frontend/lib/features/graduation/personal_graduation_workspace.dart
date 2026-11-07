@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../auth/guest_preview_scope.dart';
 import '../records/personal_record_repository.dart';
 import '../records/personal_repository_scope.dart';
 import '../records/local_record_workbench.dart';
@@ -12,9 +13,11 @@ class PersonalGraduationWorkspace extends StatefulWidget {
     super.key,
     required this.onBack,
     this.planning,
+    this.backLabel = '설정으로 돌아가기',
   });
   final VoidCallback onBack;
   final PlanningRepository? planning;
+  final String backLabel;
   @override
   State<PersonalGraduationWorkspace> createState() =>
       _PersonalGraduationWorkspaceState();
@@ -30,7 +33,7 @@ class _PersonalGraduationWorkspaceState
     PersonalRecordKind.personalDepartment: '학과',
     PersonalRecordKind.personalCurriculum: '교육과정',
     PersonalRecordKind.personalCurriculumCourse: '교육과정 과목',
-    PersonalRecordKind.personalGraduationRule: '개인 규칙',
+    PersonalRecordKind.personalGraduationRule: '규칙',
   };
   Future<void> _select(
     PersonalRecordKind kind, {
@@ -48,6 +51,10 @@ class _PersonalGraduationWorkspaceState
   }
 
   Future<void> _useProfile(PersonalRecord record) {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return Future.value();
+    }
     final planning = widget.planning!;
     final current = planning.profile;
     return planning.saveProfile(
@@ -100,7 +107,7 @@ class _PersonalGraduationWorkspaceState
                   widget.onBack();
                 }
               },
-              child: const Text('졸업 요건으로 돌아가기'),
+              child: Text(widget.backLabel),
             ),
           ],
         ),
@@ -124,7 +131,8 @@ class _PersonalGraduationWorkspaceState
                   ),
                   onUse:
                       _kind == PersonalRecordKind.personalCurriculum &&
-                          widget.planning != null
+                          widget.planning != null &&
+                          !GuestPreviewScope.isActive(context)
                       ? _useProfile
                       : null,
                 ),

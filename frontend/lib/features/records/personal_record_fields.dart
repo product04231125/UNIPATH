@@ -57,6 +57,12 @@ class PersonalRecordField {
   }
 }
 
+/// Activity memos show only a name, hours, and a note. Other stored keys stay
+/// on the record so an edit does not wipe them.
+const activityVisibleKeys = {'title', 'reportedHours', 'detail'};
+
+const portfolioHiddenKeys = {'thesisApprovedOn'};
+
 List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
   const PersonalRecordField('title', '이름', required: true),
   const PersonalRecordField('detail', '설명 · 메모', multiline: true),
@@ -96,7 +102,20 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
     ],
     PersonalRecordKind.personalGraduationRule => const [
       PersonalRecordField('ruleCode', '개인 규칙 코드'),
-      PersonalRecordField('ruleType', '규칙 종류', required: true),
+      PersonalRecordField(
+        'ruleType',
+        '규칙 종류',
+        required: true,
+        options: ['학점', '필수과목', '봉사', '논문·캡스톤', '자격', '기타'],
+        optionLabels: {
+          '학점': '학점',
+          '필수과목': '필수과목',
+          '봉사': '봉사',
+          '논문·캡스톤': '논문·캡스톤',
+          '자격': '자격',
+          '기타': '기타',
+        },
+      ),
       PersonalRecordField(
         'scope',
         '개인 적용 범위',
@@ -161,7 +180,7 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
       PersonalRecordField('role', '역할'),
       PersonalRecordField(
         'reportedHours',
-        '직접 입력 봉사 시간',
+        '시간',
         type: PersonalFieldType.number,
       ),
       PersonalRecordField(
@@ -237,12 +256,6 @@ String? personalRecordCrossError(Map<String, String> values) {
     if (start != null && end != null && end.isBefore(start)) {
       return '종료·만료일은 시작·취득일보다 빠를 수 없습니다.';
     }
-  }
-  final approved = double.tryParse(values['approvedHours'] ?? '') ?? 0;
-  if (approved > 0 &&
-      (values['approval'] != 'approved' ||
-          (values['observedOn'] ?? '').isEmpty)) {
-    return '승인 시간을 기록하려면 승인 상태 approved와 학교 상태 확인일을 입력하세요.';
   }
   return null;
 }

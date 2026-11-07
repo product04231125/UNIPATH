@@ -75,7 +75,9 @@ Flutter Web은 예를 들어 `flutter run -d chrome --web-port 3000`으로 고�
 사용한다. 다른 포트를 쓰면 `.env`의 `CORS_ORIGINS` JSON 배열도 갱신한다.
 프론트엔드 학교 질의는 `POST /api/v1/assistant/queries`와 연결한다.
 인증·학업 프로필·일정·개인 기록·구성·지원 문서는 실제 서버와 연결했고 공식 감사는 타입/전송 API까지 제공하고 해당 화면은 후속이다. Web 실행 주소는
-`http://localhost:3000`, 빌드 설정 `API_BASE_URL`은 실제 API 주소에 맞춘다.
+`http://localhost:3000` 또는 `http://127.0.0.1:3000`(기본 CORS에 둘 다 포함),
+빌드 설정 `API_BASE_URL`은 실제 API 주소에 맞춘다. 다른 기기(폰)에서 붙을 때만
+LAN IP와 `0.0.0.0` 바인딩·`CORS_ORIGINS` 추가가 필요하다.
 
 ## RAG 팀 모듈과 학교 질의 API
 

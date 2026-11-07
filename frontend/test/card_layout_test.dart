@@ -93,14 +93,11 @@ void main() {
                   kind: kind,
                   title: '기록',
                   description: '개인 기록',
-                  notice: '학교 공식 판정 아님',
                   listTitle: '등록 기록',
-                  fixture: const [],
                   guideTitle: '준비',
                   guides: ['긴 안내 문구 ' * 15],
                   addLabel: '추가',
                   detailLabel: '상세',
-                  showMockData: false,
                 ),
                 scale,
               ),
@@ -126,6 +123,13 @@ void main() {
       final repository = PlanningRepository();
       addTearDown(repository.dispose);
       await repository.load();
+      await repository.saveProfile(
+        const PlanningProfile(
+          school: '레이아웃 대학',
+          department: '레이아웃 학과',
+          admissionYear: 2024,
+        ),
+      );
       addTearDown(() => tester.binding.setSurfaceSize(null));
       for (final size in [const Size(900, 768), const Size(480, 520)]) {
         await tester.binding.setSurfaceSize(size);
@@ -133,7 +137,7 @@ void main() {
           host(SchedulePage(repository: repository), scale),
         );
         await tester.pumpAndSettle();
-        final cards = find.byType(Card);
+        final cards = find.byType(SurfaceCard);
         expect(cards, findsNWidgets(2));
         if (size.width >= 820) {
           expect(find.byType(EqualHeightRow), findsOneWidget);
@@ -152,6 +156,9 @@ void main() {
             isNot(closeTo(tester.getSize(cards.last).height, .01)),
           );
         }
+        expect(find.widgetWithText(FilledButton, '일정 추가'), findsOneWidget);
+        expect(find.byTooltip('이전 달'), findsOneWidget);
+        expect(find.byTooltip('다음 달'), findsOneWidget);
         expect(tester.takeException(), isNull);
       }
     });

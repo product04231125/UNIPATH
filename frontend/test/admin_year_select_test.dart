@@ -37,7 +37,177 @@ Future<void> openCurriculumEditor(
 
 Finder yearField() => find.byKey(const ValueKey('admin-field-year'));
 
+Future<AdminRecord> seedCurriculumMenu(
+  FakeAdminRepository repo,
+  AdminKind kind,
+) async {
+  final curriculum = AdminRecord(
+    id: 'review-curriculum',
+    kind: AdminKind.curriculum,
+    values: const {
+      'name': '기존 교육과정',
+      'departmentId': 'school-a-dept',
+      'year': '2026',
+    },
+  );
+  final course = AdminRecord(
+    id: 'review-course',
+    kind: AdminKind.course,
+    values: const {
+      'name': '기존 과목',
+      'institutionId': 'school-a',
+      'code': 'REVIEW',
+      'credits': '3',
+    },
+  );
+  final link = AdminRecord(
+    id: 'review-link',
+    kind: AdminKind.curriculumCourse,
+    values: const {
+      'name': '기존 과목 연결',
+      'curriculumId': 'review-curriculum',
+      'courseId': 'review-course',
+      'category': 'major',
+      'required': 'true',
+    },
+  );
+  final secondCurriculum = AdminRecord(
+    id: 'review-curriculum-second',
+    kind: AdminKind.curriculum,
+    values: {...curriculum.values, 'name': '다른 교육과정'},
+  );
+  for (final record in [curriculum, course, link, secondCurriculum]) {
+    await repo.save('super-admin', record);
+  }
+  return repo.records.singleWhere(
+    (record) =>
+        record.id ==
+        switch (kind) {
+          AdminKind.curriculum => curriculum.id,
+          AdminKind.course => course.id,
+          _ => link.id,
+        },
+  );
+}
+
 void main() {
+  for (final kind in [
+    AdminKind.curriculum,
+    AdminKind.course,
+    AdminKind.curriculumCourse,
+  ]) {
+    testWidgets('${kind.name} clears the editing target before creating', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1440, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final repo = FakeAdminRepository();
+      addTearDown(repo.dispose);
+      final original = await seedCurriculumMenu(repo, kind);
+      final key = GlobalKey<AdminEditorState>();
+      await tester.pumpWidget(
+        host(
+          SingleChildScrollView(
+            child: AdminEditor(
+              key: key,
+              repository: repo,
+              actorId: 'super-admin',
+              kind: kind,
+              schoolId: 'school-a',
+              record: original,
+              inline: true,
+            ),
+          ),
+        ),
+      );
+      expect(key.currentState!.activeRecord?.id, original.id);
+      await key.currentState!.clearToCreate();
+      await tester.pumpAndSettle();
+      expect(key.currentState!.activeRecord, isNull);
+      expect(key.currentState!.dirty, isFalse);
+      expect(find.text('${kind.label} 등록'), findsOneWidget);
+
+      for (final field in repo.fields(kind)) {
+        final finder = find.byKey(ValueKey('admin-field-${field.key}'));
+        final value = switch (field.key) {
+          'name' => '새 ${kind.label}',
+          'code' => 'REVIEW-NEW',
+          // Use another relation pair so the mock duplicate check stays active.
+          'curriculumId' => 'review-curriculum-second',
+          _ => original.value(field.key),
+        };
+        if (tester.widget(finder) is TextFormField) {
+          await tester.enterText(finder, value);
+        } else {
+          tester.widget<AnchoredSelectField<String>>(finder).onChanged(value);
+        }
+        await tester.pump();
+      }
+      await tester.ensureVisible(find.widgetWithText(FilledButton, '등록'));
+      await tester.tap(find.widgetWithText(FilledButton, '등록'));
+      await tester.pumpAndSettle();
+      expect(
+        repo.records.singleWhere((r) => r.id == original.id).values,
+        original.values,
+      );
+      final created = repo.records.singleWhere(
+        (r) => r.name == '새 ${kind.label}',
+      );
+      expect(created.id, isNot(original.id));
+      expect(key.currentState!.activeRecord, isNull);
+      expect(key.currentState!.dirty, isFalse);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('${kind.name} resets validation when switching records', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1440, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final repo = FakeAdminRepository();
+      addTearDown(repo.dispose);
+      final record = await seedCurriculumMenu(repo, kind);
+      final key = GlobalKey<AdminEditorState>();
+      await tester.pumpWidget(
+        host(
+          SingleChildScrollView(
+            child: AdminEditor(
+              key: key,
+              repository: repo,
+              actorId: 'super-admin',
+              kind: kind,
+              schoolId: 'school-a',
+              inline: true,
+            ),
+          ),
+        ),
+      );
+      final form = tester.state<FormState>(find.byType(Form));
+      expect(form.validate(), isFalse);
+      await tester.pump();
+      expect(find.text('이름을 입력하세요.'), findsOneWidget);
+      await key.currentState!.loadRecord(record);
+      await tester.pumpAndSettle();
+      expect(find.text('이름을 입력하세요.'), findsNothing);
+      expect(find.textContaining('을 선택하세요.'), findsNothing);
+      expect(key.currentState!.dirty, isFalse);
+      await key.currentState!.clearToCreate();
+      await tester.pumpAndSettle();
+      expect(form.validate(), isFalse);
+      await tester.pump();
+      await key.currentState!.clearToCreate();
+      await tester.pumpAndSettle();
+      expect(find.text('이름을 입력하세요.'), findsNothing);
+      expect(find.textContaining('을 선택하세요.'), findsNothing);
+      expect(key.currentState!.dirty, isFalse);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   test('adminYearChoices keeps nearby years, loaded curricula, and the current value', () {
     expect(
       adminYearChoices(

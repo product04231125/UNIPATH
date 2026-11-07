@@ -8,6 +8,7 @@ import 'package:university_path_frontend/features/home/home_page.dart';
 import 'package:university_path_frontend/features/planning/planning_dates.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
 import 'package:university_path_frontend/features/planning/weekly_schedule.dart';
+import 'package:university_path_frontend/app_shell/phone_shell.dart';
 import 'package:university_path_frontend/app_shell/workspace_shell.dart';
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 
@@ -95,7 +96,7 @@ void main() {
   );
 
   testWidgets(
-    'returning to retained curriculum preserves its width requirement',
+    'graduation sample path keeps home baseline width without mock tables',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1440, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -103,25 +104,23 @@ void main() {
         const UniversityPathApp(startAuthenticated: true),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('졸업 요건').first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('내 교육과정'));
-      await tester.pumpAndSettle();
-      final requiredWidth = tester
+      final homeWidth = tester
           .widget<WorkspaceShell>(find.byType(WorkspaceShell))
           .minimumContentWidth;
-      expect(requiredWidth, greaterThan(0));
-      await tester.tap(find.text('홈').first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('뒤로 가기'));
+      await tester.tap(find.text('졸업 요건').first);
       await tester.pumpAndSettle();
       expect(
         tester
             .widget<WorkspaceShell>(find.byType(WorkspaceShell))
             .minimumContentWidth,
-        requiredWidth,
+        homeWidth,
       );
-      expect(find.text('내 교육과정 학점 현황'), findsOneWidget);
+      expect(find.text('내 교육과정 학점 현황'), findsNothing);
+      expect(
+        find.textContaining('학교 기준을 가져오는 API가 아직 연결되지 않았습니다'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('mock-data-toggle')), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
@@ -263,13 +262,22 @@ void main() {
           final upcoming = tester.getRect(card('다가오는 일정'));
           final prepare = tester.getRect(card('준비 목록'));
           final next = tester.getRect(card('다음에 이어갈 기록'));
+          final weekly = tester.getRect(find.byType(WeeklySchedule));
+          expect(weekly.left, closeTo(upcoming.left, 0.5));
+          expect(
+            find.descendant(of: card('다가오는 일정'), matching: find.text('일정 추가')),
+            findsOneWidget,
+          );
+          expect(find.widgetWithText(FilledButton, '일정 추가'), findsOneWidget);
           if (width >= 820) {
             expect(upcoming.top, closeTo(prepare.top, 0.01));
             expect(upcoming.bottom, closeTo(prepare.bottom, 0.01));
             expect(next.top, greaterThan(prepare.bottom));
+            expect(weekly.right, closeTo(prepare.right, 0.5));
           } else {
             expect(prepare.top, greaterThan(upcoming.bottom));
             expect(next.top, greaterThan(prepare.bottom));
+            expect(weekly.width, closeTo(upcoming.width, 0.5));
             // Stacked cards retain their own natural content height.
             expect((upcoming.height - prepare.height).abs(), greaterThan(1));
           }
@@ -331,7 +339,7 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     }
-    await tester.binding.setSurfaceSize(const Size(851, 900));
+    await tester.binding.setSurfaceSize(const Size(847, 900));
     await tester.pumpAndSettle();
     expect(find.byTooltip('홈'), findsOneWidget);
     expect(
@@ -348,50 +356,22 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('responsive order includes curriculum tabs and dock width', (
+  testWidgets('graduation sample path keeps rail while AI docks', (
     tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    // Includes the 16px vertical scrollbar gutter beside the matrix.
     await tester.binding.setSurfaceSize(const Size(1456, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     await tester.pumpAndSettle();
     await tester.tap(find.text('졸업 요건').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('내 교육과정'));
-    await tester.pumpAndSettle();
     expect(find.text('홈'), findsOneWidget);
+    expect(find.byType(Table), findsNothing);
     await tester.tap(find.byIcon(Icons.chat_bubble_outline));
     await tester.pumpAndSettle();
-    expect(find.byTooltip('홈'), findsOneWidget);
-    expect(horizontalExtent(tester, find.byType(Table)), 0);
-    // Inspect the table's ancestor scroll view, not its descendants.
-    final matrixScroll = find
-        .ancestor(of: find.byType(Table), matching: find.byType(Scrollable))
-        .first;
-    expect(
-      tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
-      0,
-    );
+    expect(find.text('홈'), findsOneWidget);
     await tester.tap(find.byTooltip('AI 도우미 닫기'));
     await tester.pumpAndSettle();
-    for (final width in [1233.0, 1062.0]) {
-      await tester.binding.setSurfaceSize(Size(width, 900));
-      await tester.pumpAndSettle();
-      expect(find.byTooltip('홈'), findsOneWidget);
-      expect(
-        tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
-        0,
-      );
-    }
-    await tester.binding.setSurfaceSize(const Size(1061, 900));
-    await tester.pumpAndSettle();
-    expect(find.byTooltip('홈'), findsOneWidget);
-    expect(
-      tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
-      greaterThan(0),
-    );
-    // Phone portrait (450×900, ratio 2.0) skips the 480 fallback and mock table.
     await tester.binding.setSurfaceSize(const Size(450, 900));
     await tester.pumpAndSettle();
     expect(find.byType(NavigationBar), findsOneWidget);
@@ -400,33 +380,13 @@ void main() {
       findsNothing,
     );
     expect(find.byType(Table), findsNothing);
-    // Leaving phone chrome restores the left rail and the active curriculum tab.
-    await tester.binding.setSurfaceSize(const Size(1061, 900));
-    await tester.pumpAndSettle();
-    expect(find.byTooltip('홈'), findsOneWidget);
-    expect(find.byType(Table), findsOneWidget);
-    expect(
-      tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
-      greaterThan(0),
-    );
-    await tester.tap(find.text('대학 공통'));
-    await tester.pumpAndSettle();
-    expect(find.text('홈'), findsOneWidget);
-    await tester.tap(find.text('내 교육과정'));
-    await tester.pumpAndSettle();
-    expect(find.byTooltip('홈'), findsOneWidget);
     await tester.binding.setSurfaceSize(const Size(1234, 900));
     await tester.pumpAndSettle();
     expect(find.text('홈'), findsOneWidget);
     expect(
-      tester.state<ScrollableState>(matrixScroll).position.maxScrollExtent,
-      0,
+      find.textContaining('학교 기준을 가져오는 API가 아직 연결되지 않았습니다'),
+      findsOneWidget,
     );
-    await tester.tap(find.text('설정').first);
-    await tester.pumpAndSettle();
-    await tester.binding.setSurfaceSize(const Size(950, 900));
-    await tester.pumpAndSettle();
-    expect(find.byTooltip('홈'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -560,6 +520,73 @@ void main() {
       }
     });
   }
+
+  testWidgets('phone home contextLabel shows 등록 or 개인 설정 only', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final personal = PlanningRepository();
+    await personal.load();
+    await personal.saveProfile(
+      const PlanningProfile(
+        school: '개인대학',
+        department: '개인학과',
+        admissionYear: 2024,
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: universityPathTheme(),
+        home: PhoneChromeScope(
+          active: true,
+          child: Scaffold(
+            body: HomePage(
+              repository: personal,
+              onOpenPage: (_) {},
+              onOpenSettings: () {},
+              onOpenSchedule: (_) {},
+              onAddSchedule: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('개인 설정'), findsOneWidget);
+    expect(find.text('개인대학 · 개인학과'), findsNothing);
+    expect(find.text('등록'), findsNothing);
+
+    final catalog = PlanningRepository();
+    await catalog.load();
+    await catalog.saveProfile(
+      const PlanningProfile(
+        school: '등록대학',
+        department: '등록학과',
+        admissionYear: 2024,
+        institutionId: 'inst-1',
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: universityPathTheme(),
+        home: PhoneChromeScope(
+          active: true,
+          child: Scaffold(
+            body: HomePage(
+              repository: catalog,
+              onOpenPage: (_) {},
+              onOpenSettings: () {},
+              onOpenSchedule: (_) {},
+              onAddSchedule: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('등록'), findsOneWidget);
+    expect(find.text('개인 설정'), findsNothing);
+    expect(find.text('등록대학 · 등록학과'), findsNothing);
+  });
 
   testWidgets('home uses real upcoming data and opens the selected date', (
     tester,
@@ -771,4 +798,98 @@ void main() {
       TargetPlatform.linux,
     }),
   );
+
+  testWidgets(
+    'searchable menu open does not hit RenderBox hasSize assert',
+    (tester) async {
+      // MenuAnchor measures intrinsic width; without an explicit menu width
+      // the lazy ListView fails that query and spam-asserts hasSize.
+      await tester.binding.setSurfaceSize(const Size(900, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: universityPathTheme(),
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 320,
+                child: AnchoredSelectField<String>(
+                  value: 'a',
+                  label: '학교',
+                  searchable: true,
+                  searchLabel: '학교 검색',
+                  options: const [
+                    SelectOption('a', 'A 대학'),
+                    SelectOption('b', 'B 대학'),
+                    SelectOption('c', 'C 대학'),
+                  ],
+                  onChanged: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byType(AnchoredSelectField<String>));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('select-search-input')), findsOneWidget);
+      expect(find.text('B 대학'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('B 대학'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('search stays on screen while only options scroll', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: universityPathTheme(),
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              width: 320,
+              child: AnchoredSelectField<int>(
+                value: 0,
+                label: '과목',
+                searchable: true,
+                searchLabel: '과목 이름·코드 검색',
+                options: [
+                  for (var i = 0; i < 30; i++) SelectOption(i, '과목 $i'),
+                ],
+                onChanged: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byType(AnchoredSelectField<int>));
+    await tester.pumpAndSettle();
+    final search = tester.getRect(
+      find.byKey(const ValueKey('select-search-input')),
+    );
+    final label = tester.getRect(find.text('과목 이름·코드 검색'));
+    expect(label.top, greaterThanOrEqualTo(0));
+    expect(search.bottom, lessThanOrEqualTo(700));
+    expect(label.bottom, lessThanOrEqualTo(search.top));
+    final options = find.descendant(
+      of: find.byType(ListView),
+      matching: find.byType(MenuItemButton),
+    );
+    final firstOption = tester.getRect(options.at(1));
+    await tester.drag(find.byType(ListView), const Offset(0, -180));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getRect(find.byKey(const ValueKey('select-search-input'))).top,
+      closeTo(search.top, 1),
+    );
+    expect(tester.getRect(options.at(1)).top, lessThan(firstOption.top));
+    expect(tester.takeException(), isNull);
+  });
 }

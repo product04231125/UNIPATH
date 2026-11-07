@@ -10,6 +10,7 @@ import 'package:university_path_frontend/features/admin/admin_workspace.dart';
 import 'package:university_path_frontend/features/auth/app_role.dart';
 import 'package:university_path_frontend/shared/widgets/input_dialog.dart';
 import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
+import 'package:university_path_frontend/shared/widgets/content_scroll_view.dart';
 
 Widget host(Widget child, {double scale = 1}) => MaterialApp(
   builder: (context, child) => MediaQuery(
@@ -18,6 +19,18 @@ Widget host(Widget child, {double scale = 1}) => MaterialApp(
   ),
   home: Scaffold(body: child),
 );
+
+Finder pageScrollable() => find
+    .descendant(
+      of: find.byType(ContentScrollView),
+      matching: find.byType(Scrollable),
+    )
+    .first;
+
+Future<void> showInPage(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(finder, 240, scrollable: pageScrollable());
+  await tester.pumpAndSettle();
+}
 
 Future<void> setField(WidgetTester tester, String key, String value) async {
   final all = find.byKey(ValueKey('admin-field-$key'));
@@ -85,7 +98,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('슈퍼관리자 · 관리자 작업 공간'), findsNothing);
-      expect(find.text('관리 범위: 전체 학교'), findsOneWidget);
+      expect(find.text('관리 범위: 전체 학교'), findsNothing);
       expect(
         find.byKey(const ValueKey('admin-school-selector')),
         findsOneWidget,
@@ -130,14 +143,17 @@ void main() {
         final details = find.byKey(ValueKey('admin-details-${item.$2}'));
         expect(find.descendant(of: frame, matching: first), findsOneWidget);
         expect(find.descendant(of: frame, matching: details), findsOneWidget);
-        expect(tester.getTopLeft(first).dy, tester.getTopLeft(second).dy);
         expect(
           tester.getTopLeft(first).dx,
           lessThan(tester.getTopLeft(second).dx),
         );
         expect(
+          (tester.getTopLeft(first).dy - tester.getTopLeft(second).dy).abs(),
+          lessThanOrEqualTo(24),
+        );
+        expect(
           tester.getTopLeft(details).dy,
-          greaterThan(tester.getBottomLeft(first).dy),
+          greaterThan(tester.getBottomLeft(first).dy - 1),
         );
         expect(
           tester.getBottomLeft(frame).dy,
@@ -173,9 +189,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       final form = find.descendant(
-        of: find.byKey(
-          const ValueKey('admin-registration-institution-school-a'),
-        ),
+        of: find.byKey(const ValueKey('admin-registration-institution-')),
         matching: find.byType(AdminEditor),
       );
       final name = find.descendant(
@@ -198,7 +212,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-      await tester.tap(find.text('계속 작성'));
+      await tester.tap(find.byKey(const Key('input-discard-cancel')));
       await tester.pumpAndSettle();
       expect(destination, isNull);
       await tester.binding.setSurfaceSize(const Size(480, 520));
@@ -218,7 +232,7 @@ void main() {
     final repo = FakeAdminRepository();
     await openEditor(tester, repo, AdminKind.department);
     final input = find.byKey(const ValueKey('admin-field-name'));
-    final label = find.text('이름 *');
+    final label = find.text('이름 (필수)');
     expect(
       tester.getBottomLeft(label).dy,
       lessThan(tester.getTopLeft(input).dy),
@@ -328,6 +342,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('상세'), findsNothing);
     expect(find.text('수정'), findsOneWidget);
+    await showInPage(tester, find.text('검토·적용'));
     await tester.tap(find.text('검토·적용'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('초안 적용'));
@@ -335,13 +350,15 @@ void main() {
     expect(find.text('합성 적용 실패'), findsOneWidget);
     expect(repo.find('detail-doc')!.status, 'draft');
     failApply = false;
+    await showInPage(tester, find.text('검토·적용'));
     await tester.tap(find.text('검토·적용'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('초안 적용'));
     await tester.pumpAndSettle();
-    expect(find.text('수정'), findsNothing);
+    expect(find.text('수정'), findsOneWidget);
     expect(find.text('합성 적용 실패'), findsNothing);
-    expect(find.text('버전 1 · 적용됨'), findsOneWidget);
+    expect(find.textContaining('v1 · 적용됨'), findsWidgets);
+    await showInPage(tester, find.text('새 버전 초안'));
     await tester.tap(find.text('새 버전 초안'));
     await tester.pumpAndSettle();
     await tester.tap(
@@ -394,7 +411,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('alpha'), findsOneWidget);
     expect(find.text('beta'), findsOneWidget);
-    expect(find.text('gamma'), findsNothing);
+    expect(find.text('gamma'), findsOneWidget);
     tester
         .widget<AnchoredSelectField<String>>(
           find.byKey(const ValueKey('admin-status-document')),
@@ -403,7 +420,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('beta'), findsNothing);
     await tester.enterText(
-      find.byKey(const ValueKey('admin-search-school-a-document')),
+      find.byKey(const ValueKey('admin-search--document')),
       '없는 항목',
     );
     await tester.pumpAndSettle();
@@ -426,7 +443,7 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
-  testWidgets('overview scopes drafts and recent changes and opens next task', (
+  testWidgets('overview scopes recent changes and opens registration', (
     tester,
   ) async {
     final repo = FakeAdminRepository();
@@ -459,9 +476,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('확인할 초안 1개'), findsOneWidget);
-    expect(find.text('검토 문서 a'), findsNWidgets(2));
-    expect(find.text('검토 문서 b'), findsNothing);
+    expect(find.textContaining('확인할 초안'), findsNothing);
+    expect(find.text('바로가기'), findsOneWidget);
+    expect(find.text('최근 변경'), findsOneWidget);
+    expect(find.text('검토 문서 a'), findsOneWidget);
+    expect(find.text('검토 문서 b'), findsOneWidget);
     tester
         .widget<AnchoredSelectField<String>>(
           find.byType(AnchoredSelectField<String>),
@@ -469,9 +488,7 @@ void main() {
         .onChanged('school-b');
     await tester.pumpAndSettle();
     expect(find.text('검토 문서 a'), findsNothing);
-    expect(find.text('검토 문서 b'), findsNWidgets(2));
-    await tester.tap(find.text('검토 문서 b').first);
-    expect(target, '/admin/documents/doc-b');
+    expect(find.text('검토 문서 b'), findsOneWidget);
     final register = find.text('공식 문서 등록');
     await tester.ensureVisible(register);
     await tester.pumpAndSettle();
@@ -577,7 +594,7 @@ void main() {
       expect(path, '/admin/schools');
       expect(selector().value, 'school-a');
       expect(find.text('목록으로'), findsNothing);
-      expect(find.text('합성 대학 B'), findsNothing);
+      expect(find.byKey(const ValueKey('admin-row-school-b')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -611,16 +628,71 @@ void main() {
       );
       await tester.pumpAndSettle();
       final school = tester.widget<AnchoredSelectField<String>>(
-        find.byType(AnchoredSelectField<String>),
+        find.byKey(const ValueKey('admin-school-selector')),
       );
       expect(school.options.map((o) => o.value).toList(), ['school-a']);
-      await tester.ensureVisible(find.text('원문 열기 · 외부 열기'));
+      await showInPage(tester, find.text('원문 열기 · 외부 열기'));
       await tester.tap(find.text('원문 열기 · 외부 열기'));
       await tester.pumpAndSettle();
-      expect(find.text('https://example.org/document'), findsOneWidget);
+      expect(find.text('https://example.org/document'), findsWidgets);
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('list edit loads the inline form and keeps cancel next to save', (
+    tester,
+  ) async {
+    final repo = FakeAdminRepository();
+    addTearDown(repo.dispose);
+    await tester.pumpWidget(
+      host(
+        AdminWorkspace(
+          repository: repo,
+          role: AppRole.superAdmin,
+          path: '/admin/schools',
+          onNavigate: (_) {},
+          onSignedOut: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('상세'), findsNothing);
+    final listEdit = find.descendant(
+      of: find.byKey(const ValueKey('admin-row-school-a-dept')),
+      matching: find.widgetWithText(OutlinedButton, '수정'),
+    );
+    await showInPage(tester, listEdit);
+    await tester.tap(listEdit);
+    await tester.pumpAndSettle();
+    expect(find.byType(InputDialog), findsNothing);
+    expect(find.text('수정 기본 정보'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.descendant(
+              of: find.byKey(const ValueKey('admin-basic-department')),
+              matching: find.byKey(const ValueKey('admin-field-name')),
+            ),
+          )
+          .controller!
+          .text,
+      '합성 학과',
+    );
+    final form = find.byKey(const ValueKey('admin-details-department'));
+    final cancel = find.descendant(
+      of: form,
+      matching: find.widgetWithText(TextButton, '취소'),
+    );
+    final save = find.descendant(
+      of: form,
+      matching: find.widgetWithText(FilledButton, '저장'),
+    );
+    await showInPage(tester, cancel);
+    expect(
+      (tester.getCenter(cancel).dy - tester.getCenter(save).dy).abs(),
+      lessThan(8),
+    );
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('admin flows apply draft, preserve version and show details', (
     tester,
   ) async {
@@ -656,22 +728,22 @@ void main() {
     expect(find.text('상세'), findsNothing);
     final listEdit = find.descendant(
       of: find.byKey(const ValueKey('admin-row-r')),
-      matching: find.widgetWithText(TextButton, '수정'),
+      matching: find.widgetWithText(OutlinedButton, '수정'),
     );
-    await tester.ensureVisible(listEdit);
-    await tester.pumpAndSettle();
+    await showInPage(tester, listEdit);
     await tester.tap(listEdit);
     await tester.pumpAndSettle();
+    await showInPage(tester, find.text('검토·적용'));
     await tester.tap(find.text('검토·적용'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('초안 적용'));
     await tester.pumpAndSettle();
     expect(repo.find('r')!.status, 'applied');
     expect(find.byType(InputDialog), findsNothing);
-    await tester.ensureVisible(listEdit);
-    await tester.pumpAndSettle();
+    await showInPage(tester, listEdit);
     await tester.tap(listEdit);
     await tester.pumpAndSettle();
+    await showInPage(tester, find.text('새 버전 초안'));
     await tester.tap(find.text('새 버전 초안'));
     await tester.pumpAndSettle();
     await tester.tap(
@@ -684,15 +756,12 @@ void main() {
     expect(repo.records.where((r) => r.kind == AdminKind.rule).length, 2);
     expect(repo.find('r')!.status, 'applied');
     expect(find.byType(InputDialog), findsNothing);
+    await showInPage(tester, listEdit);
     await tester.tap(listEdit);
     await tester.pumpAndSettle();
-    expect(
-      find.descendant(
-        of: find.byType(InputDialog),
-        matching: find.text('규칙 종류 *'),
-      ),
-      findsOneWidget,
-    );
+    expect(find.byType(InputDialog), findsNothing);
+    expect(find.text('수정 기본 정보'), findsOneWidget);
+    expect(find.text('규칙 종류 (필수)'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
   testWidgets('admin flows delete shows references and preserves source', (
@@ -772,7 +841,7 @@ void main() {
       expect(find.text('저장').hitTestable(), findsOneWidget);
       await tester.tap(find.text('취소'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('내용 폐기'));
+      await tester.tap(find.byKey(const Key('input-discard-delete')));
       await tester.pumpAndSettle();
       expect(find.byType(InputDialog), findsNothing);
       expect(tester.takeException(), isNull);
@@ -808,16 +877,17 @@ void main() {
     await tester.ensureVisible(
       find.descendant(
         of: find.byKey(const ValueKey('admin-row-scope-a')),
-        matching: find.widgetWithText(TextButton, '수정'),
+        matching: find.widgetWithText(OutlinedButton, '수정'),
       ),
     );
     await tester.tap(
       find.descendant(
         of: find.byKey(const ValueKey('admin-row-scope-a')),
-        matching: find.widgetWithText(TextButton, '수정'),
+        matching: find.widgetWithText(OutlinedButton, '수정'),
       ),
     );
     await tester.pumpAndSettle();
+    await showInPage(tester, find.text('범위 회수'));
     await tester.tap(find.text('범위 회수'));
     await tester.pumpAndSettle();
     await setField(tester, 'reason', '합성 회수');
@@ -864,7 +934,7 @@ void main() {
       await tester.tap(find.text('취소'));
       await tester.pumpAndSettle();
       expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-      await tester.tap(find.text('계속 작성'));
+      await tester.tap(find.byKey(const Key('input-discard-cancel')));
       await tester.pumpAndSettle();
       expect(
         tester
@@ -1017,8 +1087,138 @@ void main() {
     fail = false;
     await tester.tap(find.text('다시 읽기'));
     await tester.pumpAndSettle();
-    expect(find.text('관리 가능한 학교 2개'), findsOneWidget);
+    expect(find.text('최근 변경'), findsOneWidget);
+    expect(find.text('바로가기'), findsOneWidget);
+    expect(find.textContaining('확인할 초안'), findsNothing);
+    expect(find.text('학교 문서 검색·근거'), findsNothing);
+    expect(find.text('학교 발급 원본 검토'), findsNothing);
+    expect(find.text('학교 확인 학생 기록 검토'), findsNothing);
+    expect(find.text('학교 문서 근거 검토'), findsNothing);
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     expect(FocusManager.instance.primaryFocus, isNotNull);
+  });
+  testWidgets(
+    'school list shows every readable school not just the current one',
+    (tester) async {
+      final repo = FakeAdminRepository();
+      addTearDown(repo.dispose);
+      await tester.pumpWidget(
+        host(
+          AdminWorkspace(
+            repository: repo,
+            role: AppRole.superAdmin,
+            path: '/admin/schools',
+            onNavigate: (_) {},
+            onSignedOut: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('admin-row-school-a')), findsOneWidget);
+      expect(find.byKey(const ValueKey('admin-row-school-b')), findsOneWidget);
+      final selector = tester.widget<AnchoredSelectField<String>>(
+        find.byKey(const ValueKey('admin-school-selector')),
+      );
+      expect(selector.value, '');
+      expect(selector.options.map((o) => o.value), [
+        '',
+        'school-a',
+        'school-b',
+      ]);
+      expect(selector.options.first.label, '전체 학교');
+      final form = find.byKey(
+        const ValueKey('admin-registration-institution-'),
+      );
+      await tester.enterText(
+        find.descendant(
+          of: form,
+          matching: find.byKey(const ValueKey('admin-field-name')),
+        ),
+        '합성 신규 대학',
+      );
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      final register = find.descendant(
+        of: find.byKey(const ValueKey('admin-details-institution')),
+        matching: find.widgetWithText(FilledButton, '등록'),
+      );
+      await tester.ensureVisible(register);
+      await tester.pumpAndSettle();
+      await tester.tap(register);
+      await tester.pumpAndSettle();
+      expect(find.text('합성 신규 대학'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets('course catalog shows trimmed credits before the code', (
+    tester,
+  ) async {
+    final repo = FakeAdminRepository();
+    addTearDown(repo.dispose);
+    await repo.save(
+      'super-admin',
+      AdminRecord(
+        id: 'course-credits',
+        kind: AdminKind.course,
+        values: {
+          'name': '자료구조',
+          'institutionId': 'school-a',
+          'code': 'CS101',
+          'credits': '3.0',
+        },
+      ),
+    );
+    await tester.pumpWidget(
+      host(
+        AdminWorkspace(
+          repository: repo,
+          role: AppRole.superAdmin,
+          path: '/admin/curricula',
+          onNavigate: (_) {},
+          onSignedOut: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('3학점 · 코드 CS101'), findsOneWidget);
+    expect(find.textContaining('3.0학점'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('reload keeps catalog body and only marks the list as loading', (
+    tester,
+  ) async {
+    var hold = Completer<void>()..complete();
+    final repo = FakeAdminRepository(
+      live: true,
+      beforeOperation: (operation) async {
+        if (operation == 'load') await hold.future;
+      },
+    );
+    addTearDown(repo.dispose);
+    await tester.pumpWidget(
+      host(
+        AdminWorkspace(
+          repository: repo,
+          role: AppRole.superAdmin,
+          path: '/admin/curricula',
+          onNavigate: (_) {},
+          onSignedOut: () {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('교육과정'), findsWidgets);
+    expect(find.text('등록 기본 정보'), findsWidgets);
+    hold = Completer<void>();
+    await tester.tap(find.text('다시 읽기').first);
+    await tester.pump();
+    expect(find.text('교육과정'), findsWidgets);
+    expect(find.text('등록 기본 정보'), findsWidgets);
+    expect(find.byType(LinearProgressIndicator), findsWidgets);
+    hold.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('교육과정'), findsWidgets);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 }

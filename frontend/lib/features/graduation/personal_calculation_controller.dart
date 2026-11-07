@@ -85,15 +85,18 @@ class PersonalCalculationController extends ChangeNotifier {
     return List.unmodifiable(rows);
   }
 
-  Future<void> loadCurricula() async {
+  Future<void> loadCurricula({bool preserveSelection = false}) async {
     if (locked) return;
     loading = true;
     sourceError = null;
-    sources = null;
-    drafts.clear();
     _notify();
     try {
       curricula = await _all(StudentResources.personalCurricula);
+      if (!preserveSelection ||
+          !curricula.any((row) => row.id == sources?.curriculum.id)) {
+        sources = null;
+        drafts.clear();
+      }
     } catch (e) {
       sourceError = message(e);
     } finally {

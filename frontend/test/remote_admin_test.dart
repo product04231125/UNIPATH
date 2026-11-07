@@ -367,6 +367,43 @@ void main() {
     repo.dispose();
     api.close();
   });
+
+  test('missing session during load asks to sign in again', () async {
+    final server = AdminServer();
+    final api = AuthApi(
+      client: MockClient((request) async {
+        if (request.url.path.endsWith('/auth/me')) {
+          return http.Response(
+            jsonEncode({
+              'error': {'message': 'unauthenticated', 'field_errors': []},
+            }),
+            401,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        return server.respond(request);
+      }),
+      cookieMode: false,
+    );
+    final identity = await api.authenticate(
+      email: 'operator@example.test',
+      password: 'synthetic long password',
+    );
+    final repo = RemoteAdminRepository(identity, auth: api, api: api);
+    await expectLater(
+      repo.load(),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('로그인 세션을 확인하지 못했습니다'),
+        ),
+      ),
+    );
+    expect(repo.records, isEmpty);
+    repo.dispose();
+    api.close();
+  });
   test(
     'successful save is not repeated when the following refresh fails',
     () async {
@@ -419,7 +456,7 @@ void main() {
         );
         await tester.pumpAndSettle();
         final schoolForm = find.byKey(
-          const ValueKey('admin-registration-institution-$schoolId'),
+          const ValueKey('admin-registration-institution-'),
         );
         final nameField = find.descendant(
           of: schoolForm,
@@ -462,7 +499,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
         expect(server.loggedOut, isFalse);
-        await tester.tap(find.text('계속 작성'));
+        await tester.tap(find.byKey(const Key('input-discard-cancel')));
         await tester.pumpAndSettle();
         expect(find.text('아직 저장하지 않은 학교'), findsOneWidget);
         await tester.ensureVisible(nameField);

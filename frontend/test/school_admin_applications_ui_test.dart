@@ -225,6 +225,8 @@ void main() {
         await tester.enterText(field, pair.$2);
       }
       Future<void> submit() async {
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('신청 제출'));
         await tester.tap(find.text('신청 제출'));
         await tester.pumpAndSettle();
@@ -236,7 +238,7 @@ void main() {
       await tester.tap(find.text('닫기'));
       await tester.pumpAndSettle();
       expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-      await tester.tap(find.text('계속 작성'));
+      await tester.tap(find.byKey(const Key('input-discard-cancel')));
       await tester.pumpAndSettle();
       await submit();
       expect(requests[0]['client_id'], requests[1]['client_id']);

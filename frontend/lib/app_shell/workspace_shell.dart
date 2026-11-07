@@ -31,8 +31,6 @@ class WorkspaceShell extends StatelessWidget {
     required this.selectedPage,
     required this.navigationItems,
     required this.onPageSelected,
-    required this.showMockData,
-    required this.onMockDataChanged,
     required this.onSignedOut,
     required this.isAssistantOpen,
     required this.isAssistantManuallyOpened,
@@ -52,8 +50,6 @@ class WorkspaceShell extends StatelessWidget {
   final int selectedPage;
   final List<WorkspaceNavigationItem> navigationItems;
   final ValueChanged<int> onPageSelected;
-  final bool showMockData;
-  final ValueChanged<bool> onMockDataChanged;
   final VoidCallback onSignedOut;
   final bool isAssistantOpen;
   final bool isAssistantManuallyOpened;
@@ -92,30 +88,26 @@ class WorkspaceShell extends StatelessWidget {
         showDockedAssistant: showDockedAssistant,
         showAssistantOverlay: showAssistantOverlay,
       );
+      final scaffold = Scaffold(
+        resizeToAvoidBottomInset: true,
+        body: SafeArea(
+          bottom: !phone,
+          child: usesScrollFallback
+              ? _WorkspaceScrollFallback(width: fallbackWidth, child: workspace)
+              : workspace,
+        ),
+        bottomNavigationBar: phone && !showAssistantOverlay && !keyboardOpen
+            ? _StudentPhoneNavigationBar(
+                selectedPage: selectedPage,
+                navigationItems: navigationItems,
+                onPageSelected: onPageSelected,
+                onSignedOut: onSignedOut,
+              )
+            : null,
+      );
       return PhoneChromeScope(
         active: phone,
-        child: Scaffold(
-          resizeToAvoidBottomInset: true,
-          body: SafeArea(
-            bottom: !phone,
-            child: usesScrollFallback
-                ? _WorkspaceScrollFallback(
-                    width: fallbackWidth,
-                    child: workspace,
-                  )
-                : workspace,
-          ),
-          bottomNavigationBar: phone && !showAssistantOverlay && !keyboardOpen
-              ? _StudentPhoneNavigationBar(
-                  selectedPage: selectedPage,
-                  navigationItems: navigationItems,
-                  onPageSelected: onPageSelected,
-                  showMockData: showMockData,
-                  onMockDataChanged: onMockDataChanged,
-                  onSignedOut: onSignedOut,
-                )
-              : null,
-        ),
+        child: phone ? withPhoneListDensity(context, scaffold) : scaffold,
       );
     },
   );
@@ -150,6 +142,7 @@ class WorkspaceShell extends StatelessWidget {
       context,
       layout,
       compact: compactNavigation,
+      phone: phone,
     );
     return Stack(
       fit: StackFit.expand,
@@ -170,8 +163,6 @@ class WorkspaceShell extends StatelessWidget {
                           selectedPage: selectedPage,
                           navigationItems: navigationItems,
                           onPageSelected: onPageSelected,
-                          showMockData: showMockData,
-                          onMockDataChanged: onMockDataChanged,
                           onSignedOut: onSignedOut,
                         ),
                         Expanded(child: mainPane),
@@ -246,6 +237,7 @@ class WorkspaceShell extends StatelessWidget {
     BuildContext context,
     WorkspaceShellLayout layout, {
     required bool compact,
+    required bool phone,
   }) => ClipRect(
     child: Column(
       children: [
@@ -268,12 +260,14 @@ class WorkspaceShell extends StatelessWidget {
           ),
         Expanded(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              compact ? 16 : 28,
-              26,
-              compact ? 16 : 28,
-              30,
-            ),
+            padding: phone
+                ? const EdgeInsets.all(phoneBodyPadding)
+                : EdgeInsets.fromLTRB(
+                    compact ? 16 : 28,
+                    26,
+                    compact ? 16 : 28,
+                    30,
+                  ),
             child: pageBuilder(context, layout),
           ),
         ),
@@ -287,16 +281,12 @@ class _StudentPhoneNavigationBar extends StatelessWidget {
     required this.selectedPage,
     required this.navigationItems,
     required this.onPageSelected,
-    required this.showMockData,
-    required this.onMockDataChanged,
     required this.onSignedOut,
   });
 
   final int selectedPage;
   final List<WorkspaceNavigationItem> navigationItems;
   final ValueChanged<int> onPageSelected;
-  final bool showMockData;
-  final ValueChanged<bool> onMockDataChanged;
   final VoidCallback onSignedOut;
 
   int get _selectedBarIndex {
@@ -359,7 +349,7 @@ class _StudentPhoneNavigationBar extends StatelessWidget {
         label: '더보기',
       ),
     ];
-    return NavigationBar(
+    return PhoneNavigationBar(
       key: const Key('phone-nav-bar'),
       selectedIndex: _selectedBarIndex,
       destinations: destinations,
@@ -419,8 +409,6 @@ class _Sidebar extends StatelessWidget {
     required this.selectedPage,
     required this.navigationItems,
     required this.onPageSelected,
-    required this.showMockData,
-    required this.onMockDataChanged,
     required this.onSignedOut,
   });
 
@@ -429,8 +417,6 @@ class _Sidebar extends StatelessWidget {
   final int selectedPage;
   final List<WorkspaceNavigationItem> navigationItems;
   final ValueChanged<int> onPageSelected;
-  final bool showMockData;
-  final ValueChanged<bool> onMockDataChanged;
   final VoidCallback onSignedOut;
 
   @override
@@ -485,40 +471,6 @@ class _Sidebar extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          if (compact)
-            IconButton(
-              key: const Key('mock-data-toggle'),
-              tooltip: showMockData ? '예시 데이터 숨기기' : '예시 데이터 표시',
-              onPressed: () => onMockDataChanged(!showMockData),
-              icon: Icon(
-                showMockData
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-              ),
-            ),
-          if (!compact)
-            Material(
-              color: Colors.transparent,
-              child: SwitchListTile.adaptive(
-                key: const Key('mock-data-toggle'),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                dense: true,
-                title: Text(
-                  '목업용',
-                  style: TextStyle(
-                    fontSize: AppTypography.body,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                subtitle: Text(
-                  '예시 데이터 표시',
-                  style: TextStyle(fontSize: AppTypography.caption),
-                ),
-                value: showMockData,
-                onChanged: onMockDataChanged,
-              ),
-            ),
-          if (!compact) const SizedBox(height: 4),
           _NavigationTile(
             item: navigationItems.last,
             selected: selectedPage == navigationItems.length - 1,

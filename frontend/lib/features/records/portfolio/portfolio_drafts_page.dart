@@ -2,6 +2,8 @@ import '../../../shared/app_style.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../../shared/drafts/form_draft_picker.dart';
+import '../../../shared/drafts/form_draft_store.dart';
 import '../../../shared/widgets/input_dialog.dart';
 import '../../../shared/widgets/content_scroll_view.dart';
 
@@ -90,7 +92,11 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
   Future<void> _edit({
     PortfolioComposition? composition,
     ApplicationDocument? document,
+    Map<String, Object?>? draftValues,
+    String? appliedDraftId,
   }) async {
+    if (_busy || _loading) return;
+    setState(() => _busy = true);
     try {
       await _repository.reloadSources();
       if (!mounted) return;
@@ -101,6 +107,8 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
           isDocument: widget.isDocument,
           composition: composition,
           document: document,
+          draftValues: draftValues,
+          appliedDraftId: appliedDraftId,
         ),
       );
       if (mounted && saved == true) {
@@ -114,7 +122,21 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
       if (mounted) {
         setState(() => _message = '개인 기록을 읽지 못했습니다. 원본은 유지됩니다. 다시 시도하세요.');
       }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _loadFormDraft() async {
+    if (_busy || _loading) return;
+    final entry = await showFormDraftPicker(
+      context: context,
+      collectionKey: formDraftCollectionKey(
+        widget.isDocument ? 'portfolio.document' : 'portfolio.composition',
+      ),
+    );
+    if (!mounted || entry == null) return;
+    await _edit(draftValues: entry.payload, appliedDraftId: entry.id);
   }
 
   Future<void> _delete(String id, String title) async {
@@ -165,7 +187,7 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
 
   String _documentText(ApplicationDocument document) => [
     document.title,
-    '${_repository.isServerBacked ? '계정 서버' : '기기 로컬'} 지원 문서 초안 · 미제출',
+    '지원 문서 초안 · 미제출',
     '${document.type} · ${document.target} · ${document.role}',
     document.body,
     if (document.sources.any((ref) => !_repository.sources.containsKey(ref)))
@@ -249,10 +271,21 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _header(),
-          FilledButton.icon(
-            onPressed: _busy ? null : () => _edit(),
-            icon: const Icon(Icons.add),
-            label: Text(document ? '지원 문서 초안 추가' : '포트폴리오 구성 추가'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton.icon(
+                onPressed: _busy ? null : () => _edit(),
+                icon: const Icon(Icons.add),
+                label: Text(document ? '지원 문서 초안 추가' : '포트폴리오 구성 추가'),
+              ),
+              OutlinedButton(
+                key: const Key('portfolio-load-form-draft'),
+                onPressed: _busy ? null : _loadFormDraft,
+                child: const Text('불러오기'),
+              ),
+            ],
           ),
           if (_message != null)
             Padding(
@@ -317,8 +350,8 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
         ),
     ],
     description: widget.isDocument
-        ? '지원처별 이력서·자기소개서 초안을 직접 편집합니다. 개인 경험·성과를 선택하여 본문에 가져올 수 있습니다. AI가 작성하거나 지원처로 제출하지 않습니다.'
-        : '개인 성과 중 사용할 항목과 순서를 선택합니다. 나만 보기·제출 검토용·공개 검토용은 ${_repository.isServerBacked ? '개인' : '기기 로컬'} 사용 의도이며 실제 게시·권한 설정이 아닙니다.',
+        ? '지원처별 이력서·자기소개서 초안을 직접 편집합니다.'
+        : '개인 성과 중 사용할 항목과 순서를 선택합니다.',
   );
 
   Widget _statePage(Widget child) => ContentScrollView(

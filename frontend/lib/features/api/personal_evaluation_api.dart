@@ -325,6 +325,7 @@ class PersonalEvaluationSummary {
     }
   }
   static const personalLabel = '개인 기준 계산 · 학교 공식 판정 아님';
+  static const personalDisplayLabel = '개인 기준 계산';
   String get label => personalLabel;
   final String id, ownerId, curriculumId, curriculumTitle, evaluatedOn, reason;
   final String? clientId;

@@ -1,10 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/digits_only_hint.dart';
+import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/input_dialog.dart';
-import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/surface_card.dart';
 import 'admin_models.dart';
 import 'graduation_credit_grid.dart';
@@ -38,22 +41,24 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
   final _rowNotes = <String, TextEditingController>{};
   final _cellValues = <String, TextEditingController>{};
   var _copied = false;
+  late final String _initial;
 
   @override
   void initState() {
     super.initState();
-    _grid =
-        widget.initial ??
-        GraduationCreditGrid(
-          admissionYear: '',
-          departmentId: widget.departments.firstOrNull?.id ?? '',
-        );
+    _grid = widget.initial != null
+        ? copyCreditGrid(widget.initial!, regenerateIds: false)
+        : GraduationCreditGrid(
+            admissionYear: '',
+            departmentId: widget.departments.firstOrNull?.id ?? '',
+          );
     _year = TextEditingController(text: _grid.admissionYear);
     _year.addListener(() {
       _grid.admissionYear = _year.text.trim();
       setState(() {});
     });
     _syncControllers();
+    _initial = _fingerprint;
   }
 
   @override
@@ -71,22 +76,36 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
     super.dispose();
   }
 
-  bool get dirty {
-    if (widget.initial != null) {
-      return _year.text.trim() != widget.initial!.admissionYear ||
-          _grid.departmentId != widget.initial!.departmentId ||
-          _grid.groups.isNotEmpty ||
-          _grid.columns.isNotEmpty ||
-          _grid.rows.isNotEmpty;
-    }
-    return _year.text.trim().isNotEmpty ||
-        _grid.groups.isNotEmpty ||
-        _grid.columns.isNotEmpty ||
-        _grid.rows.isNotEmpty;
-  }
+  String get _fingerprint => jsonEncode([
+    _grid.admissionYear,
+    _grid.departmentId,
+    [
+      for (final g in _grid.groups) [g.id, g.label],
+    ],
+    [
+      for (final c in _grid.columns) [c.id, c.label, c.groupId],
+    ],
+    [
+      for (final r in _grid.rows)
+        [
+          r.id,
+          r.label,
+          r.note,
+          [
+            for (final c in _grid.columns)
+              [
+                _grid.cellFor(r.id, c.id).kind.name,
+                _grid.cellFor(r.id, c.id).value,
+              ],
+          ],
+        ],
+    ],
+  ]);
+
+  bool get dirty => _fingerprint != _initial;
 
   Future<bool> allowLeave() async =>
-      !dirty || await confirmInputDiscard(context);
+      !dirty || await confirmInputDiscardAllowsLeave(context);
 
   void _syncControllers() {
     _bind(_groupLabels, [for (final group in _grid.groups) group.id], (id) {
@@ -194,6 +213,68 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
     });
   }
 
+  void _removeColumn(GraduationCreditColumn column) {
+    setState(() {
+      _grid.columns.remove(column);
+      _grid.cells.removeWhere((key, _) => _cellColumnId(key) == column.id);
+      final groupId = column.groupId;
+      if (groupId != null &&
+          _grid.columns.every((other) => other.groupId != groupId)) {
+        _grid.groups.removeWhere((group) => group.id == groupId);
+      }
+      _syncControllers();
+    });
+  }
+
+  void _removeGroup(String groupId) {
+    setState(() {
+      final columnIds = {
+        for (final column in _grid.columns)
+          if (column.groupId == groupId) column.id,
+      };
+      _grid.columns.removeWhere((column) => column.groupId == groupId);
+      _grid.groups.removeWhere((group) => group.id == groupId);
+      _grid.cells.removeWhere(
+        (key, _) => columnIds.contains(_cellColumnId(key)),
+      );
+      _syncControllers();
+    });
+  }
+
+  void _removeRow(GraduationCreditRow row) {
+    setState(() {
+      _grid.rows.remove(row);
+      _grid.cells.removeWhere((key, _) => key.startsWith('${row.id}/'));
+      _syncControllers();
+    });
+  }
+
+  String _cellColumnId(String key) {
+    final slash = key.indexOf('/');
+    return slash < 0 ? '' : key.substring(slash + 1);
+  }
+
+  bool _firstInGroup(GraduationCreditColumn column) {
+    final groupId = column.groupId;
+    if (groupId == null) return false;
+    return _grid.columns.firstWhere((other) => other.groupId == groupId).id ==
+        column.id;
+  }
+
+  Widget _removeButton({required Key key, required VoidCallback onPressed}) =>
+      Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton(
+          key: key,
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+            visualDensity: VisualDensity.compact,
+          ),
+          onPressed: onPressed,
+          child: const Text('제거'),
+        ),
+      );
+
   void _copyYear() {
     setState(() {
       _grid = copyCreditGrid(_grid);
@@ -211,7 +292,10 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
     setState(() {
       final cell = _grid.cellFor(row.id, column.id);
       cell.kind = kind;
-      if (kind != GraduationCreditCellKind.number) cell.value = null;
+      if (kind != GraduationCreditCellKind.number) {
+        cell.value = null;
+        _cellValues[GraduationCreditGrid.cellKey(row.id, column.id)]?.clear();
+      }
       _syncControllers();
     });
   }
@@ -233,105 +317,110 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
 
   @override
   Widget build(BuildContext context) {
-    final yearInvalid =
-        _year.text.trim().isNotEmpty && parseCreditNumber(_year.text) == null;
-    final body = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const PageHeader(
-          title: '학점표',
-          description: '입학연도마다 열과 이수 경로 행을 직접 만듭니다. 숫자는 문서에 적힌 값이며, 화면이 소계를 계산하거나 졸업을 판정하지 않습니다.',
-        ),
-        Text('학교: ${widget.schoolName}'),
-        const SizedBox(height: 12),
-        FieldLabel(
-          label: '학과',
-          child: widget.departments.isEmpty
-              ? const Text('현재 학교에 등록된 학과가 없습니다. 학교·학과 메뉴에서 학과를 먼저 등록하세요.')
-              : AnchoredSelectField<String>(
-                  key: const ValueKey('credit-grid-department'),
-                  externalLabel: true,
-                  value: _grid.departmentId,
-                  label: '학과',
-                  options: [
-                    for (final department in widget.departments)
-                      SelectOption(department.id, department.name),
-                  ],
-                  onChanged: (id) => setState(() => _grid.departmentId = id),
-                ),
-        ),
-        const SizedBox(height: 12),
-        FieldLabel(
-          label: '입학연도',
-          child: TextFormField(
-            key: const ValueKey('credit-grid-year'),
-            controller: _year,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(
-              hintText: '2026',
-              errorText: yearInvalid ? '입학연도는 숫자로 입력하세요.' : null,
-            ),
+    final body = SurfaceCard(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const FeatureLine.section(
+            text: '학점표',
+            padTop: false,
+            padBottom: false,
           ),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            OutlinedButton(
-              key: const ValueKey('credit-grid-add-group'),
-              onPressed: _addGroup,
-              child: const Text('열 묶음 추가'),
-            ),
-            OutlinedButton(
-              key: const ValueKey('credit-grid-add-column'),
-              onPressed: () => _addColumn(),
-              child: const Text('독립 열 추가'),
-            ),
-            OutlinedButton(
-              key: const ValueKey('credit-grid-add-row'),
-              onPressed: _addRow,
-              child: const Text('이수 경로 행 추가'),
-            ),
-            OutlinedButton(
-              key: const ValueKey('credit-grid-copy-year'),
-              onPressed: _grid.columns.isEmpty && _grid.rows.isEmpty
-                  ? null
-                  : _copyYear,
-              child: const Text('이 표를 다른 연도로 복사'),
-            ),
-            OutlinedButton(
-              key: const ValueKey('credit-grid-preview'),
-              onPressed: () => showGraduationTemplatePreview(
-                context: context,
-                title: '학점표 미리보기',
-                child: GraduationCreditGridPreview(
-                  grid: _grid,
-                  schoolName: widget.schoolName,
-                  departments: widget.departments,
-                ),
+          const SizedBox(height: 8),
+          const Text(
+            '입학연도마다 열과 이수 경로 행을 직접 만듭니다. 숫자는 문서에 적힌 값이며, 화면이 소계를 계산하거나 졸업을 판정하지 않습니다.',
+          ),
+          Text('학교: ${widget.schoolName}'),
+          const SizedBox(height: 12),
+          FieldLabel(
+            label: '학과',
+            child: widget.departments.isEmpty
+                ? const Text('현재 학교에 등록된 학과가 없습니다. 학교·학과 메뉴에서 학과를 먼저 등록하세요.')
+                : AnchoredSelectField<String>(
+                    key: const ValueKey('credit-grid-department'),
+                    externalLabel: true,
+                    value: _grid.departmentId,
+                    label: '학과',
+                    options: [
+                      for (final department in widget.departments)
+                        SelectOption(department.id, department.name),
+                    ],
+                    onChanged: (id) => setState(() => _grid.departmentId = id),
+                  ),
+          ),
+          const SizedBox(height: 12),
+          FieldLabel(
+            label: '입학연도',
+            child: TextFormField(
+              key: const ValueKey('credit-grid-year'),
+              controller: _year,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: digitsOnlyDecoration(
+                context,
+                base: const InputDecoration(hintText: '2026'),
               ),
-              child: const Text('미리보기'),
             ),
-          ],
-        ),
-        if (_copied)
-          const Padding(
-            padding: EdgeInsets.only(top: 8),
-            child: Text('열과 행을 복사했습니다. 입학연도와 칸 숫자만 고치면 됩니다.'),
           ),
-        const SizedBox(height: 16),
-        if (_grid.columns.isEmpty && _grid.rows.isEmpty)
-          const Text('열 묶음이나 이수 경로 행을 추가해 표를 만드세요. 학교마다 열 이름이 다를 수 있습니다.')
-        else
-          SurfaceCard(child: _table()),
-        const SizedBox(height: 12),
-        const Text('저장은 연결되지 않았습니다. 학점표는 현재 실행 규칙 API의 학점 조건 하나에 넣을 수 없습니다.'),
-        const SizedBox(height: 8),
-        const FilledButton(onPressed: null, child: Text('학점표 저장 불가 · 연결 전')),
-      ],
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton(
+                key: const ValueKey('credit-grid-add-group'),
+                onPressed: _addGroup,
+                child: const Text('열 묶음 추가'),
+              ),
+              OutlinedButton(
+                key: const ValueKey('credit-grid-add-column'),
+                onPressed: () => _addColumn(),
+                child: const Text('독립 열 추가'),
+              ),
+              OutlinedButton(
+                key: const ValueKey('credit-grid-add-row'),
+                onPressed: _addRow,
+                child: const Text('이수 경로 행 추가'),
+              ),
+              OutlinedButton(
+                key: const ValueKey('credit-grid-copy-year'),
+                onPressed: _grid.columns.isEmpty && _grid.rows.isEmpty
+                    ? null
+                    : _copyYear,
+                child: const Text('이 표를 다른 연도로 복사'),
+              ),
+              OutlinedButton(
+                key: const ValueKey('credit-grid-preview'),
+                onPressed: () => showGraduationTemplatePreview(
+                  context: context,
+                  title: '학점표 미리보기',
+                  child: GraduationCreditGridPreview(
+                    grid: _grid,
+                    schoolName: widget.schoolName,
+                    departments: widget.departments,
+                  ),
+                ),
+                child: const Text('미리보기'),
+              ),
+            ],
+          ),
+          if (_copied)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text('열과 행을 복사했습니다. 입학연도와 칸 숫자만 고치면 됩니다.'),
+            ),
+          const SizedBox(height: 16),
+          if (_grid.columns.isEmpty && _grid.rows.isEmpty)
+            const Text('열 묶음이나 이수 경로 행을 추가해 표를 만드세요. 학교마다 열 이름이 다를 수 있습니다.')
+          else
+            SurfaceCard(child: _table()),
+          const SizedBox(height: 12),
+          const Text('저장은 연결되지 않았습니다. 학점표는 현재 실행 규칙 API의 학점 조건 하나에 넣을 수 없습니다.'),
+          const SizedBox(height: 8),
+          const FilledButton(onPressed: null, child: Text('학점표 저장 불가 · 연결 전')),
+        ],
+      ),
     );
     if (!widget.scrollable) return body;
     return SingleChildScrollView(child: body);
@@ -355,13 +444,27 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
                   padding: const EdgeInsets.all(8),
                   child: column.groupId == null
                       ? const Text('독립 열')
-                      : TextField(
-                          key: ValueKey('credit-grid-group-${column.groupId}'),
-                          controller: _groupLabels[column.groupId],
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            hintText: '교양 과목',
-                          ),
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            TextField(
+                              key: ValueKey(
+                                'credit-grid-group-${column.groupId}',
+                              ),
+                              controller: _groupLabels[column.groupId],
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                hintText: '교양 과목',
+                              ),
+                            ),
+                            if (_firstInGroup(column))
+                              _removeButton(
+                                key: ValueKey(
+                                  'credit-grid-remove-group-${column.groupId}',
+                                ),
+                                onPressed: () => _removeGroup(column.groupId!),
+                              ),
+                          ],
                         ),
                 ),
               const Padding(padding: EdgeInsets.all(8), child: Text('비고')),
@@ -384,7 +487,7 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
                           hintText: '기초교양',
                         ),
                       ),
-                      if (column.groupId != null)
+                      if (column.groupId != null && _firstInGroup(column))
                         TextButton(
                           key: ValueKey(
                             'credit-grid-add-leaf-${column.groupId}',
@@ -392,6 +495,10 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
                           onPressed: () => _addColumn(groupId: column.groupId),
                           child: const Text('같은 묶음 열 추가'),
                         ),
+                      _removeButton(
+                        key: ValueKey('credit-grid-remove-column-${column.id}'),
+                        onPressed: () => _removeColumn(column),
+                      ),
                     ],
                   ),
                 ),
@@ -403,13 +510,22 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
               children: [
                 Padding(
                   padding: const EdgeInsets.all(8),
-                  child: TextField(
-                    key: ValueKey('credit-grid-row-${row.id}'),
-                    controller: _rowLabels[row.id],
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      hintText: '단일전공',
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        key: ValueKey('credit-grid-row-${row.id}'),
+                        controller: _rowLabels[row.id],
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          hintText: '단일전공',
+                        ),
+                      ),
+                      _removeButton(
+                        key: ValueKey('credit-grid-remove-row-${row.id}'),
+                        onPressed: () => _removeRow(row),
+                      ),
+                    ],
                   ),
                 ),
                 for (final column in _grid.columns)
@@ -443,7 +559,8 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Wrap(
-          spacing: 4,
+          spacing: 8,
+          runSpacing: 8,
           children: [
             _kindChip(row, column, GraduationCreditCellKind.empty, '비어 있음'),
             _kindChip(row, column, GraduationCreditCellKind.number, '숫자'),
@@ -459,9 +576,19 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
           TextField(
             key: ValueKey('credit-grid-cell-$key'),
             controller: _cellValues[key],
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: const InputDecoration(isDense: true, hintText: '7'),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              TextInputFormatter.withFunction((oldValue, newValue) =>
+                RegExp(r'^\d*(?:\.\d{0,3})?$').hasMatch(newValue.text)
+                  ? newValue : oldValue),
+            ],
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: '7.5',
+              helperText: '소수 셋째 자리까지',
+              errorText: (cell.value ?? '').isNotEmpty && parseCreditNumber(cell.value!) == null
+                ? '0 이상의 학점을 입력하세요.' : null,
+            ),
           )
         else
           Text(

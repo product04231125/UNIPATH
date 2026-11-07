@@ -2,12 +2,11 @@ import '../../shared/app_style.dart';
 
 import 'package:flutter/material.dart';
 
-import 'package:university_path_frontend/shared/app_typography.dart';
-
-import '../../app_shell/phone_shell.dart';
-import '../../shared/widgets/content_scroll_view.dart';
+import '../../shared/drafts/form_draft_picker.dart';
+import '../../shared/drafts/form_draft_store.dart';
 import '../../shared/widgets/status_badge.dart';
-import '../../shared/widgets/page_header.dart';
+import '../../shared/widgets/feature_line.dart';
+import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/surface_card.dart';
 import 'fixtures/record_mock_entry.dart';
 import 'course/course_term.dart';
@@ -16,11 +15,15 @@ import 'personal_record_fields.dart';
 import 'personal_record_form.dart';
 import 'personal_repository_scope.dart';
 import '../auth/auth_api.dart';
+import '../auth/guest_preview_scope.dart';
+import '../api/student_api.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/external_link_button.dart';
+import '../planning/planning_profile_cta.dart';
+import '../planning/planning_repository.dart';
 
 /// Temporary shared presentation only. Each feature entry owns its own
-/// configuration, fixture and mounted local input state.
+/// configuration and mounted local input state.
 class RecordMenuPage extends StatefulWidget {
   const RecordMenuPage({
     super.key,
@@ -28,34 +31,36 @@ class RecordMenuPage extends StatefulWidget {
     required this.kind,
     required this.title,
     required this.description,
-    required this.notice,
     required this.listTitle,
-    required this.fixture,
     required this.guideTitle,
     required this.guides,
     required this.addLabel,
     required this.detailLabel,
-    required this.showMockData,
     this.fieldsLoader,
     this.validateValues,
     this.guideActions = const [],
+    this.studentApi,
+    this.institutionId,
+    this.planning,
+    this.onOpenSettings,
   });
 
   final PersonalRecordKind kind;
   final String? contextLabel;
   final String title;
   final String description;
-  final String notice;
   final String listTitle;
-  final List<RecordMockEntry> fixture;
   final String guideTitle;
   final List<String> guides;
   final String addLabel;
   final String detailLabel;
-  final bool showMockData;
   final Future<List<PersonalRecordField>> Function()? fieldsLoader;
   final Future<String?> Function(Map<String, String>)? validateValues;
   final List<Widget> guideActions;
+  final StudentApi? studentApi;
+  final String? institutionId;
+  final PlanningRepository? planning;
+  final VoidCallback? onOpenSettings;
 
   @override
   State<RecordMenuPage> createState() => _RecordMenuPageState();
@@ -70,6 +75,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
   List<PersonalRecordField> _fields = [];
   Listenable? _importChanges;
   int _loadRevision = 0;
+  bool _formOpen = false;
 
   @override
   void initState() {
@@ -120,25 +126,67 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     }
   }
 
-  Future<void> _showForm([PersonalRecord? record]) async {
-    await showPersonalRecordForm(
+  Future<void> _showForm({
+    PersonalRecord? record,
+    Map<String, String>? draftValues,
+    String? appliedDraftId,
+  }) async {
+    if (_formOpen) return;
+    _formOpen = true;
+    try {
+      await showPersonalRecordForm(
+        context: context,
+        kind: widget.kind,
+        repository: _repository,
+        addLabel: widget.addLabel,
+        record: record,
+        draftValues: draftValues,
+        appliedDraftId: appliedDraftId,
+        fieldsLoader: widget.fieldsLoader,
+        validateValues: widget.validateValues,
+        onFieldsReady: (fields) {
+          if (mounted) setState(() => _fields = fields);
+        },
+        onSaved: () {
+          if (mounted) setState(() {});
+        },
+        studentApi: widget.studentApi,
+        institutionId:
+            widget.planning?.profile.institutionId ?? widget.institutionId,
+        departmentId: widget.planning?.profile.departmentId,
+        curriculumId: widget.planning?.profile.curriculumId,
+      );
+    } finally {
+      _formOpen = false;
+    }
+  }
+
+  Future<void> _loadDraft() async {
+    if (_formOpen || GuestPreviewScope.isActive(context)) {
+      if (GuestPreviewScope.isActive(context)) {
+        GuestPreviewScope.showBlockedMessage(context);
+      }
+      return;
+    }
+    final entry = await showFormDraftPicker(
       context: context,
-      kind: widget.kind,
-      repository: _repository,
-      addLabel: widget.addLabel,
-      record: record,
-      fieldsLoader: widget.fieldsLoader,
-      validateValues: widget.validateValues,
-      onFieldsReady: (fields) {
-        if (mounted) setState(() => _fields = fields);
-      },
-      onSaved: () {
-        if (mounted) setState(() {});
-      },
+      collectionKey: formDraftCollectionKey(
+        personalRecordDraftScreenId(widget.kind),
+      ),
     );
+    if (!mounted || entry == null) return;
+    final values = {
+      for (final item in entry.payload.entries)
+        item.key: '${item.value ?? ''}',
+    };
+    await _showForm(draftValues: values, appliedDraftId: entry.id);
   }
 
   Future<void> _delete(PersonalRecord record) async {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -159,7 +207,11 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
     try {
       await _repository.delete(record.id, expectedVersion: record.version);
       if (mounted) setState(() {});
@@ -178,26 +230,42 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     }
   }
 
-  Widget _personalEntry(PersonalRecord record) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      _entry(
-        RecordMockEntry(
-          title: record.value('title'),
-          detail: _fields
-              .where((f) => f.key != 'title' && record.value(f.key).isNotEmpty)
-              .map(
-                (f) =>
-                    f.key == 'term' && widget.kind == PersonalRecordKind.course
-                    ? '수강 기간: ${CourseTerm.parse(record.value('term')).label}'
-                    : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
-              )
-              .join(' · '),
-          status: '개인 기록',
-        ),
+  Widget _personalEntry(PersonalRecord record) {
+    final isCourse = widget.kind == PersonalRecordKind.course;
+    final entry = RecordMockEntry(
+      title: record.value('title'),
+      detail: _fields
+          .where(
+            (f) =>
+                f.key != 'title' &&
+                record.value(f.key).isNotEmpty &&
+                (widget.kind != PersonalRecordKind.activity ||
+                    activityVisibleKeys.contains(f.key)),
+          )
+          .map(
+            (f) => f.key == 'term' && isCourse
+                ? '수강 기간: ${CourseTerm.parse(record.value('term')).label}'
+                : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
+          )
+          .join(' · '),
+      status: '개인 기록',
+    );
+    return FeatureLine.two(
+      primary: entry.title,
+      secondary: entry.detail,
+      leading: Icon(
+        Icons.description_outlined,
+        size: 19,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
-      Wrap(
+      trailing: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
+          // Course ownership is settings/profile context; keep the badge on
+          // activity/credential/experience menus only.
+          if (!isCourse) StatusBadge(status: entry.status),
           for (final field in _fields.where(
             (f) =>
                 f.type == PersonalFieldType.url &&
@@ -207,7 +275,10 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               url: record.value(field.key),
               label: field.label,
             ),
-          TextButton(onPressed: () => _showForm(record), child: Text('수정')),
+          TextButton(
+            onPressed: () => _showForm(record: record),
+            child: Text('수정'),
+          ),
           TextButton(
             style: destructiveButtonStyle(context),
             onPressed: () => _delete(record),
@@ -215,8 +286,8 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           ),
         ],
       ),
-    ],
-  );
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -225,261 +296,171 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       return _statePage(
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('개인 기록을 읽지 못했습니다. 기존 저장 내용은 덮어쓰지 않습니다.'),
-            TextButton(onPressed: _load, child: Text('다시 시도')),
+            const FeatureLine.one(
+              text: '개인 기록을 읽지 못했습니다. 기존 저장 내용은 덮어쓰지 않습니다.',
+            ),
+            FeatureLine.reload(onPressed: _load, label: '다시 시도'),
           ],
         ),
       );
     }
+    final planning = widget.planning;
+    if (planning == null) return _loadedPage();
+    return AnimatedBuilder(
+      animation: planning,
+      builder: (context, _) => _loadedPage(),
+    );
+  }
+
+  Widget _loadedPage() {
     final personal = _repository.records.where((r) {
       if (widget.kind != PersonalRecordKind.course) return true;
       final period = CourseTerm.parse(r.value('term'));
       return (_year.isEmpty || period.yearFilter == _year) &&
           (_term.isEmpty || period.semester == _term);
     }).toList();
-    final entries = [if (widget.showMockData) ...widget.fixture];
     final isCourse = widget.kind == PersonalRecordKind.course;
-    final phone = PhoneChromeScope.of(context);
-    return ContentScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _header(),
-          if (!isCourse && !phone)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.secondaryContainer,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                ),
-              ),
-              child: Text(
-                widget.notice,
-                style: TextStyle(
-                  fontSize: AppTypography.caption,
-                  color: Theme.of(context).colorScheme.onSecondaryContainer,
-                ),
-              ),
-            ),
-          if (!isCourse && !phone) const SizedBox(height: 14),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final records = SurfaceCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.listTitle,
-                      style: TextStyle(
-                        fontSize: AppTypography.section,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    if (!isCourse && !phone) const SizedBox(height: 4),
-                    if (!isCourse && !phone)
-                      Text(
-                        '학교에서 확인한 정보가 없으면 내 기록을 직접 추가할 수 있습니다.',
-                        style: TextStyle(
-                          fontSize: AppTypography.caption,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: _showForm,
-                      icon: Icon(Icons.add),
-                      label: Text(widget.addLabel),
-                    ),
-                    const SizedBox(height: 10),
-                    if (widget.kind == PersonalRecordKind.course) ...[
-                      Wrap(
-                        spacing: 16,
-                        runSpacing: 12,
-                        children: [
-                          SizedBox(
-                            width: 240,
-                            child: AnchoredSelectField<String>(
-                              key: const ValueKey('record-course-year-filter'),
-                              value: _year,
-                              label: '수강 연도 필터',
-                              options: [
-                                const SelectOption('', '전체 연도'),
-                                for (final year in {
-                                  ..._repository.records.map(
-                                    (r) =>
-                                        CourseTerm.parse(r.value('term'))
-                                            .yearFilter,
-                                  ),
-                                  if (_year.isNotEmpty) _year,
-                                }.toList()..sort((a, b) => b.compareTo(a)))
-                                  SelectOption(
-                                    year,
-                                    year == CourseTerm.unspecified
-                                        ? '연도 미지정'
-                                        : '$year년',
-                                  ),
-                              ],
-                              onChanged: (value) =>
-                                  setState(() => _year = value),
-                            ),
-                          ),
-                          SizedBox(
-                            width: 240,
-                            child: AnchoredSelectField<String>(
-                              key: const ValueKey('record-course-term-filter'),
-                              value: _term,
-                              label: '학기 필터',
-                              options: [
-                                const SelectOption('', '전체 학기'),
-                                for (final term in {
-                                  ..._repository.records.map(
-                                    (r) =>
-                                        CourseTerm.parse(r.value('term'))
-                                            .semester,
-                                  ),
-                                  if (_term.isNotEmpty) _term,
-                                }.toList()..sort())
-                                  SelectOption(term, term),
-                              ],
-                              onChanged: (value) =>
-                                  setState(() => _term = value),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (!phone) ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점 · 공식 이수학점 아님',
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          widget.notice,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        const SizedBox(height: 12),
-                      ] else
-                        const SizedBox(height: 12),
-                    ],
-                    if (widget.kind == PersonalRecordKind.activity && !phone)
-                      Text(
-                        '사용자가 승인됨으로 기록한 봉사 시간 합계 ${personal.where((r) => r.value('approval') == 'approved').fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('approvedHours')) ?? 0))}시간 · 학교 검증 아님',
-                      ),
-                    if (personal.isEmpty)
-                      Text(
-                        isCourse && (_year.isNotEmpty || _term.isNotEmpty)
-                            ? '선택한 연도·학기에 맞는 개인 기록이 없습니다. 필터를 변경해 주세요.'
-                            : '개인 기록이 없습니다. 직접 입력해 주세요.',
-                      ),
-                    for (final record in personal) _personalEntry(record),
-                    if (entries.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      const Divider(),
-
-                      for (final entry in entries) _entry(entry),
-                    ],
-                  ],
-                ),
-              );
-              {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    records,
-                    const SizedBox(height: 12),
-                    ExpansionTile(
-                      title: Text(widget.guideTitle),
-                      childrenPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
-                      expandedCrossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (final line in widget.guides)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Text('• $line'),
-                          ),
-                      ],
-                    ),
-                    ...widget.guideActions,
-                  ],
-                );
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _header() {
-    final phone = PhoneChromeScope.of(context);
-    return PageHeader(
+    final profile = widget.planning?.profile;
+    final canAdd =
+        !isCourse ||
+        widget.planning == null ||
+        (profile?.isConfigured ?? false);
+    return FeaturePage(
       title: widget.title,
       contextLabel: widget.contextLabel,
-      description: phone ? null : widget.description,
-      actions: [
-        if (_repository.isServerBacked)
-          TextButton.icon(
-            onPressed: _loading ? null : _load,
-            icon: const Icon(Icons.refresh),
-            label: const Text('서버 기록 다시 불러오기'),
-          ),
-      ],
-    );
-  }
-
-  Widget _statePage({required Widget child}) => ContentScrollView(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [_header(), child],
-    ),
-  );
-
-  Widget _entry(RecordMockEntry entry) => Container(
-    padding: const EdgeInsets.symmetric(vertical: 11),
-    decoration: BoxDecoration(
-      border: Border(
-        bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-    ),
-    child: Row(
-      children: [
-        Icon(
-          Icons.description_outlined,
-          size: 19,
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
-        const SizedBox(width: 10),
-        Expanded(
+      description: widget.description,
+      body: [
+        SurfaceCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                entry.title,
-                style: TextStyle(
-                  fontSize: AppTypography.body,
-                  fontWeight: FontWeight.w700,
-                ),
+              FeatureLine.section(
+                text: widget.listTitle,
+                padTop: false,
+                padBottom: false,
+                trailing: _repository.isServerBacked
+                    ? FeatureLine.reload(onPressed: _loading ? null : _load)
+                    : null,
               ),
-              const SizedBox(height: 2),
-              Text(
-                entry.detail,
-                style: TextStyle(
-                  fontSize: AppTypography.caption,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+              if (isCourse && !canAdd && widget.onOpenSettings != null) ...[
+                const SizedBox(height: 16),
+                PlanningProfileSettingsCta(
+                  need: PlanningProfileNeed.configured,
+                  profile: profile,
+                  onOpenSettings: widget.onOpenSettings!,
                 ),
-              ),
+              ],
+              if (widget.kind == PersonalRecordKind.course) ...[
+                const SizedBox(height: 24),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 12,
+                  children: [
+                    SizedBox(
+                      width: 240,
+                      child: AnchoredSelectField<String>(
+                        key: const ValueKey('record-course-year-filter'),
+                        value: _year,
+                        label: '수강 연도 필터',
+                        options: [
+                          const SelectOption('', '전체 연도'),
+                          for (final year in {
+                            ..._repository.records.map(
+                              (r) =>
+                                  CourseTerm.parse(r.value('term')).yearFilter,
+                            ),
+                            if (_year.isNotEmpty) _year,
+                          }.toList()..sort((a, b) => b.compareTo(a)))
+                            SelectOption(
+                              year,
+                              year == CourseTerm.unspecified
+                                  ? '연도 미지정'
+                                  : '$year년',
+                            ),
+                        ],
+                        onChanged: (value) => setState(() => _year = value),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 240,
+                      child: AnchoredSelectField<String>(
+                        key: const ValueKey('record-course-term-filter'),
+                        value: _term,
+                        label: '학기 필터',
+                        options: [
+                          const SelectOption('', '전체 학기'),
+                          for (final term in {
+                            ..._repository.records.map(
+                              (r) => CourseTerm.parse(r.value('term')).semester,
+                            ),
+                            if (_term.isNotEmpty) _term,
+                          }.toList()..sort())
+                            SelectOption(term, term),
+                        ],
+                        onChanged: (value) => setState(() => _term = value),
+                      ),
+                    ),
+                  ],
+                ),
+                FeatureLine.one(
+                  text:
+                      '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점',
+                ),
+              ],
+              if (widget.kind == PersonalRecordKind.activity)
+                FeatureLine.one(
+                  text:
+                      '기록한 시간 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('reportedHours')) ?? 0))}시간',
+                ),
+              if (personal.isEmpty)
+                FeatureLine.one(
+                  text: isCourse && (_year.isNotEmpty || _term.isNotEmpty)
+                      ? '선택한 연도·학기에 맞는 개인 기록이 없습니다. 필터를 변경해 주세요.'
+                      : '개인 기록이 없습니다. 직접 입력해 주세요.',
+                ),
+              for (final record in personal) _personalEntry(record),
             ],
           ),
         ),
-        const SizedBox(width: 10),
-        StatusBadge(status: entry.status),
       ],
-    ),
+      actions: [
+        if (canAdd) ...[
+          FilledButton.icon(
+            onPressed: _showForm,
+            icon: const Icon(Icons.add),
+            label: Text(widget.addLabel),
+          ),
+          OutlinedButton(
+            key: const Key('record-menu-load-draft'),
+            onPressed: _loadDraft,
+            child: const Text('불러오기'),
+          ),
+        ],
+      ],
+      below: [
+        ExpansionTile(
+          title: Text(widget.guideTitle),
+          childrenPadding: const EdgeInsets.symmetric(horizontal: 16),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final line in widget.guides)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text('• $line'),
+              ),
+          ],
+        ),
+        ...widget.guideActions,
+      ],
+    );
+  }
+
+  Widget _statePage({required Widget child}) => FeaturePage(
+    title: widget.title,
+    contextLabel: widget.contextLabel,
+    description: widget.description,
+    body: [child],
   );
 }

@@ -11,6 +11,7 @@ import 'package:university_path_frontend/features/records/course/course_page.dar
 import 'package:university_path_frontend/features/records/credential/credential_page.dart';
 import 'package:university_path_frontend/features/records/experience/experience_page.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
+import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
 import 'package:university_path_frontend/workspace.dart';
 
 import '../password_entry_test.dart' as password;
@@ -279,7 +280,10 @@ void main() {
         expect(find.text('활동'), findsWidgets);
         expect(find.text('자격'), findsWidgets);
         expect(find.byTooltip('경험'), findsNothing);
-        expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 0);
+        expect(
+          tester.widget<Workspace>(find.byType(Workspace)).selectedPage,
+          0,
+        );
       },
       '활동에서 봉사·그 밖의 활동과 프로젝트·인턴·동아리를 골라 저장했다': (tester, world) async {
         await _saveActivityKinds(tester, world);
@@ -290,20 +294,23 @@ void main() {
             await _linkCourseRule(tester, world);
           },
       '수강·활동·자격 메뉴를 다시 열면': (tester, world) async {
-        await world.pumpMenu(tester, const CoursePage(showMockData: false));
+        await world.pumpMenu(tester, const CoursePage());
       },
       '저장한 값이 API 조회로 다시 보인다': (tester, world) async {
         expect(find.textContaining(world.lastCourseTitle), findsOneWidget);
-        await world.pumpMenu(tester, const ActivityPage(showMockData: false));
+        await world.pumpMenu(tester, const ActivityPage());
         expect(find.textContaining(world.lastActivityTitle), findsOneWidget);
-        await world.pumpMenu(tester, const CredentialPage(showMockData: false));
+        await world.pumpMenu(tester, const CredentialPage());
         expect(find.textContaining(world.lastCredentialTitle), findsOneWidget);
       },
       '활동 목록에 봉사·그 밖의 활동과 프로젝트·인턴·동아리 기록이 함께 보인다': (tester, world) async {
-        await world.pumpMenu(tester, const ActivityPage(showMockData: false));
+        await world.pumpMenu(tester, const ActivityPage());
         expect(find.textContaining(world.lastActivityTitle), findsOneWidget);
-        expect(find.textContaining(world.lastOtherActivityTitle), findsOneWidget);
-        await world.pumpMenu(tester, const ExperiencePage(showMockData: false));
+        expect(
+          find.textContaining(world.lastOtherActivityTitle),
+          findsOneWidget,
+        );
+        await world.pumpMenu(tester, const ExperiencePage());
         expect(find.textContaining(world.lastExperienceTitle), findsOneWidget);
       },
       '졸업 요건의 개인 규칙에도 같은 기록 UUID가 연결되어 있다': (tester, world) async {
@@ -318,35 +325,43 @@ void main() {
         });
       },
       '개인 메뉴 기록을 고쳐 저장하면': (tester, world) async {
-        world.frozenAudit = {
-          'status': world.lastAuditStatus ?? 'satisfied',
-        };
-        await world.pumpMenu(tester, const CoursePage(showMockData: false));
+        world.frozenAudit = {'status': world.lastAuditStatus ?? 'satisfied'};
+        await world.pumpMenu(tester, const CoursePage());
         await tester.tap(find.text('수정').first);
         await tester.pumpAndSettle();
-        world.lastCourseTitle = '수정된 합성 수강';
-        await world.fillRecord(tester, {'title': world.lastCourseTitle});
+        await world.fillRecord(tester, {'section': '12'});
         await world.saveRecord(tester);
       },
       '그 메뉴를 다시 열면 고친 값이 조회된다': (tester, world) async {
-        await world.pumpMenu(tester, const CoursePage(showMockData: false));
+        await world.pumpMenu(tester, const CoursePage());
         expect(find.textContaining(world.lastCourseTitle), findsOneWidget);
       },
       '이미 저장된 공식 감사 결과는 바뀌지 않는다': (tester, world) async {
         expect(world.frozenAudit?['status'], isNotNull);
-        expect(world.lastAuditStatus ?? world.frozenAudit?['status'], 'satisfied');
+        expect(
+          world.lastAuditStatus ?? world.frozenAudit?['status'],
+          'satisfied',
+        );
       },
       '저장이 실패하면': (tester, world) async {
         world.ensureGateway().failWrites = true;
-        await world.pumpMenu(tester, const CoursePage(showMockData: false));
+        await world.pumpMenu(tester, const CoursePage());
         await tester.tap(find.text('수정').first);
         await tester.pumpAndSettle();
-        await world.fillRecord(tester, {'title': '실패 후 유지할 수강'});
+        await world.fillRecord(tester, {'section': '13'});
         await world.saveRecord(tester);
       },
       '작성 내용이 남고 목록은 바뀌지 않는다': (tester, world) async {
         expect(find.textContaining('입력은 유지됩니다'), findsOneWidget);
-        expect(world.fieldOrTitle(tester, '실패 후 유지할 수강'), isTrue);
+        expect(
+          tester
+              .widget<TextFormField>(
+                find.byKey(const ValueKey('record-field-section')),
+              )
+              .controller!
+              .text,
+          '13',
+        );
         final titles = [
           for (final row in world.ensureGateway().records['course-records'] ?? [])
             row['title'],
@@ -356,7 +371,7 @@ void main() {
         world.ensureGateway().failWrites = false;
       },
       '다른 자료가 참조하는 기록을 삭제하면': (tester, world) async {
-        await world.pumpMenu(tester, const CoursePage(showMockData: false));
+        await world.pumpMenu(tester, const CoursePage());
         await tester.ensureVisible(find.text('삭제').first);
         await tester.tap(find.text('삭제').first);
         await tester.pumpAndSettle();
@@ -364,10 +379,7 @@ void main() {
         await tester.pumpAndSettle();
       },
       '409로 막히고 먼저 연결을 해제한 뒤에만 삭제된다': (tester, world) async {
-        expect(
-          find.textContaining('연결된 자료가 있거나 기록이 변경되었습니다'),
-          findsOneWidget,
-        );
+        expect(find.textContaining('연결된 자료가 있거나 기록이 변경되었습니다'), findsOneWidget);
         expect(find.textContaining(world.lastCourseTitle), findsOneWidget);
         world.ensureGateway().records['personal-graduation-rules'] = [];
         await tester.tap(find.text('삭제').first);
@@ -386,12 +398,12 @@ void main() {
       },
       '설정에 저장한 등록 학교·학과·교육과정·입학연도·이수 경로가 입력에 보인다': (tester, world) async {
         expect(
-          find.text('설정에 저장한 등록 학교를 불러왔습니다. 기준일은 이 감사 실행에서 입력합니다.'),
+          find.text('이수 경로를 포함한 감사 기준은 설정 프로필입니다. 기준일만 이 화면에서 입력합니다.'),
           findsOneWidget,
         );
-        expect(find.text('검증 대학'), findsWidgets);
-        expect(find.text('2026'), findsWidgets);
-        expect(find.text('single_major'), findsWidgets);
+        expect(find.textContaining('검증 대학'), findsWidgets);
+        expect(find.textContaining('2026'), findsWidgets);
+        expect(find.textContaining('단일전공'), findsWidgets);
       },
       '기준일은 그 실행에서 입력한다': (tester, world) async {
         final field = find.widgetWithText(TextField, '기준일 (YYYY-MM-DD)');
@@ -406,14 +418,13 @@ void main() {
         await tester.pumpAndSettle();
       },
       '결과는 충족·미충족·확인 필요·적용 기준 없음 중 하나다': (tester, world) async {
-        expect(
-          ['satisfied', 'not_satisfied', 'needs_review', 'not_applicable'],
-          contains(world.lastAuditStatus),
-        );
-        expect(
-          find.textContaining('감사 결과 ·'),
-          findsOneWidget,
-        );
+        expect([
+          'satisfied',
+          'not_satisfied',
+          'needs_review',
+          'not_applicable',
+        ], contains(world.lastAuditStatus));
+        expect(find.textContaining('감사 결과 ·'), findsOneWidget);
       },
       '화면이 충족을 계산하지 않는다': (tester, world) async {
         final created = world.ensureGateway().auditCreates;
@@ -452,10 +463,7 @@ void main() {
         );
         await world.pumpMenu(
           tester,
-          PersonalGraduationWorkspace(
-            onBack: () {},
-            planning: world.planning,
-          ),
+          PersonalGraduationWorkspace(onBack: () {}, planning: world.planning),
         );
         await world.fillRecord(tester, {
           'title': '내 교육과정',
@@ -501,12 +509,19 @@ void main() {
       '설정 저장이 실패하면': (tester, world) async {
         final repository = await world.pumpSettings(tester, emptyCatalog: true);
         world.ensureGateway().failWrites = true;
-        await tester.enterText(labeledField('입학연도'), '2024');
+        await _chooseSettingsAdmissionYear(tester, 2024);
         await settings.saveSettings(tester);
         expect(repository.profile.admissionYear, isNot(2024));
       },
       '작성 내용이 남고 저장 성공 뒤에만 프로필이 바뀐다': (tester, world) async {
-        expect(world.fieldText(tester, '입학연도'), '2024');
+        expect(
+          tester
+              .widget<AnchoredSelectField<int?>>(
+                find.byKey(const Key('settings-admission-year-select')),
+              )
+              .value,
+          2024,
+        );
         expect(world.ensureGateway().profile['admission_year'], isNot(2024));
         world.ensureGateway().failWrites = false;
       },
@@ -516,7 +531,7 @@ void main() {
       },
       '이어서 수강·활동·자격을 각각 저장하면': (tester, world) async {
         await _saveCourseAndCredential(tester, world);
-        await world.pumpMenu(tester, const ActivityPage(showMockData: false));
+        await world.pumpMenu(tester, const ActivityPage());
         await world.addNamedRecord(
           tester,
           addLabel: '활동 직접 기록',
@@ -524,11 +539,11 @@ void main() {
         );
       },
       '각 메뉴를 다시 열었을 때 같은 값이 조회된다': (tester, world) async {
-        await world.pumpMenu(tester, const CoursePage(showMockData: false));
+        await world.pumpMenu(tester, const CoursePage());
         expect(find.textContaining(world.lastCourseTitle), findsOneWidget);
-        await world.pumpMenu(tester, const ActivityPage(showMockData: false));
+        await world.pumpMenu(tester, const ActivityPage());
         expect(find.textContaining(world.lastActivityTitle), findsOneWidget);
-        await world.pumpMenu(tester, const CredentialPage(showMockData: false));
+        await world.pumpMenu(tester, const CredentialPage());
         expect(find.textContaining(world.lastCredentialTitle), findsOneWidget);
       },
       '활동에서 봉사·그 밖의 활동과 프로젝트·인턴·동아리를 고르며 경험 전용 사이드바는 없다':
@@ -544,7 +559,10 @@ void main() {
         await _linkCourseRule(tester, world);
       },
       '개인 규칙에 연결이 보이고 공식 감사 입력으로 자동 등록되지는 않는다': (tester, world) async {
-        expect(find.textContaining('수강 · ${world.lastCourseTitle}'), findsWidgets);
+        expect(
+          find.textContaining('수강 · ${world.lastCourseTitle}'),
+          findsWidgets,
+        );
         expect(world.ensureGateway().auditCreates, isEmpty);
       },
       '공식 감사를 위해 기준일을 넣으면': (tester, world) async {
@@ -558,38 +576,26 @@ void main() {
         expect(find.widgetWithText(TextField, '2026-10-21'), findsOneWidget);
       },
       '그 문맥으로 공식 졸업감사를 실행하면': (tester, world) async {
-        if (world.planning?.profile.hasCatalogSchool != true) {
-          await tester.tap(find.text('학교 선택'));
-          await tester.pumpAndSettle();
-          await tester.tap(find.text('검증 대학').last);
-          await tester.pumpAndSettle();
-          await tester.tap(find.text('학과 선택'));
-          await tester.pumpAndSettle();
-          await tester.tap(find.text('검증 학과').last);
-          await tester.pumpAndSettle();
-          await tester.tap(find.text('교육과정 선택'));
-          await tester.pumpAndSettle();
-          await tester.tap(find.text('검증 과정 (2026)').last);
-          await tester.pumpAndSettle();
-          await tester.enterText(find.widgetWithText(TextField, '입학연도'), '2026');
-          await tester.enterText(find.widgetWithText(TextField, '이수 경로'), 'single_major');
-        }
-        final run = find.text('졸업요건 감사 실행');
-        await tester.ensureVisible(run);
-        await tester.tap(run);
-        await tester.pumpAndSettle();
+        final run = find.widgetWithText(FilledButton, '졸업요건 감사 실행');
+        expect(tester.widget<FilledButton>(run).onPressed, isNull);
+        expect(world.ensureGateway().auditCreates, isEmpty);
+        expect(find.textContaining('설정에서 등록 학교와 이수 경로를 저장하면'), findsOneWidget);
+      },
+      '등록 학교 프로필이 없어 실행은 차단되고 감사 결과를 만들지 않는다': (tester, world) async {
+        expect(world.ensureGateway().auditCreates, isEmpty);
+        expect(world.lastAuditStatus, isNull);
       },
       '입력 저장이 실패하면': (tester, world) async {
         world.ensureGateway().failWrites = true;
-        await world.pumpMenu(tester, const CoursePage(showMockData: false));
+        await world.pumpMenu(tester, const CoursePage());
         await tester.tap(find.text('수정').first);
         await tester.pumpAndSettle();
-        await world.fillRecord(tester, {'title': '실패 후 유지할 수강'});
+        await world.fillRecord(tester, {'section': '13'});
         await world.saveRecord(tester);
       },
       '작성 내용이 남고 저장 성공 뒤에만 목록이 바뀐다': (tester, world) async {
         expect(find.textContaining('입력은 유지됩니다'), findsOneWidget);
-        expect(find.textContaining('실패 후 유지할 수강'), findsOneWidget);
+        expect(tester.widget<TextFormField>(find.byKey(const ValueKey('record-field-section'))).controller!.text, '13');
         world.ensureGateway().failWrites = false;
       },
       '파일은 올리지 않는다': (tester, world) async {
@@ -701,12 +707,18 @@ void main() {
   );
 }
 
-extension on StudentWorld {
-  bool fieldOrTitle(WidgetTester tester, String value) {
-    final field = find.byKey(const ValueKey('record-field-title'));
-    if (field.evaluate().isEmpty) return false;
-    return tester.widget<TextFormField>(field).controller?.text == value;
-  }
+Future<void> _chooseSettingsAdmissionYear(WidgetTester tester, int year) async {
+  final field = find.byKey(const Key('settings-admission-year-select'));
+  await tester.ensureVisible(field);
+  await tester.tap(field);
+  await tester.pumpAndSettle();
+  await tester.enterText(
+    find.byKey(const ValueKey('select-search-input')),
+    '$year',
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.widgetWithText(MenuItemButton, '$year년'));
+  await tester.pumpAndSettle();
 }
 
 Future<void> _saveCatalogProfile(
@@ -717,7 +729,7 @@ Future<void> _saveCatalogProfile(
   await settings.choose(tester, '학교 선택', '검증 대학');
   await settings.choose(tester, '학과 선택', '검증 학과');
   await settings.choose(tester, '교육과정 선택', '검증 과정 (2026)');
-  await tester.enterText(labeledField('입학연도'), '2026');
+  await _chooseSettingsAdmissionYear(tester, 2026);
   await settings.saveSettings(tester);
   await repository.saveProfile(
     PlanningProfile(
@@ -735,7 +747,7 @@ Future<void> _saveCatalogProfile(
 }
 
 Future<void> _saveActivityKinds(WidgetTester tester, StudentWorld world) async {
-  await world.pumpMenu(tester, const ActivityPage(showMockData: false));
+  await world.pumpMenu(tester, const ActivityPage());
   await world.addNamedRecord(
     tester,
     addLabel: '활동 직접 기록',
@@ -758,10 +770,16 @@ Future<void> _saveCourseAndCredential(
   WidgetTester tester,
   StudentWorld world,
 ) async {
-  await world.pumpMenu(tester, const CoursePage(showMockData: false));
+  await world.saveServerRecord(PersonalRecordKind.personalCurriculumCourse, {
+    'title': world.lastCourseTitle,
+    'credits': '3',
+    'category': '전공',
+    'requiredCourse': '선택',
+  });
+  await world.pumpMenu(tester, const CoursePage());
   await world.addNamedRecord(
     tester,
-    addLabel: '수강 과목 직접 입력',
+    addLabel: '수강 과목 추가',
     values: {
       'title': world.lastCourseTitle,
       'course-year': '2026',
@@ -770,7 +788,7 @@ Future<void> _saveCourseAndCredential(
       'credits': '3',
     },
   );
-  await world.pumpMenu(tester, const CredentialPage(showMockData: false));
+  await world.pumpMenu(tester, const CredentialPage());
   await world.addNamedRecord(
     tester,
     addLabel: '자격 직접 등록',
@@ -811,6 +829,6 @@ Future<void> _linkCourseRule(WidgetTester tester, StudentWorld world) async {
     tester,
     PersonalGraduationWorkspace(onBack: () {}, planning: world.planning),
   );
-  await tester.tap(find.text('개인 규칙'));
+  await tester.tap(find.widgetWithText(OutlinedButton, '규칙'));
   await tester.pumpAndSettle();
 }

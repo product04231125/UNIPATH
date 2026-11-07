@@ -60,7 +60,6 @@ class PortfolioSource {
       ('thesisType', '논문·캡스톤 유형'),
       ('thesisStatus', '논문·캡스톤 개인 기록 상태'),
       ('thesisGrade', '논문·캡스톤 원 성적 표기'),
-      ('thesisApprovedOn', '사용자가 확인한 논문·캡스톤 승인일 · 학교 승인 처리 아님'),
       ('organization', '기관'),
       ('startedOn', '시작일'),
       ('endedOn', '종료일'),
@@ -105,11 +104,7 @@ class PortfolioWorkspaceRepository {
           id: item['id'] as String,
           title: item['title'] as String,
           description: item['description'] as String,
-          audience:
-              PortfolioAudience.values
-                  .where((a) => a.name == item['audience'])
-                  .firstOrNull ??
-              PortfolioAudience.private,
+          audience: _storedAudience(item['audience']),
           reviewed: item['reviewed'] as bool,
           sources: List<String>.from(item['sources'] as List),
         ),
@@ -145,6 +140,13 @@ class PortfolioWorkspaceRepository {
     _compositions = compositions;
     _documents = documents;
     _loaded = true;
+  }
+
+  PortfolioAudience _storedAudience(Object? raw) {
+    for (final audience in PortfolioAudience.values) {
+      if (audience.name == raw) return audience;
+    }
+    throw const FormatException('Unknown audience');
   }
 
   void _uniqueIds(List<String> ids) {
@@ -272,7 +274,7 @@ class PortfolioWorkspaceRepository {
 
   String compositionText(PortfolioComposition composition) => [
     composition.title,
-    '로컬 구성 · ${audienceLabel(composition.audience)} · 게시되지 않음',
+    '${audienceLabel(composition.audience)} · 게시되지 않음',
     if (composition.description.isNotEmpty) composition.description,
     for (final ref in composition.sources)
       sources[ref]?.text ?? '원본 기록 삭제됨 · 연결 없음',

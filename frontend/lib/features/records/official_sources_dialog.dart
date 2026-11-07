@@ -40,6 +40,10 @@ Widget recordAccessNotice(VoidCallback? retry, String? error) => Column(
 );
 
 Future<void> saveSourcePdf(String name, Uint8List bytes) async {
+  await _saveSourcePdf(name, bytes);
+}
+
+Future<bool> _saveSourcePdf(String name, Uint8List bytes) async {
   final safeName = name.replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1f]'), '_');
   final file = XFile.fromData(
     bytes,
@@ -55,8 +59,10 @@ Future<void> saveSourcePdf(String name, Uint8List bytes) async {
         const XTypeGroup(label: 'PDF', extensions: ['pdf']),
       ],
     );
-    if (location != null) await file.saveTo(location.path);
+    if (location == null) return false;
+    await file.saveTo(location.path);
   }
+  return true;
 }
 
 class OfficialSourcesDialog extends StatefulWidget {
@@ -118,6 +124,7 @@ class _SourcesState extends State<OfficialSourcesDialog> {
           _error = sourceError(e);
           if (sourceAccessLost(e)) {
             _rows = [];
+            _cursor = null;
           }
         });
       }
@@ -127,7 +134,7 @@ class _SourcesState extends State<OfficialSourcesDialog> {
   }
 
   Future<void> _open(RecordSource row) async {
-    if (_busy) return;
+    if (_busy || _loading) return;
     setState(() => _busy = true);
     try {
       final detail = await api.get(row.id);
@@ -141,7 +148,12 @@ class _SourcesState extends State<OfficialSourcesDialog> {
           admin: widget.admin,
           exportPdf: widget.exportPdf,
           onAccessLost: () {
-            if (mounted) setState(() => _rows = []);
+            if (mounted) {
+              setState(() {
+                _rows = [];
+                _cursor = null;
+              });
+            }
           },
         ),
       );
@@ -150,7 +162,10 @@ class _SourcesState extends State<OfficialSourcesDialog> {
       if (mounted) {
         setState(() {
           _error = sourceError(e);
-          if (sourceAccessLost(e)) _rows = [];
+          if (sourceAccessLost(e)) {
+            _rows = [];
+            _cursor = null;
+          }
         });
       }
     } finally {
@@ -159,7 +174,7 @@ class _SourcesState extends State<OfficialSourcesDialog> {
   }
 
   Future<void> _submit() async {
-    if (_busy) return;
+    if (_busy || _loading) return;
     setState(() => _busy = true);
     await showInputDialog<void>(
       context: context,
@@ -184,9 +199,7 @@ class _SourcesState extends State<OfficialSourcesDialog> {
     content: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          '원본 확인은 학생 기록 승인이나 졸업 판정과 별개입니다. 제출 자료는 선택한 학교의 관리자만 검토할 수 있습니다.',
-        ),
+        const Text('제출 자료는 선택한 학교의 관리자만 검토할 수 있습니다.'),
         if (!widget.admin)
           Align(
             alignment: Alignment.centerLeft,
@@ -201,7 +214,8 @@ class _SourcesState extends State<OfficialSourcesDialog> {
         ),
         if (_loading) const LinearProgressIndicator(),
         if (_error != null) Text(_error!),
-        if (!_loading && _rows.isEmpty) const Text('확인할 제출 자료가 없습니다.'),
+        if (!_loading && _error == null && _rows.isEmpty)
+          const Text('확인할 제출 자료가 없습니다.'),
         for (final row in _rows)
           Card(
             child: ListTile(
@@ -209,7 +223,7 @@ class _SourcesState extends State<OfficialSourcesDialog> {
               subtitle: Text(
                 '${sourceKind(row.documentKind)} · ${row.issuedOn} · ${sourceStatus(row.status)}',
               ),
-              onTap: _busy ? null : () => _open(row),
+              onTap: _busy || _loading ? null : () => _open(row),
             ),
           ),
         if (_cursor != null)
@@ -515,8 +529,15 @@ class _SourceReviewState extends State<SourceReviewDialog> {
     setState(() => _busy = true);
     try {
       final bytes = await widget.api.download(_source.id);
-      await (widget.exportPdf ?? saveSourcePdf)(_source.filename, bytes);
-      if (mounted) setState(() => _downloaded = true);
+      final exported = widget.exportPdf;
+      final bool saved;
+      if (exported == null) {
+        saved = await _saveSourcePdf(_source.filename, bytes);
+      } else {
+        await exported(_source.filename, bytes);
+        saved = true;
+      }
+      if (mounted && saved) setState(() => _downloaded = true);
     } catch (e) {
       if (mounted) {
         setState(() {

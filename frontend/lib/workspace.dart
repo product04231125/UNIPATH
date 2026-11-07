@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import 'app_shell/phone_shell.dart';
 import 'app_shell/workspace_shell.dart';
 import 'shared/pending_ui_action.dart';
 import 'features/assistant/assistant_window_host.dart';
@@ -32,6 +30,7 @@ import 'features/records/portfolio/job_analysis_page.dart';
 import 'features/records/portfolio/materials_page.dart';
 import 'features/settings/settings_page.dart';
 import 'features/schedule/schedule_page.dart';
+import 'features/auth/guest_preview_scope.dart';
 
 /// Coordinates navigation, mock-data visibility, and the assistant window.
 /// Feature pages own their own mock state and input interactions.
@@ -48,6 +47,8 @@ class Workspace extends StatefulWidget {
     this.integratedTitleBar = false,
     this.beforeSignedOut,
     this.studentApi,
+    this.guestPreview = false,
+    this.previewInstitutionId,
   });
 
   final VoidCallback onSignedOut;
@@ -59,6 +60,8 @@ class Workspace extends StatefulWidget {
   final ValueChanged<int>? onPageChanged;
   final AssistantGateway Function()? assistantFactory;
   final bool sidebarVisible, integratedTitleBar;
+  final bool guestPreview;
+  final String? previewInstitutionId;
 
   @override
   State<Workspace> createState() => _WorkspaceState();
@@ -89,7 +92,6 @@ class _WorkspaceState extends State<Workspace> {
   var _page = 0;
   final _visitedPages = <int>{};
   final _materials = GlobalKey<MaterialsPageState>();
-  var _showMockData = true;
   var _chatOpen = false;
   var _chatManuallyOpened = false;
   var _detachedChatActive = false;
@@ -102,16 +104,19 @@ class _WorkspaceState extends State<Workspace> {
   final _assistantButtonFocus = FocusNode(debugLabel: 'AI 도우미 열기');
   late final ChatPreferences _chatPreferences;
   var _chatWidth = 360.0;
-  double _graduationMinimumWidth = 0;
-  final _graduationPageKey = GlobalKey();
   final _assistantPanelKey = GlobalKey();
   late final _assistantConversation = AssistantConversation(
     api: widget.assistantFactory?.call(),
   );
-  late final PlanningRepository _planningRepository = widget.studentApi == null
-      ? PlanningRepository()
-      : RemotePlanningRepository(widget.studentApi!);
-  late final StudentApi? _personalApi = widget.studentApi;
+  late final PlanningRepository _planningRepository = () {
+    final base = widget.studentApi == null
+        ? PlanningRepository()
+        : RemotePlanningRepository(widget.studentApi!);
+    if (widget.guestPreview) base.blockWrites(GuestPreviewScope.blockedMessage);
+    return base;
+  }();
+  late final StudentApi? _personalApi =
+      widget.guestPreview ? null : widget.studentApi;
   late final PersonalCalculationController? _personalCalculations =
       _personalApi == null
       ? null
@@ -267,19 +272,9 @@ class _WorkspaceState extends State<Workspace> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final phone = isPhonePortraitShell(
-          Size(constraints.maxWidth, constraints.maxHeight),
-        );
-        final showMockData = phone ? false : _showMockData;
-        return _buildShell(context, showMockData: showMockData);
-      },
-    );
-  }
+  Widget build(BuildContext context) => _buildShell(context);
 
-  Widget _buildShell(BuildContext context, {required bool showMockData}) {
+  Widget _buildShell(BuildContext context) {
     final navigationItems = [
       for (var index = 0; index < _labels.length; index++)
         WorkspaceNavigationItem(label: _labels[index], icon: _icons[index]),
@@ -291,17 +286,10 @@ class _WorkspaceState extends State<Workspace> {
       integratedTitleBar: widget.integratedTitleBar,
       selectedPage: _page,
       navigationItems: navigationItems,
-      onPageSelected: (value) => _selectPage(value),
+      onPageSelected: _selectPage,
       // Navigation shares the home baseline so changing destinations cannot
       // expand a compact startup sidebar just because that page is narrower.
-      minimumContentWidth: math.max(
-        WeeklySchedule.minimumWidth + 16,
-        _page == 3 && showMockData && _graduationMinimumWidth > 0
-            ? _graduationMinimumWidth + 16
-            : 0,
-      ),
-      showMockData: showMockData,
-      onMockDataChanged: (value) => setState(() => _showMockData = value),
+      minimumContentWidth: WeeklySchedule.minimumWidth + 16,
       onSignedOut: _signOut,
       isAssistantOpen: _chatOpen,
       isAssistantManuallyOpened: _chatManuallyOpened,
@@ -312,11 +300,8 @@ class _WorkspaceState extends State<Workspace> {
       onAssistantWidthChanged: (delta) => setState(() {
         _chatWidth = (_chatWidth - delta).clamp(300.0, 480.0);
       }),
-      pageBuilder: (context, layout) => _buildPage(
-        navigationItems.length,
-        layout,
-        showMockData: showMockData,
-      ),
+      pageBuilder: (context, layout) =>
+          _buildPage(navigationItems.length, layout),
       assistantBuilder: (context, width, fullScreen) => AssistantPanel(
         key: _assistantPanelKey,
         active: _chatOpen,
@@ -361,11 +346,7 @@ class _WorkspaceState extends State<Workspace> {
           );
   }
 
-  Widget _buildPage(
-    int settingsPage,
-    WorkspaceShellLayout layout, {
-    required bool showMockData,
-  }) {
+  Widget _buildPage(int settingsPage, WorkspaceShellLayout layout) {
     _visitedPages.add(_page);
     return Stack(
       children: [
@@ -378,12 +359,7 @@ class _WorkspaceState extends State<Workspace> {
                 excluding: index != _page,
                 child: TickerMode(
                   enabled: index == _page,
-                  child: _pageFor(
-                    index,
-                    settingsPage,
-                    layout,
-                    showMockData: showMockData,
-                  ),
+                  child: _pageFor(index, settingsPage, layout),
                 ),
               ),
             ),
@@ -392,54 +368,51 @@ class _WorkspaceState extends State<Workspace> {
     );
   }
 
-  Widget _pageFor(
-    int index,
-    int settingsPage,
-    WorkspaceShellLayout layout, {
-    required bool showMockData,
-  }) => switch (index) {
-    0 => HomePage(
-      repository: _planningRepository,
-      coveredRightWidth: 0,
-      onOpenPage: _selectPage,
-      onOpenSettings: () => _selectPage(settingsPage - 1),
-      onOpenSchedule: (day) {
-        _scheduleAddRequest = null;
-        _scheduleInitialDay = day;
-        _selectPage(1);
-      },
-      onAddSchedule: () {
-        _scheduleInitialDay = DateTime.now();
-        _selectPage(1, addRequest: PendingUiAction());
-      },
-    ),
-    1 => SchedulePage(
-      repository: _planningRepository,
-      initialDay: _scheduleInitialDay,
-      addRequest: _scheduleAddRequest,
-    ),
-    2 => CoursePage(showMockData: showMockData),
-    3 => GraduationPage(
-      planning: _planningRepository,
-      key: _graduationPageKey,
-      showMockData: showMockData,
-      onMinimumWidthChanged: (width) => setState(() {
-        _graduationMinimumWidth = width;
-      }),
-    ),
-    4 => ActivityPage(showMockData: showMockData),
-    5 => CredentialPage(showMockData: showMockData),
-    6 => MaterialsPage(key: _materials),
-    7 => const JobAnalysisPage(),
-    _ when index == settingsPage - 1 => SettingsPage(
-      repository: _planningRepository,
-      chatPreferences: widget.windowHost.supportsDetached
-          ? _chatPreferences
-          : null,
-      studentApi: widget.studentApi,
-    ),
-    _ => const SizedBox.shrink(),
-  };
+  Widget _pageFor(int index, int settingsPage, WorkspaceShellLayout layout) =>
+      switch (index) {
+        0 => HomePage(
+          repository: _planningRepository,
+          onOpenPage: _selectPage,
+          onOpenSettings: () => _selectPage(settingsPage - 1),
+          onOpenSchedule: (day) {
+            _scheduleAddRequest = null;
+            _scheduleInitialDay = day;
+            _selectPage(1);
+          },
+          onAddSchedule: () {
+            _scheduleInitialDay = DateTime.now();
+            _selectPage(1, addRequest: PendingUiAction());
+          },
+        ),
+        1 => SchedulePage(
+          repository: _planningRepository,
+          initialDay: _scheduleInitialDay,
+          addRequest: _scheduleAddRequest,
+          onOpenSettings: () => _selectPage(settingsPage - 1),
+        ),
+        2 => CoursePage(
+          studentApi: widget.studentApi,
+          planning: _planningRepository,
+          onOpenSettings: () => _selectPage(settingsPage - 1),
+        ),
+        3 => GraduationPage(
+          planning: _planningRepository,
+          onOpenSettings: () => _selectPage(settingsPage - 1),
+        ),
+        4 => const ActivityPage(),
+        5 => const CredentialPage(),
+        6 => MaterialsPage(key: _materials),
+        7 => JobAnalysisPage(studentApi: _personalApi),
+        _ when index == settingsPage - 1 => SettingsPage(
+          repository: _planningRepository,
+          chatPreferences: widget.windowHost.supportsDetached
+              ? _chatPreferences
+              : null,
+          studentApi: widget.studentApi,
+          previewInstitutionId: widget.previewInstitutionId,
+        ),
+        _ => const SizedBox.shrink(),
+      };
 
   void _selectPage(int value, {PendingUiAction? addRequest}) {
     unawaited(_selectPageGuarded(value, addRequest: addRequest));

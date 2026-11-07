@@ -92,6 +92,8 @@
 
 ## 현재 구현
 
+2026-10-23 기준. 계약 원본은 [OpenAPI](openapi.json)다.
+[학교관리자 신청·수동 검토 승인](school-admin-applications.md)은 별도 API로 구현했다.
 [최초 학교관리자 가입](initial-school-admin-signups.md)은 계정·학교 신청을 원자적으로
 접수한다. 승인 전에는 일반 계정이며 학교 등록·학교관리자 역할·범위 부여는 슈퍼관리자의
 명시적 신원/소속 확인과 승인에서 함께 처리한다. 기존 계정의 미등록 학교 신청도 제공한다.
@@ -119,7 +121,10 @@
   쿠키를 설정한다. staging/production은 Secure와 `__Host-unipath_session` 이름을 사용한다.
   local HTTP만 `unipath_session` 이름이다. 쿠키 변경 요청·쿠키 로그인/가입에는 Origin이
   필요하며 `CORS_ORIGINS`에 정확히 일치해야 한다. Web HTTP 클라이언트는 credentials를
-  포함한다. 로컬 Web/API는 모두 `localhost`로 접속하고 127.0.0.1과 혼용하지 않는다.
+  포함한다.   로컬 Web 원점은 기본으로 `http://localhost:3000`과
+  `http://127.0.0.1:3000`을 허용한다. 같은 세션에서는 주소창 호스트를 바꿔 가며
+  쓰지 않는다(쿠키·Origin이 호스트마다 다르다). 프론트 Web은 페이지와 API가 모두
+  루프백일 때 API 호스트를 페이지 호스트에 맞춰 Strict 쿠키가 같은 사이트에 남게 한다.
 - Windows는 `session_mode=bearer`를 보내고 응답 `access_token`을 실행 중 메모리에만 둔다.
   `Authorization: Bearer ...`로 전송하며 재시작 후 다시 로그인한다. 쿠키용 토큰을 bearer로
   사용할 수 없다. 네이티브 bearer 요청은 Origin 생략을 허용하지만 다른 Origin은 거부한다.
@@ -135,7 +140,7 @@
 갱신하고 현재를 포함한 모든 세션을 폐기하므로 새 비밀번호로 다시 로그인해야 한다.
 감사에는 변경 행동만 남기며 이메일 발송·비밀번호 재설정·기존 개인 자료 삭제는 수행하지 않는다.
 
-실제 학생·학교관리자·슈퍼관리자는 공통 제목표시줄의 [계정 보안 화면](account-security-integration.md)에서
+실제 학생·학교관리자·슈퍼관리자는 설정의 [계정 보안 화면](account-security-integration.md)에서
 비밀번호 변경·모든 기기 로그아웃을 호출한다. 응답 유실은 성공으로 표시하지 않으며 확인된 204만
 완료로 안내한다. 세션 종료 후 새 비밀번호 또는 기존 비밀번호로 다시 로그인한다.
 

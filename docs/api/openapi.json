@@ -47897,7 +47897,7 @@
             },
             "type": "array",
             "maxItems": 8,
-            "minItems": 1,
+            "minItems": 0,
             "title": "Evidence Chunk Ids"
           }
         },
@@ -47906,8 +47906,7 @@
         "required": [
           "rule_id",
           "expected_version",
-          "condition",
-          "evidence_chunk_ids"
+          "condition"
         ],
         "title": "ProgramRuleInput"
       },

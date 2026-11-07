@@ -202,7 +202,8 @@ class GraduationCertificationPreview extends StatelessWidget {
     final choice = switch (group.choice) {
       GraduationCertificationChoice.all => '모두',
       GraduationCertificationChoice.pickOne => '택 1',
-      GraduationCertificationChoice.pickN => '택 ${group.pickCount}',
+      GraduationCertificationChoice.pickN =>
+        group.pickCount == null ? '택 미입력' : '택 ${group.pickCount}',
     };
     final title = group.label.trim().isEmpty ? '묶음' : group.label.trim();
     return Padding(
