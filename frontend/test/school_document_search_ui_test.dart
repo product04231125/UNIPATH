@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:university_path_frontend/shared/widgets/field_label.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -64,7 +66,10 @@ void main() {
           );
           await catalog.choose(tester, '학교 선택', '검증 대학');
           await catalog.choose(tester, '학과 선택', '검증 학과');
-          final question = find.widgetWithText(TextField, '검색 질문');
+          final question = find.descendant(
+            of: find.widgetWithText(FieldLabel, '검색 질문'),
+            matching: find.byType(TextField),
+          );
           await tester.ensureVisible(question);
           await tester.enterText(question, '봉사 규정은?');
           await tester.tap(find.text('학교 문서 검색'));
@@ -129,8 +134,19 @@ void main() {
     );
     await catalog.choose(tester, '학교 선택', '검증 대학');
     await catalog.choose(tester, '학과 선택', '검증 학과');
-    await tester.ensureVisible(find.widgetWithText(TextField, '검색 질문'));
-    await tester.enterText(find.widgetWithText(TextField, '검색 질문'), '봉사 조건 확인');
+    await tester.ensureVisible(
+      find.descendant(
+        of: find.widgetWithText(FieldLabel, '검색 질문'),
+        matching: find.byType(TextField),
+      ),
+    );
+    await tester.enterText(
+      find.descendant(
+        of: find.widgetWithText(FieldLabel, '검색 질문'),
+        matching: find.byType(TextField),
+      ),
+      '봉사 조건 확인',
+    );
     await tester.tap(find.text('학교 문서 검색'));
     await tester.pumpAndSettle();
     expect(find.widgetWithText(TextField, '봉사 조건 확인'), findsOneWidget);

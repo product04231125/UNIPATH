@@ -1,3 +1,6 @@
+import 'support/configured_planning.dart';
+import 'course_period_test.dart' as period;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,7 +13,10 @@ import 'package:university_path_frontend/features/auth/app_role.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    await seedConfiguredPlanning();
+  });
 
   Future<void> pumpApp(
     WidgetTester tester,
@@ -222,10 +228,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('운영체제').last);
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const ValueKey('record-field-term')),
-      '2학기',
-    );
+    await period.enter(tester, 'term', '2학기');
     await tester.tap(find.text('내 기록에 저장'));
     await tester.pumpAndSettle();
     expect(find.text('운영체제'), findsOneWidget);
@@ -296,25 +299,24 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'phone size without PhoneChromeScope does not activate chrome',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(390, 844));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      late bool phone;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Builder(
-            builder: (context) {
-              phone = PhoneChromeScope.of(context);
-              return const SizedBox.shrink();
-            },
-          ),
+  testWidgets('phone size without PhoneChromeScope does not activate chrome', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    late bool phone;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            phone = PhoneChromeScope.of(context);
+            return const SizedBox.shrink();
+          },
         ),
-      );
-      expect(phone, isFalse);
-    },
-  );
+      ),
+    );
+    expect(phone, isFalse);
+  });
 
   testWidgets('admin 1440 and 480x520 keep the left rail', (tester) async {
     await pumpAdmin(tester, const Size(1440, 900));

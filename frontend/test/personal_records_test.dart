@@ -1,3 +1,6 @@
+import 'support/configured_planning.dart';
+import 'course_period_test.dart' as period;
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -98,7 +101,10 @@ RecordMenuPage _activityMenu({
 );
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    await seedConfiguredPlanning();
+  });
 
   testWidgets('activity review guest blocks add edit and delete', (
     tester,
@@ -677,14 +683,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.textContaining('수정할 합성 과목').last);
       await tester.pumpAndSettle();
-      await tester.enterText(
-        find.byKey(const ValueKey('record-field-course-year')),
-        '2026',
-      );
-      await tester.enterText(
-        find.byKey(const ValueKey('record-field-term')),
-        '2학기',
-      );
+      await period.enter(tester, 'course-year', '2026');
+      await period.enter(tester, 'term', '2학기');
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
       expect(find.textContaining('개인 입력 합계 5.0학점'), findsOneWidget);
@@ -766,10 +766,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.textContaining('합성 과목').last);
       await tester.pumpAndSettle();
-      await tester.enterText(
-        find.byKey(const ValueKey('record-field-term')),
-        '2학기',
-      );
+      await period.enter(tester, 'term', '2학기');
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('홈').first);

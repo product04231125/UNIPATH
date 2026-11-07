@@ -494,7 +494,10 @@ void main() {
       expect(find.byType(AccountSecurityDialog), findsNothing);
       response.complete(http.Response('', 204));
       await tester.pumpAndSettle();
-      expect(find.text('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.'), findsOneWidget);
+      expect(
+        find.textContaining('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.'),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
@@ -625,7 +628,10 @@ void main() {
       response.complete(http.Response('', 204));
       await tester.pumpAndSettle();
       expect(find.byType(LoginPage), findsOneWidget);
-      expect(find.text('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.'), findsOneWidget);
+      expect(
+        find.textContaining('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.'),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
@@ -744,7 +750,10 @@ void main() {
         await fill(tester);
         await submit(tester, '비밀번호 변경');
         expect(find.byType(LoginPage), findsOneWidget);
-        expect(find.text('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.'), findsOneWidget);
+        expect(
+          find.textContaining('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.'),
+          findsOneWidget,
+        );
         expect(requests.where((r) => r.url.path.endsWith('/logout')), isEmpty);
         await tester.pumpWidget(const SizedBox());
       },

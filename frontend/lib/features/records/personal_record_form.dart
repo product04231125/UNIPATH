@@ -82,7 +82,7 @@ Future<void> showPersonalRecordForm({
   );
   final initialYear = record == null && draftValues == null
       ? '${DateTime.now().year}'
-      : (period.year.isNotEmpty ? period.year : '${DateTime.now().year}');
+      : period.year;
   final year = TextEditingController(
     text: draftValues != null && period.year.isNotEmpty
         ? period.year

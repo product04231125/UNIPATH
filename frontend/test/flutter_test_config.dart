@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:university_path_frontend/shared/drafts/form_draft_store.dart';
+import 'package:university_path_frontend/shared/drafts/form_draft_persistence.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:university_path_frontend/features/records/portfolio/material_database.dart';
 
@@ -10,6 +12,9 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   var sequence = 0;
   Database? db;
   setUp(() async {
+    FormDraftStore.resetInstanceForTest(
+      FormDraftStore(MemoryFormDraftPersistence()),
+    );
     db = await databaseFactoryMemory.openDatabase(
       'widget-materials-${sequence++}',
     );

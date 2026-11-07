@@ -333,6 +333,7 @@ void main() {
         ),
         '창의영역',
       );
+      await tester.ensureVisible(find.text('기준 추가'));
       await tester.tap(find.text('기준 추가'));
       await tester.pump();
       await tester.tap(find.text('면제 대상 추가'));
@@ -392,8 +393,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('template-preview-close')));
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('기준 추가'));
     await tester.tap(find.text('기준 추가'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text(overEmpty), findsNothing);
 
     final pick = find.byWidgetPredicate(

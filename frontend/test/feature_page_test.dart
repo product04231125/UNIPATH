@@ -85,7 +85,7 @@ void main() {
     expect(card.top, closeTo(header.bottom, 0.5));
   });
 
-  testWidgets('filled and outlined buttons use the shared 48 metrics', (
+  testWidgets('primary actions use 48 metrics and reload uses 36', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -110,7 +110,7 @@ void main() {
       ),
     );
     expect(tester.getSize(find.byType(FilledButton)).height, 48);
-    expect(tester.getSize(find.byType(OutlinedButton)).height, 48);
+    expect(tester.getSize(find.byType(OutlinedButton)).height, 36);
     final filledStyle = Theme.of(tester.element(find.byType(FilledButton)))
         .filledButtonTheme
         .style!;

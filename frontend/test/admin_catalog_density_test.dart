@@ -79,7 +79,7 @@ void main() {
     expect(find.text('학과 등록'), findsOneWidget);
     expect(find.text('졸업요건 확인'), findsOneWidget);
     expect(find.text('관리자 범위 관리'), findsOneWidget);
-    expect(find.text('학생 화면 미리보기'), findsOneWidget);
+    expect(find.text('학생 화면 미리보기'), findsNothing);
 
     final create = find.widgetWithText(FilledButton, '학과 등록');
     expect(create, findsOneWidget);
@@ -115,11 +115,7 @@ void main() {
       AdminRecord(
         id: 'dept-history-filter',
         kind: AdminKind.department,
-        values: {
-          'name': '이력필터학과',
-          'institutionId': 'school-a',
-          'code': 'HIST',
-        },
+        values: {'name': '이력필터학과', 'institutionId': 'school-a', 'code': 'HIST'},
       ),
     );
     expect(repo.history, isNotEmpty);

@@ -1,3 +1,4 @@
+import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -59,20 +60,23 @@ void main() {
           await tester.ensureVisible(edit);
           await tester.tap(edit);
           await tester.pumpAndSettle();
-          expect(find.byKey(const ValueKey('record-field-title')), findsNothing);
-          expect(find.byKey(const ValueKey('record-field-detail')), findsNothing);
+          expect(
+            find.byKey(const ValueKey('record-field-title')),
+            findsNothing,
+          );
+          expect(
+            find.byKey(const ValueKey('record-field-detail')),
+            findsNothing,
+          );
           final section = find.byKey(const ValueKey('record-field-section'));
           await tester.ensureVisible(section);
-          await tester.enterText(section, '충돌 후 유지할 분반');
+          await tester.enterText(section, '123');
           final save = find.widgetWithText(FilledButton, '내 기록에 저장');
           await tester.ensureVisible(save);
           await tester.tap(save);
           await tester.pumpAndSettle();
           expect(find.textContaining('입력은 유지됩니다'), findsOneWidget);
-          expect(
-            tester.widget<TextFormField>(section).controller!.text,
-            '충돌 후 유지할 분반',
-          );
+          expect(tester.widget<TextFormField>(section).controller!.text, '123');
           final request = gateway.calls.singleWhere(
             (call) => call.$1 == 'PATCH',
           );
@@ -111,20 +115,18 @@ void main() {
       expect(find.textContaining('입력은 유지됩니다'), findsOneWidget);
       expect(
         tester
-            .widget<TextFormField>(
-              find.byKey(const ValueKey('record-field-course-year')),
+            .widget<AnchoredSelectField<String>>(
+              find.byKey(const ValueKey('record-select-course-year')),
             )
-            .controller!
-            .text,
+            .value,
         '2024',
       );
       expect(
         tester
-            .widget<TextFormField>(
-              find.byKey(const ValueKey('record-field-term')),
+            .widget<AnchoredSelectField<String>>(
+              find.byKey(const ValueKey('record-select-term')),
             )
-            .controller!
-            .text,
+            .value,
         '겨울 계절학기',
       );
       gateway.failWrites = false;

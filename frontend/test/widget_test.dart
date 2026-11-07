@@ -1,3 +1,6 @@
+import 'support/configured_planning.dart';
+import 'course_period_test.dart' as period;
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -14,7 +17,10 @@ import 'package:university_path_frontend/features/records/personal_record_reposi
 import 'package:university_path_frontend/main.dart';
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    await seedConfiguredPlanning();
+  });
 
   test('persists personal planning data locally', () async {
     final repository = PlanningRepository();
@@ -255,14 +261,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('운영체제').last);
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const ValueKey('record-field-course-year')),
-      '2026',
-    );
-    await tester.enterText(
-      find.byKey(const ValueKey('record-field-term')),
-      '2학기',
-    );
+    await period.enter(tester, 'course-year', '2026');
+    await period.enter(tester, 'term', '2학기');
     await tester.tap(find.text('내 기록에 저장'));
     await tester.pumpAndSettle();
     expect(find.text('운영체제'), findsOneWidget);

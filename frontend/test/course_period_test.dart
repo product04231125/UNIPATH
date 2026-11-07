@@ -8,6 +8,14 @@ import 'package:university_path_frontend/shared/widgets/anchored_select_field.da
 import 'package:university_path_frontend/shared/widgets/input_dialog.dart';
 
 Future<void> enter(WidgetTester tester, String key, String value) async {
+  if (key == 'course-year' || key == 'term') {
+    await chooseForm(
+      tester,
+      ValueKey('record-select-$key'),
+      key == 'course-year' ? '$value년' : value,
+    );
+    return;
+  }
   final input = find.byKey(ValueKey('record-field-$key'));
   await tester.ensureVisible(input);
   await tester.enterText(input, value);
@@ -32,8 +40,12 @@ Future<void> chooseForm(
   await tester.ensureVisible(field);
   await tester.tap(field);
   await tester.pumpAndSettle();
-  if (search != null) {
-    await tester.enterText(find.byKey(const ValueKey('select-search-input')), search);
+  if (search != null ||
+      find.byKey(const ValueKey('select-search-input')).evaluate().isNotEmpty) {
+    await tester.enterText(
+      find.byKey(const ValueKey('select-search-input')),
+      search ?? label,
+    );
     await tester.pumpAndSettle();
   }
   final option = find.widgetWithText(MenuItemButton, label).last;
@@ -316,32 +328,33 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
-  testWidgets('default new year is empty content but changed year requires discard', (
-    tester,
-  ) async {
-    await open(tester);
-    await tester.tap(find.text('수강 과목 추가'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(TextButton, '취소'));
-    await tester.pumpAndSettle();
-    expect(find.text('작성한 내용을 폐기할까요?'), findsNothing);
-    expect(find.byType(InputDialog), findsNothing);
-    await tester.tap(find.text('수강 과목 추가'));
-    await tester.pumpAndSettle();
-    final otherYear = DateTime.now().year - 1;
-    await chooseForm(
-      tester,
-      const ValueKey('record-select-course-year'),
-      '$otherYear년',
-      search: '$otherYear',
-    );
-    await tester.tap(find.widgetWithText(TextButton, '취소'));
-    await tester.pumpAndSettle();
-    expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('input-discard-delete')));
-    await tester.pumpAndSettle();
-    expect(find.byType(InputDialog), findsNothing);
-  });
+  testWidgets(
+    'default new year is empty content but changed year requires discard',
+    (tester) async {
+      await open(tester);
+      await tester.tap(find.text('수강 과목 추가'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, '취소'));
+      await tester.pumpAndSettle();
+      expect(find.text('작성한 내용을 폐기할까요?'), findsNothing);
+      expect(find.byType(InputDialog), findsNothing);
+      await tester.tap(find.text('수강 과목 추가'));
+      await tester.pumpAndSettle();
+      final otherYear = DateTime.now().year - 1;
+      await chooseForm(
+        tester,
+        const ValueKey('record-select-course-year'),
+        '$otherYear년',
+        search: '$otherYear',
+      );
+      await tester.tap(find.widgetWithText(TextButton, '취소'));
+      await tester.pumpAndSettle();
+      expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('input-discard-delete')));
+      await tester.pumpAndSettle();
+      expect(find.byType(InputDialog), findsNothing);
+    },
+  );
 
   testWidgets('course section accepts digits only and keeps odd term on edit', (
     tester,
@@ -358,20 +371,14 @@ void main() {
           .value,
       '봄학기',
     );
-    await chooseForm(
-      tester,
-      const ValueKey('record-select-term'),
-      '1학기',
-    );
-    await chooseForm(
-      tester,
-      const ValueKey('record-select-term'),
-      '봄학기',
-    );
+    await chooseForm(tester, const ValueKey('record-select-term'), '1학기');
+    await chooseForm(tester, const ValueKey('record-select-term'), '봄학기');
     await enter(tester, 'section', 'A1');
     expect(
       tester
-          .widget<TextFormField>(find.byKey(const ValueKey('record-field-section')))
+          .widget<TextFormField>(
+            find.byKey(const ValueKey('record-field-section')),
+          )
           .controller!
           .text,
       '1',

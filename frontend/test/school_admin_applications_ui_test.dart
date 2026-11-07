@@ -225,6 +225,8 @@ void main() {
         await tester.enterText(field, pair.$2);
       }
       Future<void> submit() async {
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('신청 제출'));
         await tester.tap(find.text('신청 제출'));
         await tester.pumpAndSettle();
