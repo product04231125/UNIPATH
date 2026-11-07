@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import 'app_shell/phone_shell.dart';
 import 'app_shell/workspace_shell.dart';
 import 'shared/pending_ui_action.dart';
 import 'features/assistant/assistant_window_host.dart';
@@ -36,8 +35,8 @@ import 'features/records/portfolio/materials_page.dart';
 import 'features/settings/settings_page.dart';
 import 'features/schedule/schedule_page.dart';
 
-/// Coordinates navigation, mock-data visibility, and the assistant window.
-/// Feature pages own their own mock state and input interactions.
+/// Coordinates navigation and the assistant window.
+/// Product pages show personal/server records; fixtures stay isolated.
 class Workspace extends StatefulWidget {
   const Workspace({
     super.key,
@@ -92,7 +91,6 @@ class _WorkspaceState extends State<Workspace> {
   var _page = 0;
   final _visitedPages = <int>{};
   final _materials = GlobalKey<MaterialsPageState>();
-  var _showMockData = true;
   var _chatOpen = false;
   var _chatManuallyOpened = false;
   var _detachedChatActive = false;
@@ -292,17 +290,8 @@ class _WorkspaceState extends State<Workspace> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final phone = isPhonePortraitShell(
-          Size(constraints.maxWidth, constraints.maxHeight),
-        );
-        final showMockData = phone ? false : _showMockData;
-        return _buildShell(context, showMockData: showMockData);
-      },
-    );
-  }
+  Widget build(BuildContext context) =>
+      _buildShell(context, showMockData: false);
 
   Widget _buildShell(BuildContext context, {required bool showMockData}) {
     final navigationItems = [
@@ -325,8 +314,6 @@ class _WorkspaceState extends State<Workspace> {
             ? _graduationMinimumWidth + 16
             : 0,
       ),
-      showMockData: showMockData,
-      onMockDataChanged: (value) => setState(() => _showMockData = value),
       onSignedOut: _signOut,
       isAssistantOpen: _chatOpen,
       isAssistantManuallyOpened: _chatManuallyOpened,
