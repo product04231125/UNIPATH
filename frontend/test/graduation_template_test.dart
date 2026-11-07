@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:university_path_frontend/features/admin/school_classification_drafts.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:university_path_frontend/features/admin/admin_models.dart';
 import 'package:university_path_frontend/features/admin/admin_repository.dart';
@@ -26,6 +27,8 @@ void main() {
   testWidgets('credit grid exposes mouse horizontal scrolling after adding columns and resizing', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
+    final taxonomy = SchoolClassificationDrafts();
+    addTearDown(taxonomy.dispose);
     final grid = GraduationCreditGrid(
       admissionYear: '2026', departmentId: 'dept-cs',
       columns: [GraduationCreditColumn(id: 'first', label: '첫 열')],
@@ -33,6 +36,7 @@ void main() {
     );
     await tester.pumpWidget(host(GraduationCreditGridPage(
       schoolName: '합성 대학', departments: departments(), initial: grid, scrollable: true,
+      classificationDrafts: taxonomy, institutionId: 'school-a',
     )));
     await tester.pumpAndSettle();
     final bar = find.byKey(const ValueKey('credit-grid-horizontal-scrollbar'));
@@ -51,10 +55,10 @@ void main() {
     expect(scrollbar.interactive, isTrue);
     final controller = scrollbar.controller!;
     expect(controller.position.maxScrollExtent, greaterThan(0));
-    // Mouse users can move the content itself as well as the bottom thumb.
+    // Drag the bottom thumb, outside the interactive classification fields.
     final bounds = tester.getRect(bar);
-    final mouse = await tester.startGesture(bounds.center, kind: PointerDeviceKind.mouse);
-    await mouse.moveBy(const Offset(-240, 0));
+    final mouse = await tester.startGesture(Offset(bounds.left + 24, bounds.bottom - 4), kind: PointerDeviceKind.mouse);
+    await mouse.moveBy(const Offset(220, 0));
     await mouse.up();
     await tester.pumpAndSettle();
     expect(controller.offset, greaterThan(0));

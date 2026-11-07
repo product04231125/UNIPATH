@@ -1,4 +1,6 @@
 import '../auth/school_workflow_actions.dart';
+import 'school_classification_drafts.dart';
+import 'school_classification_widgets.dart';
 import '../../shared/widgets/responsive_columns.dart';
 import '../../shared/app_style.dart';
 import '../../shared/credits_format.dart';
@@ -32,6 +34,7 @@ class AdminWorkspace extends StatefulWidget {
     required this.onNavigate,
     required this.onSignedOut,
     this.repository,
+    this.classificationDrafts,
     this.sidebarVisible = true,
     this.actorId,
     this.beforeSignedOut,
@@ -45,6 +48,7 @@ class AdminWorkspace extends StatefulWidget {
   final ValueChanged<String> onNavigate;
   final VoidCallback onSignedOut;
   final AdminRepository? repository;
+  final SchoolClassificationDrafts? classificationDrafts;
   final bool sidebarVisible;
   final String? actorId;
   final Future<void> Function()? beforeSignedOut;
@@ -82,6 +86,7 @@ class AdminWorkspace extends StatefulWidget {
 
 class _AdminWorkspaceState extends State<AdminWorkspace> {
   late final AdminRepository _repo;
+  late final SchoolClassificationDrafts _classificationDrafts;
   bool _loading = true;
   bool _refreshing = false;
   bool _hasLoaded = false;
@@ -194,12 +199,14 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   void initState() {
     super.initState();
     _repo = widget.repository ?? FakeAdminRepository();
+    _classificationDrafts = widget.classificationDrafts ?? SchoolClassificationDrafts();
     _repo.addListener(_refresh);
     _load();
   }
 
   @override
   void dispose() {
+    if (widget.classificationDrafts == null) _classificationDrafts.dispose();
     _repo.removeListener(_refresh);
     if (widget.repository == null) _repo.dispose();
     for (final controller in _catalogScroll.values) {
@@ -306,6 +313,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       final result = await showInputDialog<String>(
         context: context,
         builder: (_) => AdminEditor(
+          classificationDrafts: _classificationDrafts,
           repository: _repo,
           actorId: _actor,
           kind: kind,
@@ -552,6 +560,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           if (editing != null) ...[
             SizedBox(height: FeatureLine.slotGap(context)),
             AdminEditor(
+              classificationDrafts: _classificationDrafts,
               key: _editorKeys.putIfAbsent(
                 AdminKind.account,
                 GlobalKey<AdminEditorState>.new,
@@ -578,6 +587,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
           KeyedSubtree(
             key: ValueKey('admin-registration-${kind.name}-$_schoolId'),
             child: AdminEditor(
+              classificationDrafts: _classificationDrafts,
               key: _editorKeys.putIfAbsent(
                 kind,
                 () => GlobalKey<AdminEditorState>(),
@@ -1410,6 +1420,13 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     ),
                   ),
                 if (_section == '/admin/overview') _overview(),
+                if (_section == '/admin/curricula') ...[
+                  _schoolScopedTable(
+                    empty: '학교별 교육과정 분류를 관리하려면 학교를 하나 선택하세요.',
+                    child: SchoolClassificationSection(drafts: _classificationDrafts, schoolId: _schoolId, schoolName: _relationName(_schoolId)),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 if (_section == '/admin/documents') const SchoolWorkflowActions(),
                 if (_section == '/admin/rules') ...[
                   _ruleViewSwitcher(),
@@ -1425,6 +1442,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                   _schoolScopedTable(
                     empty: '학점표를 보려면 학교를 하나 선택하세요.',
                     child: GraduationCreditGridPage(
+                      classificationDrafts: _classificationDrafts,
+                      institutionId: _schoolId,
                       key: _creditGrid,
                       schoolName: _relationName(_schoolId).isEmpty
                           ? '현재 학교'

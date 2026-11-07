@@ -13,6 +13,8 @@ import '../../shared/widgets/surface_card.dart';
 import 'admin_models.dart';
 import 'graduation_credit_grid.dart';
 import 'graduation_template_preview.dart';
+import 'school_classification_drafts.dart';
+import 'school_classification_widgets.dart';
 
 class GraduationCreditGridPage extends StatefulWidget {
   const GraduationCreditGridPage({
@@ -21,12 +23,16 @@ class GraduationCreditGridPage extends StatefulWidget {
     required this.departments,
     this.initial,
     this.scrollable = false,
+    this.classificationDrafts,
+    this.institutionId = '',
   });
 
   final String schoolName;
   final List<AdminRecord> departments;
   final GraduationCreditGrid? initial;
   final bool scrollable;
+  final SchoolClassificationDrafts? classificationDrafts;
+  final String institutionId;
 
   @override
   State<GraduationCreditGridPage> createState() =>
@@ -86,7 +92,7 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
       for (final g in _grid.groups) [g.id, g.label],
     ],
     [
-      for (final c in _grid.columns) [c.id, c.label, c.groupId],
+      for (final c in _grid.columns) [c.id, c.label, c.groupId, _classification(c.id, false)],
     ],
     [
       for (final r in _grid.rows)
@@ -94,6 +100,7 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
           r.id,
           r.label,
           r.note,
+          _classification(r.id, true),
           [
             for (final c in _grid.columns)
               [
@@ -104,6 +111,14 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
         ],
     ],
   ]);
+  Map<String, String> _classification(String id, bool row) => widget.classificationDrafts
+      ?.binding(widget.institutionId, '${row ? 'credit-row' : 'credit-column'}:$id')
+      .map((kind, value) => MapEntry(kind.name, value)) ?? {};
+  Widget _classificationFields(String id, bool row) => SchoolClassificationBindingFields(
+    drafts: widget.classificationDrafts!, schoolId: widget.institutionId,
+    target: '${row ? 'credit-row' : 'credit-column'}:$id',
+    kinds: row ? const [SchoolClassificationKind.track] : const [SchoolClassificationKind.category, SchoolClassificationKind.subcategory, SchoolClassificationKind.requirement],
+  );
 
   bool get dirty => _fingerprint != _initial;
 
@@ -218,6 +233,7 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
 
   void _removeColumn(GraduationCreditColumn column) {
     setState(() {
+      widget.classificationDrafts?.bind(widget.institutionId, 'credit-column:${column.id}', {});
       _grid.columns.remove(column);
       _grid.cells.removeWhere((key, _) => _cellColumnId(key) == column.id);
       final groupId = column.groupId;
@@ -235,6 +251,7 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
         for (final column in _grid.columns)
           if (column.groupId == groupId) column.id,
       };
+      for (final id in columnIds) { widget.classificationDrafts?.bind(widget.institutionId, 'credit-column:$id', {}); }
       _grid.columns.removeWhere((column) => column.groupId == groupId);
       _grid.groups.removeWhere((group) => group.id == groupId);
       _grid.cells.removeWhere(
@@ -246,6 +263,7 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
 
   void _removeRow(GraduationCreditRow row) {
     setState(() {
+      widget.classificationDrafts?.bind(widget.institutionId, 'credit-row:${row.id}', {});
       _grid.rows.remove(row);
       _grid.cells.removeWhere((key, _) => key.startsWith('${row.id}/'));
       _syncControllers();
@@ -280,7 +298,17 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
 
   void _copyYear() {
     setState(() {
-      _grid = copyCreditGrid(_grid);
+      final previous = _grid;
+      _grid = copyCreditGrid(previous);
+      final drafts = widget.classificationDrafts;
+      if (drafts != null) {
+        for (var i = 0; i < previous.columns.length; i++) {
+          drafts.moveBinding(widget.institutionId, 'credit-column:${previous.columns[i].id}', 'credit-column:${_grid.columns[i].id}');
+        }
+        for (var i = 0; i < previous.rows.length; i++) {
+          drafts.moveBinding(widget.institutionId, 'credit-row:${previous.rows[i].id}', 'credit-row:${_grid.rows[i].id}');
+        }
+      }
       _copied = true;
       _year.text = _grid.admissionYear;
       _syncControllers();
@@ -434,7 +462,9 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
       controller: _horizontal,
       scrollbarKey: const ValueKey('credit-grid-horizontal-scrollbar'),
       child: Table(
-        defaultColumnWidth: const IntrinsicColumnWidth(),
+        defaultColumnWidth: widget.classificationDrafts == null
+            ? const IntrinsicColumnWidth()
+            : const FixedColumnWidth(260),
         defaultVerticalAlignment: TableCellVerticalAlignment.middle,
         border: TableBorder.all(
           color: Theme.of(context).colorScheme.outlineVariant,
@@ -503,6 +533,7 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
                         key: ValueKey('credit-grid-remove-column-${column.id}'),
                         onPressed: () => _removeColumn(column),
                       ),
+                      if (widget.classificationDrafts != null) _classificationFields(column.id, false),
                     ],
                   ),
                 ),
@@ -529,6 +560,7 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
                         key: ValueKey('credit-grid-remove-row-${row.id}'),
                         onPressed: () => _removeRow(row),
                       ),
+                      if (widget.classificationDrafts != null) _classificationFields(row.id, true),
                     ],
                   ),
                 ),

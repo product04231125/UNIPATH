@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:university_path_frontend/features/admin/school_classification_drafts.dart';
 import 'package:university_path_frontend/features/admin/admin_fixture.dart';
 import 'package:university_path_frontend/features/admin/admin_models.dart';
 import 'package:university_path_frontend/features/admin/admin_repository.dart';
@@ -19,8 +20,11 @@ void main() {
       AdminRecord(id: 'applied', kind: AdminKind.ruleSet, status: 'applied', values: {'name': '이미 적용된 묶음', 'institutionId': 'school-a'}),
     ]);
     addTearDown(repo.dispose);
+    final classifications = SchoolClassificationDrafts(); addTearDown(classifications.dispose);
+    classifications.save(schoolId: 'school-a', kind: SchoolClassificationKind.category, code: 'RULE', name: '표시용 분류');
+    final classification = classifications.entries('school-a').single;
     await tester.pumpWidget(MaterialApp(home: Scaffold(body: AdminWorkspace(
-      repository: repo, role: AppRole.superAdmin, path: '/admin/rules', initialSchoolId: 'school-a',
+      classificationDrafts: classifications, repository: repo, role: AppRole.superAdmin, path: '/admin/rules', initialSchoolId: 'school-a',
       onNavigate: (_) {}, onSignedOut: () {},
     ))));
     await tester.pumpAndSettle();
@@ -59,6 +63,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('학생 화면에는 이 주소를 표시하지 않습니다'), findsOneWidget);
     await enter(rule, 'sourceUrl', 'https://school.example.invalid/regulations');
+    final classificationPicker = find.descendant(of: rule, matching: find.byWidgetPredicate((w) => w is AnchoredSelectField<String> && w.label == '이수구분'));
+    await tester.ensureVisible(classificationPicker);
+    tester.widget<AnchoredSelectField<String>>(classificationPicker).onChanged(classification.id);
+    await tester.pumpAndSettle();
     FocusManager.instance.primaryFocus?.unfocus();
     final save = find.descendant(of: rule, matching: find.widgetWithText(FilledButton, '요건 설명 저장'));
     await tester.ensureVisible(save);
@@ -66,6 +74,7 @@ void main() {
     await tester.pumpAndSettle();
     final savedRule = repo.records.singleWhere((r) => r.kind == AdminKind.rule);
     expect(savedRule.value('ruleSetId'), saved.id);
+    expect(classifications.binding('school-a', 'rule:${savedRule.id}')[classification.kind], classification.id);
     expect(savedRule.value('institutionId'), 'school-a');
     expect(savedRule.value('sourceUrl'), 'https://school.example.invalid/regulations');
     expect(tester.takeException(), isNull);

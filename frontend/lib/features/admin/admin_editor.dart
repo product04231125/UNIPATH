@@ -16,6 +16,8 @@ import 'admin_fields.dart';
 import 'admin_repository.dart';
 import 'remote_admin_repository.dart';
 import 'admin_rule_execution_panel.dart';
+import 'school_classification_drafts.dart';
+import 'school_classification_widgets.dart';
 
 class AdminEditor extends StatefulWidget {
   const AdminEditor({
@@ -30,6 +32,7 @@ class AdminEditor extends StatefulWidget {
     this.list,
     this.onRevokeRequested,
     this.onClosed,
+    this.classificationDrafts,
   });
   final AdminRepository repository;
   final String actorId, schoolId;
@@ -40,6 +43,7 @@ class AdminEditor extends StatefulWidget {
   final Widget? list;
   final VoidCallback? onRevokeRequested;
   final VoidCallback? onClosed;
+  final SchoolClassificationDrafts? classificationDrafts;
   @override
   State<AdminEditor> createState() => AdminEditorState();
 }
@@ -78,6 +82,9 @@ class AdminEditorState extends State<AdminEditor> {
       _fields.any((f) => _value(f.key) != (_initial[f.key] ?? ''));
   String? _error, _message;
   String? _loadedDraftId;
+  final _classificationDraftId = PersonalRecord.newId();
+  String get _classificationTarget => '${widget.kind.name}:${(_isRule ? _rule : _currentRecord)?.id ?? _classificationDraftId}';
+  bool get _usesClassifications => [AdminKind.course, AdminKind.curriculumCourse, AdminKind.ruleSet, AdminKind.rule].contains(widget.kind);
   final _drafts = FormDraftStore.instance;
   bool get saving => _saving || _panelBusy;
   bool get dirty =>
@@ -378,6 +385,7 @@ class AdminEditorState extends State<AdminEditor> {
           _value('reason'),
         );
       } else {
+        final bindingTarget = _classificationTarget;
         final values = {
           ...?(_isRule ? _rule : _currentRecord)?.values,
           for (final f in _fields) f.key: _value(f.key).trim(),
@@ -391,9 +399,11 @@ class AdminEditorState extends State<AdminEditor> {
               kind: widget.kind,
               values: values,
             );
-        if (_isRule && widget.repository is RemoteAdminRepository) {
+        var savedId = record.id;
+        if ((_isRule || _usesClassifications && widget.classificationDrafts != null) && widget.repository is RemoteAdminRepository) {
           _savedRecord = await (widget.repository as RemoteAdminRepository)
               .saveWithResult(widget.actorId, record);
+          savedId = _savedRecord!.id;
         } else {
           await widget.repository.save(widget.actorId, record);
           if (_isRule) {
@@ -402,6 +412,7 @@ class AdminEditorState extends State<AdminEditor> {
                 .firstOrNull;
           }
         }
+        widget.classificationDrafts?.moveBinding(_resolvedInstitution(), bindingTarget, '${widget.kind.name}:$savedId');
         final draftId = _loadedDraftId;
         if (draftId != null) {
           await _drafts.delete(_draftCollectionKey, draftId);
@@ -835,6 +846,11 @@ class AdminEditorState extends State<AdminEditor> {
                     for (final group in adminFieldGroups(below).values) ...group,
                   ]),
                 if (_isRule) _executionPanel(),
+                if (_usesClassifications && widget.classificationDrafts != null)
+                  SchoolClassificationBindingFields(
+                    drafts: widget.classificationDrafts!, schoolId: _resolvedInstitution(), target: _classificationTarget,
+                    locked: saving || _metadataLocked,
+                  ),
                 if (_message != null)
                   Semantics(liveRegion: true, child: Text(_message!)),
                 if (_error != null)
