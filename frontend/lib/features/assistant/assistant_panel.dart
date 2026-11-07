@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../shared/app_typography.dart';
+import '../../shared/widgets/external_link_button.dart';
 import 'assistant_api.dart';
 import 'assistant_context_dialog.dart';
 import 'assistant_conversation.dart';
+import '../settings/ai_consent_section.dart';
 
 class AssistantPanel extends StatefulWidget {
   const AssistantPanel({
@@ -44,11 +46,49 @@ class AssistantPanelState extends State<AssistantPanel> {
   int _turnCount = 0;
   bool _editingContext = false;
   bool _savingContext = false;
+  bool _authorizing = false;
   bool get _canSend =>
       conversation.ready &&
       conversation.connectionError == null &&
       !conversation.sending &&
+      !_authorizing &&
       !_savingContext;
+
+  Future<void> _submit([AssistantTurn? turn]) async {
+    if (!_canSend) return;
+    if (turn == null && conversation.input.text.trim().isEmpty) return;
+    final mode = turn?.mode ?? conversation.mode;
+    if (conversation.registeredOnly &&
+        (!(turn?.requestContext ?? conversation.context).hasRegisteredSchool ||
+            (mode == AssistantMode.personalized &&
+                (turn?.records.isEmpty ??
+                    conversation.selectedRecords.isEmpty)))) {
+      if (turn == null) {
+        await conversation.send();
+      } else {
+        await conversation.retry(turn);
+      }
+      return;
+    }
+    if (conversation.requiresConsent && !conversation.allowsMode(mode)) {
+      if (conversation.permissionLoading) return;
+      setState(() => _authorizing = true);
+      try {
+        final remember = await chooseAiConsent(context, mode.feature);
+        if (!mounted || remember == null) return;
+        if (!await conversation.permit(mode, remember: remember)) return;
+      } finally {
+        if (mounted) setState(() => _authorizing = false);
+      }
+    }
+    if (!mounted) return;
+    if (turn == null) {
+      await conversation.send();
+    } else {
+      await conversation.retry(turn);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -187,36 +227,130 @@ class AssistantPanelState extends State<AssistantPanel> {
                   controller: _scroll,
                   padding: const EdgeInsets.all(14),
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                    if (conversation.registeredOnly) ...[
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
-                          Text(
-                            '학교 규정 질의 · 대화는 앱 실행 중 유지됩니다.',
-                            style: TextStyle(
-                              fontSize: AppTypography.caption,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
+                          for (final mode in AssistantMode.values)
+                            ChoiceChip(
+                              label: Text(mode.label),
+                              selected: conversation.mode == mode,
+                              onSelected: !_canSend
+                                  ? null
+                                  : (_) {
+                                      conversation.setMode(mode);
+                                      if (mode == AssistantMode.personalized)
+                                        conversation.refreshRecords();
+                                    },
                             ),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: !_canSend
-                                ? null
-                                : () => _editContext(context),
-                            icon: Icon(Icons.tune, size: 18),
-                            label: Text(
-                              conversation.context.institution == null
-                                  ? '학교 정보 설정'
-                                  : '${conversation.context.institution} · ${conversation.context.department ?? "학과 미입력"}',
-                            ),
-                          ),
                         ],
                       ),
-                    ),
+                      Text(
+                        conversation.context.institution == null
+                            ? '설정에서 학업 프로필을 확인해 주세요.'
+                            : '${conversation.context.institution} · ${conversation.context.department ?? "학과 미선택"}',
+                      ),
+                      TextButton(
+                        onPressed: _canSend ? conversation.openSettings : null,
+                        child: const Text('학교 정보는 설정에서 변경'),
+                      ),
+                      if (!conversation.context.hasRegisteredSchool)
+                        const Text(
+                          '학교 질문과 맞춤 안내에는 등록된 학교·학과가 필요합니다. 개인 기준·PDF 질문은 아직 지원하지 않습니다.',
+                        ),
+                      Text(
+                        conversation.allowsMode(conversation.mode)
+                            ? 'Google 외부 AI 전송 허용 중 · 설정에서 변경'
+                            : 'Google 외부 AI 전송 · 전송 전 동의 확인',
+                      ),
+                      if (conversation.permissionError != null) ...[
+                        Text(conversation.permissionError!),
+                        TextButton(
+                          onPressed: conversation.refreshPermission,
+                          child: const Text('전송 설정 다시 읽기'),
+                        ),
+                      ],
+                      if (conversation.mode == AssistantMode.personalized) ...[
+                        Text(
+                          '질문에 사용할 내 기록 (${conversation.selectedRecords.length}/20)',
+                        ),
+                        TextButton(
+                          onPressed:
+                              conversation.recordsLoading ||
+                                  conversation.sending
+                              ? null
+                              : conversation.refreshRecords,
+                          child: const Text('개인 기록 다시 읽기'),
+                        ),
+                        if (conversation.recordsLoading)
+                          const LinearProgressIndicator(),
+                        if (conversation.recordsError != null)
+                          Text(conversation.recordsError!),
+                        if (!conversation.recordsLoading &&
+                            conversation.recordOptions.isEmpty)
+                          const Text('선택할 서버 개인 기록이 없습니다.'),
+                        for (final record in conversation.recordOptions)
+                          Material(
+                            type: MaterialType.transparency,
+                            child: CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(record.title),
+                              subtitle: Text(
+                                '${record.kindLabel} · 버전 ${record.version}',
+                              ),
+                              value: conversation.selectedRecords.any(
+                                (r) => r.key == record.key,
+                              ),
+                              onChanged: conversation.sending
+                                  ? null
+                                  : (v) => conversation.selectRecord(
+                                      record.key,
+                                      v == true,
+                                    ),
+                            ),
+                          ),
+                      ],
+                      if (conversation.submissionError != null)
+                        Text(
+                          conversation.submissionError!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      const Divider(),
+                    ],
+                    if (!conversation.registeredOnly)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              '학교 규정 질의 · 대화는 앱 실행 중 유지됩니다.',
+                              style: TextStyle(
+                                fontSize: AppTypography.caption,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: !_canSend
+                                  ? null
+                                  : () => _editContext(context),
+                              icon: Icon(Icons.tune, size: 18),
+                              label: Text(
+                                conversation.context.institution == null
+                                    ? '학교 정보 설정'
+                                    : '${conversation.context.institution} · ${conversation.context.department ?? "학과 미입력"}',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
-                    if (_editingContext) ...[
+                    if (_editingContext && !conversation.registeredOnly) ...[
                       SchoolQueryContextForm(
                         key: _contextForm,
                         initial: conversation.context.institution == null
@@ -248,7 +382,7 @@ class AssistantPanelState extends State<AssistantPanel> {
                     for (final turn in conversation.turns) ...[
                       _bubble(
                         Text(
-                          '나: ${turn.question}',
+                          '${conversation.registeredOnly ? '${turn.mode.label} · ' : ''}나: ${turn.question}',
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.onPrimary,
                             height: 1.5,
@@ -281,7 +415,7 @@ class AssistantPanelState extends State<AssistantPanel> {
                         controller: conversation.input,
                         maxLength: 4000,
                         onSubmitted: (_) {
-                          if (_canSend) conversation.send();
+                          if (_canSend) _submit();
                         },
                         decoration: const InputDecoration(
                           labelText: '학교 규정 질문',
@@ -296,12 +430,12 @@ class AssistantPanelState extends State<AssistantPanel> {
                     if (width < 300)
                       IconButton.filled(
                         tooltip: '보내기',
-                        onPressed: _canSend ? conversation.send : null,
+                        onPressed: _canSend ? _submit : null,
                         icon: Icon(Icons.send),
                       )
                     else
                       FilledButton(
-                        onPressed: _canSend ? conversation.send : null,
+                        onPressed: _canSend ? _submit : null,
                         child: Text('보내기'),
                       ),
                   ],
@@ -332,6 +466,52 @@ class AssistantPanelState extends State<AssistantPanel> {
   Widget _response(BuildContext context, AssistantTurn turn) {
     if (turn.loading) {
       return Semantics(liveRegion: true, child: Text('답변 기다리는 중…'));
+    }
+    if (turn.personalized != null) {
+      final result = turn.personalized!;
+      final statusText = switch (result.status) {
+        'grounded' => '학교 자료와 내 기록을 바탕으로 한 안내',
+        'evidence_only' => '답변 생성 준비 중 · 조회한 자료',
+        'needs_user_input' => '추가 입력 필요',
+        'insufficient_evidence' => '답변 근거 부족',
+        _ => '맞춤 안내 처리 실패',
+      };
+      final reasonText = switch (result.reason) {
+        'external_processing_consent_required' => '외부 전송 동의를 확인해 주세요.',
+        'personal_records_required' => '내 기록을 선택해 주세요.',
+        'school_evidence_unavailable' =>
+          '학교 문서 근거를 확인할 수 없습니다. 학교 문맥과 승인 자료를 확인해 주세요.',
+        'generator_not_configured' =>
+          '답변 생성 기능이 준비 중입니다. 조회된 학교 자료와 내 기록을 확인할 수 있습니다.',
+        _ => '받은 자료만 표시합니다. 입력을 유지하고 다시 시도할 수 있습니다.',
+      };
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(statusText, style: const TextStyle(fontWeight: FontWeight.w700)),
+          SelectableText(result.answer ?? reasonText),
+          const Divider(),
+          const Text('학교 문서'),
+          for (final source in result.school.sources) ...[
+            Text('${source.title} · ${source.page}페이지'),
+            SelectableText(source.excerpt),
+            ExternalLinkButton(url: source.sourceUrl, label: '학교 원문 열기'),
+          ],
+          const Divider(),
+          const Text('내 기록'),
+          for (final record in result.personal.records) ...[
+            Text('${record.title} · 버전 ${record.version}'),
+            SelectableText(record.text),
+            if (record.truncated) const Text('일부 내용만 포함되었습니다.'),
+          ],
+          for (final citation in result.personalCitations)
+            SelectableText('내 기록 인용: ${citation.excerpt}'),
+          TextButton(
+            onPressed: _canSend ? () => _submit(turn) : null,
+            child: const Text('다시 질문'),
+          ),
+        ],
+      );
     }
     final result = turn.result;
     final error = turn.error;
@@ -368,12 +548,16 @@ class AssistantPanelState extends State<AssistantPanel> {
         if (result?.status == AssistantStatus.needsUserInput &&
             result?.reason != 'rule_engine_required')
           TextButton(
-            onPressed: !_canSend ? null : () => _editContext(context),
+            onPressed: !_canSend
+                ? null
+                : () => conversation.registeredOnly
+                      ? conversation.openSettings()
+                      : _editContext(context),
             child: Text('질의 정보 보완'),
           ),
         if (canRetry)
           TextButton(
-            onPressed: !_canSend ? null : () => conversation.retry(turn),
+            onPressed: !_canSend ? null : () => _submit(turn),
             child: Text('다시 질문'),
           ),
         for (final citation in result?.citations ?? <AssistantCitation>[]) ...[

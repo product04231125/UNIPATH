@@ -14,6 +14,21 @@ Future<bool> requestAiConsent(
   if (!context.mounted || preferences.loadFailed || preferences.saving)
     return false;
   if (!review && preferences.allows(feature)) return true;
+  final remember = await chooseAiConsent(
+    context,
+    feature,
+    persistent: persistent,
+  );
+  if (remember == null || !context.mounted) return false;
+  return remember ? preferences.setAllowed(feature, true) : true;
+}
+
+/// null = cancel, false = this request, true = remember on this device.
+Future<bool?> chooseAiConsent(
+  BuildContext context,
+  AiConsentFeature feature, {
+  bool persistent = false,
+}) async {
   var remember = persistent;
   final accepted = await showDialog<bool>(
     context: context,
@@ -57,8 +72,7 @@ Future<bool> requestAiConsent(
       ),
     ),
   );
-  if (accepted != true || !context.mounted) return false;
-  return remember ? preferences.setAllowed(feature, true) : true;
+  return accepted == true ? remember : null;
 }
 
 class AiConsentSection extends StatelessWidget {

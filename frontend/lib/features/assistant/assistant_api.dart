@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../api/school_knowledge_models.dart';
+import '../auth/auth_api.dart';
 
 enum AssistantStatus { grounded, insufficientEvidence, needsUserInput, failed }
 
@@ -13,17 +14,63 @@ class SchoolQueryContext {
     this.department,
     this.admissionYear,
     this.track,
+    this.institutionId,
+    this.departmentId,
+    this.curriculumId,
   });
   final String? institution;
   final String? department;
   final int? admissionYear;
   final String? track;
+  final String? institutionId, departmentId, curriculumId;
+  bool get hasRegisteredSchool => institutionId != null && departmentId != null;
+  Map<String, Object?> catalogJson() => {
+    'institution_id': institutionId,
+    'department_id': departmentId,
+    'curriculum_id': curriculumId,
+    'admission_year': admissionYear,
+    'track': track,
+  };
   Map<String, Object?> toJson() => {
     'institution': institution,
     'department': department,
     'admission_year': admissionYear,
     'track': track,
   };
+}
+
+/// Authenticated UUID contract; the gateway is captured for one account/session.
+class RegisteredAssistantApi implements AssistantGateway {
+  const RegisteredAssistantApi(this.api);
+  final ApiGateway api;
+  @override
+  Future<AssistantResult> query(
+    String question,
+    SchoolQueryContext context,
+  ) async {
+    if (!context.hasRegisteredSchool) {
+      throw const AssistantApiException(
+        '설정에서 등록된 학교·학과를 선택해 주세요. 개인 설정은 학교 질문을 지원하지 않습니다.',
+      );
+    }
+    try {
+      return AssistantResult.fromJson(
+        (await api.request('POST', 'me/school-queries', {
+          'question': question,
+          'context': context.catalogJson(),
+        }))!,
+      );
+    } on AuthFailure catch (e) {
+      throw AssistantApiException(
+        e.message,
+        fields: e.fields,
+        requestId: e.requestId,
+      );
+    }
+  }
+
+  @override
+  void close() {} // Shared authenticated gateway belongs to the workspace.
 }
 
 class AssistantCitation {

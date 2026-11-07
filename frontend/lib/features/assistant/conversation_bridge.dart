@@ -4,6 +4,23 @@ import 'package:flutter/material.dart';
 
 import 'assistant_api.dart';
 import 'assistant_conversation.dart';
+import 'ai_record_catalog.dart';
+import '../api/academic_guidance_models.dart';
+
+Map<String, dynamic> _contextSnapshot(SchoolQueryContext context) => {
+  ...context.toJson(),
+  ...context.catalogJson(),
+};
+SchoolQueryContext _parseContext(Map<String, dynamic> ctx) =>
+    SchoolQueryContext(
+      institution: ctx['institution'] as String?,
+      department: ctx['department'] as String?,
+      admissionYear: ctx['admission_year'] as int?,
+      track: ctx['track'] as String?,
+      institutionId: ctx['institution_id'] as String?,
+      departmentId: ctx['department_id'] as String?,
+      curriculumId: ctx['curriculum_id'] as String?,
+    );
 
 Map<String, dynamic> conversationSnapshot(
   AssistantConversation conversation,
@@ -13,7 +30,23 @@ Map<String, dynamic> conversationSnapshot(
   'input': conversation.input.text,
   'selection_base': conversation.input.selection.baseOffset,
   'selection_extent': conversation.input.selection.extentOffset,
-  'context': conversation.context.toJson(),
+  'context': _contextSnapshot(conversation.context),
+  'registered_only': conversation.registeredOnly,
+  'context_available': conversation.contextAvailable,
+  'mode': conversation.mode.name,
+  'permissions': [
+    for (final mode in AssistantMode.values)
+      if (conversation.allowsMode(mode)) mode.name,
+  ],
+  'permission_loading': conversation.permissionLoading,
+  'permission_error': conversation.permissionError,
+  'records': conversation.recordOptions.map((r) => r.toJson()).toList(),
+  'selected_records': conversation.selectedRecords
+      .map((r) => r.toJson())
+      .toList(),
+  'records_loading': conversation.recordsLoading,
+  'records_error': conversation.recordsError,
+  'submission_error': conversation.submissionError,
   'sending': conversation.sending,
   'turns': [
     for (final t in conversation.turns)
@@ -21,6 +54,12 @@ Map<String, dynamic> conversationSnapshot(
         'id': t.id,
         'question': t.question,
         'loading': t.loading,
+        'mode': t.mode.name,
+        'request_context': t.requestContext == null
+            ? null
+            : _contextSnapshot(t.requestContext!),
+        'records': t.records.map((r) => r.toJson()).toList(),
+        'personalized': t.personalized?.toJson(),
         'result': t.result?.toJson(),
         'error': t.error == null
             ? null
@@ -43,17 +82,34 @@ class ConversationBridge {
   final Future<void> Function(Map<String, dynamic>) publish;
   final Map<String, Map<String, dynamic>> _commands = {};
   int _revision = 0;
-  Map<String, dynamic> read() => conversationSnapshot(conversation, _revision);
+  bool _disposed = false;
+  final _permissionResults = <String, bool>{};
+  Map<String, dynamic> read() => {
+    ...conversationSnapshot(conversation, _revision),
+    'permission_results': {..._permissionResults},
+  };
   void _changed() {
+    if (_disposed) return;
     _revision++;
     unawaited(publish(read()).catchError((Object _) {}));
   }
 
   Map<String, dynamic> command(Map<String, dynamic> command) {
+    if (_disposed) throw StateError('Conversation bridge is closed');
     final id = command['command_id'] as String;
     if (_commands.containsKey(id)) return read();
     final action = command['action'] as String;
-    if (!['input', 'send', 'retry'].contains(action)) {
+    if (![
+      'input',
+      'send',
+      'retry',
+      'mode',
+      'records',
+      'select_record',
+      'permit',
+      'permission_reload',
+      'settings',
+    ].contains(action)) {
       throw const FormatException('Unknown conversation command');
     }
     // Remember before starting async work: a lost acknowledgement cannot replay it.
@@ -72,6 +128,38 @@ class ConversationBridge {
       );
     }
     if (action == 'send') unawaited(conversation.send());
+    if (action == 'mode')
+      conversation.setMode(
+        AssistantMode.values.byName(command['mode'] as String),
+      );
+    if (action == 'records') unawaited(conversation.refreshRecords());
+    if (action == 'select_record')
+      conversation.selectRecord(
+        command['key'] as String,
+        command['selected'] as bool,
+      );
+    if (action == 'permission_reload')
+      unawaited(conversation.refreshPermission());
+    if (action == 'settings') conversation.openSettings();
+    if (action == 'permit') {
+      unawaited(
+        conversation
+            .permit(
+              AssistantMode.values.byName(command['mode'] as String),
+              remember: command['remember'] as bool,
+            )
+            .then(
+              (success) {
+                _permissionResults[id] = success;
+                _changed();
+              },
+              onError: (Object _) {
+                _permissionResults[id] = false;
+                _changed();
+              },
+            ),
+      );
+    }
     if (action == 'retry') {
       final turns = conversation.turns.where((t) => t.id == command['turn_id']);
       if (turns.isNotEmpty) unawaited(conversation.retry(turns.first));
@@ -80,6 +168,7 @@ class ConversationBridge {
   }
 
   void dispose() {
+    _disposed = true;
     conversation.removeListener(_changed);
     conversation.input.removeListener(_changed);
   }
@@ -105,6 +194,22 @@ class RemoteConversation extends AssistantConversation {
   bool _closed = false;
   bool _ready = false;
   String? _error;
+  bool _registeredOnly = false;
+  bool _permissionLoading = true;
+  String? _permissionError;
+  final _allowedModes = <AssistantMode>{};
+  final _permissionWaiters = <String, Completer<bool>>{};
+  @override
+  bool get registeredOnly => _registeredOnly;
+  @override
+  bool get requiresConsent => _registeredOnly;
+  @override
+  bool get permissionLoading => _permissionLoading;
+  @override
+  String? get permissionError => _permissionError;
+  @override
+  bool allowsMode(AssistantMode value) =>
+      !_registeredOnly || _allowedModes.contains(value);
   Future<void>? _flushing;
   @override
   List<AssistantTurn> get turns => List.unmodifiable(_remoteTurns);
@@ -141,12 +246,41 @@ class RemoteConversation extends AssistantConversation {
     _remoteTurns
       ..clear()
       ..addAll(parsed);
-    context = SchoolQueryContext(
-      institution: ctx['institution'] as String?,
-      department: ctx['department'] as String?,
-      admissionYear: ctx['admission_year'] as int?,
-      track: ctx['track'] as String?,
+    context = _parseContext(ctx);
+    _registeredOnly = value['registered_only'] == true;
+    contextAvailable = value['context_available'] != false;
+    mode = AssistantMode.values.byName(value['mode'] as String? ?? 'school');
+    _permissionLoading = value['permission_loading'] == true;
+    _permissionError = value['permission_error'] as String?;
+    _allowedModes
+      ..clear()
+      ..addAll(
+        (value['permissions'] as List? ?? []).map(
+          (v) => AssistantMode.values.byName(v as String),
+        ),
+      );
+    recordOptions = (value['records'] as List? ?? [])
+        .map(
+          (v) => AiRecordOption.fromJson(Map<String, dynamic>.from(v as Map)),
+        )
+        .toList();
+    selectedRecords
+      ..clear()
+      ..addAll(
+        (value['selected_records'] as List? ?? []).map(
+          (v) => AiRecordOption.fromJson(Map<String, dynamic>.from(v as Map)),
+        ),
+      );
+    recordsLoading = value['records_loading'] == true;
+    recordsError = value['records_error'] as String?;
+    submissionError = value['submission_error'] as String?;
+    final permissions = Map<String, dynamic>.from(
+      value['permission_results'] as Map? ?? {},
     );
+    for (final id in _permissionWaiters.keys.toList()) {
+      if (permissions.containsKey(id))
+        _permissionWaiters.remove(id)!.complete(permissions[id] == true);
+    }
     sending = value['sending'] as bool;
     // Keep edits whose IPC acknowledgement has not arrived yet.
     if (_pending.isEmpty) {
@@ -173,8 +307,25 @@ class RemoteConversation extends AssistantConversation {
     final turn = AssistantTurn(
       raw['question'] as String,
       id: raw['id'] as String,
+      mode: AssistantMode.values.byName(raw['mode'] as String? ?? 'school'),
+      requestContext: raw['request_context'] == null
+          ? null
+          : _parseContext(
+              Map<String, dynamic>.from(raw['request_context'] as Map),
+            ),
+      records: (raw['records'] as List? ?? [])
+          .map(
+            (v) => GuidanceRecordSelection.fromJson(
+              Map<String, dynamic>.from(v as Map),
+            ),
+          )
+          .toList(),
     );
     turn.loading = raw['loading'] as bool;
+    if (raw['personalized'] != null)
+      turn.personalized = PersonalizedGuidanceResponse.fromJson(
+        Map<String, dynamic>.from(raw['personalized'] as Map),
+      );
     if (raw['result'] != null) {
       turn.result = AssistantResult.fromJson(
         Map<String, dynamic>.from(raw['result'] as Map),
@@ -195,16 +346,73 @@ class RemoteConversation extends AssistantConversation {
     if (!_applying && _ready && !_closed) _enqueue('input');
   }
 
-  void _enqueue(String action, [String? turnId]) {
+  String _enqueue(
+    String action, [
+    String? turnId,
+    Map<String, dynamic> extra = const {},
+  ]) {
+    final id = '$_clientId-${++_sequence}';
     _pending.add({
-      'command_id': '$_clientId-${++_sequence}',
+      'command_id': id,
       'action': action,
       'input': input.text,
       'selection_base': input.selection.baseOffset,
       'selection_extent': input.selection.extentOffset,
       'turn_id': turnId,
+      ...extra,
     });
     unawaited(flush());
+    return id;
+  }
+
+  @override
+  void setMode(AssistantMode value) {
+    if (_ready && !sending) _enqueue('mode', null, {'mode': value.name});
+  }
+
+  @override
+  Future<void> refreshRecords() async {
+    if (_ready) {
+      _enqueue('records');
+      await flush();
+    }
+  }
+
+  @override
+  void selectRecord(String key, bool selected) {
+    if (_ready && !sending)
+      _enqueue('select_record', null, {'key': key, 'selected': selected});
+  }
+
+  @override
+  void openSettings() {
+    if (_ready) _enqueue('settings');
+  }
+
+  @override
+  Future<void> refreshPermission() async {
+    if (_ready) {
+      _enqueue('permission_reload');
+      await flush();
+    }
+  }
+
+  @override
+  Future<bool> permit(AssistantMode value, {required bool remember}) async {
+    if (!_ready || _closed) return false;
+    final id = _enqueue('permit', null, {
+      'mode': value.name,
+      'remember': remember,
+    });
+    final completed = Completer<bool>();
+    _permissionWaiters[id] = completed;
+    try {
+      return await completed.future.timeout(const Duration(seconds: 10));
+    } catch (_) {
+      _permissionWaiters.remove(id);
+      _failed();
+      return false;
+    }
   }
 
   Future<void> flush() =>
@@ -245,6 +453,10 @@ class RemoteConversation extends AssistantConversation {
   @override
   void dispose() {
     _closed = true;
+    for (final waiter in _permissionWaiters.values) {
+      if (!waiter.isCompleted) waiter.complete(false);
+    }
+    _permissionWaiters.clear();
     _subscription.cancel();
     input.removeListener(_inputChanged);
     super.dispose();

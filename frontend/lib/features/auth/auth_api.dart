@@ -17,10 +17,16 @@ class SchoolSignupResult {
 }
 
 class AuthFailure implements Exception {
-  const AuthFailure(this.message, {this.status, this.fields = const []});
+  const AuthFailure(
+    this.message, {
+    this.status,
+    this.fields = const [],
+    this.requestId,
+  });
   final String message;
   final int? status;
   final List<String> fields;
+  final String? requestId;
 }
 
 class AuthIdentity {
@@ -358,9 +364,27 @@ class AuthApi implements AuthGateway, ApiGateway {
       final response = await _client
           .send(request)
           .then(http.Response.fromStream)
-          .timeout(const Duration(seconds: 20));
+          .timeout(
+            Duration(
+              seconds:
+                  const {
+                    'me/school-queries',
+                    'me/personalized-guidance',
+                    'me/job-analyses',
+                  }.contains(path)
+                  ? 55
+                  : 20,
+            ),
+          );
       if (response.statusCode >= 400) {
         final fields = <String>[];
+        String? requestId;
+        try {
+          final error = jsonDecode(utf8.decode(response.bodyBytes)) as Map;
+          requestId = error['error']['request_id'] as String?;
+        } catch (_) {
+          /* Keep a safe message for malformed error bodies. */
+        }
         if (response.statusCode == 422) {
           try {
             final error = jsonDecode(utf8.decode(response.bodyBytes)) as Map;
@@ -384,6 +408,7 @@ class AuthApi implements AuthGateway, ApiGateway {
           },
           status: response.statusCode,
           fields: fields,
+          requestId: requestId,
         );
       }
       if (response.statusCode == 204) return null;

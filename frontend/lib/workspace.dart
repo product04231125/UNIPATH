@@ -11,6 +11,8 @@ import 'features/settings/chat_preferences.dart';
 import 'features/settings/ai_consent_preferences.dart';
 import 'features/assistant/assistant_conversation.dart';
 import 'features/assistant/assistant_api.dart';
+import 'features/assistant/ai_record_catalog.dart';
+import 'features/api/guidance_api.dart';
 import 'features/assistant/assistant_panel.dart';
 import 'features/assistant/shared_school_context.dart';
 import 'features/assistant/conversation_bridge.dart';
@@ -110,7 +112,20 @@ class _WorkspaceState extends State<Workspace> {
   final _graduationPageKey = GlobalKey();
   final _assistantPanelKey = GlobalKey();
   late final _assistantConversation = AssistantConversation(
-    api: widget.assistantFactory?.call(),
+    api:
+        widget.assistantFactory?.call() ??
+        (widget.studentApi == null
+            ? null
+            : RegisteredAssistantApi(widget.studentApi!.api)),
+    registeredOnly: widget.assistantFactory == null,
+    guidanceApi: widget.studentApi == null
+        ? null
+        : GuidanceApi(widget.studentApi!.api),
+    consent: _aiConsent,
+    loadRecords: widget.studentApi == null
+        ? null
+        : () => loadAiRecords(widget.studentApi!),
+    onOpenSettings: () => _selectPage(_labels.length),
   );
   late final PlanningRepository _planningRepository = widget.studentApi == null
       ? PlanningRepository()
