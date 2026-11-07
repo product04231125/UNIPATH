@@ -24,12 +24,20 @@ class AcademicGuidanceView extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
-            TextButton(
-              onPressed: conversation.closeGuidance,
-              child: const Text('질문으로 돌아가기'),
-            ),
+            if (!conversation.registeredOnly)
+              TextButton(
+                onPressed: conversation.closeGuidance,
+                child: const Text('질문으로 돌아가기'),
+              ),
           ],
         ),
+        if (conversation.registeredOnly) ...[
+          const Text('메뉴를 선택해 학교 안내 자료를 찾아보세요.'),
+          const Text(
+            '현재 서버가 제공하는 수집 자료입니다. 등록 학교와의 연결은 아직 확인되지 않아 원문의 학교·적용 대상을 확인해 주세요.',
+          ),
+          const SizedBox(height: 12),
+        ],
         if (conversation.guidanceLoading) const LinearProgressIndicator(),
         if (conversation.guidanceError != null) ...[
           Text(conversation.guidanceError!),
@@ -106,17 +114,29 @@ class AcademicGuidanceView extends StatelessWidget {
             else
               const Text('이 분석 기능은 준비 중입니다.'),
           ],
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (final button in node.buttons)
-                OutlinedButton(
-                  onPressed: conversation.guidanceLoading
-                      ? null
-                      : () => conversation.navigateGuidance(button.nodeId),
-                  child: Text(
-                    '${button.label}${button.availability == "content_pending" ? " · 준비 중" : ""}',
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: OutlinedButton(
+                    onPressed: conversation.guidanceLoading
+                        ? null
+                        : () => conversation.navigateGuidance(button.nodeId),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${button.label}${button.availability == "content_pending" ? " · 준비 중" : ""}',
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
             ],

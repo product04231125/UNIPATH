@@ -145,7 +145,6 @@ void main() {
           guidanceApi: GuidanceApi(gateway),
           consent: permission,
           registeredOnly: true,
-          supportedGuidanceInstitutionId: 'school',
           loadRecords: () async => [
             const AiRecordOption(
               kind: 'activity',

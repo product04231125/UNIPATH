@@ -48,7 +48,6 @@ class AssistantConversation extends ChangeNotifier {
     this.registeredOnly = false,
     this.onOpenSettings,
     this.onOpenCareer,
-    this.supportedGuidanceInstitutionId = '',
   }) : _api = api ?? AssistantApi() {
     consent?.addListener(_consentChanged);
   }
@@ -58,7 +57,6 @@ class AssistantConversation extends ChangeNotifier {
   final bool registeredOnly;
   final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenCareer;
-  final String supportedGuidanceInstitutionId;
   AcademicGuidance? guidance;
   bool guidanceOpen = false, guidanceLoading = false, auditsLoading = false;
   String? guidanceError, guidanceAuditId;
@@ -66,15 +64,6 @@ class AssistantConversation extends ChangeNotifier {
   int _guidanceGeneration = 0;
   String get guidanceNodeId => guidance?.nodeId ?? 'home';
   String? get guidanceUnavailableReason {
-    if (!contextAvailable || !context.hasRegisteredSchool) {
-      return '등록된 학교·학과를 설정한 뒤 이용할 수 있습니다.';
-    }
-    if (supportedGuidanceInstitutionId.isEmpty) {
-      return '학교 안내 자료의 관리자 연결 기능을 준비 중입니다.';
-    }
-    if (context.institutionId != supportedGuidanceInstitutionId) {
-      return '현재 학교에 연결된 안내 자료가 없습니다.';
-    }
     if (guidanceApi == null) return '학사 안내에 연결할 수 없습니다. 로그인 상태를 확인해 주세요.';
     return null;
   }
@@ -107,7 +96,9 @@ class AssistantConversation extends ChangeNotifier {
       guidance = node;
     } on AuthFailure catch (e) {
       if (!_disposed && generation == _guidanceGeneration) {
-        guidanceError = e.message;
+        guidanceError = e.status == 404
+            ? '학사 안내 API를 찾을 수 없습니다. 서버가 최신 버전으로 실행 중인지 확인해 주세요.'
+            : e.message;
       }
     } catch (_) {
       if (!_disposed && generation == _guidanceGeneration) {
@@ -123,6 +114,11 @@ class AssistantConversation extends ChangeNotifier {
 
   Future<void> refreshAudits() async {
     if (_disposed || auditsLoading || guidanceUnavailableReason != null) return;
+    if (!contextAvailable || !context.hasRegisteredSchool) {
+      guidanceError = '본인 졸업감사를 보려면 설정에서 등록 학교·학과를 확인해 주세요.';
+      notifyListeners();
+      return;
+    }
     final generation = _guidanceGeneration;
     auditsLoading = true;
     guidanceError = null;
@@ -220,6 +216,7 @@ class AssistantConversation extends ChangeNotifier {
   void setMode(AssistantMode value) {
     if (sending || _disposed) return;
     mode = value;
+    if (value == AssistantMode.personalized) guidanceOpen = false;
     _oncePermissions.clear();
     submissionError = null;
     notifyListeners();

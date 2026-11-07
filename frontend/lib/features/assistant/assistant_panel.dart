@@ -48,6 +48,10 @@ class AssistantPanelState extends State<AssistantPanel> {
   bool _editingContext = false;
   bool _savingContext = false;
   bool _authorizing = false;
+  bool _openingTree = false;
+  String? _treeNode;
+  bool get _treeMode =>
+      conversation.registeredOnly && conversation.mode == AssistantMode.school;
   bool get _canSend =>
       conversation.ready &&
       conversation.connectionError == null &&
@@ -96,6 +100,7 @@ class AssistantPanelState extends State<AssistantPanel> {
     _updateTraversal();
     if (widget.active && widget.fullScreen) _restoreFocus();
     conversation.addListener(_followMessages);
+    _ensureTree();
   }
 
   @override
@@ -110,9 +115,45 @@ class AssistantPanelState extends State<AssistantPanel> {
       oldWidget.conversation.removeListener(_followMessages);
       conversation.addListener(_followMessages);
     }
+    _ensureTree();
+  }
+
+  void _ensureTree() {
+    if (!mounted ||
+        !widget.active ||
+        !_treeMode ||
+        !conversation.ready ||
+        _openingTree ||
+        conversation.guidanceOpen) {
+      return;
+    }
+    _openingTree = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        if (mounted &&
+            widget.active &&
+            _treeMode &&
+            conversation.ready &&
+            !conversation.guidanceOpen) {
+          await conversation.showGuidance();
+        }
+      } finally {
+        _openingTree = false;
+      }
+    });
   }
 
   void _followMessages() {
+    _ensureTree();
+    if (_treeMode) {
+      if (_treeNode != conversation.guidance?.nodeId) {
+        _treeNode = conversation.guidance?.nodeId;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _scroll.hasClients) _scroll.jumpTo(0);
+        });
+      }
+      return;
+    }
     final added = conversation.turns.length > _turnCount;
     _turnCount = conversation.turns.length;
     final atBottom = !_scroll.hasClients || _scroll.position.extentAfter < 80;
@@ -229,13 +270,6 @@ class AssistantPanelState extends State<AssistantPanel> {
                   padding: const EdgeInsets.all(14),
                   children: [
                     if (conversation.registeredOnly) ...[
-                      OutlinedButton.icon(
-                        onPressed: conversation.guidanceLoading
-                            ? null
-                            : conversation.showGuidance,
-                        icon: const Icon(Icons.menu_book_outlined),
-                        label: const Text('학사 안내'),
-                      ),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -255,30 +289,34 @@ class AssistantPanelState extends State<AssistantPanel> {
                             ),
                         ],
                       ),
-                      Text(
-                        conversation.context.institution == null
-                            ? '설정에서 학업 프로필을 확인해 주세요.'
-                            : '${conversation.context.institution} · ${conversation.context.department ?? "학과 미선택"}',
-                      ),
-                      TextButton(
-                        onPressed: _canSend ? conversation.openSettings : null,
-                        child: const Text('학교 정보는 설정에서 변경'),
-                      ),
-                      if (!conversation.context.hasRegisteredSchool)
-                        const Text(
-                          '학교 질문과 맞춤 안내에는 등록된 학교·학과가 필요합니다. 개인 기준·PDF 질문은 아직 지원하지 않습니다.',
+                      if (!_treeMode) ...[
+                        Text(
+                          conversation.context.institution == null
+                              ? '설정에서 학업 프로필을 확인해 주세요.'
+                              : '${conversation.context.institution} · ${conversation.context.department ?? "학과 미선택"}',
                         ),
-                      Text(
-                        conversation.allowsMode(conversation.mode)
-                            ? 'Google 외부 AI 전송 허용 중 · 설정에서 변경'
-                            : 'Google 외부 AI 전송 · 전송 전 동의 확인',
-                      ),
-                      if (conversation.permissionError != null) ...[
-                        Text(conversation.permissionError!),
                         TextButton(
-                          onPressed: conversation.refreshPermission,
-                          child: const Text('전송 설정 다시 읽기'),
+                          onPressed: _canSend
+                              ? conversation.openSettings
+                              : null,
+                          child: const Text('학교 정보는 설정에서 변경'),
                         ),
+                        if (!conversation.context.hasRegisteredSchool)
+                          const Text(
+                            '맞춤 안내에는 등록된 학교·학과와 학교 문서 근거가 필요합니다. 개인 기록·PDF만으로 답하는 기능은 아직 지원하지 않습니다.',
+                          ),
+                        Text(
+                          conversation.allowsMode(conversation.mode)
+                              ? 'Google 외부 AI 전송 허용 중 · 설정에서 변경'
+                              : 'Google 외부 AI 전송 · 전송 전 동의 확인',
+                        ),
+                        if (conversation.permissionError != null) ...[
+                          Text(conversation.permissionError!),
+                          TextButton(
+                            onPressed: conversation.refreshPermission,
+                            child: const Text('전송 설정 다시 읽기'),
+                          ),
+                        ],
                       ],
                       if (conversation.mode == AssistantMode.personalized) ...[
                         Text(
@@ -386,26 +424,32 @@ class AssistantPanelState extends State<AssistantPanel> {
                       ),
                       const Divider(),
                     ],
-                    if (conversation.guidanceOpen)
+                    if (_treeMode || conversation.guidanceOpen)
                       AcademicGuidanceView(conversation: conversation),
-                    if (conversation.turns.isEmpty &&
+                    if (!_treeMode &&
+                        conversation.turns.isEmpty &&
                         !conversation.guidanceOpen)
-                      Text('학교 규정에 관해 질문해 보세요. 승인된 근거가 없으면 근거 부족을 안내합니다.'),
-                    for (final turn in conversation.turns) ...[
-                      _bubble(
-                        Text(
-                          '${conversation.registeredOnly ? '${turn.mode.label} · ' : ''}나: ${turn.question}',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            height: 1.5,
-                          ),
-                        ),
-                        user: true,
+                      Text(
+                        conversation.registeredOnly
+                            ? '선택한 내 기록과 학교 안내를 함께 살펴볼 질문을 입력해 주세요.'
+                            : '학교 규정에 관해 질문해 보세요. 승인된 근거가 없으면 근거 부족을 안내합니다.',
                       ),
-                      const SizedBox(height: 8),
-                      _bubble(_response(context, turn)),
-                      const SizedBox(height: 16),
-                    ],
+                    if (!_treeMode)
+                      for (final turn in conversation.turns) ...[
+                        _bubble(
+                          Text(
+                            '${conversation.registeredOnly ? '${turn.mode.label} · ' : ''}나: ${turn.question}',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onPrimary,
+                              height: 1.5,
+                            ),
+                          ),
+                          user: true,
+                        ),
+                        const SizedBox(height: 8),
+                        _bubble(_response(context, turn)),
+                        const SizedBox(height: 16),
+                      ],
                   ],
                 ),
               ),
@@ -417,47 +461,48 @@ class AssistantPanelState extends State<AssistantPanel> {
                     child: Text('공식 문서 근거 확인 중…'),
                   ),
                 ),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        enabled: conversation.ready,
-                        controller: conversation.input,
-                        maxLength: 4000,
-                        onSubmitted: (_) {
-                          if (_canSend) _submit();
-                        },
-                        decoration: InputDecoration(
-                          labelText: conversation.registeredOnly
-                              ? conversation.mode.label
-                              : '학교 규정 질문',
-                          hintText:
-                              conversation.mode == AssistantMode.personalized
-                              ? '예: 내 봉사 기록과 학교 안내를 설명해 줘'
-                              : '예: 사회봉사 조건은?',
-                          counterText: '',
-                          isDense: true,
-                          border: OutlineInputBorder(),
+              if (!_treeMode)
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          enabled: conversation.ready,
+                          controller: conversation.input,
+                          maxLength: 4000,
+                          onSubmitted: (_) {
+                            if (_canSend) _submit();
+                          },
+                          decoration: InputDecoration(
+                            labelText: conversation.registeredOnly
+                                ? conversation.mode.label
+                                : '학교 규정 질문',
+                            hintText:
+                                conversation.mode == AssistantMode.personalized
+                                ? '예: 내 봉사 기록과 학교 안내를 설명해 줘'
+                                : '예: 사회봉사 조건은?',
+                            counterText: '',
+                            isDense: true,
+                            border: OutlineInputBorder(),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (width < 300)
-                      IconButton.filled(
-                        tooltip: '보내기',
-                        onPressed: _canSend ? _submit : null,
-                        icon: Icon(Icons.send),
-                      )
-                    else
-                      FilledButton(
-                        onPressed: _canSend ? _submit : null,
-                        child: Text('보내기'),
-                      ),
-                  ],
+                      const SizedBox(width: 8),
+                      if (width < 300)
+                        IconButton.filled(
+                          tooltip: '보내기',
+                          onPressed: _canSend ? _submit : null,
+                          icon: Icon(Icons.send),
+                        )
+                      else
+                        FilledButton(
+                          onPressed: _canSend ? _submit : null,
+                          child: Text('보내기'),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
             ],
           ),
         ),

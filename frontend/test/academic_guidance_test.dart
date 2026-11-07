@@ -10,6 +10,7 @@ import 'package:university_path_frontend/features/api/guidance_api.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/auth/guidance_asset_gateway.dart';
 import 'package:university_path_frontend/features/assistant/academic_guidance_view.dart';
+import 'package:university_path_frontend/features/assistant/assistant_panel.dart';
 import 'package:university_path_frontend/features/assistant/assistant_api.dart';
 import 'package:university_path_frontend/features/assistant/assistant_conversation.dart';
 import 'package:university_path_frontend/features/assistant/conversation_bridge.dart';
@@ -79,14 +80,10 @@ class AcademicGateway extends ApiGateway implements GuidanceAssetGateway {
   );
 }
 
-AssistantConversation conversation(
-  AcademicGateway api, {
-  String support = 'school',
-}) =>
+AssistantConversation conversation(AcademicGateway api) =>
     AssistantConversation(
       guidanceApi: GuidanceApi(api, ownerId: userId),
       registeredOnly: true,
-      supportedGuidanceInstitutionId: support,
     )..setContext(
       const SchoolQueryContext(
         institutionId: 'school',
@@ -97,18 +94,101 @@ AssistantConversation conversation(
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  testWidgets(
+    'school mode opens tree directly and switching preserves personal draft',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final api = AcademicGateway();
+      final c = AssistantConversation(
+        guidanceApi: GuidanceApi(api),
+        registeredOnly: true,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.centerRight,
+              child: AssistantPanel(
+                conversation: c,
+                onClose: () {},
+                width: 480,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(api.paths, ['me/academic-guidance/nodes/home']);
+      expect(find.text('학사일정'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.textContaining('전송 전 동의'), findsNothing);
+      await tester.tap(find.text('학사일정'));
+      await tester.pumpAndSettle();
+      expect(api.paths.last, 'me/academic-guidance/nodes/calendar:2026:11');
+      await tester.tap(find.text('처음으로'));
+      await tester.pumpAndSettle();
+      expect(c.guidance!.nodeId, 'home');
+      await tester.tap(find.widgetWithText(ChoiceChip, '내 자료로 질문'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextField), findsOneWidget);
+      await tester.enterText(find.byType(TextField), '보존할 내 자료 질문');
+      await tester.tap(find.widgetWithText(ChoiceChip, '학교 질문'));
+      await tester.pumpAndSettle();
+      expect(find.text('학사일정'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      await tester.tap(find.widgetWithText(ChoiceChip, '내 자료로 질문'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '보존할 내 자료 질문',
+      );
+      await tester.pumpWidget(const SizedBox());
+      c.dispose();
+    },
+  );
+  testWidgets('tree load failure shows retry inside school mode', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final api = AcademicGateway()
+      ..failure = const AuthFailure('서버 연결을 확인해 주세요.', status: 503);
+    final c = conversation(api);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AssistantPanel(conversation: c, onClose: () {}, width: 480),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('서버 연결을 확인해 주세요.'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    api.failure = null;
+    await tester.tap(find.text('안내 다시 읽기'));
+    await tester.pumpAndSettle();
+    expect(find.text('학사일정'), findsOneWidget);
+    expect(api.paths.length, 2);
+    await tester.pumpWidget(const SizedBox());
+    c.dispose();
+  });
   test(
-    'missing or mismatched school mapping never fetches another school data',
+    'tree fetches server snapshot without a school mapping or personal profile',
     () async {
-      for (final id in ['', 'different-school']) {
-        final api = AcademicGateway();
-        final c = conversation(api, support: id);
-        await c.showGuidance();
-        expect(api.paths, isEmpty);
-        expect(c.guidance, isNull);
-        expect(c.guidanceError, isNotNull);
-        c.dispose();
-      }
+      final api = AcademicGateway();
+      final c = AssistantConversation(
+        guidanceApi: GuidanceApi(api),
+        registeredOnly: true,
+      );
+      await c.showGuidance();
+      expect(api.paths.single, 'me/academic-guidance/nodes/home');
+      expect(c.guidance!.nodeId, 'home');
+      expect(c.guidanceError, isNull);
+      await c.refreshAudits();
+      expect(c.guidanceError, contains('등록 학교·학과'));
+      expect(api.paths.length, 1);
+      c.dispose();
     },
   );
   test(
@@ -122,7 +202,7 @@ void main() {
       api.failure = const AuthFailure('다시 읽기', status: 404);
       await c.navigateGuidance('notices');
       expect(c.guidance!.nodeId, 'calendar:2026:11');
-      expect(c.guidanceError, '다시 읽기');
+      expect(c.guidanceError, contains('서버가 최신 버전'));
       c.dispose();
     },
   );

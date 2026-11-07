@@ -84,10 +84,10 @@ void main() {
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pumpAndSettle();
       expect(find.byType(SchoolQueryContextForm), findsNothing);
+      await tester.tap(find.widgetWithText(ChoiceChip, '내 자료로 질문'));
+      await tester.pumpAndSettle();
       final question = find.byType(TextField);
       await tester.enterText(question, '보존할 질문');
-      await tester.tap(find.text('내 자료로 질문'));
-      await tester.pumpAndSettle();
       final controller = tester.widget<TextField>(question).controller!;
       controller.selection = const TextSelection(
         baseOffset: 1,
