@@ -108,11 +108,15 @@ void main() {
       ...selection(), 'status': 'needs_review',
       'programs': [manual],
     };
-    expect((await api.select(scope)).programs.single.rules.single.evidence, isEmpty);
+    final selected = await api.select(scope);
+    expect(selected.status, 'needs_review');
+    expect(selected.programs.single.rules.single.evidence, isEmpty);
     final calculated = program();
     ((calculated['rules'] as List).single as Map)['evidence'] = [];
     gateway.response = calculated;
     await expectLater(api.get(identifier), throwsFormatException);
+    gateway.response = {...selection(), 'programs': [calculated]};
+    await expectLater(api.select(scope), throwsFormatException);
   });
 
   test('closed condition types preserve decimals and versioned identities', () {
