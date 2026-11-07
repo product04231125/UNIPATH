@@ -36953,6 +36953,407 @@
           }
         }
       }
+    },
+    "/api/v1/me/personalized-guidance": {
+      "post": {
+        "tags": [
+          "personalization and job analysis"
+        ],
+        "summary": "Personalized Guidance",
+        "operationId": "personalized_guidance_api_v1_me_personalized_guidance_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonalizedGuidanceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalizedGuidanceResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/academic-guidance/nodes/{node_id}": {
+      "get": {
+        "tags": [
+          "academic guidance"
+        ],
+        "summary": "Node",
+        "operationId": "node_api_v1_me_academic_guidance_nodes__node_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "node_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9:_-]{1,200}$",
+              "title": "Node Id"
+            }
+          },
+          {
+            "name": "audit_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Audit Id"
+            }
+          },
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicGuidance"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/academic-guidance/assets/{asset_id}": {
+      "get": {
+        "tags": [
+          "academic guidance"
+        ],
+        "summary": "Asset",
+        "operationId": "asset_api_v1_me_academic_guidance_assets__asset_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "asset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "title": "Asset Id"
+            }
+          },
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public source",
+            "content": {
+              "application/pdf": {},
+              "image/jpeg": {}
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -54920,6 +55321,7 @@
         "enum": [
           "compared_with_personal_evidence",
           "personal_records_required",
+          "external_processing_consent_required",
           "analyzer_not_configured",
           "no_requirements_found",
           "analysis_failed"
@@ -54941,6 +55343,11 @@
             "maxLength": 20000,
             "minLength": 1,
             "title": "Posting Text"
+          },
+          "external_processing_consent": {
+            "type": "boolean",
+            "title": "External Processing Consent",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -54980,10 +55387,13 @@
           "missing_fields": {
             "items": {
               "type": "string",
-              "const": "records"
+              "enum": [
+                "records",
+                "external_processing_consent"
+              ]
             },
             "type": "array",
-            "maxItems": 1,
+            "maxItems": 2,
             "title": "Missing Fields"
           }
         },
@@ -55269,6 +55679,1146 @@
           "preferred"
         ],
         "title": "RequirementPriority"
+      },
+      "AcademicGuidance": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "academic-click-v3",
+            "title": "Schema Version"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "state": {
+            "$ref": "#/components/schemas/GuidanceState"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/GuidanceReason"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/GuidanceCard"
+            },
+            "type": "array",
+            "title": "Cards"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "buttons": {
+            "items": {
+              "$ref": "#/components/schemas/GuidanceButton"
+            },
+            "type": "array",
+            "title": "Buttons"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "snapshot_stale": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Stale"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceSource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          },
+          "campus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campus"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceCoverage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "listing_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "listed",
+                  "moved",
+                  "withdrawn"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Status"
+          },
+          "attachment_state": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "not_listed"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attachment State"
+          },
+          "workflow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceWorkflow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "integration_state": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "connected",
+                  "adapter_not_connected"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Integration State"
+          },
+          "missing_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Fields"
+          },
+          "audit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceAudit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/AuditIssue"
+            },
+            "type": "array",
+            "title": "Issues"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "node_id",
+          "state",
+          "reason",
+          "message",
+          "cards",
+          "warnings",
+          "buttons"
+        ],
+        "title": "AcademicGuidance"
+      },
+      "GuidanceAudit": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "context": {
+            "$ref": "#/components/schemas/GraduationContext"
+          },
+          "evaluated_on": {
+            "type": "string",
+            "title": "Evaluated On"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "current_usable": {
+            "type": "boolean",
+            "title": "Current Usable"
+          },
+          "catalog_complete": {
+            "type": "boolean",
+            "title": "Catalog Complete"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "context",
+          "evaluated_on",
+          "status",
+          "reason",
+          "current_usable",
+          "catalog_complete"
+        ],
+        "title": "GuidanceAudit"
+      },
+      "GuidanceButton": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "action": {
+            "type": "string",
+            "const": "select_node",
+            "title": "Action"
+          },
+          "node_id": {
+            "type": "string",
+            "title": "Node Id"
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "available",
+              "content_pending"
+            ],
+            "title": "Availability"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "action",
+          "node_id",
+          "availability"
+        ],
+        "title": "GuidanceButton"
+      },
+      "GuidanceCard": {
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/GuidanceCardType"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/GuidanceSource"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "date_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Text"
+          },
+          "tables": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tables"
+          },
+          "table": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceTable"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "extraction_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "text_extracted",
+                  "ocr_unreviewed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Status"
+          },
+          "preferred_view": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "image"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred View"
+          },
+          "image_asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Asset Id"
+          },
+          "template_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Id"
+          },
+          "rule_set_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Set Id"
+          },
+          "rule_set_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Set Version"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "quantities": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceQuantities"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "missing_courses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Courses"
+          },
+          "uncertain_courses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Uncertain Courses"
+          },
+          "source_state": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "available",
+                  "unavailable"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source State"
+          },
+          "evidence_record_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Evidence Record Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "body"
+        ],
+        "title": "GuidanceCard"
+      },
+      "GuidanceCardType": {
+        "type": "string",
+        "enum": [
+          "audit_requirement",
+          "calendar_event",
+          "reference_text",
+          "reference_table",
+          "regulation_excerpt",
+          "regulation_metadata",
+          "regulation_page"
+        ],
+        "title": "GuidanceCardType"
+      },
+      "GuidanceCoverage": {
+        "properties": {
+          "listed": {
+            "type": "integer",
+            "title": "Listed"
+          },
+          "attachments": {
+            "type": "integer",
+            "title": "Attachments"
+          },
+          "without_attachments": {
+            "type": "integer",
+            "title": "Without Attachments"
+          },
+          "ocr_pages": {
+            "type": "integer",
+            "title": "Ocr Pages"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "listed",
+          "attachments",
+          "without_attachments",
+          "ocr_pages"
+        ],
+        "title": "GuidanceCoverage"
+      },
+      "GuidanceQuantities": {
+        "properties": {
+          "current": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current"
+          },
+          "required": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required"
+          },
+          "deficit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deficit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "GuidanceQuantities"
+      },
+      "GuidanceReason": {
+        "type": "string",
+        "enum": [
+          "menu",
+          "unknown_node",
+          "approved_content_not_configured",
+          "verified_audit_required",
+          "audit_rendered",
+          "invalid_audit_projection",
+          "calendar_snapshot",
+          "department_overview",
+          "department_section",
+          "department_content_pending",
+          "regulation_excerpt",
+          "regulation_page",
+          "university_regulation",
+          "university_pdf_page",
+          "scholarship_overview",
+          "scholarship_section",
+          "scholarship_table",
+          "scholarship_table_row",
+          "career_inputs_required",
+          "career_sources"
+        ],
+        "title": "GuidanceReason"
+      },
+      "GuidanceSource": {
+        "properties": {
+          "type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "official_calendar",
+                  "official_pdf",
+                  "official_website",
+                  "provided_pdf"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Id"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          },
+          "chunk_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Id"
+          },
+          "knowledge_document_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Knowledge Document Id"
+          },
+          "knowledge_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Knowledge Version"
+          },
+          "document_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Version"
+          },
+          "content_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Hash"
+          },
+          "document_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "GuidanceSource"
+      },
+      "GuidanceState": {
+        "type": "string",
+        "enum": [
+          "ready",
+          "needs_selection",
+          "needs_input",
+          "unavailable"
+        ],
+        "title": "GuidanceState"
+      },
+      "GuidanceTable": {
+        "properties": {
+          "caption": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Caption"
+          },
+          "rows": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/GuidanceTableCell"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "grid": {
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Grid"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rows",
+          "grid"
+        ],
+        "title": "GuidanceTable"
+      },
+      "GuidanceTableCell": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "rowspan": {
+            "type": "integer",
+            "title": "Rowspan"
+          },
+          "colspan": {
+            "type": "integer",
+            "title": "Colspan"
+          },
+          "header": {
+            "type": "boolean",
+            "title": "Header"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text",
+          "rowspan",
+          "colspan",
+          "header"
+        ],
+        "title": "GuidanceTableCell"
+      },
+      "GuidanceWorkflow": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "requires_authenticated_user": {
+            "type": "boolean",
+            "title": "Requires Authenticated User"
+          },
+          "record_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Record Kinds"
+          },
+          "job_selection": {
+            "type": "string",
+            "title": "Job Selection"
+          },
+          "region_selection": {
+            "type": "string",
+            "title": "Region Selection"
+          },
+          "steps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "requires_authenticated_user",
+          "record_kinds",
+          "job_selection",
+          "region_selection",
+          "steps"
+        ],
+        "title": "GuidanceWorkflow"
+      },
+      "PersonalizedGuidanceReason": {
+        "type": "string",
+        "enum": [
+          "generated_from_separated_evidence",
+          "generator_not_configured",
+          "school_evidence_unavailable",
+          "personal_records_required",
+          "external_processing_consent_required",
+          "generator_reported_insufficient_evidence",
+          "generation_failed"
+        ],
+        "title": "PersonalizedGuidanceReason"
+      },
+      "PersonalizedGuidanceRequest": {
+        "properties": {
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalEvidenceSelection"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Records"
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Question"
+          },
+          "context": {
+            "$ref": "#/components/schemas/KnowledgeContext"
+          },
+          "external_processing_consent": {
+            "type": "boolean",
+            "title": "External Processing Consent",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question",
+          "context"
+        ],
+        "title": "PersonalizedGuidanceRequest"
+      },
+      "PersonalizedGuidanceResponse": {
+        "properties": {
+          "query_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Query Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PersonalizedGuidanceStatus"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/PersonalizedGuidanceReason"
+          },
+          "official": {
+            "type": "boolean",
+            "const": false,
+            "title": "Official",
+            "default": false
+          },
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "school": {
+            "$ref": "#/components/schemas/KnowledgeSearchResponse"
+          },
+          "personal": {
+            "$ref": "#/components/schemas/PersonalizationContext"
+          },
+          "school_chunk_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "School Chunk Ids"
+          },
+          "personal_citations": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalEvidenceCitation"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Personal Citations"
+          },
+          "missing_fields": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "records",
+                "external_processing_consent"
+              ]
+            },
+            "type": "array",
+            "maxItems": 2,
+            "title": "Missing Fields"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "query_id",
+          "status",
+          "reason",
+          "school",
+          "personal"
+        ],
+        "title": "PersonalizedGuidanceResponse"
+      },
+      "PersonalizedGuidanceStatus": {
+        "type": "string",
+        "enum": [
+          "grounded",
+          "evidence_only",
+          "needs_user_input",
+          "insufficient_evidence",
+          "failed"
+        ],
+        "title": "PersonalizedGuidanceStatus"
       }
     },
     "securitySchemes": {

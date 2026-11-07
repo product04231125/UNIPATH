@@ -138,8 +138,8 @@ class CareerTests(unittest.TestCase):
         ):
             with self.subTest(change=change), self.assertRaises(ValueError):
                 self.analyzer({**VALUE, **change}).analyze(POSTING.text, CONTEXT)
-        with self.assertRaises(ValueError):
-            self.analyzer().analyze(POSTING.text * 2, CONTEXT)
+        repeated = self.analyzer().analyze(POSTING.text * 2, CONTEXT)[0]
+        self.assertEqual(repeated["posting_evidence"]["excerpt"], "정보처리기사 우대")
 
     def test_duplicate_records_rejected(self):
         with self.assertRaises(ValueError):

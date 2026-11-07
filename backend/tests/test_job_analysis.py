@@ -32,6 +32,7 @@ def test_request_rejects_spoofed_ownership_and_invalid_selections():
         {"records": [{**reference, "expected_version": True}]},
         {"records": [{**reference, "kind": "official"}]},
         {"personal_profile": {"skills": ["Python"]}},
+        {"external_processing_consent": "true"},
     ):
         with pytest.raises(ValidationError):
             JobAnalysisRequest.model_validate({"posting_text": POSTING, **change})
@@ -50,7 +51,15 @@ def setup(c):
             "result": "Python으로 API 구현",
         },
     )
-    return owner, record, {"posting_text": POSTING, "records": [selection(record)]}
+    return (
+        owner,
+        record,
+        {
+            "posting_text": POSTING,
+            "records": [selection(record)],
+            "external_processing_consent": True,
+        },
+    )
 
 
 class SyntheticAnalyzer:
@@ -210,3 +219,89 @@ def test_personal_record_changes_during_analysis_invalidate_result(auth_client):
     result = c.post(ROOT + "/job-analyses", headers=owner, json=body)
     assert result.status_code == 409
     assert "comparisons" not in result.json()
+
+
+@pytest.mark.integration
+def test_no_record_leaves_the_service_without_consent_for_this_request(auth_client):
+    c = auth_client
+    owner, _, body = setup(c)
+    analyzer = SyntheticAnalyzer()
+    c.app.state.job_analyzer = analyzer
+    for payload in (
+        {**body, "external_processing_consent": False},
+        {k: v for k, v in body.items() if k != "external_processing_consent"},
+    ):
+        result = c.post(ROOT + "/job-analyses", headers=owner, json=payload)
+        assert result.status_code == 200, result.text
+        assert result.json()["status"] == "needs_user_input"
+        assert result.json()["reason"] == "external_processing_consent_required"
+        assert result.json()["missing_fields"] == ["external_processing_consent"]
+    assert analyzer.calls == []
+    assert c.post(ROOT + "/job-analyses", headers=owner, json=body).json()["status"] == "completed"
+    # Consent is not remembered between requests.
+    denied = c.post(
+        ROOT + "/job-analyses", headers=owner, json={**body, "external_processing_consent": False}
+    )
+    assert denied.json()["reason"] == "external_processing_consent_required"
+    assert len(analyzer.calls) == 1
+
+
+@pytest.mark.integration
+def test_direct_identifiers_are_removed_and_never_logged(auth_client, caplog):
+    c = auth_client
+    student = register(c, "redaction@example.test")
+    owner = authorization(student)
+    name = student.json()["user"]["display_name"]
+    record = post(
+        c,
+        owner,
+        "experience-records",
+        {
+            "title": name + " 합성 프로젝트",
+            "experience_type": "프로젝트",
+            "detail": (
+                "연락처 010-1234-5678, redaction@example.test, 학번: 20261234, "
+                "https://portfolio.example.test/me 에 게시"
+            ),
+            "result": "Python으로 API 구현",
+        },
+    )
+    analyzer = SyntheticAnalyzer()
+    c.app.state.job_analyzer = analyzer
+    body = {
+        "posting_text": POSTING,
+        "records": [selection(record)],
+        "external_processing_consent": True,
+    }
+    assert c.post(ROOT + "/job-analyses", headers=owner, json=body).json()["status"] == "completed"
+    sent = analyzer.calls[0].records[0]
+    for value in (name, "010-1234-5678", "redaction@example.test", "20261234", "portfolio"):
+        assert value not in sent.text and value not in sent.title
+    assert "Python으로 API 구현" in sent.text
+    # Failures record only the exception type.
+    c.app.state.job_analyzer = type(
+        "Failing",
+        (),
+        {"analyze": lambda self, posting, context: 1 / 0},
+    )()
+    failed = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert (failed.json()["status"], failed.json()["reason"]) == ("failed", "analysis_failed")
+    assert failed.json()["comparisons"] == []
+    assert "ZeroDivisionError" in caplog.text
+    for value in ("Python 개발 경험", "Python으로 API 구현", name):
+        assert value not in caplog.text
+
+
+@pytest.mark.integration
+def test_shared_llm_ceiling_blocks_before_calling_the_model(auth_client):
+    c = auth_client
+    owner, _, body = setup(c)
+    analyzer = SyntheticAnalyzer()
+    c.app.state.job_analyzer = analyzer
+    c.app.state.settings = c.app.state.settings.model_copy(
+        update={"llm_requests_per_15_minutes": 1}
+    )
+    assert c.post(ROOT + "/job-analyses", headers=owner, json=body).status_code == 200
+    second = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert second.status_code == 429
+    assert len(analyzer.calls) == 1

@@ -1,11 +1,16 @@
-"""Minimal personal-context and job-analysis endpoints, without management features."""
+"""Personal context, job analysis and school guidance that keeps personal records separate."""
 
 from fastapi import APIRouter, Request
 
 from app.api.auth import CurrentIdentity, Database
 from app.schemas.job_analysis import JobAnalysisRequest, JobAnalysisResponse
 from app.schemas.personalization import PersonalizationContext, PersonalizationRequest
+from app.schemas.personalized_guidance import (
+    PersonalizedGuidanceRequest,
+    PersonalizedGuidanceResponse,
+)
 from app.services.job_analysis.service import execute
+from app.services.personalization import guidance
 from app.services.personalization.context import assemble
 
 router = APIRouter(prefix="/me", tags=["personalization and job analysis"])
@@ -19,3 +24,14 @@ def context(payload: PersonalizationRequest, db: Database, identity: CurrentIden
 @router.post("/job-analyses", response_model=JobAnalysisResponse)
 def analyze(payload: JobAnalysisRequest, request: Request, db: Database, identity: CurrentIdentity):
     return execute(db, request, payload, request.app.state.job_analyzer)
+
+
+@router.post("/personalized-guidance", response_model=PersonalizedGuidanceResponse)
+def personalized_guidance(
+    payload: PersonalizedGuidanceRequest,
+    request: Request,
+    db: Database,
+    identity: CurrentIdentity,
+):
+    state = request.app.state
+    return guidance.execute(db, request, payload, state.knowledge_index_cache, state.guidance_model)

@@ -7,6 +7,11 @@ services:
     image: ${API_IMAGE:?Set API_IMAGE to the verified local backend image ID}
     build: !reset null
     pull_policy: never
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/vertex-credentials.json
+    volumes:
+      # Unset keeps an empty file: Gemini stays off without VERTEX_* settings.
+      - ${VERTEX_CREDENTIALS_FILE:-/dev/null}:/run/secrets/vertex-credentials.json:ro
   migrate:
     image: ${API_IMAGE:?Set API_IMAGE to the verified local backend image ID}
     build: !reset null

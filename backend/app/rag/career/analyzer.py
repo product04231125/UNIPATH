@@ -13,7 +13,7 @@ Do not infer missing qualifications.
 Do not claim certification validity, employer verification,
 hiring probability or guaranteed eligibility.
 Return {"comparisons":[{"priority":"required|preferred", "requirement":"...",
-"posting_quote":"exact unique substring of posting_text",
+"posting_quote":"exact substring of posting_text, preferably the whole requirement line",
 "status":"supported|partially_supported|insufficient_evidence",
 "personal_evidence":[{"kind":"...", "record_id":"...", "version":1,"excerpt":"exact substring"}],
 "explanation":"..."}]}. Max 20 comparisons. supported/partially_supported require personal evidence.
@@ -27,6 +27,17 @@ def bounded_text(value):
     if not isinstance(value, str) or not 1 <= len(value.strip()) <= 2000:
         raise ValueError("Invalid analysis text")
     return value
+
+
+def locate_quote(posting_text, quote, used):
+    """Any exact occurrence is a true citation; repeated wording must not fail the analysis."""
+    starts, start = [], posting_text.find(quote)
+    while start >= 0:
+        starts.append(start)
+        start = posting_text.find(quote, start + 1)
+    if not starts:
+        raise ValueError("Posting quote must be an exact substring")
+    return next((item for item in starts if (item, quote) not in used), starts[0])
 
 
 def validate_citations(values, records):
@@ -64,12 +75,11 @@ class EvidenceAnalyzer:
         values = output["comparisons"]
         if not isinstance(values, list) or len(values) > 20:
             raise ValueError("Invalid comparison output")
-        result, seen = [], set()
-        for value in values:
-            quote = bounded_text(value["posting_quote"])
-            start = posting_text.find(quote)
-            if start < 0 or posting_text.find(quote, start + 1) >= 0:
-                raise ValueError("Posting quote must identify one exact span")
+        result, used = [], set()
+        for index, value in enumerate(values):
+            quote = bounded_text(value["posting_quote"]).strip()
+            start = locate_quote(posting_text, bounded_text(quote), used)
+            used.add((start, quote))
             if value["priority"] not in {"required", "preferred"} or value["status"] not in {
                 "supported",
                 "partially_supported",
@@ -79,10 +89,7 @@ class EvidenceAnalyzer:
             citations = validate_citations(value["personal_evidence"], records)
             if value["status"] != "insufficient_evidence" and not citations:
                 raise ValueError("Positive comparison requires selected evidence")
-            identifier = str(uuid5(NAMESPACE_URL, posting_text + "\n" + str(start) + "\n" + quote))
-            if identifier in seen:
-                raise ValueError("Duplicate requirement")
-            seen.add(identifier)
+            identifier = str(uuid5(NAMESPACE_URL, f"{posting_text}\n{index}\n{start}\n{quote}"))
             result.append(
                 {
                     "requirement_id": identifier,

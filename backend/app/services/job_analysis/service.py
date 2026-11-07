@@ -6,13 +6,14 @@ from uuid import uuid4
 from app.core.auth_errors import conflict
 from app.schemas import job_analysis as dto
 from app.schemas.personalization import PersonalizationContext
-from app.services import auth
+from app.services import auth, gemini
 from app.services.personalization.context import assemble
+from app.services.personalization.redaction import redact_context
 
 
 class JobAnalyzer(Protocol):
     # The adapter owns extraction + matching; an LLM explanation alone is not a matcher.
-    # No real provider is selected or called by the default application.
+    # A provider is called only when configured and the student consented for this request.
     def analyze(
         self, posting_text: str, context: PersonalizationContext
     ) -> list[dto.JobRequirementComparison]: ...
@@ -54,11 +55,21 @@ def execute(db, request, payload, analyzer: JobAnalyzer | None):
             status=dto.JobAnalysisStatus.NOT_CONFIGURED,
             reason=dto.JobAnalysisReason.ANALYZER_NOT_CONFIGURED,
         )
-    # Release the read transaction before calling a future external adapter.
+    if not payload.external_processing_consent:
+        return dto.JobAnalysisResponse(
+            analysis_id=identifier,
+            status=dto.JobAnalysisStatus.NEEDS_USER_INPUT,
+            reason=dto.JobAnalysisReason.EXTERNAL_PROCESSING_CONSENT_REQUIRED,
+            missing_fields=["external_processing_consent"],
+        )
+    # Citations are validated against what the model actually received.
+    outbound = redact_context(context, identity)
+    gemini.reserve_call(db, request)
+    # Release the read transaction before calling the external adapter.
     db.rollback()
     try:
         comparisons = validate_comparisons(
-            payload.posting_text, context, analyzer.analyze(payload.posting_text, context)
+            payload.posting_text, outbound, analyzer.analyze(payload.posting_text, outbound)
         )
         result = dto.JobAnalysisResponse(
             analysis_id=identifier,
@@ -74,8 +85,9 @@ def execute(db, request, payload, analyzer: JobAnalyzer | None):
             ),
             comparisons=comparisons,
         )
-    except Exception:
+    except Exception as error:
         # Never return provider errors, input or unvalidated comparisons.
+        gemini.log_failure("job analysis", error)
         result = dto.JobAnalysisResponse(
             analysis_id=identifier,
             status=dto.JobAnalysisStatus.FAILED,

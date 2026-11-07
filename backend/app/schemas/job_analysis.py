@@ -17,6 +17,8 @@ class JobAnalysisRequest(PersonalizationRequest):
     posting_text: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20000)
     ]
+    # Asked per request and never stored: selected records go to an external model.
+    external_processing_consent: bool = Field(default=False, strict=True)
 
 
 class RequirementPriority(StrEnum):
@@ -70,6 +72,7 @@ class JobAnalysisStatus(StrEnum):
 class JobAnalysisReason(StrEnum):
     COMPARED_WITH_PERSONAL_EVIDENCE = "compared_with_personal_evidence"
     PERSONAL_RECORDS_REQUIRED = "personal_records_required"
+    EXTERNAL_PROCESSING_CONSENT_REQUIRED = "external_processing_consent_required"
     ANALYZER_NOT_CONFIGURED = "analyzer_not_configured"
     NO_REQUIREMENTS_FOUND = "no_requirements_found"
     ANALYSIS_FAILED = "analysis_failed"
@@ -81,7 +84,9 @@ class JobAnalysisResponse(StrictModel):
     reason: JobAnalysisReason
     official: Literal[False] = False
     comparisons: list[JobRequirementComparison] = Field(default_factory=list, max_length=50)
-    missing_fields: list[Literal["records"]] = Field(default_factory=list, max_length=1)
+    missing_fields: list[Literal["records", "external_processing_consent"]] = Field(
+        default_factory=list, max_length=2
+    )
 
     @model_validator(mode="after")
     def completed_evidence(self):

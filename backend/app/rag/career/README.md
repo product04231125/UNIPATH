@@ -46,15 +46,21 @@ from app.rag.career.vertex import VertexJSON
 
 network = Transport(allow_network=True, timeout=15)
 model = VertexJSON(
-    os.environ['VERTEX_PROJECT'], os.environ['VERTEX_LOCATION'], os.environ['VERTEX_MODEL'],
+    os.environ["VERTEX_PROJECT"],
+    os.environ["VERTEX_LOCATION"],
+    os.environ["VERTEX_MODEL"],
     transport=network,
 )
 analyzer = EvidenceAnalyzer(model)
-service = CareerService([
-    Saramin(os.environ.get('SARAMIN_ACCESS_KEY'), transport=network),
-    Work24(os.environ.get('WORK24_AUTH_KEY'), transport=network),
-    JobKorea(),
-], analyzer, analysis_limit=3)
+service = CareerService(
+    [
+        Saramin(os.environ.get("SARAMIN_ACCESS_KEY"), transport=network),
+        Work24(os.environ.get("WORK24_AUTH_KEY"), transport=network),
+        JobKorea(),
+    ],
+    analyzer,
+    analysis_limit=3,
+)
 
 # authenticated_context는 서버가 사용자 소유권을 검증하여 조립한 선택 자료다.
 # query와 동의 여부는 사용자가 제출한 값을 서버에서 검증한 뒤 전달한다.
@@ -78,7 +84,7 @@ Vertex는 선택 의존성 `requirements-vertex.txt`, ADC 인증, API 사용 권
 - `partial`은 일부 수집처 실패/미설정, `no_results`는 적어도 한 수집처 검색 성공 후
   표시할 공고가 없음, `not_available`은 성공한 수집처가 없음이다.
 - 인용문·기록 ID·버전·문자 위치를 검증한다. 인용이 실제로 존재해도 LLM의 의미 해석이
-  맞는지는 별도 QA가 필요하다. 공고의 중복 인용은 모호하므로 분석을 거부한다.
+  맞는지는 별도 QA가 필요하다. 같은 문구가 반복되면 아직 인용하지 않은 위치에 연결하며, 공고에 없는 문구는 거부한다.
 - 마감 날짜가 불명확한 공고는 확인 필요로 표시한다. 외부 API 지연/누락도 가능하다.
 - 60초 예산은 호출 사이에 확인한다. 개별 HTTP timeout/ADC 인증 시간을 포함한
   전체 실행의 강제 종료를 보장하지 않는다. 공개 서비스에는 서버 작업 취소·동시성·요금 한도가 필요하다.

@@ -3,11 +3,13 @@
 import hashlib
 import json
 import re
+from functools import lru_cache
 from pathlib import Path
 
 from .collect import DATA
 
 
+@lru_cache(maxsize=1)
 def asset_index():
     data = json.loads((DATA / "university.json").read_text(encoding="utf-8"))
     items = {}
