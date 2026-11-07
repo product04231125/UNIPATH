@@ -62,6 +62,7 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
     final catalog = StudentCatalogApi(studentApi.api);
     final courses = <StudentCoursePublicView>[];
     try {
+      final seenCursors = <String>{};
       String? cursor;
       do {
         final page = await catalog.list(
@@ -71,12 +72,16 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
         );
         courses.addAll(page.items);
         cursor = page.nextCursor;
+        if (cursor != null && !seenCursors.add(cursor)) {
+          throw StateError('Catalog pagination cursor repeated.');
+        }
       } while (cursor != null);
     } catch (_) {
       // School catalog is optional; personal sources still fill the list.
     }
     final categories = <String, String>{};
     try {
+      final seenCursors = <String>{};
       String? cursor;
       do {
         final page = await catalog.list(
@@ -90,6 +95,9 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
           }
         }
         cursor = page.nextCursor;
+        if (cursor != null && !seenCursors.add(cursor)) {
+          throw StateError('Catalog pagination cursor repeated.');
+        }
       } while (cursor != null);
     } catch (_) {
       // Curriculum links only add category; courses already collected stay.

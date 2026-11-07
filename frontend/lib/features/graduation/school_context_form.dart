@@ -159,6 +159,7 @@ class SchoolContextFormState extends State<SchoolContextForm> {
     String? department,
   }) async {
     final rows = <T>[];
+    final seenCursors = <String>{};
     String? cursor;
     do {
       final page = await _catalog.list(
@@ -169,6 +170,9 @@ class SchoolContextFormState extends State<SchoolContextForm> {
       );
       rows.addAll(page.items);
       cursor = page.nextCursor;
+      if (cursor != null && !seenCursors.add(cursor)) {
+        throw StateError('Catalog pagination cursor repeated.');
+      }
     } while (cursor != null);
     return rows;
   }
