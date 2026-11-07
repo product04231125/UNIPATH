@@ -1,3 +1,6 @@
+import 'school_knowledge_edit_dialogs.dart';
+import '../api/student_catalog_api.dart';
+import '../api/student_api_models.dart';
 import 'package:flutter/material.dart';
 
 import '../api/school_knowledge_api.dart';
@@ -107,6 +110,27 @@ class _ListState extends State<SchoolKnowledgeReviewDialog> {
     if (mounted && !_denied) await _load();
   }
 
+  Future<void> _create() async {
+    if (_loading || _opening || _denied) return;
+    setState(() => _opening = true);
+    try {
+      final catalog = StudentCatalogApi(widget.auth.forOwner(widget.ownerId));
+      final documents = <StudentDocumentPublicView>[];
+      String? cursor; final seen = <String>{};
+      do {
+        final page = await catalog.list(StudentCatalogResources.documents, cursor:cursor);
+        documents.addAll(page.items);
+        cursor = page.nextCursor;
+        if(cursor != null && !seen.add(cursor)) throw const FormatException('문서 목록이 반복됩니다.');
+      } while(cursor != null);
+      if(!mounted)return;
+      final saved = await showInputDialog<bool>(context:context,builder:(_)=>SchoolKnowledgeCreateDialog(api:_api,documents:documents));
+      if(saved==true) _filter='draft';
+    } catch(error){if(mounted)setState((){_error=_failure(error);if(_accessLost(error)){_denied=true;_items=[];}});}
+    finally{if(mounted)setState(()=>_opening=false);}
+    if(mounted&&!_denied)await _load();
+  }
+
   @override
   Widget build(BuildContext context) => InputDialog(
     title: const Text('학교 문서 근거 검토'),
@@ -116,6 +140,7 @@ class _ListState extends State<SchoolKnowledgeReviewDialog> {
     content: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (!_denied) OutlinedButton(onPressed: _loading || _opening ? null : _create, child: const Text('추출본 신규 등록')),
         AnchoredSelectField<String>(
           value: _filter,
           label: '검토 상태',
@@ -191,6 +216,7 @@ class _ReviewState extends State<_ReviewDialog> {
   SchoolKnowledgeView? _document;
   List<SchoolKnowledgePageSummary> _pages = [];
   SchoolKnowledgePageView? _page;
+  int _newPage = 0;
   String? _error;
   List<String> _fields = [];
   bool _busy = false, _loading = false, _denied = false, _stale = false;
@@ -253,6 +279,7 @@ class _ReviewState extends State<_ReviewDialog> {
       setState(() {
         _document = document;
         _pages = pages;
+        _newPage = [for(var n=1;n<=document.pageCount;n++) if(!pages.any((p)=>p.page==n)) n].firstOrNull ?? 0;
         _stale = false;
         _fields = [];
         _note.clear();
@@ -265,6 +292,19 @@ class _ReviewState extends State<_ReviewDialog> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _editPage(int page, {SchoolKnowledgePageView? initial}) async {
+    final document = _document;
+    if (_busy || _loading || _denied || _stale || document?.status != 'draft') return;
+    if (_dirty && !await confirmInputDiscardAllowsLeave(context)) return;
+    if (!mounted) return;
+    _note.clear(); _hash.clear(); _checks.fillRange(0,_checks.length,false); _checksChanged.value++;
+    setState(()=>_busy=true);
+    try {
+      await showInputDialog<bool>(context:context,builder:(_)=>SchoolKnowledgePageEditor(api:widget.api,document:document!,page:page,initial:initial));
+    } finally {if(mounted)setState(()=>_busy=false);}
+    if(mounted)await _load();
   }
 
   Future<void> _readPage(int number) async {
@@ -417,6 +457,13 @@ class _ReviewState extends State<_ReviewDialog> {
               Text('회수 시각: ${document.revokedAt!.toLocal()}'),
             const SizedBox(height: 16),
             Text('등록된 페이지 ${_pages.length}개 / 원본 ${document.pageCount}쪽'),
+            if(document.status=='draft' && _newPage > 0) ...[
+              AnchoredSelectField<int>(value:_newPage,label:'추가할 페이지',options:[
+                for(var n=1;n<=document.pageCount;n++) if(!_pages.any((p)=>p.page==n)) SelectOption(n,'$n쪽')],
+                onChanged:(value){if(editable)setState(()=>_newPage=value);}),
+              OutlinedButton(onPressed:editable?()=>_editPage(_newPage):null,child:const Text('선택 페이지 추가')),
+            ],
+
             if (_pages.isEmpty) const Text('등록된 페이지가 없습니다. 추출본 등록 상태를 확인하세요.'),
             Wrap(
               spacing: 8,
@@ -430,6 +477,8 @@ class _ReviewState extends State<_ReviewDialog> {
               ],
             ),
             if (_page case final page?) ...[
+              if(document.status=='draft') OutlinedButton(onPressed:editable?()=>_editPage(page.page,initial:page):null,child:const Text('선택 페이지 수정·삭제')),
+
               const SizedBox(height: 12),
               Text(
                 '${page.page}쪽 · ${page.isBlank ? '검토된 빈 페이지' : '${page.parts.length}개 분할'}',

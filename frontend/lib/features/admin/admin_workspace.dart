@@ -1,3 +1,4 @@
+import '../auth/school_workflow_actions.dart';
 import '../../shared/widgets/responsive_columns.dart';
 import '../../shared/app_style.dart';
 import '../../shared/credits_format.dart';
@@ -1386,6 +1387,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     ),
                   ),
                 if (_section == '/admin/overview') _overview(),
+                if (_section == '/admin/documents') const SchoolWorkflowActions(),
                 if (_section == '/admin/rules') ...[
                   _ruleViewSwitcher(),
                   const SizedBox(height: 16),
