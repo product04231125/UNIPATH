@@ -11,6 +11,12 @@ const personalConditionLabels = {
   'thesis': '논문·졸업작품',
 };
 
+// Keep old payloads readable without offering a new, separate thesis workflow.
+Iterable<MapEntry<String, String>> personalConditionChoices(String currentKind) =>
+    personalConditionLabels.entries.where(
+      (entry) => entry.key != 'thesis' || currentKind == 'thesis',
+    );
+
 /// Decimal validation never converts the user's comparison values to double.
 String? validateCalculationAmount(String? raw, {bool optional = false}) {
   final value = raw?.trim() ?? '';

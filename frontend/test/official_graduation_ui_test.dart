@@ -11,6 +11,24 @@ import 'package:university_path_frontend/features/planning/planning_repository.d
 import 'graduation_api_test.dart' as fixture;
 import 'support/auth_fixture.dart';
 
+const catalogProfile = PlanningProfile(
+  school: '검증 대학',
+  department: '검증 학과',
+  admissionYear: 2026,
+  track: 'single_major',
+  institutionId: otherId,
+  departmentId: otherId,
+  curriculumId: otherId,
+);
+
+Future<void> choose(WidgetTester tester, String from, String to) async {
+  await tester.ensureVisible(find.text(from));
+  await tester.tap(find.text(from));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(to).last);
+  await tester.pumpAndSettle();
+}
+
 Map<String, Object?> catalogRow(String path) => {
   'id': otherId,
   'version': 1,
@@ -26,14 +44,6 @@ Map<String, Object?> catalogRow(String path) => {
   'code': 'synthetic',
   'year': 2026,
 };
-
-Future<void> choose(WidgetTester tester, String from, String to) async {
-  await tester.ensureVisible(find.text(from));
-  await tester.tap(find.text(from));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text(to).last);
-  await tester.pumpAndSettle();
-}
 
 void main() {
   for (final size in [const Size(1440, 900), const Size(480, 720)]) {
@@ -95,30 +105,28 @@ void main() {
               body: OfficialGraduationPage(
                 auth: auth,
                 ownerId: userId,
-                onPersonal: () {},
+                profile: catalogProfile,
               ),
             ),
           ),
         );
         await tester.pumpAndSettle();
-        await choose(tester, '학교 선택', '검증 대학');
-        await choose(tester, '학과 선택', '검증 학과');
-        await choose(tester, '교육과정 선택', '검증 과정 (2026)');
-        for (final entry in {
-          '입학연도': '2026',
-          '이수 경로': 'single_major',
-          '기준일 (YYYY-MM-DD)': '2026-10-21',
-        }.entries) {
-          final field = find.widgetWithText(TextField, entry.key);
-          await tester.ensureVisible(field);
-          await tester.enterText(field, entry.value);
-        }
+        expect(find.text('학교 문서 검색·근거'), findsNothing);
+        expect(find.text('학교 발급 PDF 제출·이력'), findsNothing);
+        expect(find.text('내 학교·학과 기준 설정'), findsNothing);
+        expect(find.text('학교 선택'), findsNothing);
+        expect(find.text('이수 경로'), findsNothing);
+        final date = find.widgetWithText(TextField, '기준일 (YYYY-MM-DD)');
+        await tester.ensureVisible(date);
+        await tester.enterText(date, '2026-10-21');
         final run = find.text('졸업요건 감사 실행');
         await tester.ensureVisible(run);
         await tester.tap(run);
         await tester.pumpAndSettle();
         expect(creates, hasLength(1));
-        expect(find.widgetWithText(TextField, 'single_major'), findsOneWidget);
+        expect(creates.single['context']['track'], 'single_major');
+        expect(creates.single['context']['admission_year'], 2026);
+        expect(find.widgetWithText(TextField, '2026-10-21'), findsOneWidget);
         await tester.ensureVisible(run);
         await tester.tap(run);
         await tester.pumpAndSettle();
@@ -141,7 +149,7 @@ void main() {
   }
 
   testWidgets(
-    'saved catalog profile fills the audit school without a new school',
+    'saved catalog profile is a one-line summary and incomplete profile disables run',
     (tester) async {
       tester.view.resetPhysicalSize();
       tester.view.physicalSize = const Size(1440, 900);
@@ -155,12 +163,6 @@ void main() {
           if (path.endsWith('/login')) {
             return fixture.json({...identityJson(), 'access_token': token});
           }
-          if (path.contains('/catalog/')) {
-            return fixture.json({
-              'items': [catalogRow(path)],
-              'next_cursor': null,
-            });
-          }
           return fixture.json({'items': <Object?>[], 'next_cursor': null});
         }),
       );
@@ -172,28 +174,45 @@ void main() {
             body: OfficialGraduationPage(
               auth: auth,
               ownerId: userId,
-              onPersonal: () {},
-              profile: const PlanningProfile(
-                school: '검증 대학',
-                department: '검증 학과',
-                admissionYear: 2024,
-                track: 'single_major',
-                institutionId: otherId,
-                departmentId: otherId,
-                curriculumId: otherId,
-              ),
+              profile: catalogProfile,
+              onOpenSettings: () {},
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
+      expect(find.text('검증 대학 · 검증 학과 · 2026 · 단일전공'), findsOneWidget);
+      expect(find.text('설정에서 학업 프로필 수정'), findsOneWidget);
       expect(
-        find.text('설정에 저장한 등록 학교를 불러왔습니다. 기준일은 이 감사 실행에서 입력합니다.'),
-        findsOneWidget,
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, '졸업요건 감사 실행'),
+            )
+            .onPressed,
+        isNotNull,
       );
-      expect(find.text('검증 대학'), findsWidgets);
-      expect(find.text('2024'), findsWidgets);
-      expect(find.text('single_major'), findsWidgets);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: OfficialGraduationPage(
+              auth: auth,
+              ownerId: userId,
+              onOpenSettings: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('학업 프로필이 없습니다.'), findsOneWidget);
+      expect(find.text('설정에서 학업 프로필 등록'), findsOneWidget);
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, '졸업요건 감사 실행'),
+            )
+            .onPressed,
+        isNull,
+      );
       expect(tester.takeException(), isNull);
     },
   );

@@ -33,7 +33,6 @@ class _SchoolAdminApplicationInboxState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('등록 학교 권한 신청과 최초 가입·미등록 학교 신청을 구분해 심사합니다.'),
         Wrap(
           spacing: 8,
           runSpacing: 8,

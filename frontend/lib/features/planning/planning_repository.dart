@@ -25,6 +25,19 @@ class PlanningRepository extends ChangeNotifier {
   List<PlanningEvent> _events = const [];
   Future<void> _pendingOperation = Future.value();
   bool _disposed = false;
+  bool _writesBlocked = false;
+  String _writesBlockedMessage = '이 미리보기에서는 저장할 수 없습니다.';
+
+  void blockWrites(String message) {
+    _writesBlocked = true;
+    _writesBlockedMessage = message;
+  }
+
+  bool get writesBlocked => _writesBlocked;
+
+  void ensureWritable() {
+    if (_writesBlocked) throw StateError(_writesBlockedMessage);
+  }
 
   void _notify() {
     if (!_disposed) notifyListeners();
@@ -42,7 +55,10 @@ class PlanningRepository extends ChangeNotifier {
     if (_disposed) {
       return Future.error(StateError('Planning repository is closed'));
     }
-    final result = _pendingOperation.then((_) => operation());
+    final result = _pendingOperation.then((_) {
+      if (_disposed) throw StateError('Planning repository is closed');
+      return operation();
+    });
     _pendingOperation = result.then<void>(
       (_) {},
       onError: (Object _, StackTrace _) {},
@@ -105,8 +121,10 @@ class PlanningRepository extends ChangeNotifier {
     }
   });
 
-  Future<void> saveProfile(PlanningProfile profile) =>
-      _enqueue(() => _commitProfile(profile));
+  Future<void> saveProfile(PlanningProfile profile) => _enqueue(() async {
+    ensureWritable();
+    await _commitProfile(profile);
+  });
 
   Future<void> _commitProfile(PlanningProfile profile) async {
     await _save(profile, _events);
@@ -119,18 +137,20 @@ class PlanningRepository extends ChangeNotifier {
     String? department,
     int? admissionYear,
     String? track,
-  }) => _enqueue(
-    () => _commitProfile(
+  }) => _enqueue(() async {
+    ensureWritable();
+    await _commitProfile(
       _profile.withSchoolContext(
         school: school,
         department: department,
         admissionYear: admissionYear,
         track: track,
       ),
-    ),
-  );
+    );
+  });
 
   Future<void> saveEvent(PlanningEvent event) => _enqueue(() async {
+    ensureWritable();
     final index = _events.indexWhere((item) => item.id == event.id);
     final updated = [..._events];
     if (index == -1) {
@@ -146,6 +166,7 @@ class PlanningRepository extends ChangeNotifier {
 
   Future<void> deleteEvent(String id, {int? expectedVersion}) =>
       _enqueue(() async {
+        ensureWritable();
         final updated = _events.where((item) => item.id != id).toList();
         await _save(_profile, updated);
         _events = updated;
@@ -156,6 +177,7 @@ class PlanningRepository extends ChangeNotifier {
     PlanningProfile profile,
     List<PlanningEvent> events,
   ) async {
+    ensureWritable();
     if (!_loaded) throw StateError('Read personal planning before writing');
     _preferences ??= await SharedPreferences.getInstance();
     final encoded = jsonEncode({

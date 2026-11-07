@@ -7,6 +7,7 @@ import 'package:university_path_frontend/features/api/personal_evaluation_api.da
 import 'package:university_path_frontend/features/graduation/personal_calculation_controller.dart';
 import 'package:university_path_frontend/features/graduation/personal_calculation_draft.dart';
 import 'package:university_path_frontend/features/graduation/personal_calculation_page.dart';
+import 'package:university_path_frontend/features/graduation/personal_condition_fields.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 
 import 'support/calculation_gateway.dart';
@@ -23,6 +24,42 @@ Future<PersonalCalculationController> controller(
 }
 
 void main() {
+  test('saved thesis approval policies survive reopening without inferring approval', () async {
+    final c = await controller(CalculationGateway());
+    addTearDown(c.dispose);
+    expect(PersonalCalculationDraft().requiresApproval, isTrue);
+    final achievement = fixtureId(PersonalRecordKind.portfolio);
+    for (final requiresApproval in [true, false]) {
+      final saved = PersonalThesisCondition(
+        thesisType: '졸업작품', requiresApproval: requiresApproval, acceptedGrades: ['Pass'],
+        records: [PersonalThesisObservation(achievementId: achievement, completion: 'completed', approval: 'needs_review')],
+      );
+      final reopened = PersonalCalculationDraft.fromCondition(saved).condition(c.sources!) as PersonalThesisCondition;
+      expect(reopened.toJson(), saved.toJson());
+      expect(reopened.records.single.approval, 'needs_review');
+    }
+  });
+
+  testWidgets('new personal criteria offer no separate thesis workflow but saved criteria stay readable', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final c = await controller(CalculationGateway());
+    addTearDown(c.dispose);
+    Future<void> show(PersonalCalculationDraft draft) async {
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: SingleChildScrollView(child: PersonalConditionFields(
+        key: ValueKey(draft), identity: 'criterion', sources: c.sources!, draft: draft, locked: false, onChanged: () {},
+      )))));
+      await tester.pumpAndSettle();
+    }
+    await show(PersonalCalculationDraft());
+    Finder picker() => find.byWidgetPredicate((w) => w is AnchoredSelectField<String> && w.label == '실행할 계산 조건');
+    expect(tester.widget<AnchoredSelectField<String>>(picker()).options.any((o) => o.value == 'thesis'), isFalse);
+    await show(PersonalCalculationDraft.fromCondition(PersonalThesisCondition(thesisType: '이전 조건', requiresApproval: true, records: [])));
+    expect(tester.widget<AnchoredSelectField<String>>(picker()).value, 'thesis');
+    expect(find.textContaining('이전에 저장된 조건입니다.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test('amounts and dates validate exactly without float conversion', () {
     for (final value in ['0', '3.000001', '1000000.000000', '0003.125']) {
       expect(validateCalculationAmount(value), isNull, reason: value);
@@ -59,7 +96,7 @@ void main() {
     expect(body.containsKey('owner_id'), isFalse);
     expect(c.result!.label, PersonalEvaluationSummary.personalLabel);
   });
-  test('all five condition forms carry explicit choices and conservative observations', () async {
+  test('legacy condition payloads carry explicit choices and conservative observations', () async {
     final gateway = CalculationGateway()..ruleCount = 5;
     final c = await controller(gateway);
     addTearDown(c.dispose);
@@ -279,9 +316,9 @@ void main() {
   });
 
   testWidgets(
-    'five UI condition selectors render on narrow large text without implicit observations or posts',
+    'supported UI condition selectors render with enlarged desktop text without implicit observations or posts',
     (tester) async {
-      await tester.binding.setSurfaceSize(const Size(480, 520));
+      await tester.binding.setSurfaceSize(const Size(1440, 1100));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final gateway = CalculationGateway();
       final c = await controller(gateway);
@@ -297,7 +334,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      for (final entry in personalConditionLabels.entries.where(
+      for (final entry in personalConditionChoices('none').where(
         (e) => e.key != 'none',
       )) {
         final picker = find.byWidgetPredicate(
@@ -363,8 +400,12 @@ void main() {
           await tester.tap(retry);
           await tester.pumpAndSettle();
           expect(
+            find.text(PersonalEvaluationSummary.personalDisplayLabel),
+            findsWidgets,
+          );
+          expect(
             find.text(PersonalEvaluationSummary.personalLabel),
-            findsNWidgets(2),
+            findsNothing,
           );
           expect(find.text('계산 결과'), findsOneWidget);
           expect(g.posted.map((b) => b['client_id']).toSet().length, 1);

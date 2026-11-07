@@ -701,3 +701,22 @@ def test_stale_master_versions_inactive_certificates_and_foreign_courses_rejecte
     approve(c, h, draft, 404)
     post(c, h, "rule-programs", body, 404)
     assert c.get("/api/v1/catalog/certificates/" + certificate["id"], headers=h).status_code == 404
+
+
+@pytest.mark.parametrize("kind", ["custom", "credits"])
+def test_checklist_without_evidence_remains_selectable(auth_client, auth_db, kind):
+    c = auth_client
+    h, institution, context, _, chunk = setup(c, auth_db)
+    group, rules = metadata(c, h, institution, [kind])
+    body = payload(
+        group,
+        rules,
+        [{"kind": "manual_review", "instruction": "학생이 직접 확인"}],
+        chunk,
+    )
+    body["rules"][0]["evidence_chunk_ids"] = []
+    approved = approve(c, h, post(c, h, "rule-programs", body))
+    result = select_programs(c, h, context)
+    assert result["status"] == "needs_review"
+    assert [p["id"] for p in result["programs"]] == [approved["id"]]
+    assert [issue["reason"] for issue in result["issues"]] == ["manual_requirement"]

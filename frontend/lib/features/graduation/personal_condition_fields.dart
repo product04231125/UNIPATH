@@ -43,7 +43,9 @@ class _PersonalConditionFieldsState extends State<PersonalConditionFields> {
   }) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 6),
     child: TextFormField(
-      key: ValueKey('${identityHashCode(values)}-$key'),
+      key: ValueKey(
+        '${widget.identity}-${widget.draft.kind}-${identityHashCode(values)}-$key',
+      ),
       initialValue: values[key] ?? '',
       readOnly: widget.locked,
       maxLength: number ? 32 : maxLength,
@@ -121,7 +123,7 @@ class _PersonalConditionFieldsState extends State<PersonalConditionFields> {
               label: '실행할 계산 조건',
               externalLabel: true,
               options: [
-                for (final e in personalConditionLabels.entries)
+                for (final e in personalConditionChoices(draft.kind))
                   SelectOption(e.key, e.value),
               ],
               onChanged: (value) {
@@ -186,9 +188,6 @@ class _PersonalConditionFieldsState extends State<PersonalConditionFields> {
                   const Text('연결된 수강 기록이 없습니다. 빈 선택은 0개 자료로 계산합니다.'),
               ],
               if (draft.kind == 'minimum_volunteer_hours') ...[
-                const Text(
-                  '개인 활동에 직접 기록한 승인 상태·승인 시간·관찰일을 사용합니다. 보고 시간은 합산하지 않습니다. 이 입력은 학교의 승인 확인이 아닙니다.',
-                ),
                 for (final row in s.activities)
                   _check(
                     '${row.data.title} · ${_id(row.id)}',
@@ -196,8 +195,6 @@ class _PersonalConditionFieldsState extends State<PersonalConditionFields> {
                     (value) => value
                         ? draft.selected.add(row.id)
                         : draft.selected.remove(row.id),
-                    subtitle:
-                        '승인 시간 ${row.data.approvedHours ?? '미기록'} · 상태 ${row.data.approval ?? '미기록'} · 관찰일 ${row.data.observedOn ?? '미기록'}',
                   ),
                 if (s.activities.isEmpty)
                   const Text('활동이 없습니다. 빈 선택은 0개 자료로 계산합니다.'),
@@ -291,16 +288,12 @@ class _PersonalConditionFieldsState extends State<PersonalConditionFields> {
                 ],
               ],
               if (draft.kind == 'thesis') ...[
+                const Text('이전에 저장된 조건입니다. 논문 파일을 분석하거나 자료·활동 기록의 완료를 자동 판정하지 않습니다.'),
                 _field(
                   draft.values,
                   'thesisType',
                   '계산할 논문·작품 유형',
                   helper: '성과 기록의 논문·작품 유형과 일치해야 합니다.',
-                ),
-                _check(
-                  '승인 상태를 충족 조건에 포함',
-                  draft.requiresApproval,
-                  (value) => draft.requiresApproval = value,
                 ),
                 _field(
                   draft.values,
@@ -309,9 +302,6 @@ class _PersonalConditionFieldsState extends State<PersonalConditionFields> {
                   optional: true,
                   maxLength: 2600,
                   helper: '예: A, B. 비워두면 성적 제한 없음. 숫자로 환산하지 않습니다.',
-                ),
-                const Text(
-                  '개인 성과의 완료·승인 관찰을 직접 선택합니다. 승인 판단에는 기준일 이내의 승인일도 필요합니다. 학교의 사실 확인을 의미하지 않습니다.',
                 ),
                 for (final row in s.achievements.where(
                   (r) => r.data.thesisType.isNotEmpty,
@@ -323,9 +313,9 @@ class _PersonalConditionFieldsState extends State<PersonalConditionFields> {
                         ? draft.selected.add(row.id)
                         : draft.selected.remove(row.id),
                     subtitle:
-                        '문자 성적 ${row.data.thesisGrade.isEmpty ? '미기록' : row.data.thesisGrade} · 승인일 ${row.data.thesisApprovedOn ?? '미기록'}',
+                        '문자 성적 ${row.data.thesisGrade.isEmpty ? '미기록' : row.data.thesisGrade}',
                   ),
-                  if (draft.selected.contains(row.id)) ...[
+                  if (draft.selected.contains(row.id))
                     _choice(
                       draft.observation(row.id),
                       'completion',
@@ -337,19 +327,6 @@ class _PersonalConditionFieldsState extends State<PersonalConditionFields> {
                       },
                       'unknown',
                     ),
-                    _choice(
-                      draft.observation(row.id),
-                      'approval',
-                      '내가 확인한 승인 상태',
-                      const {
-                        'needs_review': '확인 필요',
-                        'approved': '승인으로 기록',
-                        'pending': '대기',
-                        'rejected': '반려',
-                      },
-                      'needs_review',
-                    ),
-                  ],
                 ],
                 if (!s.achievements.any((r) => r.data.thesisType.isNotEmpty))
                   const Text('논문·작품 유형을 입력한 성과가 없습니다. 빈 선택으로도 계산할 수 있습니다.'),

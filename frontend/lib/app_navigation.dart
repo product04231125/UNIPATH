@@ -8,23 +8,31 @@ import 'workspace.dart';
 import 'features/auth/app_role.dart';
 import 'features/admin/admin_workspace.dart';
 import 'features/admin/admin_repository.dart';
+import 'features/admin/admin_school_chrome.dart';
 import 'features/admin/remote_admin_repository.dart';
 import 'app_shell/phone_shell.dart';
 import 'app_shell/workspace_title_bar.dart';
+import 'shared/widgets/anchored_select_field.dart';
 import 'shared/widgets/task_focus_group.dart';
 import 'features/auth/auth_api.dart';
 import 'features/api/school_signup_models.dart';
 import 'features/auth/account_access_page.dart';
+import 'features/auth/guest_preview_scope.dart';
 import 'features/auth/local_data_owner.dart';
 import 'features/api/student_api.dart';
 import 'features/auth/account_security_gateway.dart';
 import 'features/auth/account_security_dialog.dart';
+import 'features/settings/account_settings_section.dart';
 import 'shared/widgets/input_dialog.dart';
 import 'features/admin/school_admin_applications_dialog.dart';
 import 'features/auth/school_workflow_session.dart';
 
 class AppLocation {
   const AppLocation(this.path);
+
+  /// Student settings tab that owns the academic PlanningProfile editor.
+  /// Open this tab instead of adding a new profile-edit route.
+  static const settingsPath = '/settings';
 
   static const menuPaths = [
     '/home',
@@ -35,8 +43,19 @@ class AppLocation {
     '/credentials',
     '/portfolio',
     '/job-postings',
-    '/settings',
+    settingsPath,
   ];
+
+  /// Workspace / AppNavigation menu index for [settingsPath].
+  static int get settingsMenu => menuPaths.indexOf(settingsPath);
+
+  /// Selects the existing settings tab through Workspace `onPageChanged`.
+  static void openSettings(ValueChanged<int> onPageChanged) =>
+      onPageChanged(settingsMenu);
+
+  static VoidCallback bindOpenSettings(ValueChanged<int> onPageChanged) =>
+      () => openSettings(onPageChanged);
+
   final String path;
   int? get menu {
     final normalized = path == '/'
@@ -88,6 +107,12 @@ class AppNavigation extends RouterDelegate<AppLocation>
   int _authEpoch = 0;
   bool _accountDialogOpen = false;
   String? _loginNotice;
+  bool _studentGuestPreview = false;
+  String? _previewInstitutionId;
+  String? _previewInstitutionName;
+  String? _previewReturnPath;
+  String? _restoreAdminSchoolId;
+  final _adminSchoolChrome = AdminSchoolChrome();
   Future<void> _openApplications(BuildContext context) async {
     final identity = _identity;
     final auth = _auth;
@@ -208,6 +233,12 @@ class AppNavigation extends RouterDelegate<AppLocation>
         _identity = null;
         authenticated = false;
         _role = AppRole.user;
+        _studentGuestPreview = false;
+        _previewInstitutionId = null;
+        _previewInstitutionName = null;
+        _previewReturnPath = null;
+        _restoreAdminSchoolId = null;
+        _adminSchoolChrome.clear();
         LocalDataOwner.currentUserId = null;
         _sessionTimer?.cancel();
         _location = const AppLocation('/login');
@@ -221,6 +252,14 @@ class AppNavigation extends RouterDelegate<AppLocation>
         final wasAuthenticated = authenticated;
         final previousRole = _role;
         final accountChanged = _identity != null && _identity!.id != next.id;
+        if (accountChanged || previousRole != next.role) {
+          _studentGuestPreview = false;
+          _previewInstitutionId = null;
+          _previewInstitutionName = null;
+          _previewReturnPath = null;
+          _restoreAdminSchoolId = null;
+          _adminSchoolChrome.clear();
+        }
         if (accountChanged) {
           _loginNotice = null;
           _authEpoch++;
@@ -235,7 +274,9 @@ class AppNavigation extends RouterDelegate<AppLocation>
         LocalDataOwner.currentUserId = next.id;
         if (!wasAuthenticated || accountChanged || previousRole != _role) {
           if (_role != AppRole.user) {
-            _location = const AppLocation('/admin/overview');
+            if (!_studentGuestPreview) {
+              _location = const AppLocation('/admin/overview');
+            }
           } else if (previousRole != AppRole.user ||
               _location.path == '/login') {
             _location = const AppLocation('/home');
@@ -310,7 +351,34 @@ class AppNavigation extends RouterDelegate<AppLocation>
     if (_ownsAuth) _auth.close();
     _adminRepository?.dispose();
     _liveAdminRepository?.dispose();
+    _adminSchoolChrome.dispose();
     super.dispose();
+  }
+
+  void _enterStudentPreview(BuildContext context) {
+    if (_identity == null || _role == AppRole.user || _auth is! AuthApi) return;
+    _previewReturnPath = _location.path.startsWith('/admin')
+        ? _location.path
+        : '/admin/overview';
+    _previewInstitutionId = _adminSchoolChrome.schoolId.isEmpty
+        ? null
+        : _adminSchoolChrome.schoolId;
+    _previewInstitutionName = _adminSchoolChrome.schoolName.isEmpty
+        ? null
+        : _adminSchoolChrome.schoolName;
+    _studentGuestPreview = true;
+    _go(context, '/home');
+  }
+
+  void _exitStudentPreview(BuildContext context) {
+    if (!_studentGuestPreview) return;
+    final path = _previewReturnPath ?? '/admin/overview';
+    _restoreAdminSchoolId = _previewInstitutionId;
+    _studentGuestPreview = false;
+    _previewInstitutionId = null;
+    _previewInstitutionName = null;
+    _previewReturnPath = null;
+    _go(context, path.startsWith('/admin') ? path : '/admin/overview');
   }
 
   AppLocation _location = const AppLocation('/');
@@ -378,6 +446,12 @@ class AppNavigation extends RouterDelegate<AppLocation>
     LocalDataOwner.currentUserId = null;
     authenticated = false;
     _role = AppRole.user;
+    _studentGuestPreview = false;
+    _previewInstitutionId = null;
+    _previewInstitutionName = null;
+    _previewReturnPath = null;
+    _restoreAdminSchoolId = null;
+    _adminSchoolChrome.clear();
     _location = const AppLocation('/login');
     _history.clear();
     _historyIndex = -1;
@@ -390,7 +464,33 @@ class AppNavigation extends RouterDelegate<AppLocation>
     final menu = _location.menu;
     final Widget page;
     final String key;
-    if (_identity != null && authenticated && _role != AppRole.user) {
+    final authGateway = _auth;
+    if (_studentGuestPreview &&
+        _identity != null &&
+        authenticated &&
+        _role != AppRole.user &&
+        authGateway is AuthApi) {
+      key = 'guest-preview:${_identity!.id}';
+      page = GuestPreviewScope(
+        active: true,
+        institutionId: _previewInstitutionId,
+        child: Workspace(
+          studentApi: StudentApi(
+            authGateway.forOwner(_identity!.id),
+            ownerId: _identity!.id,
+          ),
+          sidebarVisible: _sidebarVisible,
+          integratedTitleBar: true,
+          assistantFactory: assistantFactory,
+          selectedPage: menu ?? 0,
+          onPageChanged: (value) => _select(context, value),
+          onSignedOut: () => _signedOut(context),
+          beforeSignedOut: authGateway.logout,
+          guestPreview: true,
+          previewInstitutionId: _previewInstitutionId,
+        ),
+      );
+    } else if (_identity != null && authenticated && _role != AppRole.user) {
       if (_auth is ApiGateway) {
         if (_liveAdminRepository?.userId != _identity!.id) {
           _liveAdminRepository?.dispose();
@@ -412,6 +512,11 @@ class AppNavigation extends RouterDelegate<AppLocation>
           actorId: _identity!.id,
           repository: _liveAdminRepository,
           sidebarVisible: _sidebarVisible,
+          schoolChrome: _adminSchoolChrome,
+          initialSchoolId: _restoreAdminSchoolId,
+          onEnterStudentPreview: _auth is AuthApi
+              ? () => _enterStudentPreview(context)
+              : null,
           onNavigate: (path) => _go(context, path),
           beforeSignedOut: _auth.logout,
           onSignedOut: () => _signedOut(context),
@@ -452,6 +557,8 @@ class AppNavigation extends RouterDelegate<AppLocation>
         role: _role,
         path: _location.path,
         sidebarVisible: _sidebarVisible,
+        schoolChrome: _adminSchoolChrome,
+        initialSchoolId: _restoreAdminSchoolId,
         onNavigate: (path) => _go(context, path),
         onSignedOut: () => _signedOut(context),
       );
@@ -503,6 +610,8 @@ class AppNavigation extends RouterDelegate<AppLocation>
         role: _role,
         path: '/admin/overview',
         sidebarVisible: _sidebarVisible,
+        schoolChrome: _adminSchoolChrome,
+        initialSchoolId: _restoreAdminSchoolId,
         onNavigate: (path) => _go(context, path),
         onSignedOut: () => _signedOut(context),
       );
@@ -535,74 +644,144 @@ class AppNavigation extends RouterDelegate<AppLocation>
             child: LayoutBuilder(
               builder: (frameContext, frameConstraints) {
                 final phone = isPhonePortraitShell(
-                  Size(
-                    frameConstraints.maxWidth,
-                    frameConstraints.maxHeight,
-                  ),
+                  Size(frameConstraints.maxWidth, frameConstraints.maxHeight),
                 );
-                return Column(
-                  children: [
-                    FocusTraversalOrder(
-                      order: const NumericFocusOrder(1),
-                      child: TaskFocusGroup(
-                        child: Builder(
-                          builder: (dialogContext) => WorkspaceTitleBar(
-                            phoneChrome: phone,
-                            applicationLabel: _role == AppRole.superAdmin
-                                ? '학교관리자 신청 접수'
-                                : '학교 관리 권한·신청 이력',
-                            onApplications:
-                                _identity != null &&
-                                    authenticated &&
-                                    _auth is AuthApi
-                                ? () => _openApplications(dialogContext)
-                                : null,
-                            onAccountSecurity:
-                                _identity != null &&
-                                    authenticated &&
-                                    _auth is AuthApi
-                                ? () => _openAccountSecurity(dialogContext)
-                                : null,
-                            title: _role == AppRole.user
-                                ? 'UniversityPath'
-                                : '${_role.label} · UniversityPath',
-                            sidebarVisible: _sidebarVisible,
-                            onToggleSidebar: authenticated
-                                ? () {
-                                    _sidebarVisible = !_sidebarVisible;
-                                    notifyListeners();
-                                  }
-                                : null,
-                            onBack: authenticated && _historyIndex > 0
-                                ? () => _travel(context, -1)
-                                : null,
-                            onForward:
-                                authenticated &&
-                                    _historyIndex < _history.length - 1
-                                ? () => _travel(context, 1)
-                                : null,
+                final canAccount =
+                    _identity != null && authenticated && _auth is AuthApi;
+                final previewing =
+                    _studentGuestPreview && _role != AppRole.user;
+                final previewSchool = _previewInstitutionName ?? '';
+                final statusLabel = previewing
+                    ? (previewSchool.isEmpty
+                          ? '학생 · 미리보기'
+                          : '학생 · 미리보기 · $previewSchool')
+                    : _role.label;
+                // Rebuild AdminWorkspace with phoneChrome when shell is phone.
+                final shellPage =
+                    authenticated &&
+                        _identity != null &&
+                        _role != AppRole.user &&
+                        !_studentGuestPreview &&
+                        page is AdminWorkspace
+                    ? AdminWorkspace(
+                        role: _role,
+                        path: _location.path,
+                        actorId: _identity!.id,
+                        repository: page.repository,
+                        sidebarVisible: _sidebarVisible,
+                        schoolChrome: _adminSchoolChrome,
+                        phoneChrome: phone,
+                        initialSchoolId: _restoreAdminSchoolId,
+                        onEnterStudentPreview: _auth is AuthApi
+                            ? () => _enterStudentPreview(context)
+                            : null,
+                        onNavigate: (path) => _go(context, path),
+                        beforeSignedOut: page.beforeSignedOut,
+                        onSignedOut: () => _signedOut(context),
+                      )
+                    : page;
+                return AccountSettingsActions(
+                  onAccountSecurity: canAccount
+                      ? () => _openAccountSecurity(frameContext)
+                      : null,
+                  onApplications:
+                      canAccount && _role != AppRole.user && !previewing
+                      ? () => _openApplications(frameContext)
+                      : null,
+                  applicationLabel: _role == AppRole.superAdmin
+                      ? '학교관리자 신청 접수'
+                      : '학교 관리 권한·신청 이력',
+                  child: Column(
+                    children: [
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(1),
+                        child: TaskFocusGroup(
+                          child: ListenableBuilder(
+                            listenable: _adminSchoolChrome,
+                            builder: (context, _) => WorkspaceTitleBar(
+                              phoneChrome: phone,
+                              statusLabel: statusLabel,
+                              sidebarVisible: _sidebarVisible,
+                              center:
+                                  !phone &&
+                                      !previewing &&
+                                      _adminSchoolChrome.visible
+                                  ? AnchoredSelectField<String>(
+                                      externalLabel: false,
+                                      compact: true,
+                                      key: const ValueKey(
+                                        'admin-school-selector',
+                                      ),
+                                      searchable: true,
+                                      searchLabel: '학교 이름 검색',
+                                      value: _adminSchoolChrome.schoolId,
+                                      label: '현재 학교',
+                                      options: [
+                                        if (_adminSchoolChrome.allowAll)
+                                          const SelectOption('', '전체 학교'),
+                                        for (final school
+                                            in _adminSchoolChrome.schools)
+                                          SelectOption(school.id, school.name),
+                                      ],
+                                      onChanged: (v) {
+                                        unawaited(
+                                          _adminSchoolChrome.onChanged?.call(
+                                                v,
+                                              ) ??
+                                              Future<void>.value(),
+                                        );
+                                      },
+                                    )
+                                  : null,
+                              trailingActions: previewing
+                                  ? [
+                                      TextButton(
+                                        key: const ValueKey(
+                                          'exit-student-preview',
+                                        ),
+                                        onPressed: () =>
+                                            _exitStudentPreview(context),
+                                        child: const Text('관리 화면으로'),
+                                      ),
+                                    ]
+                                  : null,
+                              onToggleSidebar: authenticated
+                                  ? () {
+                                      _sidebarVisible = !_sidebarVisible;
+                                      notifyListeners();
+                                    }
+                                  : null,
+                              onBack: authenticated && _historyIndex > 0
+                                  ? () => _travel(context, -1)
+                                  : null,
+                              onForward:
+                                  authenticated &&
+                                      _historyIndex < _history.length - 1
+                                  ? () => _travel(context, 1)
+                                  : null,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    Expanded(
-                      child: FocusTraversalOrder(
-                        order: const NumericFocusOrder(0),
-                        child: TaskFocusGroup(
-                          child:
-                              authenticated &&
-                                  _identity != null &&
-                                  _auth is AuthApi
-                              ? SchoolWorkflowSession(
-                                  auth: _auth,
-                                  identity: _identity!,
-                                  child: page,
-                                )
-                              : page,
+                      Expanded(
+                        child: FocusTraversalOrder(
+                          order: const NumericFocusOrder(0),
+                          child: TaskFocusGroup(
+                            child:
+                                authenticated &&
+                                    _identity != null &&
+                                    _auth is AuthApi
+                                ? SchoolWorkflowSession(
+                                    auth: _auth,
+                                    identity: _identity!,
+                                    child: shellPage,
+                                  )
+                                : shellPage,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 );
               },
             ),

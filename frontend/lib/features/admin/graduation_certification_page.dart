@@ -1,10 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/digits_only_hint.dart';
+import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/input_dialog.dart';
-import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/surface_card.dart';
 import 'admin_models.dart';
 import 'graduation_certification.dart';
@@ -36,16 +39,18 @@ class GraduationCertificationPageState
   final _itemLabels = <String, TextEditingController>{};
   final _exemptionLabels = <String, TextEditingController>{};
   final _pickCounts = <String, TextEditingController>{};
+  late final String _initial;
 
   @override
   void initState() {
     super.initState();
-    _draft =
-        widget.initial ??
-        GraduationCertificationDraft(
-          departmentId: widget.departments.firstOrNull?.id ?? '',
-        );
+    _draft = widget.initial != null
+        ? copyCertificationDraft(widget.initial!)
+        : GraduationCertificationDraft(
+            departmentId: widget.departments.firstOrNull?.id ?? '',
+          );
     _syncControllers();
+    _initial = _fingerprint;
   }
 
   @override
@@ -61,13 +66,28 @@ class GraduationCertificationPageState
     super.dispose();
   }
 
-  bool get dirty => (widget.initial == null
-      ? _draft.groups.isNotEmpty
-      : _draft.departmentId != widget.initial!.departmentId ||
-            _draft.groups.isNotEmpty);
+  String get _fingerprint => jsonEncode([
+    _draft.departmentId,
+    [
+      for (final g in _allGroups())
+        [
+          g.id,
+          g.label,
+          g.choice.name,
+          g.pickCount,
+          [
+            for (final i in g.items) [i.id, i.label, i.kind.name],
+          ],
+          g.exemptions,
+          [for (final child in g.groups) child.id],
+        ],
+    ],
+  ]);
+
+  bool get dirty => _fingerprint != _initial;
 
   Future<bool> allowLeave() async =>
-      !dirty || await confirmInputDiscard(context);
+      !dirty || await confirmInputDiscardAllowsLeave(context);
 
   Iterable<GraduationCertificationGroup> _allGroups([
     List<GraduationCertificationGroup>? groups,
@@ -128,11 +148,13 @@ class GraduationCertificationPageState
       ],
       (id) {
         final group = _allGroups().firstWhere((g) => g.id == id);
-        return TextEditingController(text: '${group.pickCount}')
-          ..addListener(() {
-            group.pickCount = int.tryParse(_pickCounts[id]!.text) ?? 1;
-            setState(() {});
-          });
+        return TextEditingController(
+          text: group.pickCount == null ? '' : '${group.pickCount}',
+        )..addListener(() {
+          final text = _pickCounts[id]!.text.trim();
+          group.pickCount = text.isEmpty ? null : int.tryParse(text);
+          setState(() {});
+        });
       },
     );
   }
@@ -179,84 +201,145 @@ class GraduationCertificationPageState
     });
   }
 
+  void _removeGroup(
+    GraduationCertificationGroup group, [
+    GraduationCertificationGroup? parent,
+  ]) {
+    setState(() {
+      (parent?.groups ?? _draft.groups).remove(group);
+      _syncControllers();
+    });
+  }
+
+  void _removeItem(
+    GraduationCertificationGroup group,
+    GraduationCertificationItem item,
+  ) {
+    setState(() {
+      group.items.remove(item);
+      _syncControllers();
+    });
+  }
+
+  void _removeExemption(GraduationCertificationGroup group, int index) {
+    setState(() {
+      group.exemptions.removeAt(index);
+      _syncControllers();
+    });
+  }
+
+  Widget _removeButton({required Key key, required VoidCallback onPressed}) =>
+      Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton(
+          key: key,
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+            visualDensity: VisualDensity.compact,
+          ),
+          onPressed: onPressed,
+          child: const Text('제거'),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
-    final body = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const PageHeader(
-          title: '인증 요건',
-          description:
-              '묶음마다 모두·택 1·택 N을 고르고 기준 한 줄을 적습니다. 창의영역 같은 이름은 학교에 고정하지 않습니다.',
-        ),
-        Text('학교: ${widget.schoolName}'),
-        const SizedBox(height: 12),
-        FieldLabel(
-          label: '학과',
-          child: widget.departments.isEmpty
-              ? const Text('현재 학교에 등록된 학과가 없습니다. 학교·학과 메뉴에서 학과를 먼저 등록하세요.')
-              : AnchoredSelectField<String>(
-                  key: const ValueKey('certification-department'),
-                  externalLabel: true,
-                  value: _draft.departmentId,
-                  label: '학과',
-                  options: [
-                    for (final department in widget.departments)
-                      SelectOption(department.id, department.name),
-                  ],
-                  onChanged: (id) => setState(() => _draft.departmentId = id),
-                ),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            OutlinedButton(
-              key: const ValueKey('certification-add-group'),
-              onPressed: () => _addGroup(),
-              child: const Text('묶음 추가'),
-            ),
-            OutlinedButton(
-              key: const ValueKey('certification-preview'),
-              onPressed: () => showGraduationTemplatePreview(
-                context: context,
-                title: '인증 요건 미리보기',
-                child: GraduationCertificationPreview(
-                  draft: _draft,
-                  schoolName: widget.schoolName,
-                  departments: widget.departments,
-                ),
+    final body = SurfaceCard(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const FeatureLine.section(
+            text: '인증 요건',
+            padTop: false,
+            padBottom: false,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '묶음마다 모두·택 1·택 N을 고르고 기준 한 줄을 적습니다. 창의영역 같은 이름은 학교에 고정하지 않습니다.',
+          ),
+          Text('학교: ${widget.schoolName}'),
+          const SizedBox(height: 12),
+          FieldLabel(
+            label: '학과',
+            child: widget.departments.isEmpty
+                ? const Text('현재 학교에 등록된 학과가 없습니다. 학교·학과 메뉴에서 학과를 먼저 등록하세요.')
+                : AnchoredSelectField<String>(
+                    key: const ValueKey('certification-department'),
+                    externalLabel: true,
+                    value: _draft.departmentId,
+                    label: '학과',
+                    options: [
+                      for (final department in widget.departments)
+                        SelectOption(department.id, department.name),
+                    ],
+                    onChanged: (id) => setState(() => _draft.departmentId = id),
+                  ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton(
+                key: const ValueKey('certification-add-group'),
+                onPressed: () => _addGroup(),
+                child: const Text('묶음 추가'),
               ),
-              child: const Text('미리보기'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (_draft.groups.isEmpty)
-          const Text('묶음을 추가해 인증 요건을 적으세요. 다른 학교는 묶음 이름과 깊이를 직접 정합니다.')
-        else
-          for (final group in _draft.groups) _groupCard(group, depth: 0),
-        const SizedBox(height: 12),
-        const Text(
-          '저장은 연결되지 않았습니다. 인증 묶음은 현재 실행 규칙 API의 자격·봉사 조건 하나에 넣을 수 없습니다.',
-        ),
-        const SizedBox(height: 8),
-        const FilledButton(onPressed: null, child: Text('인증 요건 저장 불가 · 연결 전')),
-      ],
+              OutlinedButton(
+                key: const ValueKey('certification-preview'),
+                onPressed: () => showGraduationTemplatePreview(
+                  context: context,
+                  title: '인증 요건 미리보기',
+                  child: GraduationCertificationPreview(
+                    draft: _draft,
+                    schoolName: widget.schoolName,
+                    departments: widget.departments,
+                  ),
+                ),
+                child: const Text('미리보기'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_draft.groups.isEmpty)
+            const Text('묶음을 추가해 인증 요건을 적으세요. 다른 학교는 묶음 이름과 깊이를 직접 정합니다.')
+          else
+            for (final group in _draft.groups) _groupCard(group, depth: 0),
+          const SizedBox(height: 12),
+          const Text(
+            '저장은 연결되지 않았습니다. 인증 묶음은 현재 실행 규칙 API의 자격·봉사 조건 하나에 넣을 수 없습니다.',
+          ),
+          const SizedBox(height: 8),
+          const FilledButton(
+            onPressed: null,
+            child: Text('인증 요건 저장 불가 · 연결 전'),
+          ),
+        ],
+      ),
     );
     if (!widget.scrollable) return body;
     return SingleChildScrollView(child: body);
   }
 
-  Widget _groupCard(GraduationCertificationGroup group, {required int depth}) {
+  Widget _groupCard(
+    GraduationCertificationGroup group, {
+    required int depth,
+    GraduationCertificationGroup? parent,
+  }) {
     return Padding(
       padding: EdgeInsets.only(left: depth * 16, bottom: 12),
       child: SurfaceCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: _removeButton(
+                key: ValueKey('certification-remove-group-${group.id}'),
+                onPressed: () => _removeGroup(group, parent),
+              ),
+            ),
             FieldLabel(
               label: '묶음 이름',
               child: TextField(
@@ -292,7 +375,16 @@ class GraduationCertificationPageState
                   controller: _pickCounts[group.id],
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(hintText: '2'),
+                  decoration: digitsOnlyDecoration(
+                    context,
+                    base: InputDecoration(
+                      hintText: '2',
+                      errorText: certificationPickCountError(
+                        _pickCounts[group.id]?.text ?? '',
+                        group.items.length,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -304,6 +396,10 @@ class GraduationCertificationPageState
                 key: ValueKey('certification-item-${item.id}'),
                 controller: _itemLabels[item.id],
                 decoration: const InputDecoration(hintText: '워드프로세서 1급 이상'),
+              ),
+              _removeButton(
+                key: ValueKey('certification-remove-item-${item.id}'),
+                onPressed: () => _removeItem(group, item),
               ),
               const SizedBox(height: 8),
               AnchoredSelectField<GraduationCertificationKind>(
@@ -334,6 +430,10 @@ class GraduationCertificationPageState
                 controller: _exemptionLabels['${group.id}/$index'],
                 decoration: const InputDecoration(hintText: '직장인 교과과정'),
               ),
+              _removeButton(
+                key: ValueKey('certification-remove-exempt-${group.id}-$index'),
+                onPressed: () => _removeExemption(group, index),
+              ),
             ],
             Align(
               alignment: Alignment.centerLeft,
@@ -352,7 +452,7 @@ class GraduationCertificationPageState
               ),
             ),
             for (final child in group.groups)
-              _groupCard(child, depth: depth + 1),
+              _groupCard(child, depth: depth + 1, parent: group),
           ],
         ),
       ),

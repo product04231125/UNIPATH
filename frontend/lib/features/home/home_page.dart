@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../app_shell/phone_shell.dart';
 import '../../shared/widgets/equal_height_row.dart';
-import '../../shared/widgets/content_scroll_view.dart';
+import '../../shared/widgets/feature_line.dart';
+import '../../shared/widgets/feature_page.dart';
+import '../../shared/widgets/surface_card.dart';
 
+import '../auth/guest_preview_scope.dart';
 import '../planning/planning_dates.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
@@ -17,14 +20,12 @@ class HomePage extends StatelessWidget {
     required this.onOpenSettings,
     required this.onOpenSchedule,
     required this.onAddSchedule,
-    this.coveredRightWidth = 0,
   });
   final PlanningRepository repository;
   final ValueChanged<int> onOpenPage;
   final VoidCallback onOpenSettings;
   final ValueChanged<DateTime> onOpenSchedule;
   final VoidCallback onAddSchedule;
-  final double coveredRightWidth;
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -36,7 +37,6 @@ class HomePage extends StatelessWidget {
       final profile = repository.profile;
       final now = DateTime.now();
       final year = profile.academicYearFor(now);
-      final todayEvents = eventsOnDay(repository.events, now);
       final upcoming = repository.events
           .where((e) => e.end.isAfter(now))
           .take(3)
@@ -47,134 +47,79 @@ class HomePage extends StatelessWidget {
           final compact =
               viewport.maxWidth >= 1000 &&
               MediaQuery.textScalerOf(context).scale(14) <= 16.8;
-          return ContentScrollView(
-            key: const Key('home-scroll'),
-            padding: EdgeInsets.only(bottom: compact ? 8 : 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  key: const Key('home-overview'),
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${now.month}월 ${now.day}일 ${weekdayLabel(now.weekday)}요일',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 24,
-                        runSpacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Semantics(
-                            header: true,
-                            child: Text(
-                              '나의 대학생활 경로',
-                              style: Theme.of(context).textTheme.headlineMedium,
-                            ),
-                          ),
-                          FilledButton.icon(
-                            onPressed: onAddSchedule,
-                            icon: const Icon(Icons.add),
-                            label: const Text('일정 추가'),
-                          ),
-                        ],
-                      ),
-                      if (!phone) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          '오늘 일정 ${todayEvents.length}개 · ${year == null ? '개인 계획 미설정' : '개인 계획 $year학년'} · ${repository.storageLabel}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                      if (profile.isConfigured)
-                        Text(
-                          '${profile.school} · ${profile.department}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                    ],
-                  ),
-                ),
-                LayoutBuilder(
-                  builder: (context, constraints) => Align(
-                    alignment: Alignment.topLeft,
-                    child: SizedBox(
-                      width: (constraints.maxWidth - coveredRightWidth).clamp(
-                        0.0,
-                        constraints.maxWidth,
-                      ),
-                      child: WeeklySchedule(
-                        compact: compact,
-                        events: repository.events,
-                        startsOn: profile.weekStartsOn,
-                        onSelectDay: onOpenSchedule,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: compact ? 8 : 16),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final upcomingCard = _upcoming(
-                      context,
-                      upcoming,
-                      compact: compact,
-                    );
-                    final prepare = _prepare(context, profile);
-                    if (constraints.maxWidth < 820) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          upcomingCard,
-                          const SizedBox(height: 16),
-                          prepare,
-                        ],
-                      );
-                    }
-                    return EqualHeightRow(
-                      children: [
-                        Expanded(flex: compact ? 1 : 3, child: upcomingCard),
-                        const SizedBox(width: 16),
-                        Expanded(flex: compact ? 1 : 2, child: prepare),
-                      ],
-                    );
-                  },
-                ),
-                SizedBox(height: compact ? 8 : 16),
-                _nextSteps(context, year, compact: true),
-              ],
+          return FeaturePage(
+            scrollKey: const Key('home-scroll'),
+            padding: EdgeInsets.only(
+              bottom: phone ? phoneListGap : (compact ? 0 : 24),
             ),
+            eyebrow: '${now.month}월 ${now.day}일 ${weekdayLabel(now.weekday)}요일',
+            title: '나의 대학생활 경로',
+            description: '오늘 일정과 다음 기록을 한눈에 봅니다.',
+            contextLabel: phone && profile.isConfigured
+                ? (profile.hasCatalogSchool ? '등록' : '개인 설정')
+                : null,
+            body: [
+              WeeklySchedule(
+                compact: compact,
+                events: repository.events,
+                startsOn: profile.weekStartsOn,
+                onSelectDay: onOpenSchedule,
+              ),
+              SizedBox(height: FeatureLine.slotGap(context)),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final upcomingCard = _upcoming(
+                    context,
+                    upcoming,
+                    compact: compact,
+                  );
+                  final prepare = _prepare(context, profile);
+                  if (constraints.maxWidth < 820) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        upcomingCard,
+                        SizedBox(height: FeatureLine.slotGap(context)),
+                        prepare,
+                      ],
+                    );
+                  }
+                  return EqualHeightRow(
+                    children: [
+                      Expanded(flex: compact ? 1 : 3, child: upcomingCard),
+                      const SizedBox(width: 16),
+                      Expanded(flex: compact ? 1 : 2, child: prepare),
+                    ],
+                  );
+                },
+              ),
+              SizedBox(height: FeatureLine.slotGap(context)),
+              _nextSteps(context, year, compact: true),
+            ],
           );
         },
       );
     },
   );
 
-  Widget _card(BuildContext context, String title, Widget child) => Card(
+  Widget _card(
+    BuildContext context,
+    String title,
+    Widget child, {
+    Widget? trailing,
+  }) => SurfaceCard(
     key: ValueKey('home-card-$title'),
-    elevation: 0,
-    color: title == '다가오는 일정'
-        ? Theme.of(context).colorScheme.surface
-        : Theme.of(context).scaffoldBackgroundColor,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(20),
-      side: title == '다가오는 일정'
-          ? BorderSide(color: Theme.of(context).colorScheme.outlineVariant)
-          : BorderSide.none,
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          child,
-        ],
-      ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        FeatureLine.section(
+          text: title,
+          trailing: trailing,
+          padTop: false,
+          padBottom: false,
+        ),
+        child,
+      ],
     ),
   );
 
@@ -190,13 +135,6 @@ class HomePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('앞으로 예정된 개인 일정이 없습니다.'),
-              if (!PhoneChromeScope.of(context)) ...[
-                const SizedBox(height: 4),
-                Text(
-                  '과제 마감이나 참여할 활동을 기록해 이번 주 계획을 채워보세요.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () => onOpenPage(1),
@@ -207,19 +145,15 @@ class HomePage extends StatelessWidget {
         : Column(
             children: [
               for (final event in events)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.event_outlined),
-                  title: Text(
-                    event.title,
-                    maxLines: compact ? 1 : 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    '${event.start.month}.${event.start.day} · ${planningTime(event.start)} · ${event.category.label}',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
+                InkWell(
                   onTap: () => onOpenSchedule(event.start),
+                  child: FeatureLine.two(
+                    primary: event.title,
+                    secondary:
+                        '${event.start.month}.${event.start.day} · ${planningTime(event.start)} · ${event.category.label}',
+                    leading: const Icon(Icons.event_outlined),
+                    trailing: const Icon(Icons.chevron_right),
+                  ),
                 ),
               Align(
                 alignment: Alignment.centerLeft,
@@ -230,6 +164,17 @@ class HomePage extends StatelessWidget {
               ),
             ],
           ),
+    trailing: FilledButton.icon(
+      onPressed: () {
+        if (GuestPreviewScope.isActive(context) || repository.writesBlocked) {
+          GuestPreviewScope.showBlockedMessage(context);
+          return;
+        }
+        onAddSchedule();
+      },
+      icon: const Icon(Icons.add),
+      label: const Text('일정 추가'),
+    ),
   );
 
   Widget _prepare(BuildContext context, PlanningProfile profile) {
@@ -278,15 +223,16 @@ class HomePage extends StatelessWidget {
     String title,
     String description,
     VoidCallback action,
-  ) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    leading: Icon(
-      done ? Icons.check_circle_outline : Icons.radio_button_unchecked,
-    ),
-    title: Text(title),
-    subtitle: Text(description),
-    trailing: const Icon(Icons.chevron_right),
+  ) => InkWell(
     onTap: action,
+    child: FeatureLine.two(
+      primary: title,
+      secondary: description,
+      leading: Icon(
+        done ? Icons.check_circle_outline : Icons.radio_button_unchecked,
+      ),
+      trailing: const Icon(Icons.chevron_right),
+    ),
   );
 
   Widget _nextSteps(BuildContext context, int? year, {bool compact = false}) {
@@ -322,7 +268,7 @@ class HomePage extends StatelessWidget {
       4 => const [
         _PlanLink(
           '졸업 요건 확인',
-          '개인 기준과 학교 공식 정보의 범위를 확인하세요.',
+          '개인 기준으로 졸업 요건을 확인하세요.',
           Icons.school_outlined,
           3,
         ),
@@ -343,11 +289,12 @@ class HomePage extends StatelessWidget {
         ),
       ],
     };
-    return Padding(
+    return SurfaceCard(
       key: const ValueKey('home-card-다음에 이어갈 기록'),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+      // Dense padding so the Windows default client size still fits without scroll.
+      padding: EdgeInsets.symmetric(horizontal: 18, vertical: compact ? 4 : 8),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text('다음에 이어갈 기록', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
@@ -366,11 +313,6 @@ class HomePage extends StatelessWidget {
                 ),
             ],
           ),
-          if (year != null && !PhoneChromeScope.of(context))
-            Text(
-              '$year학년 개인 계획 링크 · 공식 학적 판정이나 서버 추천이 아닙니다.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
         ],
       ),
     );

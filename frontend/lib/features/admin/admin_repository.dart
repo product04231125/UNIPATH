@@ -41,9 +41,14 @@ abstract class AdminRepository extends ChangeNotifier {
 
 /// In-memory fake only. Every operation checks the latest role/scope.
 class FakeAdminRepository extends AdminRepository {
-  FakeAdminRepository({List<AdminRecord>? seed, this.beforeOperation})
-    : _records = [...seed ?? adminFixture()];
+  FakeAdminRepository({
+    List<AdminRecord>? seed,
+    this.beforeOperation,
+    this.live = false,
+  }) : _records = [...seed ?? adminFixture()];
   final Future<void> Function(String operation)? beforeOperation;
+  @override
+  final bool live;
   final List<AdminRecord> _records;
   final List<AdminAuditEntry> _history = [];
   int _sequence = 0;

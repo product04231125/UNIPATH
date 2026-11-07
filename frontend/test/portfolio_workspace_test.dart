@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -55,8 +56,96 @@ Widget draftsPage({bool isDocument = false, bool active = true}) => MaterialApp(
   ),
 );
 
+class DelayedSourceWorkspace extends PortfolioWorkspaceRepository {
+  final sourceLoad = Completer<void>();
+  final save = Completer<void>();
+  int sourceLoads = 0;
+  int saves = 0;
+
+  @override
+  Future<void> load() async {}
+
+  @override
+  Future<void> reloadSources() {
+    sourceLoads++;
+    return sourceLoad.future;
+  }
+
+  @override
+  Future<void> saveComposition(PortfolioComposition composition) {
+    saves++;
+    return save.future;
+  }
+}
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('repeated add waits for one source load and opens one editor', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = DelayedSourceWorkspace();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PortfolioDraftsPage(isDocument: false, repository: repo),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final add = find.widgetWithText(FilledButton, '포트폴리오 구성 추가');
+    final onPressed = tester.widget<FilledButton>(add).onPressed!;
+    onPressed();
+    onPressed();
+    await tester.pump();
+    expect(repo.sourceLoads, 1);
+    expect(tester.widget<FilledButton>(add).onPressed, isNull);
+    repo.sourceLoad.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('포트폴리오 구성 편집'), findsOneWidget);
+    await tester.tap(find.text('취소'));
+    await tester.pumpAndSettle();
+    expect(find.text('포트폴리오 구성 편집'), findsNothing);
+    expect(tester.widget<FilledButton>(add).onPressed, isNotNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('repeated save submits one draft while the write is pending', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = DelayedSourceWorkspace()..sourceLoad.complete();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PortfolioDraftsPage(isDocument: false, repository: repo),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('포트폴리오 구성 추가'));
+    await tester.pumpAndSettle();
+    await fill(tester, 'title', '중복 저장 방지');
+    final save = find.widgetWithText(FilledButton, '초안 저장');
+    final onPressed = tester.widget<FilledButton>(save).onPressed!;
+    onPressed();
+    onPressed();
+    await tester.pump();
+    expect(repo.saves, 1);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, '저장 중…'))
+          .onPressed,
+      isNull,
+    );
+    repo.save.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('포트폴리오 구성 편집'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'retained portfolio reloads edited and deleted experience on return including copied preview',
@@ -186,7 +275,7 @@ void main() {
   });
 
   test(
-    'deleted sources remain explicit and unknown audiences default private',
+    'deleted sources remain explicit and unknown audiences fail the read',
     () async {
       await seedRecords();
       final repo = PortfolioWorkspaceRepository();
@@ -238,8 +327,12 @@ void main() {
         jsonEncode(root),
       );
       final safe = PortfolioWorkspaceRepository();
-      await safe.load();
-      expect(safe.compositions.single.audience, PortfolioAudience.private);
+      await expectLater(safe.load(), throwsFormatException);
+      expect(
+        (jsonDecode(prefs.getString(PortfolioWorkspaceRepository.storageKey)!)
+                as Map)['compositions'][0]['audience'],
+        'future_unknown',
+      );
     },
   );
 

@@ -38,7 +38,9 @@ class GraduationCertificationGroup {
   final String id;
   String label;
   GraduationCertificationChoice choice;
-  int pickCount;
+
+  /// Null when 택 N was cleared. Zero and oversized counts stay as typed.
+  int? pickCount;
   final List<GraduationCertificationItem> items;
   final List<GraduationCertificationGroup> groups;
   final List<String> exemptions;
@@ -53,8 +55,50 @@ class GraduationCertificationDraft {
   String departmentId;
   final List<GraduationCertificationGroup> groups;
 
+  static int _nextId = 0;
   static String newId([String prefix = 'cert']) =>
-      '$prefix-${DateTime.now().microsecondsSinceEpoch}';
+      '$prefix-${DateTime.now().microsecondsSinceEpoch}-${_nextId++}';
+}
+
+GraduationCertificationDraft copyCertificationDraft(
+  GraduationCertificationDraft source,
+) {
+  GraduationCertificationGroup copyGroup(GraduationCertificationGroup group) =>
+      GraduationCertificationGroup(
+        id: group.id,
+        label: group.label,
+        choice: group.choice,
+        pickCount: group.pickCount,
+        items: [
+          for (final item in group.items)
+            GraduationCertificationItem(
+              id: item.id,
+              label: item.label,
+              kind: item.kind,
+            ),
+        ],
+        groups: group.groups.map(copyGroup).toList(),
+        exemptions: [...group.exemptions],
+      );
+  return GraduationCertificationDraft(
+    departmentId: source.departmentId,
+    groups: source.groups.map(copyGroup).toList(),
+  );
+}
+
+/// Visible when 택 N is blank, below 1, or greater than the criteria lines.
+/// Does not decide whether preview can open.
+String? certificationPickCountError(String raw, int itemCount) {
+  final text = raw.trim();
+  if (text.isEmpty) return '택하는 개수를 입력하세요.';
+  final value = int.tryParse(text);
+  if (value == null || value < 1) {
+    return '택하는 개수는 1 이상의 숫자로 입력하세요.';
+  }
+  if (value > itemCount) {
+    return '기준은 $itemCount개입니다. 택하는 개수는 기준 수를 넘지 않게 입력하세요.';
+  }
+  return null;
 }
 
 String certificationChoiceLabel(GraduationCertificationChoice choice) =>

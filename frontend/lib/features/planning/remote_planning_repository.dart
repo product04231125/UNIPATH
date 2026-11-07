@@ -231,9 +231,12 @@ class RemotePlanningRepository extends PlanningRepository {
   }
 
   @override
-  Future<void> saveProfile(PlanningProfile profile) =>
-      _enqueue(() => _saveProfile(profile));
+  Future<void> saveProfile(PlanningProfile profile) => _enqueue(() {
+    ensureWritable();
+    return _saveProfile(profile);
+  });
   Future<void> _saveProfile(PlanningProfile value) async {
+    ensureWritable();
     _requireReady();
     if (value.version == null) {
       throw StateError('Capture profile version before editing');
@@ -252,19 +255,21 @@ class RemotePlanningRepository extends PlanningRepository {
     String? department,
     int? admissionYear,
     String? track,
-  }) => _enqueue(
-    () => _saveProfile(
+  }) => _enqueue(() {
+    ensureWritable();
+    return _saveProfile(
       _profile.withSchoolContext(
         school: school,
         department: department,
         admissionYear: admissionYear,
         track: track,
       ),
-    ),
-  );
+    );
+  });
 
   @override
   Future<void> saveEvent(PlanningEvent event) => _enqueue(() async {
+    ensureWritable();
     _requireReady();
     final previous = _records[event.id];
     final payload = StudentEventCreate(
@@ -314,6 +319,7 @@ class RemotePlanningRepository extends PlanningRepository {
   @override
   Future<void> deleteEvent(String id, {int? expectedVersion}) =>
       _enqueue(() async {
+        ensureWritable();
         _requireReady();
         if (expectedVersion == null) {
           throw StateError('Capture event version before deleting');
@@ -331,6 +337,7 @@ class RemotePlanningRepository extends PlanningRepository {
   @override
   Future<void> importLocalPlanning({required bool confirmed}) => _enqueue(
     () async {
+      ensureWritable();
       _requireReady();
       if (!confirmed || !canImportLocalPlanning) {
         throw StateError('Confirm planning import first');

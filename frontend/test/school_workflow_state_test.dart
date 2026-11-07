@@ -265,7 +265,7 @@ void main() {
   }
 
   testWidgets(
-    'graduation draft requires discard confirmation before personal settings',
+    'graduation hides school workflow actions and personal curriculum entry',
     (tester) async {
       final auth = AuthApi(
         cookieMode: false,
@@ -273,44 +273,28 @@ void main() {
           if (request.url.path.endsWith('/login')) {
             return source.json({...identityJson(), 'access_token': token});
           }
-          if (request.url.path.contains('/catalog/')) {
-            return source.json({
-              'items': [catalog.catalogRow(request.url.path)],
-              'next_cursor': null,
-            });
-          }
           return source.json({'items': [], 'next_cursor': null});
         }),
       );
       addTearDown(auth.close);
       await source.login(auth);
-      var moved = false;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: OfficialGraduationPage(
               auth: auth,
               ownerId: userId,
-              onPersonal: () => moved = true,
+              profile: catalog.catalogProfile,
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
-      await tester.enterText(find.widgetWithText(TextField, '입학연도'), '2026');
-      await tester.ensureVisible(find.text('내 학교·학과 기준 설정'));
-      await tester.tap(find.text('내 학교·학과 기준 설정'));
-      await tester.pumpAndSettle();
-      expect(moved, false);
-      expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-      await tester.tap(find.text('계속 작성'));
-      await tester.pumpAndSettle();
-      expect(find.widgetWithText(TextField, '2026'), findsOneWidget);
-      await tester.tap(find.text('내 학교·학과 기준 설정'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('내용 폐기'));
-      await tester.pumpAndSettle();
-      expect(moved, true);
+      expect(find.text('내 학교·학과 기준 설정'), findsNothing);
+      expect(find.text('학교 문서 검색·근거'), findsNothing);
+      expect(find.text('학교 발급 PDF 제출·이력'), findsNothing);
+      expect(find.text('학교 확인 학생 기록'), findsNothing);
+      expect(find.text('학교 선택'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
@@ -389,11 +373,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: OfficialGraduationPage(
-              auth: auth,
-              ownerId: userId,
-              onPersonal: () {},
-            ),
+            body: OfficialGraduationPage(auth: auth, ownerId: userId),
           ),
         ),
       );

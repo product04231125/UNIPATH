@@ -48,7 +48,7 @@ class OfficialProgramApi {
       throw const FormatException('Public execution program is not approved');
     }
     for (final rule in program.rules) {
-      if (rule.evidence.isEmpty) {
+      if (rule.evidence.isEmpty && rule.condition is! OfficialManualCriterion) {
         throw const FormatException('Execution criterion lacks evidence');
       }
       for (final source in rule.evidence) {

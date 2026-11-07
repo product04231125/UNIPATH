@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
+import 'package:university_path_frontend/app_shell/phone_shell.dart';
+import 'package:university_path_frontend/shared/app_typography.dart';
 import 'package:university_path_frontend/shared/widgets/page_header.dart';
 import 'package:university_path_frontend/shared/widgets/content_scroll_view.dart';
 import 'package:university_path_frontend/features/records/course/course_page.dart';
 import 'package:university_path_frontend/features/records/activity/activity_page.dart';
+import 'package:university_path_frontend/features/records/experience/experience_page.dart';
 import 'package:university_path_frontend/features/records/credential/credential_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/job_analysis_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
@@ -48,12 +51,13 @@ void main() {
         addTearDown(repository.dispose);
         await repository.load();
         for (final page in <Widget>[
-          const CoursePage(showMockData: false),
-          const ActivityPage(showMockData: false),
-          const CredentialPage(showMockData: false),
+          const CoursePage(),
+          const ActivityPage(),
+          const ExperiencePage(),
+          const CredentialPage(),
           SchedulePage(repository: repository),
           SettingsPage(repository: repository),
-          const GraduationPage(showMockData: false),
+          const GraduationPage(),
           const MaterialsPage(),
           const JobAnalysisPage(),
         ]) {
@@ -78,15 +82,13 @@ void main() {
         await tester.pumpAndSettle();
         final personalAnchor = tester.getTopLeft(find.byType(PageHeader));
         expect(personalAnchor.dx, 28);
-        for (final label in ['교육과정', '교육과정 과목', '개인 규칙']) {
+        for (final label in ['교육과정', '교육과정 과목', '규칙']) {
           await tester.tap(find.text(label).first);
           await tester.pumpAndSettle();
           expect(tester.getTopLeft(find.byType(PageHeader)), personalAnchor);
           expect(find.textContaining('개인 학업 정보'), findsOneWidget);
-          expect(
-            find.textContaining('학교 공식 데이터나 졸업 판정이 아닙니다.'),
-            findsOneWidget,
-          );
+          expect(find.text('개인 $label'), findsOneWidget);
+          expect(find.text('개인 개인 규칙'), findsNothing);
           expect(tester.takeException(), isNull);
         }
       });
@@ -105,7 +107,7 @@ void main() {
     addTearDown(repository.dispose);
     await repository.load();
     for (final page in <Widget>[
-      const CoursePage(showMockData: false),
+      const CoursePage(),
       SchedulePage(repository: repository),
       SettingsPage(repository: repository),
       const PortfolioDraftsPage(isDocument: false),
@@ -186,29 +188,75 @@ void main() {
     },
   );
 
-  testWidgets(
-    'record menu headers use Korean titles and retain local notices',
-    (tester) async {
-      for (final (page, title) in <(Widget, String)>[
-        (const CoursePage(showMockData: false), '수강 관리'),
-        (const ActivityPage(showMockData: false), '활동'),
-        (const CredentialPage(showMockData: false), '자격'),
-      ]) {
-        await tester.pumpWidget(host(page));
-        // The same header stays visible before and after storage loads.
-        expect(find.byType(PageHeader), findsOneWidget);
-        expect(tester.getTopLeft(find.text(title)), const Offset(28, 28));
-        await tester.pumpAndSettle();
-        expect(tester.getTopLeft(find.text(title)), const Offset(28, 28));
-        expect(
-          find.textContaining(
-            page is CoursePage ? '졸업 반영은 학교의 확정 기록' : '학교 정보가 없어도',
-          ),
-          findsOneWidget,
-        );
-        expect(find.textContaining('RECORDS'), findsNothing);
-        expect(tester.takeException(), isNull);
-      }
-    },
-  );
+  testWidgets('record menu headers use Korean titles and a short description', (
+    tester,
+  ) async {
+    for (final (page, title) in <(Widget, String)>[
+      (const CoursePage(), '수강 관리'),
+      (const ActivityPage(), '활동'),
+      (const ExperiencePage(), '경험'),
+      (const CredentialPage(), '자격'),
+    ]) {
+      await tester.pumpWidget(host(page));
+      // The same header stays visible before and after storage loads.
+      expect(find.byType(PageHeader), findsOneWidget);
+      expect(tester.getTopLeft(find.text(title)), const Offset(28, 28));
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(find.text(title)), const Offset(28, 28));
+      expect(
+        find.textContaining(
+          page is CoursePage
+              ? '학기별 수강 계획과 개인 이수 기록을 정리합니다.'
+              : page is ActivityPage
+              ? '봉사·교내외 활동과 프로젝트·인턴·동아리 경험을 한곳에서 기록합니다.'
+              : page is ExperiencePage
+              ? '프로젝트·인턴·동아리 경험을 이력 문장과 강점으로 정리합니다.'
+              : '자격증·어학·교육 이수 내역을 관리합니다.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('RECORDS'), findsNothing);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('phone chrome uses a compact page title and bottom gap', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: universityPathTheme(),
+        home: const PhoneChromeScope(
+          active: true,
+          child: Scaffold(body: PageHeader(title: '제목')),
+        ),
+      ),
+    );
+    expect(
+      tester.widget<Text>(find.text('제목')).style?.fontSize,
+      phonePageTitleSize,
+    );
+    final titleRect = tester.getRect(find.text('제목'));
+    expect(
+      tester.getSize(find.byType(PageHeader)).height,
+      closeTo(titleRect.height + phonePageHeaderBottomGap, .01),
+    );
+  });
+
+  testWidgets('phone size without PhoneChromeScope keeps the wide page title', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: universityPathTheme(),
+        home: const Scaffold(body: PageHeader(title: '제목')),
+      ),
+    );
+    expect(
+      tester.widget<Text>(find.text('제목')).style?.fontSize,
+      AppTypography.page,
+    );
+  });
 }

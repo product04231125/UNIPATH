@@ -87,6 +87,21 @@ Future<void> open(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> openFromSettings(WidgetTester tester) async {
+  final tooltip = find.byTooltip('설정');
+  final settings = tooltip.evaluate().isNotEmpty
+      ? tooltip
+      : find.text('설정').first;
+  await tester.ensureVisible(settings);
+  await tester.tap(settings);
+  await tester.pumpAndSettle();
+  final entry = find.byKey(const Key('settings-account-security'));
+  expect(entry, findsOneWidget);
+  await tester.ensureVisible(entry);
+  await tester.tap(entry);
+  await tester.pumpAndSettle();
+}
+
 Future<void> fill(
   WidgetTester tester, {
   String old = oldPassword,
@@ -392,7 +407,7 @@ void main() {
       await tester.tap(find.widgetWithText(TextButton, '닫기'));
       await tester.pumpAndSettle();
       expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-      await tester.tap(find.text('계속 작성'));
+      await tester.tap(find.byKey(const Key('input-discard-cancel')));
       await tester.pumpAndSettle();
       final send = find.widgetWithText(FilledButton, '비밀번호 변경');
       await tester.ensureVisible(send);
@@ -465,7 +480,7 @@ void main() {
       // Put the 60s periodic check near this request, before its 20s timeout.
       await tester.pump(const Duration(seconds: 50));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('계정 보안'));
+      await openFromSettings(tester);
       await tester.pumpAndSettle();
       await fill(tester);
       final submit = find.widgetWithText(FilledButton, '비밀번호 변경');
@@ -479,7 +494,10 @@ void main() {
       expect(find.byType(AccountSecurityDialog), findsNothing);
       response.complete(http.Response('', 204));
       await tester.pumpAndSettle();
-      expect(find.text('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.'), findsOneWidget);
+      expect(
+        find.textContaining('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.'),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
@@ -505,7 +523,7 @@ void main() {
       addTearDown(auth.close);
       await tester.pumpWidget(UniversityPathApp(authGateway: auth));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('계정 보안'));
+      await openFromSettings(tester);
       await tester.pumpAndSettle();
       await fill(tester);
       owner = otherId;
@@ -545,7 +563,7 @@ void main() {
       addTearDown(auth.close);
       await tester.pumpWidget(UniversityPathApp(authGateway: auth));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('계정 보안'));
+      await openFromSettings(tester);
       await tester.pumpAndSettle();
       await fill(tester);
       final submit = find.widgetWithText(FilledButton, '비밀번호 변경');
@@ -595,7 +613,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.pump(const Duration(seconds: 50));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('계정 보안'));
+      await openFromSettings(tester);
       await tester.pumpAndSettle();
       await fill(tester);
       final button = find.widgetWithText(FilledButton, '비밀번호 변경');
@@ -610,7 +628,10 @@ void main() {
       response.complete(http.Response('', 204));
       await tester.pumpAndSettle();
       expect(find.byType(LoginPage), findsOneWidget);
-      expect(find.text('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.'), findsOneWidget);
+      expect(
+        find.textContaining('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.'),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
@@ -624,6 +645,14 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byTooltip('계정 보안'), findsNothing);
+      final tooltip = find.byTooltip('설정');
+      final settings = tooltip.evaluate().isNotEmpty
+          ? tooltip
+          : find.text('설정').first;
+      await tester.ensureVisible(settings);
+      await tester.tap(settings);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('settings-account-security')), findsNothing);
       await tester.pumpWidget(const SizedBox());
     },
   );
@@ -715,13 +744,16 @@ void main() {
         await tester.pumpWidget(UniversityPathApp(authGateway: auth));
         await tester.pumpAndSettle();
         expect(find.byType(LoginPage), findsNothing);
-        expect(find.byTooltip('계정 보안'), findsOneWidget);
-        await tester.tap(find.byTooltip('계정 보안'));
+        expect(find.byTooltip('계정 보안'), findsNothing);
+        await openFromSettings(tester);
         await tester.pumpAndSettle();
         await fill(tester);
         await submit(tester, '비밀번호 변경');
         expect(find.byType(LoginPage), findsOneWidget);
-        expect(find.text('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.'), findsOneWidget);
+        expect(
+          find.textContaining('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.'),
+          findsOneWidget,
+        );
         expect(requests.where((r) => r.url.path.endsWith('/logout')), isEmpty);
         await tester.pumpWidget(const SizedBox());
       },

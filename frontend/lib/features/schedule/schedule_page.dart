@@ -3,17 +3,24 @@ import '../../shared/app_style.dart';
 import 'package:flutter/material.dart';
 
 import '../../app_shell/phone_shell.dart';
+import '../../shared/drafts/form_draft_picker.dart';
+import '../../shared/drafts/form_draft_store.dart';
 import '../../shared/widgets/equal_height_row.dart';
-import '../../shared/widgets/content_scroll_view.dart';
+import '../../shared/widgets/feature_line.dart';
+import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/input_dialog.dart';
+import '../../shared/widgets/surface_card.dart';
 import '../../shared/pending_ui_action.dart';
+import '../planning/planning_profile_cta.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
-import '../../shared/widgets/page_header.dart';
 import '../planning/planning_dates.dart';
 import '../planning/remote_planning_repository.dart';
 import '../auth/auth_api.dart';
+import '../auth/guest_preview_scope.dart';
+
+const _scheduleDraftScreenId = 'schedule.event';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({
@@ -21,11 +28,13 @@ class SchedulePage extends StatefulWidget {
     required this.repository,
     this.initialDay,
     this.addRequest,
+    this.onOpenSettings,
   });
 
   final PlanningRepository repository;
   final DateTime? initialDay;
   final PendingUiAction? addRequest;
+  final VoidCallback? onOpenSettings;
 
   @override
   State<SchedulePage> createState() => _SchedulePageState();
@@ -48,14 +57,10 @@ class _SchedulePageState extends State<SchedulePage> {
     animation: widget.repository,
     builder: (context, _) {
       if (widget.repository.isLoading || widget.repository.loadFailed) {
-        return ContentScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _header(),
-              PlanningStorageState(repository: widget.repository),
-            ],
-          ),
+        return FeaturePage(
+          title: '일정',
+          description: '개인 일정을 주간으로 보고 추가합니다.',
+          body: [PlanningStorageState(repository: widget.repository)],
         );
       }
       final selectedEvents = _eventsForDay(_selectedDay);
@@ -70,79 +75,61 @@ class _SchedulePageState extends State<SchedulePage> {
               widget.repository.loadFailed) {
             return;
           }
-          if (request!.consume()) _editEvent();
+          if (request!.consume() &&
+              widget.repository.profile.isConfigured) {
+            _editEvent();
+          }
         });
       }
       return LayoutBuilder(
-        builder: (context, constraints) => ContentScrollView(
+        builder: (context, constraints) => FeaturePage(
           padding: EdgeInsets.only(
-            bottom: constraints.maxHeight < 620 ? 28 : 8,
+            bottom: PhoneChromeScope.of(context)
+                ? phoneListGap
+                : (constraints.maxHeight < 620 ? 28 : 8),
           ),
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1100),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _header(
-                    actions: [
-                      FilledButton.icon(
-                        onPressed: () => _editEvent(),
-                        icon: Icon(Icons.add),
-                        label: Text('일정 추가'),
+          title: '일정',
+          description: '개인 일정을 주간으로 보고 추가합니다.',
+          body: [
+            Align(
+              alignment: Alignment.topLeft,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1100),
+                child: constraints.maxWidth >= 820
+                    ? EqualHeightRow(
+                        children: [
+                          Expanded(flex: 3, child: _calendar()),
+                          const SizedBox(width: 16),
+                          Expanded(flex: 2, child: _dayList(selectedEvents)),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _calendar(),
+                          SizedBox(height: FeatureLine.slotGap(context)),
+                          _dayList(selectedEvents),
+                        ],
                       ),
-                    ],
-                  ),
-                  if (constraints.maxWidth >= 820)
-                    EqualHeightRow(
-                      children: [
-                        Expanded(flex: 3, child: _calendar()),
-                        const SizedBox(width: 18),
-                        Expanded(flex: 2, child: _dayList(selectedEvents)),
-                      ],
-                    )
-                  else ...[
-                    _calendar(),
-                    const SizedBox(height: 18),
-                    _dayList(selectedEvents),
-                  ],
-                ],
               ),
             ),
-          ),
+          ],
         ),
       );
     },
   );
 
-  Widget _header({List<Widget> actions = const []}) {
-    final phone = PhoneChromeScope.of(context);
-    return PageHeader(
-      title: '일정',
-      description: phone
-          ? null
-          : widget.repository.isServerBacked
-          ? '개인 계획 · ${widget.repository.storageLabel}. 학교 공식 일정·알림·반복 일정은 아직 연결되지 않았습니다.'
-          : '개인 계획을 이 기기에 저장합니다. 학교 공식 일정·알림·반복 일정은 아직 연결되지 않았습니다.',
-      actions: actions,
-    );
-  }
-
-  Widget _calendar() => Card(
-    clipBehavior: Clip.antiAlias,
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
+  Widget _calendar() => SurfaceCard(
+    child: Column(
         children: [
           Row(
             children: [
-              IconButton(
+              IconButton.filledTonal(
                 tooltip: '이전 달',
                 onPressed: () => setState(
                   () => _month = DateTime(_month.year, _month.month - 1),
                 ),
-                icon: Icon(Icons.chevron_left),
+                icon: const Icon(Icons.chevron_left),
               ),
               Expanded(
                 child: Text(
@@ -151,12 +138,12 @@ class _SchedulePageState extends State<SchedulePage> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
-              IconButton(
+              IconButton.filledTonal(
                 tooltip: '다음 달',
                 onPressed: () => setState(
                   () => _month = DateTime(_month.year, _month.month + 1),
                 ),
-                icon: Icon(Icons.chevron_right),
+                icon: const Icon(Icons.chevron_right),
               ),
             ],
           ),
@@ -206,8 +193,7 @@ class _SchedulePageState extends State<SchedulePage> {
           ),
         ],
       ),
-    ),
-  );
+    );
 
   Widget _dayCell(DateTime day) {
     final events = _eventsForDay(day);
@@ -266,33 +252,58 @@ class _SchedulePageState extends State<SchedulePage> {
     );
   }
 
-  Widget _dayList(List<PlanningEvent> events) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
+  Widget _dayList(List<PlanningEvent> events) {
+    final canAdd = widget.repository.profile.isConfigured;
+    return SurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '${_selectedDay.month}월 ${_selectedDay.day}일 일정',
-            style: Theme.of(context).textTheme.titleMedium,
+          FeatureLine.section(
+            text: '${_selectedDay.month}월 ${_selectedDay.day}일 일정',
+            padTop: false,
+            padBottom: false,
+            trailing: canAdd
+                ? Wrap(
+                    spacing: 8,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: () => _editEvent(),
+                        icon: const Icon(Icons.add),
+                        label: const Text('일정 추가'),
+                      ),
+                      OutlinedButton(
+                        key: const Key('schedule-load-draft'),
+                        onPressed: _loadDraft,
+                        child: const Text('불러오기'),
+                      ),
+                    ],
+                  )
+                : null,
           ),
-          const SizedBox(height: 10),
+          if (!canAdd && widget.onOpenSettings != null) ...[
+            const SizedBox(height: 12),
+            PlanningProfileSettingsCta(
+              need: PlanningProfileNeed.configured,
+              profile: widget.repository.profile,
+              onOpenSettings: widget.onOpenSettings!,
+            ),
+          ],
           if (events.isEmpty)
-            Text(
-              '등록된 개인 일정이 없습니다.',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            )
+            const FeatureLine.one(text: '등록된 개인 일정이 없습니다.')
           else
             for (final event in events) _eventTile(event),
         ],
       ),
-    ),
-  );
+    );
+  }
 
-  Widget _eventTile(PlanningEvent event, {bool showDate = false}) => ListTile(
-    contentPadding: EdgeInsets.zero,
+  Widget _eventTile(
+    PlanningEvent event, {
+    bool showDate = false,
+  }) => FeatureLine.two(
+    primary: event.title,
+    secondary:
+        '${showDate ? '${event.start.month}.${event.start.day} · ' : ''}${_time(event.start)}–${_time(event.end)} · ${event.category.label}${event.memo.isEmpty ? '' : '\n${event.memo}'}',
     leading: Container(
       width: 4,
       height: 42,
@@ -301,29 +312,67 @@ class _SchedulePageState extends State<SchedulePage> {
         borderRadius: BorderRadius.circular(4),
       ),
     ),
-    title: Text(event.title),
-    subtitle: Text(
-      '${showDate ? '${event.start.month}.${event.start.day} · ' : ''}${_time(event.start)}–${_time(event.end)} · ${event.category.label}${event.memo.isEmpty ? '' : '\n${event.memo}'}',
-    ),
     trailing: IconButton(
       tooltip: '${event.title} 수정',
-      icon: Icon(Icons.edit_outlined),
-      onPressed: () => _editEvent(event),
+      icon: const Icon(Icons.edit_outlined),
+      onPressed: () => _editEvent(existing: event),
     ),
   );
 
   List<PlanningEvent> _eventsForDay(DateTime day) =>
       eventsOnDay(widget.repository.events, day);
 
-  Future<void> _editEvent([PlanningEvent? existing]) async {
+  Future<void> _editEvent({
+    PlanningEvent? existing,
+    Map<String, Object?>? draftValues,
+    String? appliedDraftId,
+  }) async {
+    if (!_allowWrite()) return;
+    if (existing == null && !widget.repository.profile.isConfigured) return;
     await showInputDialog<void>(
       context: context,
       builder: (context) => _EventEditor(
         event: existing,
         initialDay: _selectedDay,
         repository: widget.repository,
+        allowWrite: _allowWrite,
+        draftValues: draftValues,
+        appliedDraftId: appliedDraftId,
       ),
     );
+  }
+
+  Future<void> _loadDraft() async {
+    if (!_allowWrite()) return;
+    if (!widget.repository.profile.isConfigured) return;
+    final entry = await showFormDraftPicker(
+      context: context,
+      collectionKey: formDraftCollectionKey(_scheduleDraftScreenId),
+    );
+    if (!mounted || entry == null) return;
+    await _editEvent(
+      draftValues: entry.payload,
+      appliedDraftId: entry.id,
+    );
+  }
+
+  bool _allowWrite() {
+    if (!mounted) return false;
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return false;
+    }
+    if (widget.repository.writesBlocked) {
+      try {
+        widget.repository.ensureWritable();
+      } on StateError catch (error) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(error.message)));
+      }
+      return false;
+    }
+    return true;
   }
 }
 
@@ -332,10 +381,16 @@ class _EventEditor extends StatefulWidget {
     this.event,
     required this.initialDay,
     required this.repository,
+    required this.allowWrite,
+    this.draftValues,
+    this.appliedDraftId,
   });
   final PlanningEvent? event;
   final DateTime initialDay;
   final PlanningRepository repository;
+  final bool Function() allowWrite;
+  final Map<String, Object?>? draftValues;
+  final String? appliedDraftId;
 
   @override
   State<_EventEditor> createState() => _EventEditorState();
@@ -349,17 +404,26 @@ class _EventEditorState extends State<_EventEditor> {
   late PlanningEventCategory _category;
   late DateTime _defaultStart, _defaultEnd;
   final _formKey = GlobalKey<FormState>();
+  final _drafts = FormDraftStore.instance;
   bool _saving = false;
   String? _error;
+  late String? _loadedDraftId = widget.appliedDraftId;
   late final String _id = widget.event?.id ?? planningClientId();
+  String get _collectionKey => formDraftCollectionKey(_scheduleDraftScreenId);
 
   @override
   void initState() {
     super.initState();
     final event = widget.event;
-    _title = TextEditingController(text: event?.title);
-    _memo = TextEditingController(text: event?.memo);
+    final draft = widget.draftValues;
+    _title = TextEditingController(
+      text: draft?['title']?.toString() ?? event?.title,
+    );
+    _memo = TextEditingController(
+      text: draft?['memo']?.toString() ?? event?.memo,
+    );
     _start =
+        DateTime.tryParse(draft?['start']?.toString() ?? '') ??
         event?.start ??
         DateTime(
           widget.initialDay.year,
@@ -367,8 +431,17 @@ class _EventEditorState extends State<_EventEditor> {
           widget.initialDay.day,
           9,
         );
-    _end = event?.end ?? _start.add(const Duration(hours: 1));
-    _category = event?.category ?? PlanningEventCategory.academic;
+    _end =
+        DateTime.tryParse(draft?['end']?.toString() ?? '') ??
+        event?.end ??
+        _start.add(const Duration(hours: 1));
+    final categoryName = draft?['category']?.toString();
+    _category =
+        PlanningEventCategory.values
+            .where((c) => c.name == categoryName)
+            .firstOrNull ??
+        event?.category ??
+        PlanningEventCategory.academic;
     _defaultStart = _start;
     _defaultEnd = _end;
   }
@@ -380,17 +453,54 @@ class _EventEditorState extends State<_EventEditor> {
     super.dispose();
   }
 
+  Future<bool> _saveDraft() async {
+    if (!widget.allowWrite()) return false;
+    try {
+      final payload = <String, Object?>{
+        'title': _title.text.trim(),
+        'memo': _memo.text.trim(),
+        'start': _start.toIso8601String(),
+        'end': _end.toIso8601String(),
+        'category': _category.name,
+      };
+      final entry = await _drafts.add(
+        _collectionKey,
+        summary: formDraftSummaryFromValues({
+          'title': _title.text.trim(),
+          'memo': _memo.text.trim(),
+        }),
+        payload: payload,
+      );
+      _loadedDraftId = entry.id;
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('임시저장했습니다.')));
+      }
+      return true;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('임시저장하지 못했습니다. 입력은 유지됩니다.')),
+        );
+      }
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) => InputDialog(
     changes: Listenable.merge([_title, _memo]),
     editing: widget.event != null,
     saving: _saving,
+    onTempSave: _saveDraft,
     hasUnsavedChanges: () => widget.event == null
         ? _title.text.trim().isNotEmpty ||
               _memo.text.trim().isNotEmpty ||
               _category != PlanningEventCategory.academic ||
               _start != _defaultStart ||
-              _end != _defaultEnd
+              _end != _defaultEnd ||
+              widget.draftValues != null
         : _title.text != widget.event!.title ||
               _memo.text != widget.event!.memo ||
               _category != widget.event!.category ||
@@ -478,6 +588,11 @@ class _EventEditorState extends State<_EventEditor> {
         onPressed: _saving ? null : () => InputDialog.cancel<void>(context),
         child: Text('취소'),
       ),
+      TextButton(
+        key: const Key('schedule-temp-save'),
+        onPressed: _saving ? null : () => _saveDraft(),
+        child: const Text('임시저장'),
+      ),
       FilledButton(
         onPressed: _saving ? null : _save,
         child: Text(_saving ? '저장 중…' : '저장'),
@@ -518,6 +633,7 @@ class _EventEditorState extends State<_EventEditor> {
   );
 
   Future<void> _delete() async {
+    if (!widget.allowWrite()) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -549,6 +665,7 @@ class _EventEditorState extends State<_EventEditor> {
   }
 
   Future<void> _persist(Future<void> Function() write) async {
+    if (!widget.allowWrite()) return;
     setState(() {
       _saving = true;
       _error = null;
@@ -570,6 +687,7 @@ class _EventEditorState extends State<_EventEditor> {
   }
 
   Future<void> _save() async {
+    if (!widget.allowWrite()) return;
     if (!_formKey.currentState!.validate()) return;
     if (!_end.isAfter(_start)) {
       ScaffoldMessenger.of(
@@ -586,7 +704,14 @@ class _EventEditorState extends State<_EventEditor> {
       category: _category,
       memo: _memo.text.trim(),
     );
-    await _persist(() => widget.repository.saveEvent(event));
+    await _persist(() async {
+      await widget.repository.saveEvent(event);
+      final draftId = _loadedDraftId;
+      if (draftId != null) {
+        await _drafts.delete(_collectionKey, draftId);
+        _loadedDraftId = null;
+      }
+    });
   }
 }
 
