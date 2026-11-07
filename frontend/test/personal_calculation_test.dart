@@ -23,6 +23,31 @@ Future<PersonalCalculationController> controller(
 }
 
 void main() {
+  test('thesis completion requests do not require an unavailable approval input', () async {
+    final gateway = CalculationGateway();
+    final c = await controller(gateway);
+    addTearDown(c.dispose);
+    final achievement = fixtureId(PersonalRecordKind.portfolio);
+    final draft = PersonalCalculationDraft()
+      ..kind = 'thesis'
+      ..values['thesisType'] = '졸업작품'
+      ..selected.add(achievement);
+    draft.observation(achievement)['completion'] = 'completed';
+    final value = draft.condition(c.sources!) as PersonalThesisCondition;
+    expect(value.requiresApproval, isFalse);
+    expect(value.records.single.completion, 'completed');
+    expect(value.records.single.approval, 'needs_review');
+    final saved = PersonalThesisCondition(
+      thesisType: '졸업작품', requiresApproval: true, acceptedGrades: ['Pass'],
+      records: [PersonalThesisObservation(achievementId: achievement, completion: 'completed')],
+    );
+    final reopened = PersonalCalculationDraft.fromCondition(saved).condition(c.sources!) as PersonalThesisCondition;
+    expect(reopened.requiresApproval, isFalse);
+    expect(reopened.acceptedGrades, ['Pass']);
+    expect(reopened.records.single.achievementId, achievement);
+    expect(saved.requiresApproval, isTrue, reason: 'saved immutable result is not rewritten');
+  });
+
   test('amounts and dates validate exactly without float conversion', () {
     for (final value in ['0', '3.000001', '1000000.000000', '0003.125']) {
       expect(validateCalculationAmount(value), isNull, reason: value);

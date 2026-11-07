@@ -121,7 +121,9 @@ class PersonalCalculationDraft {
           'thesisType': condition.thesisType,
           'acceptedGrades': condition.acceptedGrades.join(', '),
         });
-        draft.requiresApproval = condition.requiresApproval;
+        // This form records completion, not school approval. Reopening a saved
+        // condition creates a new completion-based request; history stays immutable.
+        draft.requiresApproval = false;
         for (final item in condition.records) {
           draft.selected.add(item.achievementId);
           draft.observation(item.achievementId).addAll({
@@ -137,7 +139,7 @@ class PersonalCalculationDraft {
   final selected = <String>{};
   final observations = <String, Map<String, String>>{};
   bool allCourses = false;
-  bool requiresApproval = true;
+  bool requiresApproval = false;
   Map<String, String> observation(String id) =>
       observations.putIfAbsent(id, () => {});
   bool get hasInput =>
