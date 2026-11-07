@@ -149,6 +149,10 @@ Future<void> showPersonalRecordForm({
         selectedCourseId = current.id;
       }
     }
+    final restoredId = draftValues?['_courseSelectionId'];
+    if (restoredId != null && courseOptions.any((option) => option.id == restoredId)) {
+      selectedCourseId = restoredId;
+    }
   }
   if (!context.mounted || blocked()) {
     year.dispose();
@@ -158,12 +162,15 @@ Future<void> showPersonalRecordForm({
     return;
   }
   final initialCourseId = selectedCourseId;
+  CoursePickOption? selectedCourse() => courseOptions
+      .where((option) => option.id == selectedCourseId).firstOrNull;
   void applyCourse(CoursePickOption option) {
     controllers['title']?.text = option.title;
     controllers['courseCode']?.text = option.courseCode;
     controllers['credits']?.text = option.credits;
     controllers['category']?.text = option.category;
   }
+  if (draftValues != null && selectedCourse() != null) applyCourse(selectedCourse()!);
 
   bool periodChanged() =>
       isCourse &&
@@ -193,7 +200,7 @@ Future<void> showPersonalRecordForm({
       final entry = await drafts.add(
         collectionKey,
         summary: formDraftSummaryFromValues(values),
-        payload: values,
+        payload: {...values, if (isCourse) '_courseSelectionId': selectedCourseId},
       );
       loadedDraftId = entry.id;
       if (messengerContext.mounted) {
@@ -270,6 +277,9 @@ Future<void> showPersonalRecordForm({
                       initialValue: selectedCourseId ?? '',
                       validator: (value) => (value == null || value.isEmpty)
                           ? '과목을 선택하세요.'
+                          : selectedCourse()?.id.startsWith('catalog:') == true &&
+                              selectedCourse()?.curriculumCourseId == null
+                          ? '학교 교육과정의 분류 연결이 필요합니다.'
                           : null,
                       builder: (state) => Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,11 +330,17 @@ Future<void> showPersonalRecordForm({
                                     ),
                                   if ((controllers['category']?.text ?? '')
                                       .isNotEmpty)
-                                    controllers['category']!.text,
+                                    selectedCourse()?.categoryLabel ?? controllers['category']!.text,
+                                  if (selectedCourse()?.requiredCourse != null)
+                                    selectedCourse()!.requirementLabel,
                                 ].where((part) => part.isNotEmpty).join(' · '),
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ),
+                          if (selectedCourse()?.id.startsWith('catalog:') == true)
+                            Text(selectedCourse()!.curriculumCourseId == null
+                                ? '교육과정의 분류 연결을 확인하지 못했습니다. 학업 프로필의 교육과정을 선택하거나 관리자에게 연결을 요청하세요.'
+                                : '이수구분과 필수 여부는 학교 교육과정에 연결된 기준을 사용합니다.'),
                           if (state.hasError)
                             Text(
                               state.errorText!,

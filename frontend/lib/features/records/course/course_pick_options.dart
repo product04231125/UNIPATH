@@ -12,6 +12,9 @@ class CoursePickOption {
     required this.credits,
     required this.category,
     required this.sourceLabel,
+    this.curriculumCourseId,
+    this.curriculumId,
+    this.requiredCourse,
   });
 
   final String id;
@@ -20,28 +23,32 @@ class CoursePickOption {
   final String credits;
   final String category;
   final String sourceLabel;
+  final String? curriculumCourseId, curriculumId;
+  final bool? requiredCourse;
+  String get categoryLabel => switch (category) {
+    'major' => '전공', 'general' => '교양', 'other' => '기타', _ => category,
+  };
+  String get requirementLabel => switch (requiredCourse) {
+    true => '필수', false => '선택', null => '필수 여부 미제공',
+  };
 
   String get label {
     final parts = <String>[
       sourceLabel,
       [title, if (courseCode.isNotEmpty) '($courseCode)'].join(' '),
       if (credits.isNotEmpty) formatCreditsLabel(credits),
-      if (category.isNotEmpty) category,
+      if (category.isNotEmpty) categoryLabel,
+      if (requiredCourse != null) requirementLabel,
     ];
     return parts.join(' · ');
   }
 
   bool matches(PersonalRecord record) {
-    final titleKey = _key(title, courseCode);
-    return titleKey.isNotEmpty &&
-        titleKey == _key(record.value('title'), record.value('courseCode'));
+    return id == 'record:${record.id}' || id == 'current:${record.id}';
   }
 }
 
-String _key(String title, String code) =>
-    '${title.trim().toLowerCase()}|${code.trim().toLowerCase()}';
-
-/// Catalog, personal curriculum, then distinct existing course records.
+/// Source IDs define identity. Equal names/codes never merge distinct records.
 Future<List<CoursePickOption>> loadCoursePickOptions({
   required PersonalRecordRepository courseRepository,
   PersonalRecordRepository? curriculumCourseRepository,
@@ -54,8 +61,7 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
   final seen = <String>{};
 
   void add(CoursePickOption option) {
-    final key = _key(option.title, option.courseCode);
-    if (option.title.trim().isEmpty || !seen.add(key)) return;
+    if (option.title.trim().isEmpty || !seen.add(option.id)) return;
     options.add(option);
   }
 
@@ -83,7 +89,7 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
     } catch (_) {
       // School catalog is optional; personal sources still fill the list.
     }
-    final categories = <String, String>{};
+    final links = <String, List<StudentCurriculumCoursePublicView>>{};
     try {
       final seenCursors = <String>{};
       String? cursor;
@@ -96,8 +102,9 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
           cursor: cursor,
         );
         for (final link in page.items) {
-          if (link.courseId.isNotEmpty) {
-            categories[link.courseId] = link.category;
+          if (link.institutionId == school && link.courseId.isNotEmpty &&
+              (curriculumId == null || curriculumId.isEmpty || link.curriculumId == curriculumId)) {
+            (links[link.courseId] ??= []).add(link);
           }
         }
         cursor = page.nextCursor;
@@ -109,14 +116,21 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
       // Curriculum links only add category; courses already collected stay.
     }
     for (final course in courses) {
+      if (course.institutionId != school) continue;
+      final candidates = links[course.id] ?? [];
+      // A course in multiple curricula has no implicit last-row winner.
+      final link = candidates.length == 1 ? candidates.single : null;
       add(
         CoursePickOption(
           id: 'catalog:${course.id}',
           title: course.name,
           courseCode: course.code,
           credits: course.credits,
-          category: categories[course.id] ?? '',
+          category: link?.category ?? '',
           sourceLabel: '학교 과목',
+          curriculumCourseId: link?.id,
+          curriculumId: link?.curriculumId,
+          requiredCourse: link?.required,
         ),
       );
     }
@@ -135,6 +149,9 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
         credits: record.value('credits'),
         category: record.value('category'),
         sourceLabel: '내 교육과정',
+        requiredCourse: switch (record.value('requiredCourse')) {
+          'true' || '필수' => true, 'false' || '선택' => false, _ => null,
+        },
       ),
     );
   }
