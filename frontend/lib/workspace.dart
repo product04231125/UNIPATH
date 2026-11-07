@@ -402,7 +402,7 @@ class _WorkspaceState extends State<Workspace> {
         4 => const ActivityPage(),
         5 => const CredentialPage(),
         6 => MaterialsPage(key: _materials),
-        7 => const JobAnalysisPage(),
+        7 => JobAnalysisPage(studentApi: _personalApi),
         _ when index == settingsPage - 1 => SettingsPage(
           repository: _planningRepository,
           chatPreferences: widget.windowHost.supportsDetached

@@ -55,7 +55,7 @@ void main() {
         find.byKey(const ValueKey('job-record-course/job-course')),
         findsNothing,
       );
-      expect(find.textContaining('학생용 채용 분석 API가 아직 없습니다'), findsOneWidget);
+      expect(find.textContaining('로그인한 계정의 분석 연결이 필요합니다'), findsOneWidget);
       expect(
         find.textContaining('공고 텍스트, 주소, PDF·캡처 중 하나가 필요합니다'),
         findsOneWidget,
@@ -63,7 +63,7 @@ void main() {
       expect(find.text('답변: 받은 답변 없음'), findsOneWidget);
       expect(find.text('근거: 받은 근거 없음'), findsOneWidget);
       expect(find.text('불확실한 부분: 받은 내용 없음'), findsOneWidget);
-      expect(find.text('분석 실행 불가'), findsOneWidget);
+      expect(find.text('분석 실행'), findsOneWidget);
       await tester.enterText(
         find.byKey(const ValueKey('job-posting-text')),
         '합성 채용공고 본문',
@@ -80,6 +80,9 @@ void main() {
         find.byKey(const ValueKey('job-posting-url')),
         'https://example.test/jobs/1',
       );
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const ValueKey('job-record-activity/job-act')));
       await tester.tap(
         find.byKey(const ValueKey('job-record-activity/job-act')),
       );
@@ -161,7 +164,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('notice.png'), findsOneWidget);
       expect(find.textContaining('중 하나가 필요합니다'), findsNothing);
-      expect(find.textContaining('학생용 채용 분석 API가 아직 없습니다'), findsOneWidget);
+      expect(find.textContaining('로그인한 계정의 분석 연결이 필요합니다'), findsOneWidget);
       expect(find.textContaining('합격'), findsNothing);
 
       next = XFile.fromData(
