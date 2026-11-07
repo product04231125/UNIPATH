@@ -1,0 +1,239 @@
+{
+  "directory_origin": "user_provided",
+  "campuses": [
+    {
+      "id": "metropol",
+      "title": "메트로폴캠퍼스(경기도양주)",
+      "departments": [
+        {
+          "id": "DE0016",
+          "title": "건설시스템공학과(토목공학과)",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN300&code=DE0016",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0015",
+          "title": "건축공학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN288&code=DE0015",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0017",
+          "title": "건축디자인학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN289&code=DE0017",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0009",
+          "title": "경영학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN290&code=DE0009",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0007",
+          "title": "경찰학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN291&code=DE0007",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0046",
+          "title": "국제융합학부",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN292&code=DE0046",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0047",
+          "title": "군사학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN387&code=DE0047",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0018",
+          "title": "디자인학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN293&code=DE0018",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0185",
+          "title": "보건행정학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN386&code=DE0185",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0029",
+          "title": "사회복지학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN388&code=DE0029",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0014",
+          "title": "소프트웨어융합보안학과(소프트웨어학과)",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN294&code=DE0014",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0019",
+          "title": "스포츠마케팅학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN295&code=DE0019",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0011",
+          "title": "외식사업학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN296&code=DE0011",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0002",
+          "title": "유아교육과 *사범계열",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN297&code=DE0002",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0020",
+          "title": "체육학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN298&code=DE0020",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0013",
+          "title": "컴퓨터공학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN299&code=DE0013",
+          "availability": "available"
+        },
+        {
+          "id": "DE0010",
+          "title": "항공서비스학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN301&code=DE0010",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0008",
+          "title": "행정학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN302&code=DE0008",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0030",
+          "title": "호텔관광경영학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN389&code=DE0030",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0012",
+          "title": "호텔조리학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN303&code=DE0012",
+          "availability": "content_pending"
+        }
+      ]
+    },
+    {
+      "id": "medical",
+      "title": "메디컬캠퍼스(원주문막)",
+      "departments": [
+        {
+          "id": "DE0005",
+          "title": "간호학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN304&code=DE0005",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0023",
+          "title": "물리치료학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN306&code=DE0023",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0026",
+          "title": "안경광학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN309&code=DE0026",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0024",
+          "title": "응급구조학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN310&code=DE0024",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0025",
+          "title": "임상병리학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN311&code=DE0025",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0022",
+          "title": "작업치료학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN312&code=DE0022",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0027",
+          "title": "치기공학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN313&code=DE0027",
+          "availability": "content_pending"
+        },
+        {
+          "id": "DE0021",
+          "title": "치위생학과",
+          "reference_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN314&code=DE0021",
+          "availability": "content_pending"
+        }
+      ]
+    },
+    {
+      "id": "global",
+      "title": "글로벌캠퍼스(고성)",
+      "departments": [
+        {
+          "id": "international",
+          "title": "국제학부",
+          "reference_url": "https://global.kduniv.ac.kr/global/index.php?pCode=1466580676",
+          "availability": "content_pending"
+        }
+      ]
+    }
+  ],
+  "computer": {
+    "id": "DE0013",
+    "source_url": "https://www.kduniv.ac.kr/kor/CMS/DeptIntro/view.do?mCode=MN299&code=DE0013",
+    "title": "컴퓨터공학과",
+    "tagline": "이론, 실무, 인성을 겸비한 인재 양성 컴퓨터공학과",
+    "sections": [
+      {
+        "id": "intro",
+        "title": "학과 소개",
+        "body": "우리 컴퓨터공학과는 지식정보화사회를 선도하는 정부의 IT 신성장 동력 산업에 기여할 수 있는 우수한 전문가와 ITC산업의 미래를 책임질 수 있는 우수한 인재를 육성하고 있습니다. 이를 위하여 우리 컴퓨터공학과는 주요 산업 기술 수요인 시스템 및 네트워크 통합 분야, 모바일 및 웹 서비스 분야 그리고 IT의 융합학문 분야에 대한 교육을 집중하고 170여개의 관련 산업체와 산학 협력을 통하여 우리 대학이 이룩해 놓은 취업 최우수 대학으로의 위상을 더욱 건실하게 하고 있습니다. 우리 컴퓨터공학과는 여러분들의 꿈을 이룰 수 있도록 그리고 인생의 훌륭한 동반자가 될 수 있도록 최선을 다하겠습니다."
+      },
+      {
+        "id": "contact",
+        "title": "사무실·위치·홈페이지",
+        "body": "위치\n우당관 1802호\n사무실\n031-869-9870\n홈페이지: https://www.kduniv.ac.kr/ce",
+        "homepage_url": "https://www.kduniv.ac.kr/ce"
+      },
+      {
+        "id": "features",
+        "title": "학과 특성",
+        "body": "과학기술정통부 주관 'Net 챌린지 캠프' 4년 연속 본선 진출 (2021~2024)\n취업역량강화 IT 교육 (개발·시스템 통합·클라우드·네트워크 인프라)\n4차산업혁명 대응 실무중심 주문식 교육과정 운영"
+      },
+      {
+        "id": "goals",
+        "title": "교육목표",
+        "body": "목적\n컴퓨터공학과는 컴퓨터 · 정보기술 분야에서 수요와 성과 중심의 전문지식 및 리더쉽을 갖춘 인재를 양성함을 교육목적으로 함\n목표\n컴퓨터공학과의 교육목적을 효율적으로 달성하기 위하여 다음과 같은 구체적인 교육목표를 설정함\n가. 소프트웨어 개발, 임베디드시스템, 네트워크, 모바일, 웹서비스 등 수요중심의 시스템통합분야에 특성화된 능력 배양\n나. 컴퓨터 · 정보기술 분야의 최신 기술, 방법, 도구를 사용하여 산업현장에 적용 및 응용할 수 있는 실무 능력 배양\n다. 다양한 컴퓨터 · 정보기술 문제를 창의적으로 해결할 수 있는 능력 배양\n라. 컴퓨터 · 정보기술, 시사, 문화 등의 세계화 무대영역에서 활동할 수 있는 국제화 능력 배양"
+      },
+      {
+        "id": "careers",
+        "title": "졸업 후 진로",
+        "body": "컴퓨터공학을 전공한 졸업자는 컴퓨터가 기반이 되는 현대사회에서 가장 필요로 하는 전문인력이 될 것입니다. 졸업 후 진로는 삼성전자, SK Telecom, Kakao와 같은 개발 분야의 기업 및 벤처기업, 대학원 진학과 연구기관 등 여러 곳에서 웹 전문가, 프로그램 개발, 시스템보안 전문가, 데이터베이스 전문가, 정보기술 컨설턴트 및 다수의 IT 관련 분야의 전문기술 인력으로 취업이 가능합니다."
+      },
+      {
+        "id": "certificates",
+        "title": "취득자격증",
+        "body": "· 국가기술 자격증 : 정보처리기사, 전자계산기조직응용기사 등\n· 네트워크 관련 자격증 : CCNA, CCNP, CCIE 등\n· 시스템 관련 자격증 : MCSA, MCSE, MCP 등\n· 정보보호 전문 자격증 : 정보보안기사, CISSP, CISA 등"
+      }
+    ],
+    "sha256": "3dd2ca1671fbcd7ad1aa1eb5de38e558a6c191b9e0104aa600d737d86c46d19d",
+    "source_file": "sources/university/3dd2ca1671fbcd7ad1aa1eb5de38e558a6c191b9e0104aa600d737d86c46d19d.html",
+    "fetched_at": "2026-11-05T14:05:31.391406+00:00"
+  }
+}

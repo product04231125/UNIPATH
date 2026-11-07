@@ -3,7 +3,7 @@
   "source_note": "수집 페이지·사용자 제공 PDF의 실제 추출 내용",
   "scenarios": {
     "home": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "home",
       "title": "학사 안내",
       "state": "ready",
@@ -49,10 +49,10 @@
         },
         {
           "id": "scholarship",
-          "label": "장학금",
+          "label": "장학금·학자금 융자",
           "action": "select_node",
           "node_id": "scholarship",
-          "availability": "content_pending"
+          "availability": "available"
         },
         {
           "id": "tuition",
@@ -70,10 +70,10 @@
         },
         {
           "id": "departments",
-          "label": "학부·학과",
+          "label": "학부·학과 안내",
           "action": "select_node",
           "node_id": "departments",
-          "availability": "content_pending"
+          "availability": "available"
         },
         {
           "id": "regulations",
@@ -81,11 +81,18 @@
           "action": "select_node",
           "node_id": "regulations",
           "availability": "available"
+        },
+        {
+          "id": "university",
+          "label": "대학규정",
+          "action": "select_node",
+          "node_id": "university",
+          "availability": "available"
         }
       ]
     },
     "calendar": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "calendar",
       "title": "학사일정",
       "state": "ready",
@@ -111,7 +118,7 @@
       ]
     },
     "calendar:2026": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "calendar:2026",
       "title": "2026년",
       "state": "ready",
@@ -221,7 +228,7 @@
       ]
     },
     "calendar:2026:11": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "calendar:2026:11",
       "title": "11월",
       "state": "ready",
@@ -332,7 +339,7 @@
       "snapshot_stale": false
     },
     "regulations": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "regulations",
       "title": "학사관련규정",
       "state": "ready",
@@ -393,7 +400,7 @@
       ]
     },
     "regulations:2-0-5": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "regulations:2-0-5",
       "title": "일반대학원 학칙",
       "state": "ready",
@@ -442,7 +449,7 @@
       "scope": "일반대학원"
     },
     "regulations:2-0-5:s005:i0025": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "regulations:2-0-5:s005:i0025",
       "title": "제20조 (수료 및 이수학점)",
       "state": "ready",
@@ -488,7 +495,7 @@
       "scope": "일반대학원"
     },
     "regulations:2-0-5:pages:3": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "regulations:2-0-5:pages:3",
       "title": "3쪽",
       "state": "ready",
