@@ -589,7 +589,12 @@ class AdminEditorState extends State<AdminEditor> {
                 controller: _controllers[field.key],
                 enabled: !saving && !_metadataLocked,
                 maxLines: field.multiline ? 3 : 1,
-                decoration: const InputDecoration(),
+                decoration: InputDecoration(
+                  helperText: widget.kind == AdminKind.rule && field.key == 'sourceUrl'
+                      ? '공개 가능한 학교 규정 주소를 입력하세요. 관리자가 원문을 확인하며, 현재 학생 화면에는 이 주소를 표시하지 않습니다.'
+                      : null,
+                  helperMaxLines: 3,
+                ),
                 validator: (v) =>
                     field.required && (v == null || v.trim().isEmpty)
                     ? '${field.label}을 입력하세요.'
@@ -648,6 +653,14 @@ class AdminEditorState extends State<AdminEditor> {
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.error,
                     ),
+                  ),
+                if (field.key == 'ruleSetId')
+                  Text(
+                    _choices(field).isEmpty
+                        ? '선택할 초안이 없습니다. 이 화면 위쪽의 「규칙 묶음」에서 먼저 등록하세요. 묶음 없이 요건만 등록해도 됩니다.'
+                        : '같은 학교의 규칙 묶음 초안만 선택합니다. 선택하면 묶음의 학교·학과·교육과정 범위를 따릅니다. 묶음은 여러 요건을 함께 적용할 때 사용합니다.',
+                    key: const ValueKey('admin-rule-set-help'),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
               ],
             ),
