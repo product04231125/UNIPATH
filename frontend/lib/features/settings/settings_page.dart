@@ -18,6 +18,8 @@ import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import 'chat_preferences.dart';
 import 'chat_settings_section.dart';
+import 'ai_consent_preferences.dart';
+import 'ai_consent_section.dart';
 import 'appearance_settings_section.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -26,11 +28,13 @@ class SettingsPage extends StatefulWidget {
     required this.repository,
     this.chatPreferences,
     this.studentApi,
+    this.aiConsent,
   });
 
   final PlanningRepository repository;
   final ChatPreferences? chatPreferences;
   final StudentApi? studentApi;
+  final AiConsentPreferences? aiConsent;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -111,6 +115,8 @@ class _SettingsPageState extends State<SettingsPage> {
               const PageHeader(title: '설정', contextLabel: '일반'),
               PlanningStorageState(repository: widget.repository),
               const AppearanceSettingsSection(),
+              if (widget.aiConsent != null)
+                AiConsentSection(preferences: widget.aiConsent!),
               if (widget.chatPreferences != null)
                 ChatSettingsSection(preferences: widget.chatPreferences!),
             ],
@@ -408,6 +414,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const AppearanceSettingsSection(),
+                      if (widget.aiConsent != null)
+                        AiConsentSection(preferences: widget.aiConsent!),
                       if (widget.chatPreferences != null)
                         ChatSettingsSection(
                           preferences: widget.chatPreferences!,

@@ -8,6 +8,7 @@ import 'app_shell/workspace_shell.dart';
 import 'shared/pending_ui_action.dart';
 import 'features/assistant/assistant_window_host.dart';
 import 'features/settings/chat_preferences.dart';
+import 'features/settings/ai_consent_preferences.dart';
 import 'features/assistant/assistant_conversation.dart';
 import 'features/assistant/assistant_api.dart';
 import 'features/assistant/assistant_panel.dart';
@@ -101,6 +102,9 @@ class _WorkspaceState extends State<Workspace> {
   Future<void>? _endingSession;
   final _assistantButtonFocus = FocusNode(debugLabel: 'AI 도우미 열기');
   late final ChatPreferences _chatPreferences;
+  late final AiConsentPreferences? _aiConsent = widget.studentApi == null
+      ? null
+      : AiConsentPreferences(ownerId: widget.studentApi!.ownerId);
   var _chatWidth = 360.0;
   double _graduationMinimumWidth = 0;
   final _graduationPageKey = GlobalKey();
@@ -176,6 +180,7 @@ class _WorkspaceState extends State<Workspace> {
     _planningRepository.load();
     _chatPreferences = widget.chatPreferences ?? ChatPreferences();
     _chatPreferences.load();
+    _aiConsent?.load();
     widget.windowHost.isMaximized().then(_onMaximized, onError: (Object _) {});
     _mainWindowMaximizeSubscription = widget.windowHost.maximizeChanges.listen(
       _onMaximized,
@@ -263,6 +268,7 @@ class _WorkspaceState extends State<Workspace> {
     _planningRepository.removeListener(_refreshProfile);
     _planningRepository.dispose();
     if (widget.chatPreferences == null) _chatPreferences.dispose();
+    _aiConsent?.dispose();
     super.dispose();
   }
 
@@ -437,6 +443,7 @@ class _WorkspaceState extends State<Workspace> {
           ? _chatPreferences
           : null,
       studentApi: widget.studentApi,
+      aiConsent: _aiConsent,
     ),
     _ => const SizedBox.shrink(),
   };
