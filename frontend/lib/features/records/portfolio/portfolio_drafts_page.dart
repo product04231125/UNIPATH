@@ -2,6 +2,8 @@ import '../../../shared/app_style.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../../shared/drafts/form_draft_picker.dart';
+import '../../../shared/drafts/form_draft_store.dart';
 import '../../../shared/widgets/input_dialog.dart';
 import '../../../shared/widgets/content_scroll_view.dart';
 
@@ -90,6 +92,8 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
   Future<void> _edit({
     PortfolioComposition? composition,
     ApplicationDocument? document,
+    Map<String, Object?>? draftValues,
+    String? appliedDraftId,
   }) async {
     if (_busy || _loading) return;
     setState(() => _busy = true);
@@ -103,6 +107,8 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
           isDocument: widget.isDocument,
           composition: composition,
           document: document,
+          draftValues: draftValues,
+          appliedDraftId: appliedDraftId,
         ),
       );
       if (mounted && saved == true) {
@@ -119,6 +125,18 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _loadFormDraft() async {
+    if (_busy || _loading) return;
+    final entry = await showFormDraftPicker(
+      context: context,
+      collectionKey: formDraftCollectionKey(
+        widget.isDocument ? 'portfolio.document' : 'portfolio.composition',
+      ),
+    );
+    if (!mounted || entry == null) return;
+    await _edit(draftValues: entry.payload, appliedDraftId: entry.id);
   }
 
   Future<void> _delete(String id, String title) async {
@@ -253,10 +271,21 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _header(),
-          FilledButton.icon(
-            onPressed: _busy ? null : () => _edit(),
-            icon: const Icon(Icons.add),
-            label: Text(document ? '지원 문서 초안 추가' : '포트폴리오 구성 추가'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton(
+                key: const Key('portfolio-load-form-draft'),
+                onPressed: _busy ? null : _loadFormDraft,
+                child: const Text('불러오기'),
+              ),
+              FilledButton.icon(
+                onPressed: _busy ? null : () => _edit(),
+                icon: const Icon(Icons.add),
+                label: Text(document ? '지원 문서 초안 추가' : '포트폴리오 구성 추가'),
+              ),
+            ],
           ),
           if (_message != null)
             Padding(

@@ -411,7 +411,7 @@ void main() {
     server.fail = null;
     await tap(t, find.text('초안 다시 읽기'));
     await select(t, '저장 위치', programId);
-    await tap(t, find.text('내용 폐기'));
+    await tap(t, find.byKey(const Key('input-discard-delete')));
     expect(
       t
           .widget<FilledButton>(find.widgetWithText(FilledButton, '한 줄 요건 저장'))
@@ -471,7 +471,7 @@ void main() {
             await select(t, '저장 위치', programId);
             await tap(
               t,
-              find.text('내용 폐기'),
+              find.byKey(const Key('input-discard-delete')),
             ); // Explicitly replace the local draft with the saved response.
             await line(t, '최소 125학점');
             await tap(t, find.text('한 줄 요건 저장'));
@@ -505,10 +505,10 @@ void main() {
         '최소 120학점',
       );
       await tap(t, find.text('취소'));
-      await tap(t, find.text('계속 작성'));
+      await tap(t, find.byKey(const Key('input-discard-cancel')));
       expect(key.currentState!.dirty, isTrue);
       await tap(t, find.text('취소'));
-      await tap(t, find.text('내용 폐기'));
+      await tap(t, find.byKey(const Key('input-discard-delete')));
       expect(key.currentState!.dirty, isFalse);
       expect(server.writes, isEmpty);
       expect(server.data['rules'], isEmpty);
@@ -562,7 +562,7 @@ void main() {
     await select(t, '저장 위치', programId);
     await line(t, '적은 줄');
     await select(t, '저장 위치', '');
-    expect(find.text('내용 폐기'), findsNothing);
+    expect(find.byKey(const Key('input-discard-delete')), findsNothing);
     expect(
       t
           .widget<TextFormField>(find.byKey(const ValueKey('execution-line-0')))

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../shared/drafts/form_draft_store.dart';
 import '../../../shared/widgets/field_requirement.dart';
 import '../../../shared/widgets/input_dialog.dart';
 
@@ -16,11 +17,15 @@ class PortfolioEditorDialog extends StatefulWidget {
     required this.isDocument,
     this.composition,
     this.document,
+    this.draftValues,
+    this.appliedDraftId,
   });
   final PortfolioWorkspaceRepository repository;
   final bool isDocument;
   final PortfolioComposition? composition;
   final ApplicationDocument? document;
+  final Map<String, Object?>? draftValues;
+  final String? appliedDraftId;
   @override
   State<PortfolioEditorDialog> createState() => _PortfolioEditorDialogState();
 }
@@ -36,26 +41,52 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
   late final String _operationId =
       widget.document?.id ?? widget.composition?.id ?? PersonalRecord.newId();
   String? _error;
+  late String? _loadedDraftId = widget.appliedDraftId;
+  final _drafts = FormDraftStore.instance;
   late final List<String> _originalText;
   late final List<String> _originalSelected;
   late final PortfolioAudience _originalAudience;
   late final String _originalType;
   late final bool _originalReviewed;
 
+  String get _draftCollectionKey => formDraftCollectionKey(
+    widget.isDocument ? 'portfolio.document' : 'portfolio.composition',
+  );
+
   @override
   void initState() {
     super.initState();
     final c = widget.composition;
     final d = widget.document;
-    _title = TextEditingController(text: c?.title ?? d?.title ?? '');
-    _description = TextEditingController(text: c?.description ?? '');
-    _target = TextEditingController(text: d?.target ?? '');
-    _role = TextEditingController(text: d?.role ?? '');
-    _body = TextEditingController(text: d?.body ?? '');
-    _selected = [...c?.sources ?? d?.sources ?? []];
-    _audience = c?.audience ?? PortfolioAudience.private;
-    _reviewed = c?.reviewed ?? false;
-    _type = d?.type ?? '이력서';
+    final draft = widget.draftValues;
+    _title = TextEditingController(
+      text: draft?['title']?.toString() ?? c?.title ?? d?.title ?? '',
+    );
+    _description = TextEditingController(
+      text: draft?['description']?.toString() ?? c?.description ?? '',
+    );
+    _target = TextEditingController(
+      text: draft?['target']?.toString() ?? d?.target ?? '',
+    );
+    _role = TextEditingController(
+      text: draft?['role']?.toString() ?? d?.role ?? '',
+    );
+    _body = TextEditingController(
+      text: draft?['body']?.toString() ?? d?.body ?? '',
+    );
+    final draftSources = draft?['sources'];
+    _selected = draftSources is List
+        ? [for (final s in draftSources) '$s']
+        : [...c?.sources ?? d?.sources ?? []];
+    final audienceName = draft?['audience']?.toString();
+    _audience =
+        PortfolioAudience.values
+            .where((a) => a.name == audienceName)
+            .firstOrNull ??
+        c?.audience ??
+        PortfolioAudience.private;
+    _reviewed = draft?['reviewed'] == true || (c?.reviewed ?? false);
+    _type = draft?['type']?.toString() ?? d?.type ?? '이력서';
     _originalText = [
       _title,
       _description,
@@ -160,6 +191,41 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
     }
   }
 
+  Future<bool> _saveDraft() async {
+    try {
+      final payload = <String, Object?>{
+        'title': _title.text.trim(),
+        'description': _description.text.trim(),
+        'target': _target.text.trim(),
+        'role': _role.text.trim(),
+        'body': _body.text.trim(),
+        'sources': _selected,
+        'audience': _audience.name,
+        'reviewed': _reviewed,
+        'type': _type,
+      };
+      final entry = await _drafts.add(
+        _draftCollectionKey,
+        summary: formDraftSummaryFromValues({'title': _title.text.trim()}),
+        payload: payload,
+      );
+      _loadedDraftId = entry.id;
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('임시저장했습니다.')));
+      }
+      return true;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('임시저장하지 못했습니다. 입력은 유지됩니다.')),
+        );
+      }
+      return false;
+    }
+  }
+
   Future<void> _save() async {
     if (_saving || !_form.currentState!.validate()) return;
     if (!widget.isDocument &&
@@ -199,6 +265,11 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
           ),
         );
       }
+      final draftId = _loadedDraftId;
+      if (draftId != null) {
+        await _drafts.delete(_draftCollectionKey, draftId);
+        _loadedDraftId = null;
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (failure) {
       if (mounted) {
@@ -223,7 +294,9 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
       changes: Listenable.merge([_title, _description, _target, _role, _body]),
       editing: widget.composition != null || widget.document != null,
       saving: _saving,
+      onTempSave: _saveDraft,
       hasUnsavedChanges: () =>
+          widget.draftValues != null ||
           !listEquals(
             [_title, _description, _target, _role, _body]
                 .map(
@@ -389,6 +462,11 @@ class _PortfolioEditorDialogState extends State<PortfolioEditorDialog> {
               ? null
               : () => InputDialog.cancel<bool>(context, false),
           child: const Text('취소'),
+        ),
+        TextButton(
+          key: const Key('portfolio-temp-save'),
+          onPressed: _saving ? null : () => _saveDraft(),
+          child: const Text('임시저장'),
         ),
         FilledButton(
           onPressed: _saving ? null : _save,

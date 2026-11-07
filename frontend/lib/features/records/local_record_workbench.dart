@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/app_style.dart';
+import '../../shared/drafts/form_draft_picker.dart';
+import '../../shared/drafts/form_draft_store.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import '../../shared/widgets/field_label.dart';
@@ -14,6 +16,7 @@ import '../../shared/widgets/surface_card.dart';
 import '../../shared/widgets/responsive_panels.dart';
 import '../auth/guest_preview_scope.dart';
 import 'personal_record_fields.dart';
+import 'personal_record_form.dart';
 import 'personal_record_repository.dart';
 import '../graduation/personal_requirement_panel.dart';
 
@@ -52,8 +55,95 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
     (e) => e.value.text != (_editing?.value(e.key) ?? ''),
   );
   bool get dirty => _metadataDirty || (_rulePanel.currentState?.dirty ?? false);
+  String? _loadedDraftId;
+  final _drafts = FormDraftStore.instance;
+  String get _draftCollectionKey => formDraftCollectionKey(
+    personalRecordDraftScreenId(widget.kind),
+  );
   Future<bool> allowLeave() async =>
-      !_saving && (!dirty || await confirmInputDiscard(context));
+      !_saving &&
+      (!dirty ||
+          await confirmInputDiscardAllowsLeave(
+            context,
+            onTempSave: _saveDraftQuiet,
+          ));
+
+  Map<String, String> _draftValues() => {
+    for (final e in _controllers.entries) e.key: e.value.text.trim(),
+  };
+
+  Future<bool> _saveDraftQuiet() async {
+    try {
+      final values = _draftValues();
+      final entry = await _drafts.add(
+        _draftCollectionKey,
+        summary: formDraftSummaryFromValues(values),
+        payload: values,
+      );
+      _loadedDraftId = entry.id;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _saveDraft() async {
+    if (_saving || GuestPreviewScope.isActive(context)) {
+      if (GuestPreviewScope.isActive(context)) {
+        GuestPreviewScope.showBlockedMessage(context);
+      }
+      return;
+    }
+    final ok = await _saveDraftQuiet();
+    if (!mounted) return;
+    setState(() {
+      _message = ok ? '임시저장했습니다.' : '임시저장하지 못했습니다. 입력은 유지됩니다.';
+      _error = null;
+    });
+  }
+
+  Future<void> _loadDraft() async {
+    if (_saving || GuestPreviewScope.isActive(context)) {
+      if (GuestPreviewScope.isActive(context)) {
+        GuestPreviewScope.showBlockedMessage(context);
+      }
+      return;
+    }
+    if (dirty) {
+      final overwrite = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('임시저장 불러오기'),
+          content: const Text('지금 작성 중인 내용을 덮어쓸까요?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('덮어쓰기'),
+            ),
+          ],
+        ),
+      );
+      if (overwrite != true || !mounted) return;
+    }
+    final entry = await showFormDraftPicker(
+      context: context,
+      collectionKey: _draftCollectionKey,
+    );
+    if (!mounted || entry == null) return;
+    for (final e in _controllers.entries) {
+      final raw = entry.payload[e.key];
+      e.value.text = raw == null ? '' : '$raw';
+    }
+    _loadedDraftId = entry.id;
+    setState(() {
+      _message = '임시저장을 불러왔습니다.';
+      _error = null;
+    });
+  }
   @override
   void initState() {
     super.initState();
@@ -142,6 +232,11 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
       await _repo.save(
         PersonalRecord(id: id, version: _editing?.version, values: values),
       );
+      final draftId = _loadedDraftId;
+      if (draftId != null) {
+        await _drafts.delete(_draftCollectionKey, draftId);
+        _loadedDraftId = null;
+      }
       if (mounted) {
         if (_isRule) {
           _editing = _repo.records.where((r) => r.id == id).first;
@@ -558,6 +653,16 @@ class LocalRecordWorkbenchState extends State<LocalRecordWorkbench> {
                               ? '요건 설명 저장'
                               : '등록',
                         ),
+                      ),
+                      TextButton(
+                        key: const Key('local-record-temp-save'),
+                        onPressed: _saving ? null : _saveDraft,
+                        child: const Text('임시저장'),
+                      ),
+                      OutlinedButton(
+                        key: const Key('local-record-load-draft'),
+                        onPressed: _saving ? null : _loadDraft,
+                        child: const Text('불러오기'),
                       ),
                     ],
                   ),

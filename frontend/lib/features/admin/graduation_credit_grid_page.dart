@@ -104,7 +104,7 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
   bool get dirty => _fingerprint != _initial;
 
   Future<bool> allowLeave() async =>
-      !dirty || await confirmInputDiscard(context);
+      !dirty || await confirmInputDiscardAllowsLeave(context);
 
   void _syncControllers() {
     _bind(_groupLabels, [for (final group in _grid.groups) group.id], (id) {

@@ -499,7 +499,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
         expect(server.loggedOut, isFalse);
-        await tester.tap(find.text('계속 작성'));
+        await tester.tap(find.byKey(const Key('input-discard-cancel')));
         await tester.pumpAndSettle();
         expect(find.text('아직 저장하지 않은 학교'), findsOneWidget);
         await tester.ensureVisible(nameField);

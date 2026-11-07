@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/app_style.dart';
+import '../../../shared/drafts/form_draft_picker.dart';
+import '../../../shared/drafts/form_draft_store.dart';
 import '../../../shared/widgets/external_link_button.dart';
 import '../../../shared/widgets/feature_line.dart';
 import '../../../shared/widgets/feature_page.dart';
@@ -150,7 +152,12 @@ class _ActivityPageState extends State<ActivityPage> {
     await _edit(kind);
   }
 
-  Future<void> _edit(PersonalRecordKind kind, [PersonalRecord? record]) async {
+  Future<void> _edit(
+    PersonalRecordKind kind, {
+    PersonalRecord? record,
+    Map<String, String>? draftValues,
+    String? appliedDraftId,
+  }) async {
     if (_formOpen || _guestBlocked()) return;
     _formOpen = true;
     try {
@@ -162,6 +169,8 @@ class _ActivityPageState extends State<ActivityPage> {
             ? '경험 직접 기록'
             : '활동 직접 기록',
         record: record,
+        draftValues: draftValues,
+        appliedDraftId: appliedDraftId,
         onFieldsReady: (fields) {
           if (mounted) setState(() => _fields[kind] = fields);
         },
@@ -172,6 +181,41 @@ class _ActivityPageState extends State<ActivityPage> {
     } finally {
       _formOpen = false;
     }
+  }
+
+  Future<void> _loadDraft() async {
+    if (_formOpen || _guestBlocked()) return;
+    final kind = await showDialog<PersonalRecordKind>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('불러올 임시저장 종류'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () =>
+                Navigator.pop(context, PersonalRecordKind.activity),
+            child: const Text('활동·봉사'),
+          ),
+          SimpleDialogOption(
+            onPressed: () =>
+                Navigator.pop(context, PersonalRecordKind.experience),
+            child: const Text('프로젝트·인턴·동아리'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || kind == null) return;
+    final entry = await showFormDraftPicker(
+      context: context,
+      collectionKey: formDraftCollectionKey(
+        personalRecordDraftScreenId(kind),
+      ),
+    );
+    if (!mounted || entry == null) return;
+    final values = {
+      for (final item in entry.payload.entries)
+        item.key: '${item.value ?? ''}',
+    };
+    await _edit(kind, draftValues: values, appliedDraftId: entry.id);
   }
 
   Future<void> _delete(PersonalRecordKind kind, PersonalRecord record) async {
@@ -260,7 +304,7 @@ class _ActivityPageState extends State<ActivityPage> {
               label: field.label,
             ),
           TextButton(
-            onPressed: () => _edit(kind, record),
+            onPressed: () => _edit(kind, record: record),
             child: const Text('수정'),
           ),
           TextButton(
@@ -335,6 +379,11 @@ class _ActivityPageState extends State<ActivityPage> {
         ),
       ],
       actions: [
+        OutlinedButton(
+          key: const Key('activity-load-draft'),
+          onPressed: _loadDraft,
+          child: const Text('불러오기'),
+        ),
         FilledButton.icon(
           onPressed: _add,
           icon: const Icon(Icons.add),

@@ -52,7 +52,7 @@ class MaterialsPageState extends State<MaterialsPage> {
       _fileName != (_editing?.fileName ?? '') ||
       !identical(_pdf, _editing?.pdf);
   Future<bool> allowLeave() async =>
-      !_busy && (!dirty || await confirmInputDiscard(context));
+      !_busy && (!dirty || await confirmInputDiscardAllowsLeave(context));
   @override
   void initState() {
     super.initState();

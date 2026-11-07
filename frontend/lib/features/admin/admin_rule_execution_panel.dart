@@ -266,7 +266,7 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
   Future<void> _selectProgram(String id) async {
     if (_busy || (id == _programId && !_uncertain && !_conflict)) return;
     final revision = _revision;
-    if (id.isNotEmpty && dirty && !await confirmInputDiscard(context)) return;
+    if (id.isNotEmpty && dirty && !await confirmInputDiscardAllowsLeave(context)) return;
     if (!mounted || revision != _revision) return;
     await _run(() async {
       if (id.isEmpty) {
@@ -651,7 +651,7 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
                 onPressed: _busy || !_reloaded
                     ? null
                     : () async {
-                        if (!await confirmInputDiscard(context) || !mounted) {
+                        if (!await confirmInputDiscardAllowsLeave(context) || !mounted) {
                           return;
                         }
                         setState(() {

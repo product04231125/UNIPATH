@@ -419,7 +419,7 @@ void main() {
       await tester.ensureVisible(cancel);
       await tester.tap(cancel);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('내용 폐기'));
+      await tester.tap(find.byKey(const Key('input-discard-delete')));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.byKey(const ValueKey('material-type')));
       await tester.tap(find.byKey(const ValueKey('material-type')));
@@ -429,7 +429,7 @@ void main() {
       await tester.ensureVisible(cancel);
       await tester.tap(cancel);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('내용 폐기'));
+      await tester.tap(find.byKey(const Key('input-discard-delete')));
       await tester.pumpAndSettle();
       await fillAndSave('취소 후 자료');
       expect(find.text('자료 종류를 선택하세요.'), findsOneWidget);

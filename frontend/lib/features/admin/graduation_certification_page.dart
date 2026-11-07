@@ -86,7 +86,7 @@ class GraduationCertificationPageState
   bool get dirty => _fingerprint != _initial;
 
   Future<bool> allowLeave() async =>
-      !dirty || await confirmInputDiscard(context);
+      !dirty || await confirmInputDiscardAllowsLeave(context);
 
   Iterable<GraduationCertificationGroup> _allGroups([
     List<GraduationCertificationGroup>? groups,

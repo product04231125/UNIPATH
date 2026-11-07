@@ -3,6 +3,8 @@ import '../../shared/app_style.dart';
 import 'package:flutter/material.dart';
 
 import '../../app_shell/phone_shell.dart';
+import '../../shared/drafts/form_draft_picker.dart';
+import '../../shared/drafts/form_draft_store.dart';
 import '../../shared/widgets/equal_height_row.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/feature_page.dart';
@@ -17,6 +19,8 @@ import '../planning/planning_dates.dart';
 import '../planning/remote_planning_repository.dart';
 import '../auth/auth_api.dart';
 import '../auth/guest_preview_scope.dart';
+
+const _scheduleDraftScreenId = 'schedule.event';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({
@@ -259,10 +263,20 @@ class _SchedulePageState extends State<SchedulePage> {
             padTop: false,
             padBottom: false,
             trailing: canAdd
-                ? FilledButton.icon(
-                    onPressed: () => _editEvent(),
-                    icon: const Icon(Icons.add),
-                    label: const Text('일정 추가'),
+                ? Wrap(
+                    spacing: 8,
+                    children: [
+                      OutlinedButton(
+                        key: const Key('schedule-load-draft'),
+                        onPressed: _loadDraft,
+                        child: const Text('불러오기'),
+                      ),
+                      FilledButton.icon(
+                        onPressed: () => _editEvent(),
+                        icon: const Icon(Icons.add),
+                        label: const Text('일정 추가'),
+                      ),
+                    ],
                   )
                 : null,
           ),
@@ -301,14 +315,18 @@ class _SchedulePageState extends State<SchedulePage> {
     trailing: IconButton(
       tooltip: '${event.title} 수정',
       icon: const Icon(Icons.edit_outlined),
-      onPressed: () => _editEvent(event),
+      onPressed: () => _editEvent(existing: event),
     ),
   );
 
   List<PlanningEvent> _eventsForDay(DateTime day) =>
       eventsOnDay(widget.repository.events, day);
 
-  Future<void> _editEvent([PlanningEvent? existing]) async {
+  Future<void> _editEvent({
+    PlanningEvent? existing,
+    Map<String, Object?>? draftValues,
+    String? appliedDraftId,
+  }) async {
     if (!_allowWrite()) return;
     if (existing == null && !widget.repository.profile.isConfigured) return;
     await showInputDialog<void>(
@@ -318,7 +336,23 @@ class _SchedulePageState extends State<SchedulePage> {
         initialDay: _selectedDay,
         repository: widget.repository,
         allowWrite: _allowWrite,
+        draftValues: draftValues,
+        appliedDraftId: appliedDraftId,
       ),
+    );
+  }
+
+  Future<void> _loadDraft() async {
+    if (!_allowWrite()) return;
+    if (!widget.repository.profile.isConfigured) return;
+    final entry = await showFormDraftPicker(
+      context: context,
+      collectionKey: formDraftCollectionKey(_scheduleDraftScreenId),
+    );
+    if (!mounted || entry == null) return;
+    await _editEvent(
+      draftValues: entry.payload,
+      appliedDraftId: entry.id,
     );
   }
 
@@ -348,11 +382,15 @@ class _EventEditor extends StatefulWidget {
     required this.initialDay,
     required this.repository,
     required this.allowWrite,
+    this.draftValues,
+    this.appliedDraftId,
   });
   final PlanningEvent? event;
   final DateTime initialDay;
   final PlanningRepository repository;
   final bool Function() allowWrite;
+  final Map<String, Object?>? draftValues;
+  final String? appliedDraftId;
 
   @override
   State<_EventEditor> createState() => _EventEditorState();
@@ -366,17 +404,26 @@ class _EventEditorState extends State<_EventEditor> {
   late PlanningEventCategory _category;
   late DateTime _defaultStart, _defaultEnd;
   final _formKey = GlobalKey<FormState>();
+  final _drafts = FormDraftStore.instance;
   bool _saving = false;
   String? _error;
+  late String? _loadedDraftId = widget.appliedDraftId;
   late final String _id = widget.event?.id ?? planningClientId();
+  String get _collectionKey => formDraftCollectionKey(_scheduleDraftScreenId);
 
   @override
   void initState() {
     super.initState();
     final event = widget.event;
-    _title = TextEditingController(text: event?.title);
-    _memo = TextEditingController(text: event?.memo);
+    final draft = widget.draftValues;
+    _title = TextEditingController(
+      text: draft?['title']?.toString() ?? event?.title,
+    );
+    _memo = TextEditingController(
+      text: draft?['memo']?.toString() ?? event?.memo,
+    );
     _start =
+        DateTime.tryParse(draft?['start']?.toString() ?? '') ??
         event?.start ??
         DateTime(
           widget.initialDay.year,
@@ -384,8 +431,17 @@ class _EventEditorState extends State<_EventEditor> {
           widget.initialDay.day,
           9,
         );
-    _end = event?.end ?? _start.add(const Duration(hours: 1));
-    _category = event?.category ?? PlanningEventCategory.academic;
+    _end =
+        DateTime.tryParse(draft?['end']?.toString() ?? '') ??
+        event?.end ??
+        _start.add(const Duration(hours: 1));
+    final categoryName = draft?['category']?.toString();
+    _category =
+        PlanningEventCategory.values
+            .where((c) => c.name == categoryName)
+            .firstOrNull ??
+        event?.category ??
+        PlanningEventCategory.academic;
     _defaultStart = _start;
     _defaultEnd = _end;
   }
@@ -397,17 +453,54 @@ class _EventEditorState extends State<_EventEditor> {
     super.dispose();
   }
 
+  Future<bool> _saveDraft() async {
+    if (!widget.allowWrite()) return false;
+    try {
+      final payload = <String, Object?>{
+        'title': _title.text.trim(),
+        'memo': _memo.text.trim(),
+        'start': _start.toIso8601String(),
+        'end': _end.toIso8601String(),
+        'category': _category.name,
+      };
+      final entry = await _drafts.add(
+        _collectionKey,
+        summary: formDraftSummaryFromValues({
+          'title': _title.text.trim(),
+          'memo': _memo.text.trim(),
+        }),
+        payload: payload,
+      );
+      _loadedDraftId = entry.id;
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('임시저장했습니다.')));
+      }
+      return true;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('임시저장하지 못했습니다. 입력은 유지됩니다.')),
+        );
+      }
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) => InputDialog(
     changes: Listenable.merge([_title, _memo]),
     editing: widget.event != null,
     saving: _saving,
+    onTempSave: _saveDraft,
     hasUnsavedChanges: () => widget.event == null
         ? _title.text.trim().isNotEmpty ||
               _memo.text.trim().isNotEmpty ||
               _category != PlanningEventCategory.academic ||
               _start != _defaultStart ||
-              _end != _defaultEnd
+              _end != _defaultEnd ||
+              widget.draftValues != null
         : _title.text != widget.event!.title ||
               _memo.text != widget.event!.memo ||
               _category != widget.event!.category ||
@@ -494,6 +587,11 @@ class _EventEditorState extends State<_EventEditor> {
       TextButton(
         onPressed: _saving ? null : () => InputDialog.cancel<void>(context),
         child: Text('취소'),
+      ),
+      TextButton(
+        key: const Key('schedule-temp-save'),
+        onPressed: _saving ? null : () => _saveDraft(),
+        child: const Text('임시저장'),
       ),
       FilledButton(
         onPressed: _saving ? null : _save,
@@ -606,7 +704,14 @@ class _EventEditorState extends State<_EventEditor> {
       category: _category,
       memo: _memo.text.trim(),
     );
-    await _persist(() => widget.repository.saveEvent(event));
+    await _persist(() async {
+      await widget.repository.saveEvent(event);
+      final draftId = _loadedDraftId;
+      if (draftId != null) {
+        await _drafts.delete(_collectionKey, draftId);
+        _loadedDraftId = null;
+      }
+    });
   }
 }
 

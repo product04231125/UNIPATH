@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/drafts/form_draft_picker.dart';
+import '../../shared/drafts/form_draft_store.dart';
 import '../../shared/widgets/external_link_button.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/input_dialog.dart';
@@ -75,12 +77,93 @@ class AdminEditorState extends State<AdminEditor> {
   bool get _metadataDirty =>
       _fields.any((f) => _value(f.key) != (_initial[f.key] ?? ''));
   String? _error, _message;
+  String? _loadedDraftId;
+  final _drafts = FormDraftStore.instance;
   bool get saving => _saving || _panelBusy;
   bool get dirty =>
       _metadataDirty || (_executionKey.currentState?.dirty ?? false);
+  String get _draftCollectionKey =>
+      formDraftCollectionKey('admin.${widget.kind.name}');
   Future<bool> allowLeave() async {
     if (saving) return false;
-    return !dirty || await confirmInputDiscard(context);
+    return !dirty ||
+        await confirmInputDiscardAllowsLeave(
+          context,
+          onTempSave: _saveDraftQuiet,
+        );
+  }
+
+  Map<String, String> _draftValues() => {
+    for (final f in _fields) f.key: _value(f.key).trim(),
+  };
+
+  Future<bool> _saveDraftQuiet() async {
+    try {
+      final values = _draftValues();
+      final entry = await _drafts.add(
+        _draftCollectionKey,
+        summary: formDraftSummaryFromValues(values),
+        payload: values,
+      );
+      _loadedDraftId = entry.id;
+      return true;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('임시저장하지 못했습니다. 입력은 유지됩니다.')),
+        );
+      }
+      return false;
+    }
+  }
+
+  Future<void> _saveDraft() async {
+    if (saving) return;
+    final ok = await _saveDraftQuiet();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ok ? '임시저장했습니다.' : '임시저장하지 못했습니다. 입력은 유지됩니다.'),
+      ),
+    );
+  }
+
+  Future<void> _loadDraft() async {
+    if (saving) return;
+    if (dirty) {
+      final overwrite = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('임시저장 불러오기'),
+          content: const Text('지금 작성 중인 내용을 덮어쓸까요?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('덮어쓰기'),
+            ),
+          ],
+        ),
+      );
+      if (overwrite != true || !mounted) return;
+    }
+    final entry = await showFormDraftPicker(
+      context: context,
+      collectionKey: _draftCollectionKey,
+    );
+    if (!mounted || entry == null) return;
+    for (final field in _fields) {
+      final raw = entry.payload[field.key];
+      _controllers[field.key]!.text = raw == null ? '' : '$raw';
+    }
+    _loadedDraftId = entry.id;
+    setState(() {
+      _error = null;
+      _message = '임시저장을 불러왔습니다.';
+    });
   }
 
   String _defaultValue(AdminField field) {
@@ -319,6 +402,11 @@ class AdminEditorState extends State<AdminEditor> {
                 .firstOrNull;
           }
         }
+        final draftId = _loadedDraftId;
+        if (draftId != null) {
+          await _drafts.delete(_draftCollectionKey, draftId);
+          _loadedDraftId = null;
+        }
       }
       if (mounted) {
         if (_isRule) {
@@ -409,7 +497,19 @@ class AdminEditorState extends State<AdminEditor> {
       ),
       actions: [
         ..._lifecycleButtons(),
+        if (!widget.revoke)
+          OutlinedButton(
+            key: const Key('admin-editor-load-draft'),
+            onPressed: saving ? null : _loadDraft,
+            child: const Text('불러오기'),
+          ),
         TextButton(onPressed: saving ? null : _cancel, child: const Text('취소')),
+        if (!widget.revoke)
+          TextButton(
+            key: const Key('admin-editor-temp-save'),
+            onPressed: saving || _metadataLocked ? null : _saveDraft,
+            child: const Text('임시저장'),
+          ),
         FilledButton(
           onPressed: saving || _metadataLocked ? null : _save,
           child: Text(
@@ -424,7 +524,7 @@ class AdminEditorState extends State<AdminEditor> {
                 : '등록',
           ),
         ),
-      ],
+      ], // 불러오기는 팝업 옆(액션 선행), 안쪽은 취소→임시저장→저장
     );
   }
 
@@ -755,6 +855,16 @@ class AdminEditorState extends State<AdminEditor> {
                             : '등록',
                       ),
                     ),
+                    TextButton(
+                      key: const Key('admin-editor-temp-save-inline'),
+                      onPressed: saving || _metadataLocked ? null : _saveDraft,
+                      child: const Text('임시저장'),
+                    ),
+                    OutlinedButton(
+                      key: const Key('admin-editor-load-draft-inline'),
+                      onPressed: saving ? null : _loadDraft,
+                      child: const Text('불러오기'),
+                    ),
                   ],
                 ),
               ],
@@ -892,6 +1002,7 @@ class AdminEditorState extends State<AdminEditor> {
         saving: saving,
         hasContent: hasContent,
         hasUnsavedChanges: hasUnsavedChanges,
+        onTempSave: widget.revoke ? null : _saveDraftQuiet,
         title: title,
         content: content,
         actions: actions,

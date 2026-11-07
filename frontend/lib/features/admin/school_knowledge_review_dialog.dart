@@ -224,7 +224,7 @@ class _ReviewState extends State<_ReviewDialog> {
 
   Future<void> _load() async {
     if (_loading || _busy || _denied) return;
-    if (_dirty && !await confirmInputDiscard(context)) return;
+    if (_dirty && !await confirmInputDiscardAllowsLeave(context)) return;
     if (!mounted) return;
     setState(() {
       _loading = true;

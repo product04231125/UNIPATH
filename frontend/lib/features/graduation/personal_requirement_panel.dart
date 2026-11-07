@@ -363,7 +363,7 @@ class PersonalRequirementPanelState extends State<PersonalRequirementPanel> {
                   ? null
                   : () async {
                       if (c!.result == null &&
-                          !await confirmInputDiscard(context)) {
+                          !await confirmInputDiscardAllowsLeave(context)) {
                         return;
                       }
                       if (!mounted) return;

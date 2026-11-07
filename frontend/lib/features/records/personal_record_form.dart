@@ -8,6 +8,7 @@ import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/field_requirement.dart';
 import '../../shared/widgets/feature_line.dart';
+import '../../shared/drafts/form_draft_store.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../api/student_api.dart';
 import '../auth/auth_api.dart';
@@ -17,6 +18,9 @@ import 'course/course_term.dart';
 import 'personal_record_fields.dart';
 import 'personal_record_repository.dart';
 import 'personal_repository_scope.dart';
+
+String personalRecordDraftScreenId(PersonalRecordKind kind) =>
+    'personal_record.${kind.name}';
 
 const _courseIdentityKeys = {'title', 'courseCode', 'credits', 'category'};
 // Plan: course form shows searchable pick + term/grade/completion/section only.
@@ -29,6 +33,8 @@ Future<void> showPersonalRecordForm({
   required PersonalRecordRepository repository,
   required String addLabel,
   PersonalRecord? record,
+  Map<String, String>? draftValues,
+  String? appliedDraftId,
   List<PersonalRecordField>? initialFields,
   Future<List<PersonalRecordField>> Function()? fieldsLoader,
   Future<String?> Function(Map<String, String>)? validateValues,
@@ -36,6 +42,7 @@ Future<void> showPersonalRecordForm({
   VoidCallback? onSaved,
   StudentApi? studentApi,
   String? institutionId,
+  FormDraftStore? draftStore,
 }) async {
   bool blocked() {
     if (!context.mounted) return true;
@@ -61,17 +68,32 @@ Future<void> showPersonalRecordForm({
   }
   if (!context.mounted || blocked()) return;
   onFieldsReady?.call(fields);
+  String seed(String key) =>
+      draftValues?[key] ?? record?.value(key) ?? '';
   final controllers = {
     for (final field in fields)
-      field.key: TextEditingController(text: record?.value(field.key) ?? ''),
+      field.key: TextEditingController(text: seed(field.key)),
   };
   final isCourse = kind == PersonalRecordKind.course;
   final originalTerm = record?.value('term') ?? '';
-  final period = CourseTerm.parse(originalTerm);
-  final initialYear = record == null ? '${DateTime.now().year}' : period.year;
-  final year = TextEditingController(text: initialYear);
+  final period = CourseTerm.parse(
+    draftValues?['term'] ?? originalTerm,
+  );
+  final initialYear = record == null && draftValues == null
+      ? '${DateTime.now().year}'
+      : (period.year.isNotEmpty ? period.year : '${DateTime.now().year}');
+  final year = TextEditingController(
+    text: draftValues != null && period.year.isNotEmpty
+        ? period.year
+        : initialYear,
+  );
   if (isCourse) controllers['term']!.text = period.semester;
   final initialSemester = controllers['term']?.text ?? '';
+  final drafts = draftStore ?? FormDraftStore.instance;
+  final collectionKey = formDraftCollectionKey(
+    personalRecordDraftScreenId(kind),
+  );
+  var loadedDraftId = appliedDraftId;
   var courseOptions = const <CoursePickOption>[];
   String? selectedCourseId;
   if (isCourse) {
@@ -146,6 +168,45 @@ Future<void> showPersonalRecordForm({
   final operationId = record?.id ?? PersonalRecord.newId();
   var saving = false;
   String? error;
+  Map<String, String> currentValues() {
+    final values = {
+      for (final field in fields) field.key: controllers[field.key]!.text.trim(),
+    };
+    if (isCourse) {
+      values['term'] = record != null && !periodChanged()
+          ? originalTerm
+          : CourseTerm.encode(year.text, controllers['term']!.text);
+    }
+    return values;
+  }
+
+  Future<bool> saveDraft([BuildContext? host]) async {
+    if (blocked()) return false;
+    final messengerContext = host ?? context;
+    try {
+      final values = currentValues();
+      final entry = await drafts.add(
+        collectionKey,
+        summary: formDraftSummaryFromValues(values),
+        payload: values,
+      );
+      loadedDraftId = entry.id;
+      if (messengerContext.mounted) {
+        ScaffoldMessenger.of(messengerContext).showSnackBar(
+          const SnackBar(content: Text('임시저장했습니다.')),
+        );
+      }
+      return true;
+    } catch (_) {
+      if (messengerContext.mounted) {
+        ScaffoldMessenger.of(messengerContext).showSnackBar(
+          const SnackBar(content: Text('임시저장하지 못했습니다. 입력은 유지됩니다.')),
+        );
+      }
+      return false;
+    }
+  }
+
   await showInputDialog<void>(
     context: context,
     builder: (dialogContext) => StatefulBuilder(
@@ -153,18 +214,24 @@ Future<void> showPersonalRecordForm({
         changes: Listenable.merge([...controllers.values, if (isCourse) year]),
         editing: record != null,
         saving: saving,
+        onTempSave: () => saveDraft(dialogContext),
         hasUnsavedChanges: () =>
             selectedCourseId != initialCourseId ||
             (isCourse &&
                 year.text.trim() != initialYear.trim() &&
-                (record != null || year.text.trim().isNotEmpty)) ||
+                (record != null ||
+                    draftValues != null ||
+                    year.text.trim().isNotEmpty)) ||
             fields.any(
               (field) =>
                   controllers[field.key]!.text !=
                       (isCourse && field.key == 'term'
                           ? initialSemester
-                          : (record?.value(field.key) ?? '')) &&
+                          : (draftValues?[field.key] ??
+                                record?.value(field.key) ??
+                                '')) &&
                   (record != null ||
+                      draftValues != null ||
                       controllers[field.key]!.text.trim().isNotEmpty),
             ),
         hasContent: () =>
@@ -527,24 +594,22 @@ Future<void> showPersonalRecordForm({
                 : () => InputDialog.cancel<void>(dialogContext),
             child: const Text('취소'),
           ),
+          TextButton(
+            key: const Key('personal-record-temp-save'),
+            onPressed: saving
+                ? null
+                : () async {
+                    await saveDraft(dialogContext);
+                  },
+            child: const Text('임시저장'),
+          ),
           FilledButton(
             onPressed: saving || (isCourse && courseOptions.isEmpty)
                 ? null
                 : () async {
                     if (saving || blocked()) return;
                     if (!form.currentState!.validate()) return;
-                    final values = {
-                      for (final field in fields)
-                        field.key: controllers[field.key]!.text.trim(),
-                    };
-                    if (isCourse) {
-                      values['term'] = record != null && !periodChanged()
-                          ? originalTerm
-                          : CourseTerm.encode(
-                              year.text,
-                              controllers['term']!.text,
-                            );
-                    }
+                    final values = currentValues();
                     final crossError = personalRecordCrossError(values);
                     if (crossError != null) {
                       updateDialog(() => error = crossError);
@@ -575,6 +640,10 @@ Future<void> showPersonalRecordForm({
                           values: values,
                         ),
                       );
+                      final draftId = loadedDraftId;
+                      if (draftId != null) {
+                        await drafts.delete(collectionKey, draftId);
+                      }
                       onSaved?.call();
                       if (dialogContext.mounted) Navigator.pop(dialogContext);
                     } catch (failure) {

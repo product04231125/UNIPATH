@@ -2,6 +2,8 @@ import '../../shared/app_style.dart';
 
 import 'package:flutter/material.dart';
 
+import '../../shared/drafts/form_draft_picker.dart';
+import '../../shared/drafts/form_draft_store.dart';
 import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/feature_page.dart';
@@ -124,7 +126,11 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     }
   }
 
-  Future<void> _showForm([PersonalRecord? record]) async {
+  Future<void> _showForm({
+    PersonalRecord? record,
+    Map<String, String>? draftValues,
+    String? appliedDraftId,
+  }) async {
     if (_formOpen) return;
     _formOpen = true;
     try {
@@ -134,6 +140,8 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         repository: _repository,
         addLabel: widget.addLabel,
         record: record,
+        draftValues: draftValues,
+        appliedDraftId: appliedDraftId,
         fieldsLoader: widget.fieldsLoader,
         validateValues: widget.validateValues,
         onFieldsReady: (fields) {
@@ -149,6 +157,27 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     } finally {
       _formOpen = false;
     }
+  }
+
+  Future<void> _loadDraft() async {
+    if (_formOpen || GuestPreviewScope.isActive(context)) {
+      if (GuestPreviewScope.isActive(context)) {
+        GuestPreviewScope.showBlockedMessage(context);
+      }
+      return;
+    }
+    final entry = await showFormDraftPicker(
+      context: context,
+      collectionKey: formDraftCollectionKey(
+        personalRecordDraftScreenId(widget.kind),
+      ),
+    );
+    if (!mounted || entry == null) return;
+    final values = {
+      for (final item in entry.payload.entries)
+        item.key: '${item.value ?? ''}',
+    };
+    await _showForm(draftValues: values, appliedDraftId: entry.id);
   }
 
   Future<void> _delete(PersonalRecord record) async {
@@ -244,7 +273,10 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               url: record.value(field.key),
               label: field.label,
             ),
-          TextButton(onPressed: () => _showForm(record), child: Text('수정')),
+          TextButton(
+            onPressed: () => _showForm(record: record),
+            child: Text('수정'),
+          ),
           TextButton(
             style: destructiveButtonStyle(context),
             onPressed: () => _delete(record),
@@ -392,12 +424,18 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         ),
       ],
       actions: [
-        if (canAdd)
+        if (canAdd) ...[
+          OutlinedButton(
+            key: const Key('record-menu-load-draft'),
+            onPressed: _loadDraft,
+            child: const Text('불러오기'),
+          ),
           FilledButton.icon(
             onPressed: _showForm,
             icon: const Icon(Icons.add),
             label: Text(widget.addLabel),
           ),
+        ],
       ],
       below: [
         ExpansionTile(

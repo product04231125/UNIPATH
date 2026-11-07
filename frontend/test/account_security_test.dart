@@ -407,7 +407,7 @@ void main() {
       await tester.tap(find.widgetWithText(TextButton, '닫기'));
       await tester.pumpAndSettle();
       expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-      await tester.tap(find.text('계속 작성'));
+      await tester.tap(find.byKey(const Key('input-discard-cancel')));
       await tester.pumpAndSettle();
       final send = find.widgetWithText(FilledButton, '비밀번호 변경');
       await tester.ensureVisible(send);

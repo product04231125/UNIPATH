@@ -282,7 +282,7 @@ void main() {
       await tester.tap(find.widgetWithText(TextButton, '취소'));
       await tester.pumpAndSettle();
       expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-      await tester.tap(find.text('계속 작성'));
+      await tester.tap(find.byKey(const Key('input-discard-cancel')));
       await tester.pumpAndSettle();
       expect(
         tester
@@ -338,7 +338,7 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, '취소'));
     await tester.pumpAndSettle();
     expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-    await tester.tap(find.text('내용 폐기'));
+    await tester.tap(find.byKey(const Key('input-discard-delete')));
     await tester.pumpAndSettle();
     expect(find.byType(InputDialog), findsNothing);
   });

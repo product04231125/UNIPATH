@@ -82,7 +82,7 @@ void main() {
         await tester.tap(find.text('취소'));
         await tester.pumpAndSettle();
         expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-        await tester.tap(find.text('계속 작성'));
+        await tester.tap(find.byKey(const Key('input-discard-cancel')));
         await tester.pumpAndSettle();
         final up = find.byKey(const ValueKey('portfolio-up-portfolio/one'));
         expect(tester.widget<IconButton>(up).onPressed, isNotNull);
@@ -118,7 +118,7 @@ void main() {
     await tester.tap(find.text('취소'));
     await tester.pumpAndSettle();
     expect(cancels, 1);
-    await tester.tap(find.text('계속 작성'));
+    await tester.tap(find.byKey(const Key('input-discard-cancel')));
     await tester.pumpAndSettle();
     expect(
       tester
@@ -129,7 +129,7 @@ void main() {
     );
     await tester.tap(find.text('취소'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('내용 폐기'));
+    await tester.tap(find.byKey(const Key('input-discard-delete')));
     await tester.pumpAndSettle();
     expect(cancels, 2);
     expect(tester.takeException(), isNull);
@@ -182,11 +182,11 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('취소'));
       await tester.pumpAndSettle();
-      expect(find.text('계속 작성').hitTestable(), findsOneWidget);
-      expect(find.text('내용 폐기').hitTestable(), findsOneWidget);
+      expect(find.byKey(const Key('input-discard-cancel')).hitTestable(), findsOneWidget);
+      expect(find.byKey(const Key('input-discard-delete')).hitTestable(), findsOneWidget);
       expect(
         tester
-            .widget<TextButton>(find.widgetWithText(TextButton, '계속 작성'))
+            .widget<TextButton>(find.byKey(const Key('input-discard-cancel')))
             .autofocus,
         isTrue,
       );
@@ -194,8 +194,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(InputDialog), findsOneWidget);
       expect(controller.text, '작성 중');
-      if (find.text('계속 작성').evaluate().isNotEmpty) {
-        await tester.tap(find.text('계속 작성'));
+      if (find.byKey(const Key('input-discard-cancel')).evaluate().isNotEmpty) {
+        await tester.tap(find.byKey(const Key('input-discard-cancel')));
         await tester.pumpAndSettle();
       }
       expect(focus.hasFocus, isTrue);
@@ -315,7 +315,7 @@ void main() {
         await tester.tap(find.text('취소'));
         await tester.pumpAndSettle();
         expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-        await tester.tap(find.text('계속 작성'));
+        await tester.tap(find.byKey(const Key('input-discard-cancel')));
         await tester.pumpAndSettle();
         expect(
           tester
@@ -328,7 +328,7 @@ void main() {
         );
         await tester.tap(find.text('취소'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('내용 폐기'));
+        await tester.tap(find.byKey(const Key('input-discard-delete')));
         await tester.pumpAndSettle();
         expect(find.byType(InputDialog), findsNothing);
         expect(tester.takeException(), isNull);
@@ -365,7 +365,15 @@ void main() {
       expect(find.byType(InputDialog), findsNothing, reason: kind.name);
       await tester.tap(find.widgetWithText(FilledButton, '추가'));
       await tester.pumpAndSettle();
-      final field = find.byType(TextFormField).first;
+      // Prefer a real record field over AnchoredSelect search boxes.
+      // Course `section` is digits-only; use `grade` when present.
+      final field =
+          find.byKey(const ValueKey('record-field-grade')).evaluate().isNotEmpty
+          ? find.byKey(const ValueKey('record-field-grade'))
+          : find.descendant(
+              of: find.byType(InputDialog),
+              matching: find.byType(TextFormField),
+            ).first;
       await tester.enterText(field, '작성 중');
       await tester.tapAt(const Offset(5, 5));
       await tester.pumpAndSettle();
@@ -376,7 +384,7 @@ void main() {
       await tester.tapAt(const Offset(5, 5));
       await tester.pumpAndSettle();
       expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-      await tester.tap(find.text('계속 작성'));
+      await tester.tap(find.byKey(const Key('input-discard-cancel')));
       await tester.pumpAndSettle();
       expect(tester.widget<TextFormField>(field).controller!.text, '작성 중');
       await tester.enterText(field, '   ');
@@ -426,7 +434,7 @@ void main() {
     await tester.tap(find.text('취소'));
     await tester.pumpAndSettle();
     expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-    await tester.tap(find.text('내용 폐기'));
+    await tester.tap(find.byKey(const Key('input-discard-delete')));
     await tester.pumpAndSettle();
     expect(find.byType(InputDialog), findsNothing);
     expect(repo.records.single.value('title'), '원본');
@@ -463,7 +471,7 @@ void main() {
     await tester.tap(find.text('취소'));
     await tester.pumpAndSettle();
     expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-    await tester.tap(find.text('계속 작성'));
+    await tester.tap(find.byKey(const Key('input-discard-cancel')));
     await tester.pumpAndSettle();
     expect(
       tester
@@ -474,7 +482,7 @@ void main() {
     );
     await tester.tap(find.text('취소'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('내용 폐기'));
+    await tester.tap(find.byKey(const Key('input-discard-delete')));
     await tester.pumpAndSettle();
     expect(find.byType(InputDialog), findsNothing);
     expect(repo.events, isEmpty);
