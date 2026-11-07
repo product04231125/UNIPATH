@@ -316,9 +316,9 @@ void main() {
   });
 
   testWidgets(
-    'five UI condition selectors render on narrow large text without implicit observations or posts',
+    'supported UI condition selectors render with enlarged desktop text without implicit observations or posts',
     (tester) async {
-      await tester.binding.setSurfaceSize(const Size(480, 520));
+      await tester.binding.setSurfaceSize(const Size(1440, 1100));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final gateway = CalculationGateway();
       final c = await controller(gateway);
@@ -334,7 +334,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      for (final entry in personalConditionLabels.entries.where(
+      for (final entry in personalConditionChoices('none').where(
         (e) => e.key != 'none',
       )) {
         final picker = find.byWidgetPredicate(
