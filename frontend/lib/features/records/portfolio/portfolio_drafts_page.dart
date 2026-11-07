@@ -275,15 +275,15 @@ class _PortfolioDraftsPageState extends State<PortfolioDraftsPage> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              OutlinedButton(
-                key: const Key('portfolio-load-form-draft'),
-                onPressed: _busy ? null : _loadFormDraft,
-                child: const Text('불러오기'),
-              ),
               FilledButton.icon(
                 onPressed: _busy ? null : () => _edit(),
                 icon: const Icon(Icons.add),
                 label: Text(document ? '지원 문서 초안 추가' : '포트폴리오 구성 추가'),
+              ),
+              OutlinedButton(
+                key: const Key('portfolio-load-form-draft'),
+                onPressed: _busy ? null : _loadFormDraft,
+                child: const Text('불러오기'),
               ),
             ],
           ),

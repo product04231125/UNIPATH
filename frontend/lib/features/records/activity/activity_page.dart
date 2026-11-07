@@ -379,15 +379,15 @@ class _ActivityPageState extends State<ActivityPage> {
         ),
       ],
       actions: [
-        OutlinedButton(
-          key: const Key('activity-load-draft'),
-          onPressed: _loadDraft,
-          child: const Text('불러오기'),
-        ),
         FilledButton.icon(
           onPressed: _add,
           icon: const Icon(Icons.add),
           label: const Text('활동 직접 기록'),
+        ),
+        OutlinedButton(
+          key: const Key('activity-load-draft'),
+          onPressed: _loadDraft,
+          child: const Text('불러오기'),
         ),
       ],
       below: [

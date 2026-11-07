@@ -266,15 +266,15 @@ class _SchedulePageState extends State<SchedulePage> {
                 ? Wrap(
                     spacing: 8,
                     children: [
-                      OutlinedButton(
-                        key: const Key('schedule-load-draft'),
-                        onPressed: _loadDraft,
-                        child: const Text('불러오기'),
-                      ),
                       FilledButton.icon(
                         onPressed: () => _editEvent(),
                         icon: const Icon(Icons.add),
                         label: const Text('일정 추가'),
+                      ),
+                      OutlinedButton(
+                        key: const Key('schedule-load-draft'),
+                        onPressed: _loadDraft,
+                        child: const Text('불러오기'),
                       ),
                     ],
                   )

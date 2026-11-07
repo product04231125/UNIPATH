@@ -425,15 +425,15 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       ],
       actions: [
         if (canAdd) ...[
-          OutlinedButton(
-            key: const Key('record-menu-load-draft'),
-            onPressed: _loadDraft,
-            child: const Text('불러오기'),
-          ),
           FilledButton.icon(
             onPressed: _showForm,
             icon: const Icon(Icons.add),
             label: Text(widget.addLabel),
+          ),
+          OutlinedButton(
+            key: const Key('record-menu-load-draft'),
+            onPressed: _loadDraft,
+            child: const Text('불러오기'),
           ),
         ],
       ],
