@@ -5,6 +5,7 @@ import '../../app_shell/phone_shell.dart';
 import '../../shared/credits_format.dart';
 import '../../shared/year_options.dart';
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/digits_only_hint.dart';
 import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/field_requirement.dart';
 import '../../shared/widgets/feature_line.dart';
@@ -514,9 +515,16 @@ Future<void> showPersonalRecordForm({
                                   isCourse && field.key == 'section'
                                   ? [FilteringTextInputFormatter.digitsOnly]
                                   : null,
-                              decoration: InputDecoration(
-                                labelText: above ? null : caption,
-                              ),
+                              decoration: isCourse && field.key == 'section'
+                                  ? digitsOnlyDecoration(
+                                      context,
+                                      base: InputDecoration(
+                                        labelText: above ? null : caption,
+                                      ),
+                                    )
+                                  : InputDecoration(
+                                      labelText: above ? null : caption,
+                                    ),
                               validator: field.validate,
                             );
                             return above

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/digits_only_hint.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/input_dialog.dart';
@@ -316,8 +317,6 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
 
   @override
   Widget build(BuildContext context) {
-    final yearInvalid =
-        _year.text.trim().isNotEmpty && parseCreditNumber(_year.text) == null;
     final body = SurfaceCard(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -358,9 +357,9 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
               controller: _year,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: InputDecoration(
-                hintText: '2026',
-                errorText: yearInvalid ? '입학연도는 숫자로 입력하세요.' : null,
+              decoration: digitsOnlyDecoration(
+                context,
+                base: const InputDecoration(hintText: '2026'),
               ),
             ),
           ),
@@ -579,7 +578,10 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
             controller: _cellValues[key],
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: const InputDecoration(isDense: true, hintText: '7'),
+            decoration: digitsOnlyDecoration(
+              context,
+              base: const InputDecoration(isDense: true, hintText: '7'),
+            ),
           )
         else
           Text(

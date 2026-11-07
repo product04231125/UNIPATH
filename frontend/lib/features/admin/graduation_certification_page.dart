@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/digits_only_hint.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/input_dialog.dart';
@@ -374,11 +375,14 @@ class GraduationCertificationPageState
                   controller: _pickCounts[group.id],
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: InputDecoration(
-                    hintText: '2',
-                    errorText: certificationPickCountError(
-                      _pickCounts[group.id]?.text ?? '',
-                      group.items.length,
+                  decoration: digitsOnlyDecoration(
+                    context,
+                    base: InputDecoration(
+                      hintText: '2',
+                      errorText: certificationPickCountError(
+                        _pickCounts[group.id]?.text ?? '',
+                        group.items.length,
+                      ),
                     ),
                   ),
                 ),
