@@ -60,28 +60,42 @@ class GraduationCreditGrid {
       '$prefix-${DateTime.now().microsecondsSinceEpoch}-${_nextId++}';
 }
 
-int? parseCreditNumber(String text) {
-  final trimmed = text.trim();
-  if (trimmed.isEmpty) return null;
-  return int.tryParse(trimmed);
+BigInt? _creditThousandths(String text) {
+  final value = text.trim();
+  if (!RegExp(r'^\d+(?:\.\d{1,3})?$').hasMatch(value)) return null;
+  final parts = value.split('.');
+  return BigInt.parse(parts.first) * BigInt.from(1000) +
+      BigInt.parse(parts.length == 1 ? '0' : parts.last.padRight(3, '0'));
 }
 
-int summedLeafCredits(
+num _creditValue(BigInt scaled) {
+  final whole = scaled ~/ BigInt.from(1000);
+  final fraction = (scaled % BigInt.from(1000)).toString().padLeft(3, '0');
+  return num.parse('$whole.$fraction');
+}
+
+num? parseCreditNumber(String text) {
+  final scaled = _creditThousandths(text);
+  if (scaled == null) return null;
+  final value = _creditValue(scaled);
+  if (!value.isFinite) return null;
+  return value == value.roundToDouble() ? value.toInt() : value;
+}
+
+num summedLeafCredits(
   GraduationCreditGrid grid,
   GraduationCreditRow row,
   String groupId,
 ) {
-  var total = 0;
-  var any = false;
+  var total = BigInt.zero;
   for (final column in grid.columns.where((c) => c.groupId == groupId)) {
     final cell = grid.cellFor(row.id, column.id);
     if (cell.kind != GraduationCreditCellKind.number) continue;
-    final value = parseCreditNumber(cell.value ?? '');
-    if (value == null) continue;
-    any = true;
-    total += value;
+    final scaled = _creditThousandths(cell.value ?? '');
+    if (scaled != null) total += scaled;
   }
-  return any ? total : 0;
+  final value = _creditValue(total);
+  return value == value.roundToDouble() ? value.toInt() : value;
 }
 
 GraduationCreditGrid copyCreditGrid(

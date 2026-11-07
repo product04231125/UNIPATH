@@ -22,6 +22,51 @@ List<AdminRecord> departments() => [
 ];
 
 void main() {
+  test('fractional credit cells retain exact thousandth sums', () {
+    final grid = GraduationCreditGrid(admissionYear: '2026', departmentId: 'dept', rows: [GraduationCreditRow(id: 'row', label: '행')]);
+    final group = GraduationCreditColumnGroup(id: 'decimal', label: '소수');
+    grid.groups.add(group);
+    final row = grid.rows.first;
+    for (final entry in {'d1': '0.1', 'd2': '0.2', 'd3': '1.125'}.entries) {
+      grid.columns.add(GraduationCreditColumn(id: entry.key, label: entry.key, groupId: group.id));
+      grid.cellFor(row.id, entry.key)..kind = GraduationCreditCellKind.number..value = entry.value;
+    }
+    expect(summedLeafCredits(grid, row, group.id), 1.425);
+    expect(parseCreditNumber('3.000'), 3);
+    for (final invalid in ['-1', 'NaN', '1e3', '1.2345', '.', '']) {
+      expect(parseCreditNumber(invalid), isNull, reason: invalid);
+    }
+  });
+
+  testWidgets('decimal credit entry survives editing and document preview', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final grid = GraduationCreditGrid(
+      admissionYear: '2026', departmentId: 'dept-cs',
+      columns: [GraduationCreditColumn(id: 'c', label: '학점')],
+      rows: [GraduationCreditRow(id: 'r', label: '경로')],
+    );
+    grid.cellFor('r', 'c')..kind = GraduationCreditCellKind.number..value = '3';
+    await tester.pumpWidget(host(GraduationCreditGridPage(
+      schoolName: '합성 대학', departments: departments(), initial: grid, scrollable: true,
+    )));
+    final field = find.byKey(const ValueKey('credit-grid-cell-r/c'));
+    await tester.ensureVisible(field);
+    await tester.enterText(field, '1.125');
+    await tester.pump();
+    expect(tester.widget<TextField>(field).controller!.text, '1.125');
+    await tester.enterText(field, '1.1254');
+    expect(tester.widget<TextField>(field).controller!.text, '1.125');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    final preview = find.byKey(const ValueKey('credit-grid-preview'));
+    await tester.ensureVisible(preview);
+    await tester.tap(preview);
+    await tester.pumpAndSettle();
+    expect(find.text('1.125'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
   test(
     'credit grid copy keeps IDs unique and leaves sparse source unchanged',
     () {

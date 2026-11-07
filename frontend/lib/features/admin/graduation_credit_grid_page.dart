@@ -576,11 +576,18 @@ class GraduationCreditGridPageState extends State<GraduationCreditGridPage> {
           TextField(
             key: ValueKey('credit-grid-cell-$key'),
             controller: _cellValues[key],
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: digitsOnlyDecoration(
-              context,
-              base: const InputDecoration(isDense: true, hintText: '7'),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              TextInputFormatter.withFunction((oldValue, newValue) =>
+                RegExp(r'^\d*(?:\.\d{0,3})?$').hasMatch(newValue.text)
+                  ? newValue : oldValue),
+            ],
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: '7.5',
+              helperText: '소수 셋째 자리까지',
+              errorText: (cell.value ?? '').isNotEmpty && parseCreditNumber(cell.value!) == null
+                ? '0 이상의 학점을 입력하세요.' : null,
             ),
           )
         else
