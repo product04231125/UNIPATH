@@ -232,6 +232,13 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
         setState(() {
           _error = e.status == 409
               ? '선택한 기록이 변경되었습니다. 입력을 유지했습니다. 기록을 다시 읽고 선택해 주세요.'
+              : e.status == 422 &&
+                    e.fields.any(
+                      (field) =>
+                          field.split('.').last ==
+                          'external_processing_consent',
+                    )
+              ? '전송 동의 항목을 서버가 처리하지 못했습니다. 앱과 서버의 API 버전을 확인해 주세요. 입력과 기록 선택은 유지했습니다.'
               : e.message;
           _requestId = e.requestId;
         });

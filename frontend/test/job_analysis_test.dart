@@ -177,6 +177,45 @@ void main() {
     p.dispose();
   });
   testWidgets(
+    'consent field rejection explains API mismatch and preserves input',
+    (tester) async {
+      final api = AnalysisGateway()
+        ..failure = const AuthFailure(
+          '입력값의 형식과 길이를 확인해 주세요.',
+          status: 422,
+          fields: ['body.external_processing_consent'],
+          requestId: 'synthetic-request',
+        );
+      final p = await consent();
+      await p.setAllowed(AiConsentFeature.jobAnalysis, true);
+      await mount(tester, api, p);
+      await execute(tester);
+      expect(find.textContaining('앱과 서버의 API 버전을 확인'), findsOneWidget);
+      expect(find.text('입력값의 형식과 길이를 확인해 주세요.'), findsNothing);
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('job-posting-text')),
+            )
+            .controller!
+            .text,
+        '합성 공고 본문',
+      );
+      expect(
+        tester
+            .widget<CheckboxListTile>(
+              find.byKey(const ValueKey('job-record-experience/record-id')),
+            )
+            .value,
+        true,
+      );
+      expect(api.calls.single['external_processing_consent'], true);
+      expect(find.text('문의 식별자: synthetic-request'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      p.dispose();
+    },
+  );
+  testWidgets(
     'completed displays posting and personal citations with comparison status',
     (tester) async {
       final api = AnalysisGateway()
