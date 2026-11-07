@@ -1,3 +1,4 @@
+import 'rule_program_review_dialog.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -454,6 +455,19 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
       rethrow;
     }
   });
+  Future<void> _openReview() async {
+    if (_busy || !ready || widget.metadataDirty || dirty || _gateway == null) return;
+    final revision = _revision;
+    await _run(() async {
+      await showInputDialog<void>(context: context, builder: (_) => RuleProgramReviewDialog(
+        gateway: _gateway!, institutionId: widget.schoolId,
+        ruleSetId: parent!.kind == AdminKind.ruleSet ? parent!.id : null,
+        ruleId: parent!.kind == AdminKind.rule ? parent!.id : null,
+        ensureAllowed: () { if (!mounted || revision != _revision) throw const AuthFailure('관리 대상이 변경되었습니다.', status:403); _ensure(); },
+      ));
+    });
+    if (mounted && revision == _revision) await _load();
+  }
   Widget _text(
     Map<String, String> values,
     String key,
@@ -677,6 +691,9 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
                       : _save,
                   child: const Text('한 줄 요건 저장'),
                 ),
+                OutlinedButton(onPressed: _busy || !ready || widget.metadataDirty || dirty ? null : _openReview,
+                  child: const Text('실행본 승인·회수 검토')),
+
               ],
             ),
           ],
