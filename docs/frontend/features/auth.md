@@ -44,12 +44,12 @@
 일반 작업 공간과 관리자 작업 공간 모두 같은 진입점을 사용하며 서버 신원 없는 세션에는 표시하지 않는다.
 자세한 수명·동시 로그인 처리와 검증은 [계정 보안 연결](../../api/account-security-integration.md)을 따른다.
 
-## 목표 계약 (미구현 · 이후 명세 PR용)
+## 목표 계약 (미구현)
 
-> 백엔드 런타임·OpenAPI가 바뀌기 전에는 아래를 화면 완료로 표시하지 않는다. 서버 계약은
-> [인증 API](../../api/authentication.md), [최초 가입](../../api/initial-school-admin-signups.md),
-> [추가 신청](../../api/school-admin-applications.md)의 **목표 계약** 절이 기준이다.
-> 로그인 가드·API 403 가짜 가드·명세 PR·제품 푸시를 이번 FE 작업에서 하지 않는다.
+API 런타임이 바뀌기 전에는 아래를 화면 완료로 표시하지 않는다. 서버 계약은
+[인증 API](../../api/authentication.md), [최초 가입](../../api/initial-school-admin-signups.md),
+[추가 신청](../../api/school-admin-applications.md)의 목표 절이 기준이다.
+로그인 가드·API 403을 프론트만으로 흉내 내지 않는다.
 
 - 회원가입 `학생`과 `학교관리자`는 서로 다른 계정 경로다. 학생으로 들어간 계정은 설정·API로
   학교관리자를 신청하지 못한다. `POST /me/school-admin-applications` 생성은 서버가 403
