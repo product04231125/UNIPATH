@@ -153,6 +153,8 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         studentApi: widget.studentApi,
         institutionId:
             widget.planning?.profile.institutionId ?? widget.institutionId,
+        departmentId: widget.planning?.profile.departmentId,
+        curriculumId: widget.planning?.profile.curriculumId,
       );
     } finally {
       _formOpen = false;

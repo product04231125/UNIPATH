@@ -47,7 +47,42 @@ class _RepeatingCursorGateway implements ApiGateway {
   }
 }
 
+class _ScopedCoursesGateway implements ApiGateway {
+  final queries = <Uri>[];
+  @override
+  Future<Map<String, dynamic>?> request(String method, String path, [Map<String, Object?>? body]) async {
+    final uri = Uri.parse(path);
+    queries.add(uri);
+    final curriculum = uri.queryParameters['curriculum_id'];
+    return {'items': [{
+      'id': otherId, 'version': 1, 'name': '범위 과목', 'institution_id': otherId,
+      'created_at': '2026-10-21T00:00:00Z', 'updated_at': '2026-10-21T00:00:00Z',
+      'department_id': otherId, 'curriculum_id': curriculum, 'course_id': otherId,
+      'code': 'SCOPED', 'credits': '3', 'category': curriculum == userId ? 'major' : 'general',
+      'required': true,
+    }], 'next_cursor': null};
+  }
+}
+
 void main() {
+  test('course picker pins both catalog requests to the profile department and curriculum', () async {
+    final gateway = _ScopedCoursesGateway();
+    final courses = PersonalRecordRepository(PersonalRecordKind.course);
+    for (final curriculum in [userId, otherId]) {
+      final options = await loadCoursePickOptions(
+        courseRepository: courses, studentApi: StudentApi(gateway, ownerId: userId),
+        institutionId: otherId, departmentId: otherId, curriculumId: curriculum,
+      );
+      final catalog = options.singleWhere((item) => item.id.startsWith('catalog:'));
+      expect(catalog.category, curriculum == userId ? 'major' : 'general');
+      for (final uri in gateway.queries.skip(gateway.queries.length - 2)) {
+        expect(uri.queryParameters['institution_id'], otherId);
+        expect(uri.queryParameters['department_id'], otherId);
+        expect(uri.queryParameters['curriculum_id'], curriculum);
+      }
+    }
+    expect(gateway.queries, hasLength(4));
+  });
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   test('loadCoursePickOptions stops when catalog next_cursor repeats', () async {

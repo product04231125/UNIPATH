@@ -43,6 +43,8 @@ Future<void> showPersonalRecordForm({
   VoidCallback? onSaved,
   StudentApi? studentApi,
   String? institutionId,
+  String? departmentId,
+  String? curriculumId,
   FormDraftStore? draftStore,
 }) async {
   bool blocked() {
@@ -107,6 +109,8 @@ Future<void> showPersonalRecordForm({
         ),
         studentApi: studentApi,
         institutionId: institutionId,
+        departmentId: departmentId,
+        curriculumId: curriculumId,
       );
     } catch (_) {
       year.dispose();

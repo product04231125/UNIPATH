@@ -47,6 +47,8 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
   PersonalRecordRepository? curriculumCourseRepository,
   StudentApi? studentApi,
   String? institutionId,
+  String? departmentId,
+  String? curriculumId,
 }) async {
   final options = <CoursePickOption>[];
   final seen = <String>{};
@@ -68,6 +70,8 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
         final page = await catalog.list(
           StudentCatalogResources.courses,
           institutionId: school,
+          departmentId: departmentId,
+          curriculumId: curriculumId,
           cursor: cursor,
         );
         courses.addAll(page.items);
@@ -87,6 +91,8 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
         final page = await catalog.list(
           StudentCatalogResources.curriculumCourses,
           institutionId: school,
+          departmentId: departmentId,
+          curriculumId: curriculumId,
           cursor: cursor,
         );
         for (final link in page.items) {
