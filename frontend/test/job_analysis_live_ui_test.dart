@@ -72,7 +72,10 @@ void main() {
     final gateway = Gateway();
     await tester.pumpWidget(host(StudentApi(gateway, ownerId: id)));
     await tester.pumpAndSettle(); await prepare(tester); await run(tester);
-    expect(gateway.bodies.single, {'posting_text': '공고 본문', 'records': [{'kind':'activity','record_id':id,'expected_version':3}]});
+    final body = Map<String, Object?>.of(gateway.bodies.single);
+    // The current merge contract may serialize the default; no consent is inferred.
+    expect(body.remove('external_processing_consent'), anyOf(isNull, isFalse));
+    expect(body, {'posting_text': '공고 본문', 'records': [{'kind':'activity','record_id':id,'expected_version':3}]});
     expect(tester.widget<FilledButton>(find.byKey(const ValueKey('job-analysis-run'))).onPressed, isNull);
     gateway.pending.single.completeError(const AuthFailure('공고를 확인하세요.', status:422, fields:['posting_text']));
     await tester.pumpAndSettle();

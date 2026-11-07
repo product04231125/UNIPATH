@@ -48,7 +48,7 @@ void main() {
     expect(hint.style?.color, Theme.of(tester.element(find.text(digitsOnlyInputHint).first)).colorScheme.error);
   });
 
-  testWidgets('credit grid year and number cell show digits-only hint', (
+  testWidgets('credit grid year uses digits and credit cell explains decimal precision', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
@@ -77,7 +77,8 @@ void main() {
     );
     expect(find.byKey(const ValueKey('credit-grid-year')), findsOneWidget);
     expect(find.byKey(const ValueKey('credit-grid-cell-r/c')), findsOneWidget);
-    expect(find.text(digitsOnlyInputHint), findsNWidgets(2));
+    expect(find.text(digitsOnlyInputHint), findsOneWidget);
+    expect(find.text('소수 셋째 자리까지'), findsOneWidget);
   });
 
   testWidgets('certification pick count shows digits-only hint', (tester) async {
