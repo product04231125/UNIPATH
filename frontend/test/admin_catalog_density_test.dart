@@ -8,6 +8,38 @@ import 'package:university_path_frontend/features/auth/app_role.dart';
 Widget host(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 void main() {
+  testWidgets('all schools keeps student preview visible and asks for a school', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = FakeAdminRepository();
+    addTearDown(repo.dispose);
+    var entered = 0;
+    await tester.pumpWidget(host(AdminWorkspace(
+      repository: repo, role: AppRole.superAdmin, path: '/admin/overview',
+      onNavigate: (_) {}, onSignedOut: () {}, onEnterStudentPreview: () => entered++,
+    )));
+    await tester.pumpAndSettle();
+    final preview = find.byKey(const ValueKey('admin-student-preview'));
+    await tester.ensureVisible(preview);
+    await tester.tap(preview);
+    await tester.pumpAndSettle();
+    expect(find.text('미리 볼 학교 선택'), findsOneWidget);
+    expect(entered, 0);
+    Navigator.of(tester.element(find.byType(SimpleDialog))).pop();
+    await tester.pumpAndSettle();
+    expect(entered, 0);
+    await tester.tap(preview);
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: find.byType(SimpleDialog), matching: find.text('합성 대학 A')));
+    await tester.pumpAndSettle();
+    expect(entered, 1);
+    await tester.tap(preview);
+    await tester.pumpAndSettle();
+    expect(find.byType(SimpleDialog), findsNothing);
+    expect(entered, 2);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('catalog rows use compact actions, separators, and 64 extent', (
     tester,
   ) async {
@@ -79,7 +111,7 @@ void main() {
     expect(find.text('학과 등록'), findsOneWidget);
     expect(find.text('졸업요건 확인'), findsOneWidget);
     expect(find.text('관리자 범위 관리'), findsOneWidget);
-    expect(find.text('학생 화면 미리보기'), findsNothing);
+    expect(find.text('학생 화면 미리보기'), findsOneWidget);
 
     final create = find.widgetWithText(FilledButton, '학과 등록');
     expect(create, findsOneWidget);

@@ -986,14 +986,13 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                         icon: const Icon(Icons.arrow_forward, size: 18),
                         label: const Text('관리 이력 보기'),
                       ),
-                      if (widget.onEnterStudentPreview != null &&
-                          _schoolId.isNotEmpty)
+                      if (widget.onEnterStudentPreview != null)
                         OutlinedButton.icon(
                           key: const ValueKey('admin-student-preview'),
                           style: _overviewOutlinedStyle,
-                          onPressed: _busy
+                          onPressed: _busy || _schools.isEmpty
                               ? null
-                              : widget.onEnterStudentPreview,
+                              : _openStudentPreview,
                           icon: const Icon(Icons.visibility_outlined, size: 18),
                           label: const Text('학생 화면 미리보기'),
                         ),
@@ -1220,6 +1219,30 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     return selected
         ? FilledButton(key: key, onPressed: onPressed, child: child)
         : OutlinedButton(key: key, onPressed: onPressed, child: child);
+  }
+
+  Future<void> _openStudentPreview() async {
+    if (_busy || widget.onEnterStudentPreview == null) return;
+    if (_schoolId.isEmpty) {
+      final schoolId = await showDialog<String>(
+        context: context,
+        builder: (context) => SimpleDialog(
+          title: const Text('미리 볼 학교 선택'),
+          children: [
+            for (final school in _schools)
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, school.id),
+                child: Text(school.name),
+              ),
+          ],
+        ),
+      );
+      if (schoolId == null || !mounted) return;
+      await _changeSchool(schoolId);
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    if (!mounted || !_schools.any((school) => school.id == _schoolId)) return;
+    widget.onEnterStudentPreview?.call();
   }
 
   Future<void> _changeSchool(String v) async {
