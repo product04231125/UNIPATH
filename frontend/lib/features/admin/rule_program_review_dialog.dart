@@ -19,7 +19,7 @@ class RuleProgramReviewDialog extends StatefulWidget {
 }
 class _ReviewState extends State<RuleProgramReviewDialog> {
   final _note = TextEditingController();
-  final _changes = ChangeNotifier();
+  final _changes = ValueNotifier(0);
   final _checks = List.filled(4, false);
   final _headers = <OfficialProgramHeader>[];
   OfficialProgramView? _program;
@@ -29,7 +29,7 @@ class _ReviewState extends State<RuleProgramReviewDialog> {
   OfficialProgramAdminApi get _api => OfficialProgramAdminApi(widget.gateway);
   bool get _dirty => _note.text.isNotEmpty || _checks.any((value) => value);
   @override void initState() { super.initState(); _note.addListener(_changed); Future.microtask(_load); }
-  void _changed() { if (mounted) setState(() {}); _changes.notifyListeners(); }
+  void _changed() { if (mounted) setState(() {}); _changes.value++; }
   @override void dispose() { _note.dispose(); _changes.dispose(); super.dispose(); }
   bool _matches(OfficialProgramView value) => value.institutionId == widget.institutionId &&
     value.ruleSetId == widget.ruleSetId && value.ruleId == widget.ruleId;

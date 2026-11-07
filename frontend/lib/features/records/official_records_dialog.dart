@@ -323,7 +323,7 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
     admin: widget.admin,
   );
   late SchoolRecordBatchView _batch = widget.batch;
-  final _changes = ChangeNotifier();
+  final _changes = ValueNotifier(0);
   final _reason = TextEditingController();
   List<SchoolRecordBatchEventView> _events = [];
   List<SchoolRecordBatchHeader> _predecessors = [];
@@ -586,7 +586,7 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
                       key: const ValueKey('official-record-replacement'), value: _replacement?.id ?? '', label: '교체할 승인 기록',
                       options: [const SelectOption('', '교체 대상 선택'), for (final row in _predecessors)
                         SelectOption(row.id, '${row.recordsAsOf} · ${row.recordCount}건 · v${row.version} · ${row.id}')],
-                      onChanged: (id) { if (enabled) { setState(() => _replacement = _predecessors.where((row) => row.id == id).firstOrNull); _changes.notifyListeners(); } },
+                      onChanged: (id) { if (enabled) { setState(() => _replacement = _predecessors.where((row) => row.id == id).firstOrNull); _changes.value++; } },
                     ),
                   ],
 
