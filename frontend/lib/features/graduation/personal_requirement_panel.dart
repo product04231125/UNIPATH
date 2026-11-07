@@ -290,7 +290,7 @@ class PersonalRequirementPanelState extends State<PersonalRequirementPanel> {
               value: draft.kind,
               label: '실행할 계산 조건',
               options: [
-                for (final entry in personalConditionLabels.entries)
+                for (final entry in personalConditionChoices(draft.kind))
                   SelectOption(entry.key, entry.value),
               ],
               onChanged: (value) {

@@ -11,6 +11,12 @@ const personalConditionLabels = {
   'thesis': '논문·졸업작품',
 };
 
+// Keep old payloads readable without offering a new, separate thesis workflow.
+Iterable<MapEntry<String, String>> personalConditionChoices(String currentKind) =>
+    personalConditionLabels.entries.where(
+      (entry) => entry.key != 'thesis' || currentKind == 'thesis',
+    );
+
 /// Decimal validation never converts the user's comparison values to double.
 String? validateCalculationAmount(String? raw, {bool optional = false}) {
   final value = raw?.trim() ?? '';
@@ -121,9 +127,7 @@ class PersonalCalculationDraft {
           'thesisType': condition.thesisType,
           'acceptedGrades': condition.acceptedGrades.join(', '),
         });
-        // This form records completion, not school approval. Reopening a saved
-        // condition creates a new completion-based request; history stays immutable.
-        draft.requiresApproval = false;
+        draft.requiresApproval = condition.requiresApproval;
         for (final item in condition.records) {
           draft.selected.add(item.achievementId);
           draft.observation(item.achievementId).addAll({
@@ -139,7 +143,7 @@ class PersonalCalculationDraft {
   final selected = <String>{};
   final observations = <String, Map<String, String>>{};
   bool allCourses = false;
-  bool requiresApproval = false;
+  bool requiresApproval = true;
   Map<String, String> observation(String id) =>
       observations.putIfAbsent(id, () => {});
   bool get hasInput =>

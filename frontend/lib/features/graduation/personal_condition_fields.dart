@@ -123,7 +123,7 @@ class _PersonalConditionFieldsState extends State<PersonalConditionFields> {
               label: '실행할 계산 조건',
               externalLabel: true,
               options: [
-                for (final e in personalConditionLabels.entries)
+                for (final e in personalConditionChoices(draft.kind))
                   SelectOption(e.key, e.value),
               ],
               onChanged: (value) {
@@ -288,6 +288,7 @@ class _PersonalConditionFieldsState extends State<PersonalConditionFields> {
                 ],
               ],
               if (draft.kind == 'thesis') ...[
+                const Text('이전에 저장된 조건입니다. 논문 파일을 분석하거나 자료·활동 기록의 완료를 자동 판정하지 않습니다.'),
                 _field(
                   draft.values,
                   'thesisType',
