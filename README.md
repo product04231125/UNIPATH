@@ -63,7 +63,8 @@ develop의 로그인·가입·세션·역할/학교 범위는 실제 API/DB로 �
 [개인 자료 일괄 이전 API](docs/api/personal-imports.md)는 본인 확인·동의한 자료와 관계를
 원자적으로 추가하고 ID 대응표·안전한 재시도를 제공합니다. 프로필·일정과 다른 개인 자료 10종의 별도 동의 이전 화면을 연결했습니다.
 [학교 문서 검토·DB 검색 API](docs/api/school-knowledge.md)는 적용 문서의 추출본 등록,
-별도 승인·회수와 로그인 사용자의 UUID 문맥 검색을 제공합니다. 실제 LLM은 미연결입니다.
+별도 승인·회수와 로그인 사용자의 UUID 문맥 검색을 제공합니다. 답변 생성은 Vertex Gemini를
+설정하면 동작하며 기본값은 꺼짐입니다.
 [공식 실행 규칙](docs/api/rule-programs.md)은 적용 메타데이터에 명시적인 조건·승인 근거를
 연결하고 학교·학과·교육과정·입학연도·이수경로로 선택합니다.
 [자격증·발급기관 마스터](docs/api/certificates.md)는 슈퍼관리자가 관리합니다.
@@ -96,10 +97,14 @@ HTTPS 설정은 [`docs/releases.md`](docs/releases.md)에 있습니다.
 - 진로 정보 RAG 질의응답
 - 채용공고 요구사항 추출 및 개인 경험 비교
 
-착수용 [개인화·채용 분석 API 계약](docs/api/job-analysis.md)은 구현했습니다.
+[개인화·채용 분석 API](docs/api/job-analysis.md)를 구현했습니다.
 명시적으로 선택한 본인 기록과 공고 원문을 입력받고 소유권·버전·인용을 검증합니다.
-실제 AI 분석기는 미연결이며 기본 응답은 `not_configured`입니다. 전체 2차 MVP 완료와
-구분합니다. [졸업 결과 안내](docs/api/graduation-audits.md)는 기존 Rule Engine 결과를
+Gemini 분석기를 연결했지만 Vertex 설정 전 기본 응답은 `not_configured`이며, 실제 모델 응답은
+아직 검증하지 못했습니다. 외부 전송은 요청별 동의가 있을 때 선택한 기록만 식별 정보를 제거해
+보냅니다. 전체 2차 MVP 완료와 구분합니다. [정형 학사 안내](docs/api/academic-guidance.md)는
+수집한 일정·규정·장학금·학과 자료를 버튼형으로 제공하고,
+[맞춤 안내](docs/api/personalized-guidance.md)는 학교 근거와 개인 기록을 분리해 돌려줍니다.
+[졸업 결과 안내](docs/api/graduation-audits.md)는 기존 Rule Engine 결과를
 근거·부족 항목·추가 확인 사항으로 정리합니다.
 
 ### 3차 MVP 기능

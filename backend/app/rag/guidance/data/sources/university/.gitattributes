@@ -1,0 +1,2 @@
+# Source evidence must remain byte-identical to its SHA256 across checkouts.
+* -text -diff

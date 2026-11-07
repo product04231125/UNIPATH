@@ -148,9 +148,11 @@ class JobAnalysisRequest implements JobAnalysisPayload {
   const JobAnalysisRequest({
     this.records = const [],
     required this.postingText,
+    this.externalProcessingConsent = false,
   });
   final List<PersonalEvidenceSelection> records;
   final String postingText;
+  final bool externalProcessingConsent;
   factory JobAnalysisRequest.fromJson(Map<String, dynamic> value) =>
       JobAnalysisRequest(
         records: value['records'] == null
@@ -163,11 +165,15 @@ class JobAnalysisRequest implements JobAnalysisPayload {
                 ),
               ),
         postingText: value['posting_text'] as String,
+        externalProcessingConsent: value['external_processing_consent'] == null
+            ? false
+            : value['external_processing_consent'] as bool,
       );
   @override
   Map<String, Object?> toJson() => {
     'records': records.map((v) => v.toJson()).toList(),
     'posting_text': postingText,
+    'external_processing_consent': externalProcessingConsent,
   };
 }
 
@@ -308,6 +314,7 @@ class JobAnalysisResponse implements JobAnalysisPayload {
         reason: _choice(value['reason'], [
           "compared_with_personal_evidence",
           "personal_records_required",
+          "external_processing_consent_required",
           "analyzer_not_configured",
           "no_requirements_found",
           "analysis_failed",
@@ -328,7 +335,7 @@ class JobAnalysisResponse implements JobAnalysisPayload {
             ? const []
             : List.unmodifiable(
                 (value['missing_fields'] as List).map(
-                  (v) => _constant(v, "records") as String,
+                  (v) => _choice(v, ["records", "external_processing_consent"]),
                 ),
               ),
       );

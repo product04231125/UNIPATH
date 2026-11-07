@@ -13,6 +13,7 @@ void main() {
           'expected_version': 2,
         },
       ],
+      'external_processing_consent': true,
     };
     expect(JobAnalysisRequest.fromJson(request).toJson(), request);
   });

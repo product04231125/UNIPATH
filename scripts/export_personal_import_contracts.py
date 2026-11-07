@@ -86,11 +86,15 @@ def decode(field, expression, *, names=None, unions=None):
             + f".fromJson(Map<String,dynamic>.from({expression} as Map))"
         )
     if field.get("type") == "array":
-        return (
-            f"List.unmodifiable(({expression} as List).map((v) => "
-            + decode(field["items"], "v", names=names, unions=unions)
-            + "))"
-        )
+        item = decode(field["items"], "v", names=names, unions=unions)
+        inner, nullable = shape(field["items"])
+        if inner.get("type") == "array":
+            # A closure gives no type context, so nested lists must name their element type.
+            element = dart_type(inner["items"], names=names, unions=unions)
+            item = item.replace("List.unmodifiable", f"List<{element}>.unmodifiable", 1)
+        if nullable:
+            item = f"v == null ? null : {item}"
+        return f"List.unmodifiable(({expression} as List).map((v) => " + item + "))"
     if field.get("format") == "date-time":
         return f"DateTime.parse({expression} as String)"
     if field.get("type") == "decimal":

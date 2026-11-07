@@ -2,7 +2,7 @@
   "synthetic": true,
   "scenarios": {
     "home": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "home",
       "title": "학사 안내",
       "state": "ready",
@@ -48,10 +48,10 @@
         },
         {
           "id": "scholarship",
-          "label": "장학금",
+          "label": "장학금·학자금 융자",
           "action": "select_node",
           "node_id": "scholarship",
-          "availability": "content_pending"
+          "availability": "available"
         },
         {
           "id": "tuition",
@@ -69,10 +69,10 @@
         },
         {
           "id": "departments",
-          "label": "학부·학과",
+          "label": "학부·학과 안내",
           "action": "select_node",
           "node_id": "departments",
-          "availability": "content_pending"
+          "availability": "available"
         },
         {
           "id": "regulations",
@@ -80,11 +80,18 @@
           "action": "select_node",
           "node_id": "regulations",
           "availability": "available"
+        },
+        {
+          "id": "university",
+          "label": "대학규정",
+          "action": "select_node",
+          "node_id": "university",
+          "availability": "available"
         }
       ]
     },
     "graduation": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "graduation",
       "title": "졸업",
       "state": "ready",
@@ -152,7 +159,7 @@
       ]
     },
     "credits": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "credits",
       "title": "이수학점",
       "state": "ready",
@@ -231,7 +238,7 @@
       "notice": "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
     },
     "thesis": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "thesis",
       "title": "논문",
       "state": "ready",
@@ -274,15 +281,36 @@
       "notice": "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
     },
     "departments": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "departments",
-      "title": "학부·학과",
-      "state": "unavailable",
-      "reason": "approved_content_not_configured",
-      "message": "검토된 안내 자료를 준비 중입니다. 현재 이 항목의 정보를 제공할 수 없습니다.",
+      "title": "학부·학과 안내",
+      "state": "ready",
+      "reason": "menu",
+      "message": "캠퍼스와 학과를 선택해 주세요. 현재 컴퓨터공학과 안내를 제공합니다.",
       "cards": [],
       "warnings": [],
       "buttons": [
+        {
+          "id": "departments:metropol",
+          "label": "메트로폴캠퍼스(경기도양주)",
+          "action": "select_node",
+          "node_id": "departments:metropol",
+          "availability": "available"
+        },
+        {
+          "id": "departments:medical",
+          "label": "메디컬캠퍼스(원주문막)",
+          "action": "select_node",
+          "node_id": "departments:medical",
+          "availability": "available"
+        },
+        {
+          "id": "departments:global",
+          "label": "글로벌캠퍼스(고성)",
+          "action": "select_node",
+          "node_id": "departments:global",
+          "availability": "available"
+        },
         {
           "id": "home",
           "label": "이전 메뉴",
@@ -293,7 +321,7 @@
       ]
     },
     "no_audit": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "summary",
       "title": "내 졸업요건 요약",
       "state": "needs_input",
@@ -319,7 +347,7 @@
       ]
     },
     "unknown_node": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": null,
       "state": "needs_selection",
       "reason": "unknown_node",
@@ -337,7 +365,7 @@
       "warnings": []
     },
     "satisfied": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "summary",
       "title": "내 졸업요건 요약",
       "state": "ready",
@@ -416,7 +444,7 @@
       "notice": "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
     },
     "needs_review": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "summary",
       "title": "내 졸업요건 요약",
       "state": "ready",
@@ -495,7 +523,7 @@
       "notice": "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
     },
     "not_applicable": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "summary",
       "title": "내 졸업요건 요약",
       "state": "ready",
@@ -574,7 +602,7 @@
       "notice": "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
     },
     "stale_incomplete": {
-      "schema_version": "academic-click-v2",
+      "schema_version": "academic-click-v3",
       "node_id": "summary",
       "title": "내 졸업요건 요약",
       "state": "ready",

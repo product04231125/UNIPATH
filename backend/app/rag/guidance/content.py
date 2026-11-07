@@ -6,6 +6,9 @@ from datetime import UTC, date, datetime
 from functools import lru_cache
 from pathlib import Path
 
+from .department_content import add_departments
+from .university_content import add_university
+
 DATA = Path(__file__).with_name("data")
 PAGE_SIZE = 12
 REGULATION_NOTICE = "첨부 문서 기준입니다. 현재 유효성·개인 적용 여부는 별도 확인이 필요합니다."
@@ -49,7 +52,11 @@ def _build(signature):
     }
     for name, _mtime, _size in signature:
         data = json.loads((DATA / name).read_text(encoding="utf-8"))
-        if name.startswith("calendar-"):
+        if name == "departments.json":
+            add_departments(data, nodes, payloads, _paginate)
+        elif name == "university.json":
+            add_university(data, nodes, payloads, _paginate)
+        elif name.startswith("calendar-"):
             year = data["year"]
             year_id = f"calendar:{year}"
             nodes[year_id] = (f"{year}년", "calendar", "menu")
@@ -171,7 +178,14 @@ def _build(signature):
 
 
 def bundle():
-    files = sorted([*DATA.glob("calendar-*.json"), *DATA.glob("regulations.json")])
+    files = sorted(
+        [
+            *DATA.glob("calendar-*.json"),
+            *DATA.glob("regulations.json"),
+            *DATA.glob("university.json"),
+            *DATA.glob("departments.json"),
+        ]
+    )
     signature = tuple((p.name, p.stat().st_mtime_ns, p.stat().st_size) for p in files)
     return _build(signature)
 
@@ -184,7 +198,7 @@ def payload(node_id):
         age = datetime.now(UTC) - datetime.fromisoformat(result["fetched_at"])
         result["snapshot_stale"] = age.days >= 7
         if result["snapshot_stale"]:
-            result["warnings"].insert(
-                0, "수집 후 7일 이상 지난 일정입니다. 최신 수집이 필요합니다."
+            result.setdefault("warnings", []).insert(
+                0, "수집 후 7일 이상 지난 자료입니다. 최신 수집이 필요합니다."
             )
     return result

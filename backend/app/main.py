@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.academic import router as academic_router
+from app.api.academic_guidance import router as academic_guidance_router
 from app.api.access import router as access_router
 from app.api.admin_applications import admin_router as admin_applications_router
 from app.api.admin_applications import router as admin_applications_owner_router
@@ -38,6 +39,7 @@ from app.core.database import create_session_factory
 from app.core.errors import register_error_handlers
 from app.schemas.common import ErrorResponse
 from app.schemas.health import HealthResponse
+from app.services import gemini
 from app.services.assistant import create_school_rag_service
 from app.services.knowledge_queries import KnowledgeIndexCache
 
@@ -48,10 +50,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         application.state.settings = config
-        application.state.school_rag_service = create_school_rag_service(config)
+        answer_generator = gemini.create_answer_generator(config)
+        application.state.school_rag_service = create_school_rag_service(config, answer_generator)
         application.state.session_factory = create_session_factory(config)
         application.state.knowledge_index_cache = KnowledgeIndexCache()
-        application.state.job_analyzer = None
+        application.state.knowledge_index_cache.generator = answer_generator
+        guidance_model = gemini.create_model(config, timeout=config.vertex_timeout_seconds)
+        application.state.guidance_model = guidance_model
+        application.state.job_analyzer = gemini.create_job_analyzer(guidance_model)
         try:
             yield
         finally:
@@ -101,6 +107,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(personal_router, prefix="/api/v1")
     application.include_router(personal_imports_router, prefix="/api/v1")
     application.include_router(personalization_router, prefix="/api/v1")
+    application.include_router(academic_guidance_router, prefix="/api/v1")
     application.include_router(official_records_router, prefix="/api/v1")
     application.include_router(official_records_owner_router, prefix="/api/v1")
     application.include_router(record_sources_router, prefix="/api/v1")

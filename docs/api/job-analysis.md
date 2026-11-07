@@ -1,10 +1,10 @@
 # 개인화 문맥과 채용 분석 최소 계약
 
-공고 원문 1개와 선택한 개인 기록을 비교하는 계약이다. 실제 AI 분석기는 미연결이며
-기본 앱은 `not_configured`를 반환한다. AI/RAG는 `JobAnalyzer.analyze(posting_text, context)`에
-요건 추출·비교·설명을 연결한다. LLM 설명만으로 충족을 판정하지 않는다.
-학교 공통 문서는 기존 `/me/school-searches`, `/me/school-queries`에서 검색하고
-개인 기록은 별도로 조립한다. 개인화 학교 답변 생성과 외부 공급자 연결은 후속이다.
+공고 원문 1개와 선택한 개인 기록을 비교하는 계약이다. 분석기는 Vertex AI의 Gemini로 연결했고
+`VERTEX_PROJECT`, `VERTEX_LOCATION`, `VERTEX_MODEL`을 모두 설정해야 동작한다. 설정 전에는
+`not_configured`를 반환한다. LLM 설명만으로 충족을 판정하지 않는다.
+학교 공통 문서는 기존 `/me/school-searches`, `/me/school-queries`에서 검색하고 개인 기록은
+별도로 조립한다. 둘을 함께 쓰는 흐름은 [맞춤 안내](personalized-guidance.md)를 따른다.
 
 ## 요청
 
@@ -31,23 +31,38 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 신뢰하지 않는 개인 주장이다. 공용 코퍼스나 공식 학교 자료로 승격하지 않는다.
 
 `POST /api/v1/me/job-analyses`는 같은 `records`와 앞뒤 공백 제거 후 1~20000자인
-`posting_text`를 받는다. URL·임의 프로필·사용자 ID·승인 플래그는 거부한다.
-공고·문맥·결과를 저장하지 않으며 UUID `analysis_id`는 요청 식별자다.
+`posting_text`, `external_processing_consent`를 받는다. URL·임의 프로필·사용자 ID·승인 플래그는
+거부한다. 공고·문맥·결과를 저장하지 않으며 UUID `analysis_id`는 요청 식별자다.
 사용자별 15분당 30회로 제한한다. `X-Unipath-Owner` 사전조건을 지원한다.
+
+## 외부 전송
+
+[D6 결정](../../backend/app/rag/TEAM_DECISIONS.md)에 따라 다음 조건을 지킨다.
+
+- `external_processing_consent`는 요청마다 `true`여야 한다. 기본값은 `false`이며 저장하지 않는다.
+  화면에서 선택한 기록이 Google로 전송된다는 점을 알린 뒤 받는다.
+- 학생이 고른 기록만 보낸다. 소유자·연락처 필드·링크·학교 승인 필드는 조립 단계에서 뺀다.
+- 자유 입력의 이메일, 전화번호, 주민등록번호, 학번, 링크, 본인 이름은 전송 전에 표식으로 바꾼다.
+  다른 사람의 이름이나 서술로 드러나는 정보까지 지우지는 못한다.
+- 인용은 전송된 내용 기준이므로 응답의 `excerpt`에도 표식이 보일 수 있다.
+- 프롬프트와 응답 본문은 로그에 남기지 않는다. 실패 시 예외 종류만 기록한다.
+- 전체 호출은 `LLM_REQUESTS_PER_15_MINUTES`(기본 60)로 제한하고, 초과하면 공통 429다.
+  월 비용 한도는 클라우드 계정에서 설정한다.
 
 ## 응답과 검증
 
 | status | reason | 의미 |
 |---|---|---|
 | `needs_user_input` | `personal_records_required` | `missing_fields=["records"]` 선택 안내 |
-| `not_configured` | `analyzer_not_configured` | 실제 분석기 미연결 |
+| `needs_user_input` | `external_processing_consent_required` | `missing_fields=["external_processing_consent"]` 동의 필요 |
+| `not_configured` | `analyzer_not_configured` | Gemini 미설정 |
 | `insufficient_evidence` | `no_requirements_found` | 요건 추출 근거 없음 |
 | `completed` | `compared_with_personal_evidence` | 인용 검증을 통과한 비교 목록 |
 | `failed` | `analysis_failed` | 공급자 출력·처리 오류 차단 |
 
 상태 응답은 HTTP 200이며 `official=false`다. `completed`에만 최대 50개 `comparisons`가 있다.
 
-유효한 본인 기록을 선택했지만 실제 분석기가 미연결인 현재 기본 응답은 다음과 같다.
+유효한 본인 기록을 선택했지만 Gemini가 설정되지 않은 응답은 다음과 같다.
 
 ```json
 {
@@ -63,7 +78,8 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 각 항목은 UUID `requirement_id`, `priority=required|preferred`, `requirement`,
 `posting_evidence`, `status`, `personal_evidence`, `explanation`이다.
 공고 근거의 `start`, `end`, `excerpt`는 공백 제거한 입력의 Python 문자열 `[start:end]`와
-일치해야 한다. UTF-8 바이트나 JavaScript UTF-16 오프셋이 아니다.
+일치해야 한다. UTF-8 바이트나 JavaScript UTF-16 오프셋이 아니다. 같은 문구가 공고에 반복되면
+아직 인용하지 않은 위치에 연결하고, 공고에 없는 문구는 전체 결과를 차단한다.
 비교 상태는 `supported`, `partially_supported`, `insufficient_evidence`이며 앞의 두 값은
 개인 인용이 필수다. 개인 인용의 `kind`, `record_id`, `version`, `excerpt`가 선택 자료와
 일치해야 한다. 없는 인용·다른 버전·중복 요건 ID는 전체 결과를 차단한다.
@@ -71,10 +87,20 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 
 로그인 누락 401, 타인/삭제 자료 404, 버전 충돌 409, 검증 실패 422, 제한 429는 공통 오류다.
 분석 후에도 로그인·기록 버전을 다시 확인한다. 보호 응답은 `no-store`이고 개인 입력과
-공급자 오류를 로그에 남기지 않는다. 외부 연결 시 개인정보 전달 정책을 확인해야 한다.
+공급자 오류를 로그에 남기지 않는다.
 
 프런트는 공고 입력·기록 선택·결과 화면, AI/RAG는 추출·비교·설명을 담당한다.
 타입은 `scripts/export_job_analysis_contracts.py`로 재생성한다.
 `tests/test_job_analysis.py`의 합성 어댑터는 Python 필수/FastAPI 우대 공고와 Python 경험
 1개를 비교해 각각 근거 있음·근거 부족을 반환한다. 미연결, 소유권, 버전, 허위 인용과
-분석 중 변경을 함께 검사한다. 실제 공고 분석 품질 평가는 AI/RAG 연결 후 진행한다.
+분석 중 변경을 함께 검사한다.
+
+## 품질 평가
+
+`backend/tests/fixtures/job_analysis_scenarios.json`은 대표 공고와 합성 기록 5건이다. 정상 비교,
+필수 자격 미보유, 요구사항 없는 소개문, 지시문 삽입, 반복 문구를 다룬다.
+Gemini 설정 후 `backend/`에서 다음을 실행한다. 합성 자료만 전송한다.
+
+```bash
+uv run --frozen python -m scripts.evaluate_job_analysis --live
+```
