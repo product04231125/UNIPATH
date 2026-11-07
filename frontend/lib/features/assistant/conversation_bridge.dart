@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
@@ -6,6 +7,8 @@ import 'assistant_api.dart';
 import 'assistant_conversation.dart';
 import 'ai_record_catalog.dart';
 import '../api/academic_guidance_models.dart';
+import '../api/graduation_models.dart';
+import '../auth/guidance_asset_gateway.dart';
 
 Map<String, dynamic> _contextSnapshot(SchoolQueryContext context) => {
   ...context.toJson(),
@@ -47,6 +50,14 @@ Map<String, dynamic> conversationSnapshot(
   'records_loading': conversation.recordsLoading,
   'records_error': conversation.recordsError,
   'submission_error': conversation.submissionError,
+  'guidance': conversation.guidance?.toJson(),
+  'guidance_open': conversation.guidanceOpen,
+  'guidance_loading': conversation.guidanceLoading,
+  'guidance_error': conversation.guidanceError,
+  'guidance_unavailable': conversation.guidanceUnavailableReason,
+  'guidance_audit_id': conversation.guidanceAuditId,
+  'audits_loading': conversation.auditsLoading,
+  'audits': conversation.auditOptions.map((a) => a.toJson()).toList(),
   'sending': conversation.sending,
   'turns': [
     for (final t in conversation.turns)
@@ -109,6 +120,12 @@ class ConversationBridge {
       'permit',
       'permission_reload',
       'settings',
+      'guidance_open',
+      'guidance_close',
+      'guidance_node',
+      'guidance_audits',
+      'guidance_audit',
+      'career',
     ].contains(action)) {
       throw const FormatException('Unknown conversation command');
     }
@@ -128,19 +145,32 @@ class ConversationBridge {
       );
     }
     if (action == 'send') unawaited(conversation.send());
-    if (action == 'mode')
+    if (action == 'mode') {
       conversation.setMode(
         AssistantMode.values.byName(command['mode'] as String),
       );
+    }
     if (action == 'records') unawaited(conversation.refreshRecords());
-    if (action == 'select_record')
+    if (action == 'select_record') {
       conversation.selectRecord(
         command['key'] as String,
         command['selected'] as bool,
       );
-    if (action == 'permission_reload')
+    }
+    if (action == 'permission_reload') {
       unawaited(conversation.refreshPermission());
+    }
     if (action == 'settings') conversation.openSettings();
+    if (action == 'guidance_open') unawaited(conversation.showGuidance());
+    if (action == 'guidance_close') conversation.closeGuidance();
+    if (action == 'guidance_node') {
+      unawaited(conversation.navigateGuidance(command['node_id'] as String));
+    }
+    if (action == 'guidance_audits') unawaited(conversation.refreshAudits());
+    if (action == 'guidance_audit') {
+      unawaited(conversation.selectAudit(command['audit_id'] as String));
+    }
+    if (action == 'career') conversation.openCareer();
     if (action == 'permit') {
       unawaited(
         conversation
@@ -165,6 +195,22 @@ class ConversationBridge {
       if (turns.isNotEmpty) unawaited(conversation.retry(turns.first));
     }
     return read();
+  }
+
+  Future<Map<String, dynamic>> dispatch(Map<String, dynamic> value) async {
+    if (value['action'] != 'asset') return command(value);
+    if (_disposed) throw StateError('Conversation bridge is closed');
+    final id = value['asset_id'] as String;
+    final asset = await conversation.loadGuidanceAsset(id);
+    if (_disposed) throw StateError('Conversation bridge is closed');
+    return {
+      ...read(),
+      'asset': {
+        'id': id,
+        'type': asset.contentType,
+        'bytes': base64Encode(asset.bytes),
+      },
+    };
   }
 
   void dispose() {
@@ -197,6 +243,9 @@ class RemoteConversation extends AssistantConversation {
   bool _registeredOnly = false;
   bool _permissionLoading = true;
   String? _permissionError;
+  String? _guidanceUnavailable;
+  @override
+  String? get guidanceUnavailableReason => _guidanceUnavailable;
   final _allowedModes = <AssistantMode>{};
   final _permissionWaiters = <String, Completer<bool>>{};
   @override
@@ -274,12 +323,31 @@ class RemoteConversation extends AssistantConversation {
     recordsLoading = value['records_loading'] == true;
     recordsError = value['records_error'] as String?;
     submissionError = value['submission_error'] as String?;
+    guidance = value['guidance'] == null
+        ? null
+        : AcademicGuidance.fromJson(
+            Map<String, dynamic>.from(value['guidance'] as Map),
+          );
+    guidanceOpen = value['guidance_open'] == true;
+    guidanceLoading = value['guidance_loading'] == true;
+    guidanceError = value['guidance_error'] as String?;
+    _guidanceUnavailable = value['guidance_unavailable'] as String?;
+    guidanceAuditId = value['guidance_audit_id'] as String?;
+    auditsLoading = value['audits_loading'] == true;
+    auditOptions = (value['audits'] as List? ?? [])
+        .map(
+          (v) => GraduationAuditHeader.fromJson(
+            Map<String, dynamic>.from(v as Map),
+          ),
+        )
+        .toList();
     final permissions = Map<String, dynamic>.from(
       value['permission_results'] as Map? ?? {},
     );
     for (final id in _permissionWaiters.keys.toList()) {
-      if (permissions.containsKey(id))
+      if (permissions.containsKey(id)) {
         _permissionWaiters.remove(id)!.complete(permissions[id] == true);
+      }
     }
     sending = value['sending'] as bool;
     // Keep edits whose IPC acknowledgement has not arrived yet.
@@ -322,10 +390,11 @@ class RemoteConversation extends AssistantConversation {
           .toList(),
     );
     turn.loading = raw['loading'] as bool;
-    if (raw['personalized'] != null)
+    if (raw['personalized'] != null) {
       turn.personalized = PersonalizedGuidanceResponse.fromJson(
         Map<String, dynamic>.from(raw['personalized'] as Map),
       );
+    }
     if (raw['result'] != null) {
       turn.result = AssistantResult.fromJson(
         Map<String, dynamic>.from(raw['result'] as Map),
@@ -380,13 +449,76 @@ class RemoteConversation extends AssistantConversation {
 
   @override
   void selectRecord(String key, bool selected) {
-    if (_ready && !sending)
+    if (_ready && !sending) {
       _enqueue('select_record', null, {'key': key, 'selected': selected});
+    }
   }
 
   @override
   void openSettings() {
     if (_ready) _enqueue('settings');
+  }
+
+  @override
+  void openCareer() {
+    if (_ready) _enqueue('career');
+  }
+
+  @override
+  Future<void> showGuidance() async {
+    if (_ready) {
+      _enqueue('guidance_open');
+      await flush();
+    }
+  }
+
+  @override
+  void closeGuidance() {
+    if (_ready) _enqueue('guidance_close');
+  }
+
+  @override
+  Future<void> navigateGuidance(String id) async {
+    if (_ready) {
+      _enqueue('guidance_node', null, {'node_id': id});
+      await flush();
+    }
+  }
+
+  @override
+  Future<void> refreshAudits() async {
+    if (_ready) {
+      _enqueue('guidance_audits');
+      await flush();
+    }
+  }
+
+  @override
+  Future<void> selectAudit(String id) async {
+    if (_ready) {
+      _enqueue('guidance_audit', null, {'audit_id': id});
+      await flush();
+    }
+  }
+
+  @override
+  Future<GuidanceAsset> loadGuidanceAsset(String id) async {
+    if (!_ready || _closed) throw StateError('Main conversation unavailable');
+    final result = await request({
+      'command_id': '$_clientId-${++_sequence}',
+      'action': 'asset',
+      'asset_id': id,
+    });
+    if (_closed) throw StateError('Conversation closed');
+    final asset = Map<String, dynamic>.from(result['asset'] as Map);
+    if (asset['id'] != id ||
+        !{'application/pdf', 'image/jpeg'}.contains(asset['type'])) {
+      throw const FormatException('Invalid asset');
+    }
+    return GuidanceAsset(
+      base64Decode(asset['bytes'] as String),
+      asset['type'] as String,
+    );
   }
 
   @override

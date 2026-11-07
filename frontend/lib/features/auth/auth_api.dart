@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'guidance_asset_gateway.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -571,11 +573,70 @@ class AuthApi implements AuthGateway, ApiGateway {
   }
 }
 
-class _OwnerGateway implements ApiGateway {
+class _OwnerGateway implements ApiGateway, GuidanceAssetGateway {
   const _OwnerGateway(this.auth, this.ownerId, this.epoch);
   final AuthApi auth;
   final String ownerId;
   final int epoch;
+  @override
+  Future<GuidanceAsset> guidanceAsset(String id) async {
+    if (!RegExp(r'^[0-9a-f]{64}$').hasMatch(id)) {
+      throw const AuthFailure('올바른 안내 자료를 선택해 주세요.');
+    }
+    void check() {
+      if (!auth._ownsSession(ownerId, epoch)) {
+        throw const AuthFailure('계정이 변경되었습니다. 다시 로그인해 주세요.', status: 403);
+      }
+    }
+
+    check();
+    try {
+      final request = http.Request(
+        'GET',
+        auth._base.resolve('/api/v1/me/academic-guidance/assets/$id'),
+      );
+      request.followRedirects = false;
+      request.headers['X-Unipath-Owner'] = ownerId;
+      if (auth._token != null) {
+        request.headers['Authorization'] = 'Bearer ${auth._token}';
+      }
+      final response = await auth._client
+          .send(request)
+          .then(http.Response.fromStream)
+          .timeout(const Duration(seconds: 20));
+      check();
+      if (response.statusCode != 200) {
+        throw AuthFailure(
+          response.statusCode == 404
+              ? '안내 자료를 찾을 수 없습니다.'
+              : '안내 자료를 읽지 못했습니다. 다시 시도해 주세요.',
+          status: response.statusCode,
+        );
+      }
+      final type = response.headers['content-type']?.split(';').first;
+      final bytes = response.bodyBytes;
+      final validPdf =
+          type == 'application/pdf' &&
+          bytes.length >= 5 &&
+          utf8.decode(bytes.take(5).toList(), allowMalformed: true) == '%PDF-';
+      final validJpeg =
+          type == 'image/jpeg' &&
+          bytes.length >= 3 &&
+          bytes[0] == 255 &&
+          bytes[1] == 216 &&
+          bytes[2] == 255;
+      if (!validPdf && !validJpeg) {
+        throw const AuthFailure('안내 자료의 파일 형식을 확인하지 못했습니다.');
+      }
+      return GuidanceAsset(bytes, type!);
+    } on AuthFailure {
+      rethrow;
+    } catch (_) {
+      check();
+      throw const AuthFailure('안내 자료를 읽지 못했습니다. 다시 시도해 주세요.');
+    }
+  }
+
   @override
   Future<Map<String, dynamic>?> request(
     String method,

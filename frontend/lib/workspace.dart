@@ -120,12 +120,16 @@ class _WorkspaceState extends State<Workspace> {
     registeredOnly: widget.assistantFactory == null,
     guidanceApi: widget.studentApi == null
         ? null
-        : GuidanceApi(widget.studentApi!.api),
+        : GuidanceApi(
+            widget.studentApi!.api,
+            ownerId: widget.studentApi!.ownerId,
+          ),
     consent: _aiConsent,
     loadRecords: widget.studentApi == null
         ? null
         : () => loadAiRecords(widget.studentApi!),
     onOpenSettings: () => _selectPage(_labels.length),
+    onOpenCareer: () => _selectPage(7),
   );
   late final PlanningRepository _planningRepository = widget.studentApi == null
       ? PlanningRepository()
@@ -173,7 +177,7 @@ class _WorkspaceState extends State<Workspace> {
       );
       native.bindConversation(
         _conversationBridge!.read,
-        _conversationBridge!.command,
+        _conversationBridge!.dispatch,
       );
       native.bindSchoolProfile(
         () {

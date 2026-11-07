@@ -26,7 +26,7 @@ class Api extends ApiGateway {
     calls.add((path, body));
     if (failure != null) throw failure!;
     if (pending != null) return pending!.future;
-    if (path == 'me/personalized-guidance')
+    if (path == 'me/personalized-guidance') {
       return {
         'query_id': 'q',
         'status': personalizedStatus,
@@ -39,6 +39,7 @@ class Api extends ApiGateway {
         },
         'personal': {'records': [], 'official': false},
       };
+    }
     return schoolResult;
   }
 }

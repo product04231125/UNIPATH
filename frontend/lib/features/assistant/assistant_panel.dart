@@ -8,6 +8,7 @@ import 'assistant_api.dart';
 import 'assistant_context_dialog.dart';
 import 'assistant_conversation.dart';
 import '../settings/ai_consent_section.dart';
+import 'academic_guidance_view.dart';
 
 class AssistantPanel extends StatefulWidget {
   const AssistantPanel({
@@ -228,6 +229,13 @@ class AssistantPanelState extends State<AssistantPanel> {
                   padding: const EdgeInsets.all(14),
                   children: [
                     if (conversation.registeredOnly) ...[
+                      OutlinedButton.icon(
+                        onPressed: conversation.guidanceLoading
+                            ? null
+                            : conversation.showGuidance,
+                        icon: const Icon(Icons.menu_book_outlined),
+                        label: const Text('학사 안내'),
+                      ),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -240,8 +248,9 @@ class AssistantPanelState extends State<AssistantPanel> {
                                   ? null
                                   : (_) {
                                       conversation.setMode(mode);
-                                      if (mode == AssistantMode.personalized)
+                                      if (mode == AssistantMode.personalized) {
                                         conversation.refreshRecords();
+                                      }
                                     },
                             ),
                         ],
@@ -377,7 +386,10 @@ class AssistantPanelState extends State<AssistantPanel> {
                       ),
                       const Divider(),
                     ],
-                    if (conversation.turns.isEmpty)
+                    if (conversation.guidanceOpen)
+                      AcademicGuidanceView(conversation: conversation),
+                    if (conversation.turns.isEmpty &&
+                        !conversation.guidanceOpen)
                       Text('학교 규정에 관해 질문해 보세요. 승인된 근거가 없으면 근거 부족을 안내합니다.'),
                     for (final turn in conversation.turns) ...[
                       _bubble(

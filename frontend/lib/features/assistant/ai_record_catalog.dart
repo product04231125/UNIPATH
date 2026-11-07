@@ -59,8 +59,9 @@ Future<List<AiRecordOption>> loadAiRecords(
     do {
       final page = await api.list(entry.value, cursor: cursor);
       for (final record in page.items) {
-        if (!identifiers.add(record.id))
+        if (!identifiers.add(record.id)) {
           throw const FormatException('Repeated record');
+        }
         final json = record.data.toJson();
         records.add(
           AiRecordOption(
@@ -73,8 +74,9 @@ Future<List<AiRecordOption>> loadAiRecords(
         );
       }
       cursor = page.nextCursor;
-      if (cursor != null && !cursors.add(cursor))
+      if (cursor != null && !cursors.add(cursor)) {
         throw const FormatException('Repeated record cursor');
+      }
     } while (cursor != null);
   }
   return List.unmodifiable(records);

@@ -133,12 +133,13 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
         if (removed.isNotEmpty) _recordMessage = '변경되거나 삭제된 기록은 다시 선택해 주세요.';
       });
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _failed = true;
           _recordMessage = '개인 기록을 읽지 못했습니다. 입력과 기존 선택을 유지했습니다.';
         });
+      }
     }
   }
 
@@ -172,8 +173,9 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
             widget.consent!,
             AiConsentFeature.jobAnalysis,
           ) ||
-          !mounted)
+          !mounted) {
         return;
+      }
       setState(() {
         _result = null;
         _requesting = true;
@@ -187,22 +189,25 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
       );
       if (mounted) setState(() => _result = result);
     } on AuthFailure catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = e.status == 409
               ? '선택한 기록이 변경되었습니다. 입력을 유지했습니다. 기록을 다시 읽고 선택해 주세요.'
               : e.message;
           _requestId = e.requestId;
         });
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = '분석 응답을 확인하지 못했습니다. 입력을 유지했습니다. 다시 시도해 주세요.');
+      }
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _sending = false;
           _requesting = false;
         });
+      }
     }
   }
 

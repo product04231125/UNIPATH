@@ -11,8 +11,9 @@ Future<bool> requestAiConsent(
   bool persistent = false,
 }) async {
   await preferences.load();
-  if (!context.mounted || preferences.loadFailed || preferences.saving)
+  if (!context.mounted || preferences.loadFailed || preferences.saving) {
     return false;
+  }
   if (!review && preferences.allows(feature)) return true;
   final remember = await chooseAiConsent(
     context,

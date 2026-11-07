@@ -6,6 +6,8 @@ import '../api/guidance_api.dart';
 import '../auth/auth_api.dart';
 import '../settings/ai_consent_preferences.dart';
 import 'ai_record_catalog.dart';
+import '../api/graduation_models.dart';
+import '../auth/guidance_asset_gateway.dart';
 
 enum AssistantMode {
   school('학교 질문', AiConsentFeature.schoolQuestion),
@@ -45,6 +47,10 @@ class AssistantConversation extends ChangeNotifier {
     this.loadRecords,
     this.registeredOnly = false,
     this.onOpenSettings,
+    this.onOpenCareer,
+    this.supportedGuidanceInstitutionId = const String.fromEnvironment(
+      'ACADEMIC_GUIDANCE_INSTITUTION_ID',
+    ),
   }) : _api = api ?? AssistantApi() {
     consent?.addListener(_consentChanged);
   }
@@ -53,6 +59,126 @@ class AssistantConversation extends ChangeNotifier {
   final Future<List<AiRecordOption>> Function()? loadRecords;
   final bool registeredOnly;
   final VoidCallback? onOpenSettings;
+  final VoidCallback? onOpenCareer;
+  final String supportedGuidanceInstitutionId;
+  AcademicGuidance? guidance;
+  bool guidanceOpen = false, guidanceLoading = false, auditsLoading = false;
+  String? guidanceError, guidanceAuditId;
+  List<GraduationAuditHeader> auditOptions = const [];
+  int _guidanceGeneration = 0;
+  String get guidanceNodeId => guidance?.nodeId ?? 'home';
+  String? get guidanceUnavailableReason {
+    if (!contextAvailable || !context.hasRegisteredSchool) {
+      return '등록된 학교·학과를 설정한 뒤 이용할 수 있습니다.';
+    }
+    if (supportedGuidanceInstitutionId.isEmpty) {
+      return '학교별 안내 자료 연결을 확인 중입니다. 현재 학교의 안내 자료는 아직 연결되지 않았습니다.';
+    }
+    if (context.institutionId != supportedGuidanceInstitutionId) {
+      return '현재 학교에 연결된 안내 자료가 없습니다.';
+    }
+    if (guidanceApi == null) return '학사 안내에 연결할 수 없습니다. 로그인 상태를 확인해 주세요.';
+    return null;
+  }
+
+  void openCareer() => onOpenCareer?.call();
+  Future<void> showGuidance() async {
+    guidanceOpen = true;
+    notifyListeners();
+    await navigateGuidance(guidanceNodeId);
+  }
+
+  void closeGuidance() {
+    guidanceOpen = false;
+    notifyListeners();
+  }
+
+  Future<void> navigateGuidance(String id) async {
+    if (_disposed || guidanceLoading) return;
+    guidanceError = guidanceUnavailableReason;
+    if (guidanceError != null) {
+      notifyListeners();
+      return;
+    }
+    final generation = ++_guidanceGeneration;
+    guidanceLoading = true;
+    notifyListeners();
+    try {
+      final node = await guidanceApi!.node(id, auditId: guidanceAuditId);
+      if (_disposed || generation != _guidanceGeneration) return;
+      guidance = node;
+    } on AuthFailure catch (e) {
+      if (!_disposed && generation == _guidanceGeneration) {
+        guidanceError = e.message;
+      }
+    } catch (_) {
+      if (!_disposed && generation == _guidanceGeneration) {
+        guidanceError = '안내 응답을 확인하지 못했습니다. 다시 시도해 주세요.';
+      }
+    } finally {
+      if (!_disposed && generation == _guidanceGeneration) {
+        guidanceLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> refreshAudits() async {
+    if (_disposed || auditsLoading || guidanceUnavailableReason != null) return;
+    final generation = _guidanceGeneration;
+    auditsLoading = true;
+    guidanceError = null;
+    notifyListeners();
+    try {
+      final items = await guidanceApi!.audits(context.institutionId!);
+      if (_disposed || generation != _guidanceGeneration) return;
+      auditOptions = items
+          .where(
+            (r) =>
+                r.context.institutionId == context.institutionId &&
+                r.context.departmentId == context.departmentId &&
+                r.context.curriculumId == context.curriculumId &&
+                r.context.admissionYear == context.admissionYear &&
+                r.context.track == context.track,
+          )
+          .toList();
+    } catch (_) {
+      if (!_disposed && generation == _guidanceGeneration) {
+        guidanceError = '본인 졸업감사 이력을 읽지 못했습니다. 다시 읽어 주세요.';
+      }
+    } finally {
+      if (!_disposed) {
+        auditsLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> selectAudit(String id) async {
+    if (!auditOptions.any((a) => a.id == id) || guidanceLoading) return;
+    guidanceAuditId = id;
+    await navigateGuidance(guidanceNodeId);
+  }
+
+  Future<GuidanceAsset> loadGuidanceAsset(String id) async {
+    final allowed =
+        guidance?.cards.any(
+              (c) =>
+                  c.imageAssetId == id || c.sources.any((s) => s.assetId == id),
+            ) ==
+            true ||
+        guidance?.source?.assetId == id;
+    if (_disposed || guidanceUnavailableReason != null || !allowed) {
+      throw const AuthFailure('현재 안내에 포함된 원문을 선택해 주세요.');
+    }
+    final generation = _guidanceGeneration;
+    final value = await guidanceApi!.asset(id);
+    if (_disposed || generation != _guidanceGeneration) {
+      throw const AuthFailure('안내 문맥이 변경되었습니다. 원문을 다시 선택해 주세요.');
+    }
+    return value;
+  }
+
   final AssistantGateway _api;
   final input = TextEditingController();
   final List<AssistantTurn> _turns = [];
@@ -65,6 +191,13 @@ class AssistantConversation extends ChangeNotifier {
   void setContextAvailable(bool value) {
     if (contextAvailable == value || _disposed) return;
     contextAvailable = value;
+    if (!value) {
+      _guidanceGeneration++;
+      guidanceLoading = false;
+      guidance = null;
+      guidanceAuditId = null;
+      auditOptions = const [];
+    }
     _oncePermissions.clear();
     notifyListeners();
   }
@@ -120,8 +253,9 @@ class AssistantConversation extends ChangeNotifier {
       selectedRecords.removeWhere(
         (old) => !next.any((r) => r.key == old.key && r.version == old.version),
       );
-      if (selectedRecords.length != oldCount)
+      if (selectedRecords.length != oldCount) {
         recordsError = '변경되거나 삭제된 기록은 다시 선택해 주세요.';
+      }
     } catch (_) {
       recordsError = '개인 기록을 읽지 못했습니다. 기존 선택은 유지했습니다. 다시 읽어 주세요.';
     } finally {
@@ -155,6 +289,13 @@ class AssistantConversation extends ChangeNotifier {
 
   void setContext(SchoolQueryContext value) {
     if (_disposed) return;
+    if (context.catalogJson().toString() != value.catalogJson().toString()) {
+      _guidanceGeneration++;
+      guidanceLoading = false;
+      guidance = null;
+      guidanceAuditId = null;
+      auditOptions = const [];
+    }
     _oncePermissions.clear();
     context = value;
     notifyListeners();
@@ -223,10 +364,11 @@ class AssistantConversation extends ChangeNotifier {
       if (turn.mode == AssistantMode.personalized) {
         final saved = turn.requestContext ?? context;
         final api = guidanceApi;
-        if (api == null)
+        if (api == null) {
           throw const AssistantApiException(
             '맞춤 안내에 연결할 수 없습니다. 로그인 상태를 확인해 주세요.',
           );
+        }
         final result = await api.personalized(
           PersonalizedGuidanceRequest(
             question: turn.question,
@@ -243,8 +385,9 @@ class AssistantConversation extends ChangeNotifier {
         );
         if (_disposed) return;
         turn.personalized = result;
-        if (result.status == 'grounded' && input.text.trim() == turn.question)
+        if (result.status == 'grounded' && input.text.trim() == turn.question) {
           input.clear();
+        }
         return;
       }
       final result = await _api.query(
