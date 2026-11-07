@@ -1,3 +1,5 @@
+import 'dart:convert';
+import '../../shared/widgets/anchored_select_field.dart';
 import 'package:flutter/material.dart';
 
 import '../api/official_records_api.dart';
@@ -324,6 +326,9 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
   final _changes = ChangeNotifier();
   final _reason = TextEditingController();
   List<SchoolRecordBatchEventView> _events = [];
+  List<SchoolRecordBatchHeader> _predecessors = [];
+  SchoolRecordBatchHeader? _replacement;
+
   bool _records = false,
       _context = false,
       _coverage = false,
@@ -351,6 +356,19 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
     try {
       final batch = await _api.get(_batch.id);
       final events = await _api.events(_batch.id);
+      final previous = <SchoolRecordBatchHeader>[];
+      if (widget.admin && batch.status == 'draft') {
+        String? cursor; final seen = <String>{};
+        do {
+          final page = await _api.list(institutionId: batch.institutionId, kind: batch.kind, status: 'approved', cursor: cursor);
+          previous.addAll(page.items.where((row) => row.id != batch.id && row.status == 'approved' &&
+            row.ownerId == batch.ownerId && row.kind == batch.kind &&
+            jsonEncode(row.context.toJson()) == jsonEncode(batch.context.toJson())));
+          cursor = page.nextCursor;
+          if (cursor != null && !seen.add(cursor)) throw const FormatException('기록 목록이 반복됩니다.');
+        } while (cursor != null);
+      }
+
       final catalog = StudentCatalogApi(widget.auth.forOwner(widget.ownerId));
       final department = batch.context.departmentId == null
           ? '미확인'
@@ -370,6 +388,8 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
           _departmentLabel = department;
           _curriculumLabel = curriculum;
           _events = events.items;
+          _predecessors = previous;
+          _replacement = null;
           _records = _context = _coverage = false;
           _stale = false;
           _denied = false;
@@ -469,6 +489,8 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
             recordsReviewed: _records,
             contextReviewed: _context,
             coverageReviewed: _coverage,
+            replacesBatchId: _replacement?.id,
+            expectedReplacedVersion: _replacement?.version,
           ),
         ),
         'revoke' => await _api.revoke(
@@ -516,7 +538,7 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
       changes: Listenable.merge([_changes, _reason]),
       saving: _busy,
       hasContent: () =>
-          _reason.text.isNotEmpty || _records || _context || _coverage,
+          _reason.text.isNotEmpty || _records || _context || _coverage || _replacement != null,
       content: _denied
           ? recordAccessNotice(_busy || _loading ? null : _reload, _error)
           : Column(
@@ -558,6 +580,16 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
                 if (recordRows(b.data).isEmpty)
                   const Text('기록 0건. 전체/일부 검토 범위의 의미를 확인하세요.'),
                 if (reviewer && b.status == 'draft') ...[
+                  if (_predecessors.isNotEmpty) ...[
+                    const Text('같은 학생·기준의 승인 기록이 있습니다. 교체할 기록을 직접 선택하세요.'),
+                    AnchoredSelectField<String>(
+                      key: const ValueKey('official-record-replacement'), value: _replacement?.id ?? '', label: '교체할 승인 기록',
+                      options: [const SelectOption('', '교체 대상 선택'), for (final row in _predecessors)
+                        SelectOption(row.id, '${row.recordsAsOf} · ${row.recordCount}건 · v${row.version} · ${row.id}')],
+                      onChanged: (id) { if (enabled) { setState(() => _replacement = _predecessors.where((row) => row.id == id).firstOrNull); _changes.notifyListeners(); } },
+                    ),
+                  ],
+
                   TextButton(
                     onPressed: enabled ? () => _source(edit: true) : null,
                     child: const Text('검토 초안 수정'),
@@ -588,7 +620,7 @@ class _ReviewState extends State<OfficialRecordReviewDialog> {
                           : null,
                     ),
                   FilledButton(
-                    onPressed: enabled && _records && _context && _coverage
+                    onPressed: enabled && _records && _context && _coverage && (_predecessors.isEmpty || _replacement != null)
                         ? () => _act('approve')
                         : null,
                     child: const Text('학생 기록 승인'),
