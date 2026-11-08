@@ -19,7 +19,10 @@ function Invoke-Checked {
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
-        & $Program @Arguments 2>&1 | ForEach-Object { Write-Output $_.ToString() }
+        & $Program @Arguments 2>&1 | ForEach-Object {
+            $line = $_.ToString()
+            if ($line -and $line -ne 'System.Management.Automation.RemoteException') { Write-Output $line }
+        }
         $nativeExit = $LASTEXITCODE
     } finally { $ErrorActionPreference = $previous }
     if ($nativeExit -ne 0) { throw "$Program failed (exit $nativeExit)" }
@@ -31,7 +34,8 @@ try {
     $suffix = (Get-Date -Format 'yyyyMMddHHmmss')
     $apiImage = "unipath-demo-api:${commit}-${suffix}"
     $webImage = "unipath-demo-web:${commit}-${suffix}"
-    $dbImage = 'pgvector/pgvector:0.8.6-pg17-bookworm@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f'
+    $sourceDbImage = 'pgvector/pgvector:0.8.6-pg17-bookworm@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f'
+    $dbImage = 'unipath-demo-db:pg17-cf134a767f47'
     Write-Output 'Exporting only selected school criteria, courses and requirement checks. Source DB is read-only.'
     Invoke-Checked -Program docker -Arguments @('cp',(Join-Path $root 'backend/app/operations/demo_bundle.py'),"${SourceApiContainer}:/tmp/unipath-demo-export.py")
     Invoke-Checked -Program docker -Arguments @('exec','--env','PYTHONPATH=/app',$SourceApiContainer,'python','/tmp/unipath-demo-export.py','export','--file','/tmp/unipath-demo-data.json')
@@ -52,7 +56,9 @@ try {
     Copy-Item -LiteralPath (Join-Path $template 'web.Dockerfile') -Destination (Join-Path $webContext 'Dockerfile')
     Invoke-Checked -Program docker -Arguments @('build','--pull=false','--target','runtime','-t',$apiImage,'-f','backend/Dockerfile','.')
     Invoke-Checked -Program docker -Arguments @('build','--pull=false','-t',$webImage,$webContext)
-    Invoke-Checked -Program docker -Arguments @('image','inspect',$dbImage,'--format','{{.Id}}')
+    Invoke-Checked -Program docker -Arguments @('image','inspect',$sourceDbImage,'--format','{{.Id}}')
+    # Explicit tags survive docker save/load on a completely fresh machine.
+    Invoke-Checked -Program docker -Arguments @('tag',$sourceDbImage,$dbImage)
     Write-Output 'Saving images for offline application startup...'
     Invoke-Checked -Program docker -Arguments @('save','--output',(Join-Path $bundle 'images.tar'),$apiImage,$webImage,$dbImage)
     foreach ($name in @('Setup.ps1','Enable-Wsl.ps1','compose.yaml','README.txt')) {
@@ -70,7 +76,7 @@ try {
     $compiler = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
     if (-not (Test-Path -LiteralPath $compiler)) { throw 'Windows .NET Framework C# compiler is required to create the launcher EXE.' }
     $exe = Join-Path $output 'UniversityPath-Demo-Setup.exe'
-    Invoke-Checked -Program $compiler -Arguments @('/nologo','/target:winexe','/platform:x64',"/out:$exe","/resource:$zip,DemoBundle",'/r:System.Windows.Forms.dll','/r:System.Drawing.dll','/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll',(Join-Path $template 'Launcher.cs'))
+    Invoke-Checked -Program $compiler -Arguments @('/nologo','/codepage:65001','/target:winexe','/platform:x64',"/out:$exe","/resource:$zip,DemoBundle",'/r:System.Windows.Forms.dll','/r:System.Drawing.dll','/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll',(Join-Path $template 'Launcher.cs'))
     $checksum = (Get-FileHash -Algorithm SHA256 -LiteralPath $exe).Hash.ToLowerInvariant()
     Set-Content -LiteralPath (Join-Path $output 'UniversityPath-Demo-Setup.sha256') -Value "$checksum  UniversityPath-Demo-Setup.exe" -Encoding ascii
     Write-Output "PACKAGE_READY: $exe"

@@ -10,7 +10,10 @@ function Invoke-Docker {
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
-        & $script:Docker @Arguments 2>&1 | ForEach-Object { Write-Output $_.ToString() }
+        & $script:Docker @Arguments 2>&1 | ForEach-Object {
+            $line = $_.ToString()
+            if ($line -and $line -ne 'System.Management.Automation.RemoteException') { Write-Output $line }
+        }
         $nativeExit = $LASTEXITCODE
     } finally { $ErrorActionPreference = $previous }
     if ($nativeExit -ne 0) { throw "Docker failed (exit $nativeExit): $($Arguments[0])" }
@@ -129,10 +132,14 @@ try {
         if ((Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant() -ne $file.Value) { throw "Package damaged: $($file.Name)" }
     }
     Initialize-Docker
-    if (-not (Test-Path -LiteralPath $envFile)) {
-        $settings = @("POSTGRES_PASSWORD=$(New-DemoPassword)","API_IMAGE=$($manifest.api_image)","WEB_IMAGE=$($manifest.web_image)","DB_IMAGE=$($manifest.db_image)")
-        [IO.File]::WriteAllLines($envFile,$settings,(New-Object Text.UTF8Encoding($false)))
+    $dbPassword = New-DemoPassword
+    if (Test-Path -LiteralPath $envFile) {
+        $line = @(Get-Content -LiteralPath $envFile | Where-Object { $_ -match '^POSTGRES_PASSWORD=[a-f0-9]{48}$' })
+        if ($line.Count -ne 1) { throw 'Existing demo database credentials are invalid. Refusing to replace them.' }
+        $dbPassword = $line[0].Substring('POSTGRES_PASSWORD='.Length)
     }
+    $settings = @("POSTGRES_PASSWORD=$dbPassword","API_IMAGE=$($manifest.api_image)","WEB_IMAGE=$($manifest.web_image)","DB_IMAGE=$($manifest.db_image)")
+    [IO.File]::WriteAllLines($envFile,$settings,(New-Object Text.UTF8Encoding($false)))
     $accountsFile = Join-Path $StateDirectory 'accounts.json'
     if (-not (Test-Path -LiteralPath $accountsFile)) {
         $accounts = @{student=(New-DemoPassword);admin=(New-DemoPassword)}
