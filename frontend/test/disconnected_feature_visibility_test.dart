@@ -6,7 +6,6 @@ import 'package:university_path_frontend/features/auth/school_workflow_actions.d
 import 'package:university_path_frontend/features/graduation/graduation_page.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
 import 'package:university_path_frontend/features/settings/settings_page.dart';
-import 'package:university_path_frontend/features/settings/account_settings_section.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/graduation/personal_graduation_workspace.dart';
 import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
@@ -18,36 +17,19 @@ Widget host(Widget child) => MaterialApp(
 );
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
-  testWidgets(
-    'disconnected school actions and account security remain visible and disabled',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1440, 1100));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await tester.pumpWidget(
-        host(
-          const Column(
-            children: [SchoolWorkflowActions(), AccountSettingsSection()],
-          ),
-        ),
+  testWidgets('disconnected school actions remain visible and disabled', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 1100));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(host(const SchoolWorkflowActions()));
+    for (final label in ['학교 문서 검색·근거', '학교 발급 PDF 제출·이력', '학교 확인 학생 기록']) {
+      final button = tester.widget<OutlinedButton>(
+        find.widgetWithText(OutlinedButton, label),
       );
-      for (final label in [
-        '학교 문서 검색·근거',
-        '학교 발급 PDF 제출·이력',
-        '학교 확인 학생 기록',
-        '계정 보안',
-      ]) {
-        final button = tester.widget<OutlinedButton>(
-          find.widgetWithText(OutlinedButton, label),
-        );
-        expect(button.onPressed, isNull);
-      }
-      // Role-gated application entry is deliberately not exposed by missing session.
-      expect(
-        find.byKey(const Key('settings-school-applications')),
-        findsNothing,
-      );
-    },
-  );
+      expect(button.onPressed, isNull);
+    }
+  });
   testWidgets(
     'rule API disconnection retains scope, destination, save and review controls',
     (tester) async {

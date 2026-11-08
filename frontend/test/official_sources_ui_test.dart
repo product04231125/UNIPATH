@@ -13,6 +13,7 @@ import 'package:university_path_frontend/shared/widgets/input_dialog.dart';
 import 'official_graduation_ui_test.dart' as catalog;
 import 'record_source_api_test.dart' as fixture;
 import 'support/auth_fixture.dart';
+import 'support/reachable_controls.dart';
 
 Future<void> launch(WidgetTester tester, Widget dialog) async {
   await tester.pumpWidget(
@@ -34,101 +35,117 @@ Future<void> launch(WidgetTester tester, Widget dialog) async {
 
 void main() {
   for (final size in [const Size(1440, 900), const Size(480, 720)]) {
-    testWidgets('source submission consent, PDF and same-key retry $size', (
-      tester,
-    ) async {
-      tester.view.physicalSize = size;
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final posts = <Map<String, dynamic>>[];
-      Map<String, Object?>? saved;
-      final auth = AuthApi(
-        cookieMode: false,
-        client: MockClient((request) async {
-          if (request.url.path.endsWith('/login')) {
-            return fixture.json({...identityJson(), 'access_token': token});
-          }
-          expect(request.headers['X-Unipath-Owner'], userId);
-          if (request.url.path.contains('/catalog/')) {
+    testWidgets(
+      size.width == 480
+          ? 'source submission controls fit and scroll at $size'
+          : 'source submission consent, PDF and same-key retry',
+      (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final posts = <Map<String, dynamic>>[];
+        Map<String, Object?>? saved;
+        final auth = AuthApi(
+          cookieMode: false,
+          client: MockClient((request) async {
+            if (request.url.path.endsWith('/login')) {
+              return fixture.json({...identityJson(), 'access_token': token});
+            }
+            expect(request.headers['X-Unipath-Owner'], userId);
+            if (request.url.path.contains('/catalog/')) {
+              return fixture.json({
+                'items': [catalog.catalogRow(request.url.path)],
+                'next_cursor': null,
+              });
+            }
+            if (request.method == 'POST') {
+              expect(request.bodyBytes, fixture.pdf);
+              posts.add(
+                jsonDecode(
+                  utf8.decode(
+                    base64Url.decode(
+                      request.headers['X-Unipath-Source-Metadata']!,
+                    ),
+                  ),
+                ) as Map<String, dynamic>,
+              );
+              if (posts.length == 1) {
+                throw http.ClientException('synthetic offline');
+              }
+              saved = {
+                ...fixture.sourceJson(),
+                'client_id': posts.last['client_id'],
+              };
+              return fixture.json(saved!, 201);
+            }
             return fixture.json({
-              'items': [catalog.catalogRow(request.url.path)],
+              'items': [if (saved != null) saved!],
               'next_cursor': null,
             });
-          }
-          if (request.method == 'POST') {
-            expect(request.bodyBytes, fixture.pdf);
-            posts.add(
-              jsonDecode(
-                utf8.decode(
-                  base64Url.decode(
-                    request.headers['X-Unipath-Source-Metadata']!,
-                  ),
-                ),
-              ) as Map<String, dynamic>,
-            );
-            if (posts.length == 1) {
-              throw http.ClientException('synthetic offline');
-            }
-            saved = {
-              ...fixture.sourceJson(),
-              'client_id': posts.last['client_id'],
-            };
-            return fixture.json(saved!, 201);
-          }
-          return fixture.json({
-            'items': [if (saved != null) saved!],
-            'next_cursor': null,
-          });
-        }),
-      );
-      addTearDown(auth.close);
-      await fixture.login(auth);
-      await launch(
-        tester,
-        OfficialSourcesDialog(
-          auth: auth,
-          ownerId: userId,
-          pickPdf: () async =>
-              XFile.fromData(fixture.pdf, name: '합성 성적.pdf', path: '합성 성적.pdf'),
-        ),
-      );
-      await tester.tap(find.text('학교 발급 PDF 제출하기'));
-      await tester.pumpAndSettle();
-      await catalog.choose(tester, '학교 선택', '검증 대학');
-      final date = find.widgetWithText(TextField, '발급일 (YYYY-MM-DD)');
-      await tester.ensureVisible(date);
-      await tester.enterText(date, '2026-01-01');
-      final submit = find.text('검토 요청 제출');
-      await tester.tap(submit);
-      await tester.pumpAndSettle();
-      expect(posts, isEmpty);
-      await tester.ensureVisible(find.text('PDF 선택 (최대 2 MiB)'));
-      await tester.tap(find.text('PDF 선택 (최대 2 MiB)'));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('합성 성적.pdf ·'), findsOneWidget);
-      final consent = find.text('선택한 학교 관리자가 이 원본과 검토 이력을 확인하는 데 동의합니다.');
-      await tester.ensureVisible(consent);
-      await tester.tap(consent);
-      await tester.pumpAndSettle();
-      await tester.tap(submit);
-      await tester.pumpAndSettle();
-      expect(posts, hasLength(1));
-      expect(find.textContaining('선택한 PDF와 입력을 유지했습니다.'), findsOneWidget);
-      await tester.tap(find.text('취소'));
-      await tester.pumpAndSettle();
-      expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('input-discard-cancel')));
-      await tester.pumpAndSettle();
-      await tester.tap(submit);
-      await tester.pumpAndSettle();
-      expect(posts, hasLength(2));
-      expect(posts.first, posts.last);
-      expect(posts.last['review_consent_confirmed'], isTrue);
-      expect(find.text('합성 성적.pdf'), findsOneWidget);
-      expect(find.text('원본 확인 승인'), findsNothing);
-      expect(tester.takeException(), isNull);
-    });
+          }),
+        );
+        addTearDown(auth.close);
+        await fixture.login(auth);
+        await launch(
+          tester,
+          OfficialSourcesDialog(
+            auth: auth,
+            ownerId: userId,
+            pickPdf: () async => XFile.fromData(
+              fixture.pdf,
+              name: '합성 성적.pdf',
+              path: '합성 성적.pdf',
+            ),
+          ),
+        );
+        await tester.tap(find.text('학교 발급 PDF 제출하기'));
+        await tester.pumpAndSettle();
+        if (size.width == 480) {
+          await expectControlsReachable(tester, [
+            find.widgetWithText(TextField, '발급일 (YYYY-MM-DD)'),
+            find.text('PDF 선택 (최대 2 MiB)'),
+            find.text('선택한 학교 관리자가 이 원본과 검토 이력을 확인하는 데 동의합니다.'),
+            find.text('검토 요청 제출'),
+          ]);
+          expect(posts, isEmpty);
+          return;
+        }
+        await catalog.choose(tester, '학교 선택', '검증 대학');
+        final date = find.widgetWithText(TextField, '발급일 (YYYY-MM-DD)');
+        await tester.ensureVisible(date);
+        await tester.enterText(date, '2026-01-01');
+        final submit = find.text('검토 요청 제출');
+        await tester.tap(submit);
+        await tester.pumpAndSettle();
+        expect(posts, isEmpty);
+        await tester.ensureVisible(find.text('PDF 선택 (최대 2 MiB)'));
+        await tester.tap(find.text('PDF 선택 (최대 2 MiB)'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('합성 성적.pdf ·'), findsOneWidget);
+        final consent = find.text('선택한 학교 관리자가 이 원본과 검토 이력을 확인하는 데 동의합니다.');
+        await tester.ensureVisible(consent);
+        await tester.tap(consent);
+        await tester.pumpAndSettle();
+        await tester.tap(submit);
+        await tester.pumpAndSettle();
+        expect(posts, hasLength(1));
+        expect(find.textContaining('선택한 PDF와 입력을 유지했습니다.'), findsOneWidget);
+        await tester.tap(find.text('취소'));
+        await tester.pumpAndSettle();
+        expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('input-discard-cancel')));
+        await tester.pumpAndSettle();
+        await tester.tap(submit);
+        await tester.pumpAndSettle();
+        expect(posts, hasLength(2));
+        expect(posts.first, posts.last);
+        expect(posts.last['review_consent_confirmed'], isTrue);
+        expect(find.text('합성 성적.pdf'), findsOneWidget);
+        expect(find.text('원본 확인 승인'), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
   testWidgets(

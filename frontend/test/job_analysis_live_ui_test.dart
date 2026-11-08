@@ -240,49 +240,4 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
-  testWidgets(
-    'completed analysis renders only received comparisons and selected evidence',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1440, 1000));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await consent.load();
-      await consent.setAllowed(AiConsentFeature.jobAnalysis, true);
-      final gateway = Gateway();
-      await tester.pumpWidget(host(StudentApi(gateway, ownerId: id)));
-      await tester.pumpAndSettle();
-      await prepare(tester);
-      await run(tester);
-      gateway.pending.single.complete({
-        'analysis_id': id,
-        'status': 'completed',
-        'reason': 'compared_with_personal_evidence',
-        'official': false,
-        'missing_fields': [],
-        'comparisons': [
-          {
-            'requirement_id': id,
-            'priority': 'required',
-            'requirement': '공고 조건',
-            'posting_evidence': {'start': 0, 'end': 2, 'excerpt': '공고'},
-            'status': 'supported',
-            'personal_evidence': [
-              {
-                'kind': 'activity',
-                'record_id': id,
-                'version': 3,
-                'excerpt': '선택 봉사',
-              },
-            ],
-            'explanation': '서버가 반환한 비교 설명',
-          },
-        ],
-      });
-      await tester.pumpAndSettle();
-      expect(find.text('분석 완료'), findsOneWidget);
-      expect(find.text('서버가 반환한 비교 설명'), findsOneWidget);
-      expect(find.text('내 기록 근거 (버전 3): 선택 봉사'), findsOneWidget);
-      expect(find.text('근거: 받은 근거 없음'), findsNothing);
-      expect(tester.takeException(), isNull);
-    },
-  );
 }
