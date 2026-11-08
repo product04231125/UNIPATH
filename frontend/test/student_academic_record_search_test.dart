@@ -44,16 +44,25 @@ class SearchGateway extends fixture.AcademicTransport {
 class SearchMemory extends AcademicRecordSearchRepository {
   SearchMemory(super.api);
   bool failMaterial = false;
+  int count = 1;
   final reads = <String>[];
   @override
   Future<List<AcademicRecordSearchHit>> load(String kind) async {
     reads.add(kind);
     if (kind == 'material' && failMaterial) throw StateError('unavailable');
     return [
-      AcademicRecordSearchHit(kind, kind, '$kind 기록', {
-        '메모': kind == 'credential' || kind == 'material' ? '어학 증빙' : '일반 메모',
-        '날짜': '2026-11-01',
-      }),
+      for (var index = 0; index < count; index++)
+        AcademicRecordSearchHit(
+          '$kind-$index',
+          kind,
+          '$kind 기록${count == 1 ? '' : ' $index'}',
+          {
+            '메모': kind == 'credential' || kind == 'material'
+                ? '어학 증빙'
+                : '일반 메모',
+            '날짜': '2026-11-01',
+          },
+        ),
     ];
   }
 }
@@ -170,6 +179,70 @@ void main() {
       },
     );
   }
+  testWidgets(
+    'shared search survives tabs and scrolls independently from requirements',
+    (tester) async {
+      final gateway = fixture.AcademicTransport();
+      (gateway.docs[0]['content'] as Map)['lines'] = [
+        for (var i = 0; i < 30; i++) {'id': 'line-$i', 'text': '확인할 요건 $i'},
+      ];
+      final api = StudentAcademicApi(gateway, 'owner');
+      final repo = SearchMemory(api)..count = 20;
+      final key = await fixture.mount(
+        tester,
+        gateway,
+        child: StudentAcademicPage(
+          api: api,
+          profile: fixture.profile,
+          recordSearch: repo,
+        ),
+      );
+      expect(find.text('내 기록 찾기'), findsOneWidget);
+      final leftFinder = find.byKey(
+        const ValueKey('academic-requirements-scroll'),
+      );
+      final rightFinder = find.byKey(
+        const ValueKey('academic-record-results-scroll'),
+      );
+      final left = tester.widget<SingleChildScrollView>(leftFinder).controller!;
+      final right = tester
+          .widget<SingleChildScrollView>(rightFinder)
+          .controller!;
+      await tester.drag(leftFinder, const Offset(0, -200));
+      await tester.pumpAndSettle();
+      expect(left.offset, greaterThan(0));
+      expect(right.offset, 0);
+      final leftOffset = left.offset;
+      await tester.drag(rightFinder, const Offset(0, -180));
+      await tester.pumpAndSettle();
+      expect(right.offset, greaterThan(0));
+      expect(left.offset, leftOffset);
+      await tester.enterText(find.byType(TextField), '어학');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ChoiceChip, '자격'));
+      await tester.pumpAndSettle();
+      final reads = repo.reads.length;
+      for (final tab in ['인증 요건', '학점표', '한 줄 요건']) {
+        await tester.ensureVisible(find.widgetWithText(ChoiceChip, tab));
+        await tester.tap(find.widgetWithText(ChoiceChip, tab));
+        await tester.pumpAndSettle();
+      }
+      expect(repo.reads.length, reads);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '어학',
+      );
+      expect(
+        tester
+            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '자격'))
+            .selected,
+        isTrue,
+      );
+      expect(gateway.writes, isEmpty);
+      expect(tester.takeException(), isNull);
+      await fixture.screenshot(tester, key, 'requirements-shared-search-panes');
+    },
+  );
   testWidgets(
     'partial source failure preserves query and distinguishes failed search from empty',
     (tester) async {

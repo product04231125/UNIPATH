@@ -57,8 +57,13 @@ class AcademicRecordSearchRepository {
 
 /// Read-only lookup: no requirement response or record reference is written.
 class StudentAcademicRecordSearch extends StatefulWidget {
-  const StudentAcademicRecordSearch({super.key, required this.repository});
+  const StudentAcademicRecordSearch({
+    super.key,
+    required this.repository,
+    this.fillHeight = false,
+  });
   final AcademicRecordSearchRepository repository;
+  final bool fillHeight;
   @override
   State<StudentAcademicRecordSearch> createState() => _SearchState();
 }
@@ -66,22 +71,28 @@ class StudentAcademicRecordSearch extends StatefulWidget {
 class _SearchState extends State<StudentAcademicRecordSearch> {
   final _query = TextEditingController();
   final _scroll = ScrollController();
-  bool _open = false, _loading = false;
+  bool _loading = false;
   String _kind = 'all';
   int _generation = 0;
   final _results = <String, List<AcademicRecordSearchHit>>{};
   final _failed = <String>{};
   @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
   void didUpdateWidget(covariant StudentAcademicRecordSearch oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.repository.api.ownerId != widget.repository.api.ownerId) {
       _generation++;
-      _open = false;
       _loading = false;
       _kind = 'all';
       _query.clear();
       _results.clear();
       _failed.clear();
+      _load();
     }
   }
 
@@ -122,95 +133,91 @@ class _SearchState extends State<StudentAcademicRecordSearch> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            icon: Icon(_open ? Icons.expand_less : Icons.search),
-            label: Text(_open ? '기록 검색 닫기' : '내 기록 찾기'),
-            onPressed: () {
-              setState(() => _open = !_open);
-              if (_open && _results.isEmpty && !_loading) _load();
-            },
+        Text('내 기록 찾기', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _query,
+          decoration: const InputDecoration(
+            labelText: '내 기록 검색',
+            hintText: '과목명·자격명·메모·날짜',
+            prefixIcon: Icon(Icons.search),
           ),
+          onChanged: (_) => setState(() {}),
         ),
-        if (_open) ...[
-          TextField(
-            controller: _query,
-            decoration: const InputDecoration(
-              labelText: '내 기록 검색',
-              hintText: '과목명·자격명·메모·날짜',
-              prefixIcon: Icon(Icons.search),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          Wrap(
-            spacing: 6,
-            children: [
-              for (final entry in {'all': '전체', ...academicSearchKinds}.entries)
-                ChoiceChip(
-                  label: Text(entry.value),
-                  selected: _kind == entry.key,
-                  onSelected: (_) => setState(() => _kind = entry.key),
-                ),
-              TextButton(
-                onPressed: _loading ? null : _load,
-                child: const Text('기록 다시 불러오기'),
+        Wrap(
+          spacing: 6,
+          children: [
+            for (final entry in {'all': '전체', ...academicSearchKinds}.entries)
+              ChoiceChip(
+                label: Text(entry.value),
+                selected: _kind == entry.key,
+                onSelected: (_) => setState(() => _kind = entry.key),
               ),
-            ],
-          ),
-          if (_loading) const LinearProgressIndicator(),
-          if (_failed.isNotEmpty)
-            Text(
-              '${_failed.map((k) => academicSearchKinds[k]).join('·')} 기록을 불러오지 못했습니다. 다시 불러오세요.',
-            ),
-          if (!_loading && hits.isEmpty)
-            Text(
-              _failed.isEmpty ? '검색 조건에 맞는 기록이 없습니다.' : '불러온 기록에서 검색 결과가 없습니다.',
-            ),
-          if (!_loading && hits.isNotEmpty) ...[
-            Text('${hits.length}개 기록'),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 320),
-              child: Scrollbar(
-                controller: _scroll,
-                thumbVisibility: true,
-                child: SingleChildScrollView(
-                  controller: _scroll,
-                  child: Column(
-                    children: [
-                      for (final hit in hits)
-                        ExpansionTile(
-                          key: ValueKey('${hit.kind}/${hit.id}'),
-                          title: Text(hit.title),
-                          subtitle: Text(
-                            academicSearchKinds[hit.kind] ?? hit.kind,
-                          ),
-                          children: [
-                            if (hit.details.isEmpty)
-                              const Text('등록된 상세 내용이 없습니다.'),
-                            for (final entry in hit.details.entries)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 4,
-                                ),
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: SelectableText(
-                                    '${entry.key}: ${entry.value}',
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-              ),
+            TextButton(
+              onPressed: _loading ? null : _load,
+              child: const Text('기록 다시 불러오기'),
             ),
           ],
+        ),
+        if (_loading) const LinearProgressIndicator(),
+        if (_failed.isNotEmpty)
+          Text(
+            '${_failed.map((k) => academicSearchKinds[k]).join('·')} 기록을 불러오지 못했습니다. 다시 불러오세요.',
+          ),
+        if (!_loading && hits.isEmpty)
+          Text(
+            _failed.isEmpty ? '검색 조건에 맞는 기록이 없습니다.' : '불러온 기록에서 검색 결과가 없습니다.',
+          ),
+        if (!_loading && hits.isNotEmpty) ...[
+          Text('${hits.length}개 기록'),
+          _resultArea(
+            Scrollbar(
+              controller: _scroll,
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                key: const ValueKey('academic-record-results-scroll'),
+                controller: _scroll,
+                child: Column(
+                  children: [
+                    for (final hit in hits)
+                      ExpansionTile(
+                        key: ValueKey('${hit.kind}/${hit.id}'),
+                        title: Text(hit.title),
+                        subtitle: Text(
+                          academicSearchKinds[hit.kind] ?? hit.kind,
+                        ),
+                        children: [
+                          if (hit.details.isEmpty)
+                            const Text('등록된 상세 내용이 없습니다.'),
+                          for (final entry in hit.details.entries)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
+                              ),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: SelectableText(
+                                  '${entry.key}: ${entry.value}',
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ],
     );
   }
+
+  Widget _resultArea(Widget child) => widget.fillHeight
+      ? Expanded(child: child)
+      : ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 320),
+          child: child,
+        );
 }

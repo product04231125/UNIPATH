@@ -34,6 +34,7 @@ class StudentAcademicPage extends StatefulWidget {
 class _StudentAcademicPageState extends State<StudentAcademicPage> {
   late StudentAcademicController c;
   late AcademicRecordSearchRepository _recordSearch;
+  final _requirementsScroll = ScrollController();
   String _tab = 'checklist';
   String? _responseItem;
   bool get _guest => GuestPreviewScope.isActive(context);
@@ -70,6 +71,7 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
   @override
   void dispose() {
     c.dispose();
+    _requirementsScroll.dispose();
     super.dispose();
   }
 
@@ -159,13 +161,6 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
             Text(
               c.error!,
               style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          if (!_guest)
-            StudentAcademicRecordSearch(
-              key: ValueKey(
-                'academic-search-${widget.api.ownerId}-${d.id}-${item.id}',
-              ),
-              repository: _recordSearch,
             ),
         ],
       ),
@@ -378,6 +373,84 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
       ),
     ),
   );
+  Widget _requirementsWorkspace(List<AcademicStudentDocument> docs) {
+    final left = Scrollbar(
+      controller: _requirementsScroll,
+      thumbVisibility: true,
+      child: SingleChildScrollView(
+        key: const ValueKey('academic-requirements-scroll'),
+        controller: _requirementsScroll,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (c.loaded && c.requirements?.activationId == null)
+              const Text('위에서 적용할 기준을 확인하세요.')
+            else if (c.loaded && docs.isEmpty)
+              const Text('현재 적용 기준에는 이 종류의 요건이 없습니다.'),
+            for (final d in docs)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _document(d),
+              ),
+          ],
+        ),
+      ),
+    );
+    final search = SurfaceCard(
+      child: Material(
+        type: MaterialType.transparency,
+        child: StudentAcademicRecordSearch(
+          key: ValueKey('academic-search-${widget.api.ownerId}'),
+          repository: _recordSearch,
+          fillHeight: true,
+        ),
+      ),
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final showSearch = _tab != 'credit_table';
+        final height = (MediaQuery.sizeOf(context).height * .65).clamp(
+          380.0,
+          720.0,
+        );
+        // Retain one search element across all tabs, including the credit table.
+        if (_guest || constraints.maxWidth < 760) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(height: height, child: left),
+              if (!_guest) ...[
+                SizedBox(height: showSearch ? 12 : 0),
+                Offstage(
+                  offstage: !showSearch,
+                  child: SizedBox(height: height, child: search),
+                ),
+              ],
+            ],
+          );
+        }
+        return SizedBox(
+          height: height,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(flex: 3, child: left),
+              SizedBox(width: showSearch ? 16 : 0),
+              Flexible(
+                flex: showSearch ? 2 : 0,
+                fit: FlexFit.tight,
+                child: Offstage(
+                  offstage: !showSearch,
+                  child: SizedBox(width: 440, child: search),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final requirements = c.requirements, preview = c.preview;
@@ -538,15 +611,7 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
           ],
         ),
         const SizedBox(height: 12),
-        if (c.loaded && requirements?.activationId == null)
-          const Text('위에서 적용할 기준을 확인하세요.')
-        else if (c.loaded && docs.isEmpty)
-          const Text('현재 적용 기준에는 이 종류의 요건이 없습니다.'),
-        for (final d in docs)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _document(d),
-          ),
+        _requirementsWorkspace(docs),
       ],
     );
   }
