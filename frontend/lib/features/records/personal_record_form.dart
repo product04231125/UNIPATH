@@ -8,7 +8,6 @@ import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/digits_only_hint.dart';
 import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/field_requirement.dart';
-import '../../shared/widgets/feature_line.dart';
 import '../../shared/drafts/form_draft_store.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../api/student_api.dart';
@@ -289,7 +288,7 @@ Future<void> showPersonalRecordForm({
                     padding: const EdgeInsets.only(bottom: 14),
                     child: FormField<String>(
                       initialValue: selectedCourseId ?? '',
-                      validator: (value) => (value == null || value.isEmpty)
+                      validator: (value) => selectedCourse() == null
                           ? '과목을 선택하세요.'
                           : selectedCourse()?.id.startsWith('catalog:') == true &&
                               selectedCourse()?.curriculumCourseId == null

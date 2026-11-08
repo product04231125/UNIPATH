@@ -145,6 +145,12 @@ void main() {
         }
         await tester.pump();
       }
+      if (kind == AdminKind.course) {
+        for (final entry in {'curriculumId': 'review-curriculum-second', 'category': 'major', 'required': 'true'}.entries) {
+          tester.widget<AnchoredSelectField<String>>(find.byKey(ValueKey('admin-field-${entry.key}'))).onChanged(entry.value);
+          await tester.pump();
+        }
+      }
       await tester.ensureVisible(find.widgetWithText(FilledButton, '등록'));
       await tester.tap(find.widgetWithText(FilledButton, '등록'));
       await tester.pumpAndSettle();

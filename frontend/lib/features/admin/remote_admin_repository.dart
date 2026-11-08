@@ -4,6 +4,13 @@ import 'admin_fields.dart';
 import 'admin_models.dart';
 import 'admin_repository.dart';
 
+/// Keeps confirmed server rejections distinct from uncertain transport failures.
+class AdminRequestFailure extends StateError {
+  AdminRequestFailure(super.message, {required this.status});
+  final int? status;
+  bool get rejected => const [400, 401, 403, 404, 409, 422].contains(status);
+}
+
 /// Shared authenticated transport: Web cookies and native in-memory tokens.
 class RemoteAdminRepository extends AdminRepository {
   RemoteAdminRepository(
@@ -97,10 +104,11 @@ class RemoteAdminRepository extends AdminRepository {
         _history = [];
         _notify();
       }
-      throw StateError(
+      throw AdminRequestFailure(
         error.status == 422
             ? '입력 형식·소속·길이를 확인하세요. 숫자·날짜·HTTP(S) 주소를 확인한 뒤 다시 저장하세요.'
             : error.message,
+        status: error.status,
       );
     }
   }

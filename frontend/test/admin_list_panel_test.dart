@@ -136,6 +136,8 @@ void main() {
     (tester) async {
       final repo = FakeAdminRepository();
       await showWorkspace(tester, repo, AppRole.superAdmin, '/admin/curricula');
+      await tester.tap(find.byKey(const ValueKey('admin-curriculum-view-curriculum')));
+      await tester.pumpAndSettle();
       final form = find.descendant(
         of: find.byKey(const ValueKey('admin-registration-curriculum-')),
         matching: find.byType(AdminEditor),
@@ -447,6 +449,8 @@ void main() {
         );
       }
       await showWorkspace(tester, repo, AppRole.superAdmin, '/admin/curricula');
+      await tester.tap(find.byKey(const ValueKey('admin-curriculum-view-curriculum')));
+      await tester.pumpAndSettle();
       final catalog = find.byKey(const ValueKey('admin-catalog-course'));
       final register = find.descendant(
         of: find.byKey(const ValueKey('admin-registration-course-')),

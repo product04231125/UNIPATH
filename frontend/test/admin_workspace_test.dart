@@ -137,6 +137,10 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        if (item.$1 == '/admin/curricula') {
+          await tester.tap(find.byKey(const ValueKey('admin-curriculum-view-curriculum')));
+          await tester.pumpAndSettle();
+        }
         final first = find.byKey(ValueKey('admin-section-${item.$2}'));
         final frame = find.byKey(ValueKey('admin-frame-${item.$2}'));
         final second = find.byKey(ValueKey('admin-basic-${item.$2}'));
@@ -905,7 +909,7 @@ void main() {
       'departmentId': 'school-a-dept',
       'year': '2027',
     },
-    AdminKind.course: {'name': '합성 과목', 'code': 'C1', 'credits': '3'},
+    AdminKind.course: {'name': '합성 과목', 'code': 'C1', 'credits': '3', 'curriculumId': 'school-a-curr', 'category': 'major', 'required': 'true'},
     AdminKind.rule: {
       'name': '합성 요건',
       'ruleType': 'credits',
