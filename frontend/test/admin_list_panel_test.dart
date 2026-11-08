@@ -449,7 +449,7 @@ void main() {
         );
       }
       await showWorkspace(tester, repo, AppRole.superAdmin, '/admin/curricula');
-      await tester.tap(find.byKey(const ValueKey('admin-curriculum-view-curriculum')));
+      await tester.tap(find.byKey(const ValueKey('admin-curriculum-view-course')));
       await tester.pumpAndSettle();
       final catalog = find.byKey(const ValueKey('admin-catalog-course'));
       final register = find.descendant(
