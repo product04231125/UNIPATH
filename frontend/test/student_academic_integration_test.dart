@@ -613,8 +613,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('교양'), findsOneWidget);
       expect(find.text('필수'), findsOneWidget);
-      expect(find.textContaining('취득 3.125'), findsOneWidget);
-      expect(find.textContaining('부족 0.125'), findsOneWidget);
+      expect(find.text('단일전공\n취득학점'), findsOneWidget);
+      expect(find.text('3.125'), findsOneWidget);
+      expect(find.text('단일전공\n부족학점'), findsOneWidget);
+      expect(find.text('0.125'), findsOneWidget);
       await screenshot(tester, key, 'credit-progress');
       expect(tester.takeException(), isNull);
     },

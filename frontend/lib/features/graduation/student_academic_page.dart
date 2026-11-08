@@ -176,43 +176,83 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
         : value;
     final grid = creditGridFromAcademic(d.content),
         cells = c.progress?.tables[d.id] ?? [];
+    final displayRows = <AcademicCreditDisplayRow>[];
+    for (final row in grid.rows) {
+      final rowCells = {
+        for (final cell in cells.where((v) => v.rowId == row.id))
+          cell.headerId: cell,
+      };
+      if (rowCells.isEmpty) continue;
+      for (final metric in const ['기준학점', '취득학점', '예정학점', '취득 + 예정', '부족학점']) {
+        displayRows.add(
+          AcademicCreditDisplayRow(
+            label: '${row.label}\n$metric',
+            emphasized: metric == '취득학점' || metric == '부족학점',
+            note: metric == '기준학점' ? row.note : '',
+            values: {
+              for (final col in grid.columns)
+                col.id: () {
+                  final cell = rowCells[col.id];
+                  if (cell == null) return '—';
+                  if (cell.status == 'not_applicable') return '해당 없음';
+                  final value = switch (metric) {
+                    '기준학점' => cell.target,
+                    '취득학점' => cell.earned,
+                    '예정학점' => cell.planned,
+                    '취득 + 예정' => cell.projected,
+                    _ => cell.remaining,
+                  };
+                  if (value == null) {
+                    return metric == '기준학점' ||
+                            (metric == '부족학점' && cell.target == null)
+                        ? '—'
+                        : '확인 필요';
+                  }
+                  return '${number(value)}${metric != '기준학점' && cell.status == 'needs_review' ? '*' : ''}';
+                }(),
+            },
+          ),
+        );
+      }
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AcademicCreditPreview(
           grid: grid,
-          cellText: (row, col, original) {
-            final cell = cells
-                .where((v) => v.rowId == row && v.headerId == col)
-                .firstOrNull;
-            if (cell == null || cell.status == 'not_applicable') {
-              return original;
-            }
-            final shortage = cell.status == 'needs_review' ? '확정분 기준 부족' : '부족';
-            return '${cell.target == null ? '목표 미지정' : '목표 ${number(cell.target!)}'}\n취득 ${cell.earned == null ? "분류 확인 필요" : number(cell.earned!)}\n${cell.planned == null ? '' : '예정 ${number(cell.planned!)}\n총 ${cell.projected == null ? "확인 필요" : number(cell.projected!)}\n'}${cell.remaining == null ? '' : '$shortage ${number(cell.remaining!)}\n'}${academicStatus(cell.status)}';
-          },
+          displayRows: cells.isEmpty ? null : displayRows,
         ),
-        for (final cell in cells)
-          ExpansionTile(
-            title: Text(
-              '${grid.rows.where((r) => r.id == cell.rowId).firstOrNull?.label ?? ''} / ${grid.columns.where((v) => v.id == cell.headerId).firstOrNull?.label ?? ''} · ${academicStatus(cell.status)}',
-            ),
-            subtitle: const Text('산입·제외·확인 필요 과목'),
-            children: [
-              for (final issue in cell.issues)
-                Text(academicEvidenceReason(issue)),
-              if (cell.evidence.isEmpty && cell.issues.isEmpty)
-                const Text('산입할 수강 기록이 없습니다.'),
-              for (final e in cell.evidence)
-                ListTile(
-                  dense: true,
-                  title: Text(e.title),
-                  subtitle: Text(
-                    '${academicStatus(e.state)} · ${academicEvidenceReason(e.reason)}${e.credits == null ? '' : ' · ${e.state == 'included' ? '산입' : '참고·미산입'} ${e.credits}학점'}',
-                  ),
+        const SizedBox(height: 8),
+        const Text('단위: 학점 · 부족학점은 현재 취득학점 기준'),
+        if (cells.any((cell) => cell.status == 'needs_review'))
+          const Text('확인 필요: 분류나 산입 자료가 부족합니다. *는 확인된 학점만 표시한 값입니다.'),
+        if (cells.isEmpty) const Text('학점 집계 결과를 불러오지 못했습니다. 다시 불러오기를 눌러주세요.'),
+        ExpansionTile(
+          title: const Text('산입 내역'),
+          children: [
+            for (final cell in cells)
+              ExpansionTile(
+                title: Text(
+                  '${grid.rows.where((r) => r.id == cell.rowId).firstOrNull?.label ?? ''} / ${grid.columns.where((v) => v.id == cell.headerId).firstOrNull?.label ?? ''} · ${academicStatus(cell.status)}',
                 ),
-            ],
-          ),
+                subtitle: const Text('산입·제외·확인 필요 과목'),
+                children: [
+                  for (final issue in cell.issues)
+                    Text(academicEvidenceReason(issue)),
+                  if (cell.evidence.isEmpty && cell.issues.isEmpty)
+                    const Text('산입할 수강 기록이 없습니다.'),
+                  for (final e in cell.evidence)
+                    ListTile(
+                      dense: true,
+                      title: Text(e.title),
+                      subtitle: Text(
+                        '${academicStatus(e.state)} · ${academicEvidenceReason(e.reason)}${e.credits == null ? '' : ' · ${e.state == 'included' ? '산입' : '참고·미산입'} ${e.credits}학점'}',
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        ),
       ],
     );
   }

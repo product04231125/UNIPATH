@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:university_path_frontend/features/admin/academic_credit_record_bindings.dart';
 import 'package:university_path_frontend/features/admin/academic_workspace_api.dart';
@@ -66,7 +67,77 @@ class TranscriptTransport extends fixture.AcademicTransport {
   }
 }
 
+class ComparisonTransport extends TranscriptTransport {
+  ComparisonTransport() {
+    final content = docs[2]['content'] as Map<String, dynamic>;
+    content['headers'] = [
+      {'id': 'general', 'label': '교양 과목', 'role': 'group', 'position': 0},
+      for (var i = 0; i < labels.length; i++)
+        {
+          'id': 'col-$i',
+          'label': labels[i],
+          'role': 'value',
+          'position': i,
+          'parent_id': i < 3 ? 'general' : null,
+        },
+    ];
+    content['cells'] = [];
+    content['rows'][0]['note'] = '';
+  }
+  static const labels = ['필수', '선택', '소계', '전공 필수', '전공 선택', '일반선택', '총 이수학점'];
+  @override
+  Future<Map<String, dynamic>?> request(
+    String method,
+    String path, [
+    Map<String, Object?>? body,
+  ]) async {
+    final value = await super.request(method, path, body);
+    if (Uri.parse(path).path.endsWith('academic-credit-progress')) {
+      value!['tables'][0]['cells'] = [
+        for (var i = 0; i < labels.length; i++)
+          {
+            'row_id': 'row',
+            'header_id': 'col-$i',
+            'target': ['18', '8', '26', '14', '56', '29', '130'][i],
+            'earned': [null, '13', '41', '11', '57', '6', '115'][i],
+            'planned': ['1', '0', '2', '3', '3', '12', '20'][i],
+            'projected': [null, '13', '43', '14', '60', '18', '135'][i],
+            'remaining': [null, '0', '0', '3', '0', '23', '15'][i],
+            'status': i == 0 ? 'needs_review' : 'not_satisfied',
+            'evidence': [],
+            'issues': i == 0 ? ['transcript_subcategory_required'] : [],
+          },
+      ];
+    }
+    return value;
+  }
+}
+
 void main() {
+  setUpAll(() async {
+    if (!fixture.capture) return;
+    await (FontLoader('Pretendard')..addFont(
+          rootBundle.load('assets/fonts/pretendard/Pretendard-Regular.otf'),
+        ))
+        .load();
+    await (FontLoader(
+      'MaterialIcons',
+    )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+  });
+  testWidgets(
+    'comparison matrix keeps zero and unknown distinct with grouped headers',
+    (tester) async {
+      final key = await fixture.mount(tester, ComparisonTransport());
+      await tester.tap(find.text('학점표').first);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('단일전공\n기준학점'));
+      expect(find.text('확인 필요'), findsNWidgets(3));
+      expect(find.text('0'), findsWidgets);
+      expect(find.text('교양 과목'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await fixture.screenshot(tester, key, 'credit-comparison-matrix');
+    },
+  );
   testWidgets(
     'administrator saves category wiring and retries the exact uncertain request',
     (tester) async {
@@ -128,11 +199,23 @@ void main() {
   testWidgets('credit table shows earned, planned and projected separately', (
     tester,
   ) async {
-    await fixture.mount(tester, TranscriptTransport());
+    final key = await fixture.mount(tester, TranscriptTransport());
     await tester.tap(find.text('학점표').first);
     await tester.pumpAndSettle();
-    expect(find.textContaining('취득 115\n예정 20\n총 135'), findsOneWidget);
-    expect(find.textContaining('부족 15'), findsOneWidget);
+    for (final label in ['기준학점', '취득학점', '예정학점', '취득 + 예정', '부족학점']) {
+      expect(find.text('단일전공\n$label'), findsOneWidget);
+    }
+    for (final number in ['130', '115', '20', '135', '15']) {
+      expect(find.text(number), findsOneWidget);
+    }
+    expect(find.text('산입·제외·확인 필요 과목'), findsNothing);
+    await tester.ensureVisible(find.text('산입 내역'));
+    await tester.tap(find.text('산입 내역'));
+    await tester.pumpAndSettle();
+    expect(find.text('산입·제외·확인 필요 과목'), findsOneWidget);
+    await tester.tap(find.text('산입 내역'));
+    await tester.pumpAndSettle();
+    await fixture.screenshot(tester, key, 'credit-comparison-rows');
     expect(tester.takeException(), isNull);
   });
 }

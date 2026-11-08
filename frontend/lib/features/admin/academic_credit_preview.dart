@@ -12,10 +12,28 @@ class _Header {
   final int position;
 }
 
+class AcademicCreditDisplayRow {
+  const AcademicCreditDisplayRow({
+    required this.label,
+    required this.values,
+    this.note = '',
+    this.emphasized = false,
+  });
+  final String label, note;
+  final Map<String, String> values;
+  final bool emphasized;
+}
+
 /// One aligned scroll surface with derived horizontal and vertical header spans.
 class AcademicCreditPreview extends StatefulWidget {
-  const AcademicCreditPreview({super.key, required this.grid, this.cellText});
+  const AcademicCreditPreview({
+    super.key,
+    required this.grid,
+    this.cellText,
+    this.displayRows,
+  });
   final GraduationCreditGrid grid;
+  final List<AcademicCreditDisplayRow>? displayRows;
   final String Function(String rowId, String columnId, String original)?
   cellText;
   @override
@@ -88,37 +106,53 @@ class _AcademicCreditPreviewState extends State<AcademicCreditPreview> {
       String text,
       double width, {
       bool header = false,
+      bool emphasized = false,
       double? height,
     }) => Container(
       width: width,
       height: height,
       constraints: const BoxConstraints(minHeight: 44),
       padding: const EdgeInsets.all(8),
-      alignment: header ? Alignment.center : Alignment.centerLeft,
+      alignment: header || widget.displayRows != null
+          ? Alignment.center
+          : Alignment.centerLeft,
       decoration: BoxDecoration(
         border: Border.all(color: border, width: 0.5),
         color: header
             ? Theme.of(context).colorScheme.surfaceContainerHighest
+            : emphasized
+            ? Theme.of(context).colorScheme.primaryContainer
+                  .withValues(alpha: .35)
             : null,
       ),
       child: Text(
         text,
-        style: header
+        textAlign: widget.displayRows == null ? null : TextAlign.center,
+        style: header || emphasized
             ? textStyle.copyWith(fontWeight: FontWeight.w600)
             : textStyle,
       ),
     );
+    final showNotes =
+        widget.displayRows == null ||
+        widget.displayRows!.any((row) => row.note.isNotEmpty);
+    final totalWidth = labelWidth + dataWidth + (showNotes ? noteWidth : 0);
     return HorizontalScrollArea(
       controller: _scroll,
       child: SizedBox(
-        width: labelWidth + dataWidth + noteWidth,
+        width: totalWidth,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                box('이수 경로', labelWidth, header: true, height: headerHeight),
+                box(
+                  widget.displayRows == null ? '이수 경로' : '이수 경로 · 구분',
+                  labelWidth,
+                  header: true,
+                  height: headerHeight,
+                ),
                 SizedBox(
                   width: dataWidth,
                   height: headerHeight,
@@ -144,23 +178,41 @@ class _AcademicCreditPreviewState extends State<AcademicCreditPreview> {
                     ],
                   ),
                 ),
-                box('비고', noteWidth, header: true, height: headerHeight),
+                if (showNotes)
+                  box('비고', noteWidth, header: true, height: headerHeight),
               ],
             ),
-            for (final row in grid.rows)
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    box(row.label, labelWidth),
-                    for (final leaf in leaves)
-                      box(_text(grid, row.id, leaf.id), cellWidth),
-                    box(row.note, noteWidth),
-                  ],
+            if (widget.displayRows != null)
+              for (final row in widget.displayRows!)
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      box(row.label, labelWidth, emphasized: row.emphasized),
+                      for (final leaf in leaves)
+                        box(
+                          row.values[leaf.id] ?? '',
+                          cellWidth,
+                          emphasized: row.emphasized,
+                        ),
+                      if (showNotes) box(row.note, noteWidth),
+                    ],
+                  ),
                 ),
-              ),
-            if (grid.rows.isEmpty)
-              box('이수 경로 행을 추가하세요.', labelWidth + dataWidth + noteWidth),
+            if (widget.displayRows == null)
+              for (final row in grid.rows)
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      box(row.label, labelWidth),
+                      for (final leaf in leaves)
+                        box(_text(grid, row.id, leaf.id), cellWidth),
+                      box(row.note, noteWidth),
+                    ],
+                  ),
+                ),
+            if (grid.rows.isEmpty) box('이수 경로 행을 추가하세요.', totalWidth),
           ],
         ),
       ),
