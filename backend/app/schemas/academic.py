@@ -76,6 +76,8 @@ class ClassificationRefs(StrictModel):
 class CourseCreate(CatalogCreate, ClassificationRefs):
     code: Code
     credits: Decimal = Field(ge=0, le=100, max_digits=8, decimal_places=3, allow_inf_nan=False)
+    # Owning department of the same school. None is a course shared across the school.
+    department_id: UUID | None = None
 
 
 class CurriculumCourseCreate(CatalogCreate, ClassificationRefs):
@@ -207,6 +209,34 @@ class CurriculumCourseView(CurriculumCourseCreate, EffectiveClassification, Cata
 
 class RuleSetView(RuleSetCreate, ReviewedView):
     pass
+
+
+class PlacementLink(ClassificationRefs):
+    """The curriculum link created together with a new course."""
+
+    curriculum_id: UUID
+    category: Literal["major", "general", "other"]
+    required: bool = Field(strict=True)
+    # Defaults to the course name.
+    name: Name | None = None
+
+
+class CoursePlacementCreate(StrictModel):
+    # Generated once per form submission; retrying with it never creates a second course.
+    client_id: UUID
+    course: CourseCreate
+    link: PlacementLink
+
+
+class CoursePlacementView(BaseModel):
+    client_id: UUID
+    institution_id: UUID
+    # None after an administrator deletes the record that this submission created.
+    course: CourseView | None
+    curriculum_course: CurriculumCourseView | None
+    created_at: datetime
+    # True when this response repeats an earlier, already committed submission.
+    replayed: bool = False
 
 
 class RuleView(RuleCreate, ReviewedView):

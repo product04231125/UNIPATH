@@ -284,7 +284,8 @@ class _GuidanceCard extends StatelessWidget {
           const SizedBox(height: 4),
           if (showHeading)
             Text(card.dateText!, style: Theme.of(context).textTheme.bodySmall),
-          if (card.body.trim() != '${card.dateText} — ${card.title}' &&
+          if (card.body.trim().isNotEmpty &&
+              card.body.trim() != '${card.dateText} — ${card.title}' &&
               card.body.trim() != card.title &&
               card.body.trim() != card.dateText)
             SelectableText(_displayBody(card)),

@@ -106,10 +106,15 @@ def statement(model, on, institution_id=None, department_id=None, curriculum_id=
             Curriculum, Curriculum.id == CurriculumCourse.curriculum_id
         )
         if curriculum_id:
+            # A curriculum lists exactly the courses linked to it.
             memberships = memberships.where(Curriculum.id == curriculum_id)
+            query = query.where(model.id.in_(memberships))
         else:
+            # A department lists the courses it owns and those its curricula use.
             memberships = memberships.where(Curriculum.department_id == department_id)
-        query = query.where(model.id.in_(memberships))
+            query = query.where(
+                or_(model.department_id == department_id, model.id.in_(memberships))
+            )
     if model == GraduationRule:
         parent_ids = statement(
             RuleSet, on, institution_id, department_id, curriculum_id

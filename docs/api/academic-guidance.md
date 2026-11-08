@@ -57,7 +57,7 @@ label로 분기하지 않는다. `availability=content_pending`은 준비 중 �
 
 | type | 표시할 내용 |
 |---|---|
-| `calendar_event` | `title`, `date_text`, `start_date`, `end_date` |
+| `calendar_event` | `title`, `date_text`, `start_date`, `end_date`. `body`는 추가 설명만 담고, 없으면 빈 문자열이다 |
 | `regulation_excerpt` | `title`, `body`(줄바꿈 보존), `sources` |
 | `regulation_page` | `body`, `tables`, `sources`, OCR이면 `image_asset_id` |
 | `regulation_metadata` | 규정명, 분류 경로, 게시 개정일 |
@@ -73,10 +73,29 @@ label로 분기하지 않는다. `availability=content_pending`은 준비 중 �
 
 ## 졸업 항목
 
-`summary`, `credits`, `courses`, `volunteer`, `certificate`, `thesis`, `review`는 감사가 있어야
-결과를 보여 준다. 프론트는 `audit_id`만 보내고 서버가 소유권을 확인해 다시 읽는다. 다른 사용자의
-감사는 404다. 감사가 없으면 `needs_input`이며 충족이나 미충족으로 표시하지 않는다.
-`audit.current_usable=false`이면 과거 기준일 결과로 묶어서 표시한다.
+일반 기준과 개인 결과를 나눈다.
+
+- `credits`, `courses`, `volunteer`, `certificate`, `thesis`, `review`는 **일반 기준** 항목이다.
+  `audit_id` 없이 조회하면 `state=ready`, `reason=general_criteria`이고, `criteria_kind`(예:
+  `minimum_credits`)로 보여 줄 규칙 종류를 알려 준다. 기준 자체는 학교가 승인한
+  `GET /catalog/rule-programs`에서 읽는다. 승인된 기준이 없으면 학점이나 과목을 추측하지 않는다.
+  첫 버튼은 `summary`("내 충족 여부 보기")다.
+- `summary`("내 졸업요건 요약")는 **개인 결과**다. `audit_id`가 없으면 `needs_input`,
+  `verified_audit_required`이고 충족이나 미충족으로 표시하지 않는다.
+- 어느 항목이든 `audit_id`를 주면 그 감사의 해당 결과를 `audit_rendered`로 보여 준다. 프론트는
+  `audit_id`만 보내고 서버가 소유권을 확인해 다시 읽는다. 다른 사용자의 감사는 404다.
+  `audit.current_usable=false`이면 과거 기준일 결과로 묶어서 표시한다.
+
+## 학교 질문과 외부 AI 전송
+
+학사 안내 메뉴(`/me/academic-guidance/nodes`, `/assets`)는 서버에 저장된 수집 자료와 학생 본인의
+감사 결과만 읽는다. **외부 AI로 아무것도 보내지 않으므로** 별도 동의가 필요 없다. 화면이 동의 상태를
+추정해 메뉴 조회를 막거나 동의를 요구하지 않는다.
+
+외부 모델(Gemini)을 쓰는 기능은 학생이 고른 기록을 보내는 맞춤 안내와 채용 분석뿐이며, 그때는
+D6 조건(학생이 그때그때 고른 기록만, 이름·이메일·학번·연락처 제외, 본문 로그 금지, Google 전송 고지와
+동의)을 따른다. 학교 질문 화면에 자유 입력 질문을 외부 모델로 보내는 기능은 없다. 추가하면 같은 조건과
+요청마다의 동의 확인을 계약에 먼저 적는다.
 
 ## 원문 파일
 

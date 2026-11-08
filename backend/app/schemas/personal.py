@@ -133,6 +133,23 @@ class CourseRecordCreate(PersonalCreate):
     course_code: ShortText = ""
     grade: ShortText = ""
     completion: Literal["planned", "in_progress", "recorded"] = "planned"
+    # Optional catalog provenance from the registered school: the course and curriculum link
+    # the student picked, with the version each had then. The fields above stay the
+    # student's own values; provenance never makes the record official.
+    catalog_course_id: UUID | None = None
+    catalog_course_version: int | None = Field(default=None, ge=1, strict=True)
+    curriculum_course_id: UUID | None = None
+    curriculum_course_version: int | None = Field(default=None, ge=1, strict=True)
+
+    @model_validator(mode="after")
+    def catalog_source_pairs(self):
+        if (self.catalog_course_id is None) != (self.catalog_course_version is None):
+            raise ValueError("catalog_course_id and catalog_course_version go together")
+        if (self.curriculum_course_id is None) != (self.curriculum_course_version is None):
+            raise ValueError("curriculum_course_id and curriculum_course_version go together")
+        if self.curriculum_course_id and not self.catalog_course_id:
+            raise ValueError("A curriculum link needs its catalog course")
+        return self
 
 
 class DatedRecord(PersonalCreate):

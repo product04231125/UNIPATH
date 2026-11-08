@@ -102,6 +102,9 @@ def test_guidance_requires_login_and_navigates_without_personal_data(auth_client
     month = c.get(ROOT + "/nodes/calendar:2026:11", headers=owner).json()
     assert month["state"] == "ready" and month["reason"] == "calendar_snapshot"
     assert all(card["type"] == "calendar_event" for card in month["cards"])
+    # The card body never repeats the title and date shown in their own fields.
+    for card in month["cards"]:
+        assert card["title"] not in card["body"] and card["date_text"] not in card["body"]
     assert month["fetched_at"] and month["cards"][0]["sources"]
     assert c.get(ROOT + "/nodes/없는노드", headers=owner).status_code == 422
     assert c.get(ROOT + "/nodes/nope", headers=owner).json()["reason"] == "unknown_node"
@@ -162,9 +165,19 @@ def test_guidance_presents_the_owner_audit_without_recomputing_it(
     review(c, root, ctx)
     result, _ = audit(c, owner, ctx)
     assert result["status"] == status
-    required = c.get(ROOT + "/nodes/credits", headers=owner).json()
-    assert (required["state"], required["reason"]) == ("needs_input", "verified_audit_required")
-    assert required["cards"] == []
+    # Without an audit the item is general criteria, never a demand for personal results.
+    general = c.get(ROOT + "/nodes/credits", headers=owner).json()
+    assert (general["state"], general["reason"]) == ("ready", "general_criteria")
+    assert general["criteria_kind"] == "minimum_credits" and general["cards"] == []
+    assert general["buttons"][0] == {
+        "id": "summary",
+        "label": "내 충족 여부 보기",
+        "action": "select_node",
+        "node_id": "summary",
+        "availability": "available",
+    }
+    summary = c.get(ROOT + "/nodes/summary", headers=owner).json()
+    assert (summary["state"], summary["reason"]) == ("needs_input", "verified_audit_required")
     response = c.get(ROOT + "/nodes/credits", headers=owner, params={"audit_id": result["id"]})
     assert response.status_code == 200, response.text
     value = response.json()

@@ -81,6 +81,10 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
     this.courseCode = "",
     this.grade = "",
     this.completion = "planned",
+    this.catalogCourseId,
+    this.catalogCourseVersion,
+    this.curriculumCourseId,
+    this.curriculumCourseVersion,
   });
   final String title;
   final String detail;
@@ -92,6 +96,10 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
   final String courseCode;
   final String grade;
   final String completion;
+  final String? catalogCourseId;
+  final int? catalogCourseVersion;
+  final String? curriculumCourseId;
+  final int? curriculumCourseVersion;
   factory PersonalImportCourseRecord.fromJson(Map<String, dynamic> value) =>
       PersonalImportCourseRecord(
         title: value['title'] as String,
@@ -112,6 +120,18 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
                 "in_progress",
                 "recorded",
               ]),
+        catalogCourseId: value['catalog_course_id'] == null
+            ? null
+            : value['catalog_course_id'] as String,
+        catalogCourseVersion: value['catalog_course_version'] == null
+            ? null
+            : value['catalog_course_version'] as int,
+        curriculumCourseId: value['curriculum_course_id'] == null
+            ? null
+            : value['curriculum_course_id'] as String,
+        curriculumCourseVersion: value['curriculum_course_version'] == null
+            ? null
+            : value['curriculum_course_version'] as int,
       );
   @override
   Map<String, Object?> toJson() => {
@@ -125,6 +145,10 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
     'course_code': courseCode,
     'grade': grade,
     'completion': completion,
+    'catalog_course_id': catalogCourseId,
+    'catalog_course_version': catalogCourseVersion,
+    'curriculum_course_id': curriculumCourseId,
+    'curriculum_course_version': curriculumCourseVersion,
   };
 }
 

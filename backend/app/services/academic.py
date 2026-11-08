@@ -1,5 +1,7 @@
 """Scoped catalog mutations, immutable reviewed revisions and safe reference checks."""
 
+import hashlib
+import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -9,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from app.core.auth_errors import AuthError, conflict, forbidden
 from app.models.academic import (
     Course,
+    CoursePlacementReceipt,
     Curriculum,
     CurriculumCourse,
     Department,
@@ -20,9 +23,10 @@ from app.models.academic import (
 from app.models.graduation import GraduationAudit, GraduationCatalogReview
 from app.models.identity import AdminScope, IdentityAudit, Institution, Role
 from app.models.official_records import OfficialRecordBatch, OfficialRecordCourseRef
-from app.models.personal import PlanningProfile
+from app.models.personal import CourseRecord, PlanningProfile
 from app.models.record_sources import OfficialRecordSource
 from app.models.rule_programs import ProgramCourseRef, ProgramRule, RuleProgram
+from app.schemas import academic as dto
 from app.schemas.common import ErrorCode
 from app.services import access, auth
 
@@ -186,13 +190,26 @@ def commit(db):
         raise failure("중복 데이터 또는 연결 참조가 있습니다. 새로 조회해 확인하세요.") from None
 
 
+# Older clients omit these fields; on update, omission keeps the stored value.
+KEPT_WHEN_OMITTED = {
+    Course: ("classification_id", "track_id", "department_id"),
+    CurriculumCourse: ("classification_id", "track_id"),
+}
+
+
 def save(db, request, model, kind, payload, record_id=None):
     identity = lock_actor(db, request)
+    item = stage(db, request, identity, model, kind, payload, record_id)
+    commit(db)
+    return item
+
+
+def stage(db, request, identity, model, kind, payload, record_id=None):
+    """Validate, write and audit one record; the caller holds the actor lock and commits."""
     values = payload.model_dump(exclude={"expected_version"})
     current = None if record_id is None else read(db, identity, model, record_id)
     if current is not None:
-        # Clients written before classifications omit these fields; omission keeps them.
-        for key in ("classification_id", "track_id"):
+        for key in KEPT_WHEN_OMITTED.get(model, ()):
             if key in values and key not in payload.model_fields_set:
                 values[key] = getattr(current, key)
     group = validate_relations(db, identity, model, values, current)
@@ -209,6 +226,9 @@ def save(db, request, model, kind, payload, record_id=None):
         if model in VERSIONED and item.status != "draft":
             raise failure("적용본은 변경할 수 없습니다. 새 버전 초안을 만드세요.")
         for key in ("institution_id", "department_id", "curriculum_id", "rule_set_id"):
+            if model == Course and key == "department_id":
+                # A course's owning department can be corrected; it scopes nothing below it.
+                continue
             if key in values and getattr(item, key) != values[key]:
                 raise failure("기존 항목의 소속은 변경할 수 없습니다. 새 항목을 등록하세요.")
         for key, value in values.items():
@@ -234,8 +254,76 @@ def save(db, request, model, kind, payload, record_id=None):
         db.rollback()
         raise failure("동일 범위에 중복된 코드·이름·관계가 있습니다.") from None
     audit(db, identity, kind, action, item, request)
-    commit(db)
     return item
+
+
+def placement_digest(payload):
+    body = payload.model_dump(mode="json", exclude={"client_id"})
+    return hashlib.sha256(json.dumps(body, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+
+def placement_view(db, identity, receipt, *, replayed):
+    auth.require_institution(db, identity, receipt.institution_id)
+    course = db.get(Course, receipt.course_id) if receipt.course_id else None
+    link = (
+        db.get(CurriculumCourse, receipt.curriculum_course_id)
+        if receipt.curriculum_course_id
+        else None
+    )
+    return dto.CoursePlacementView(
+        client_id=receipt.client_id,
+        institution_id=receipt.institution_id,
+        course=dto.CourseView.model_validate(course) if course else None,
+        curriculum_course=dto.CurriculumCourseView.model_validate(link) if link else None,
+        created_at=receipt.created_at,
+        replayed=replayed,
+    )
+
+
+def place_course(db, request, payload):
+    """Create a course and its curriculum link together, at most once per client ID."""
+    identity = lock_actor(db, request)
+    digest = placement_digest(payload)
+    receipt = db.get(CoursePlacementReceipt, (identity.user.id, payload.client_id))
+    if receipt is not None:
+        if receipt.digest != digest:
+            raise failure("같은 제출 ID로 다른 내용을 저장할 수 없습니다. 새로 제출하세요.")
+        return placement_view(db, identity, receipt, replayed=True)
+    course = stage(db, request, identity, Course, "course", payload.course)
+    link = payload.link
+    link_payload = dto.CurriculumCourseCreate(
+        name=link.name or course.name,
+        institution_id=course.institution_id,
+        curriculum_id=link.curriculum_id,
+        course_id=course.id,
+        category=link.category,
+        required=link.required,
+        classification_id=link.classification_id,
+        track_id=link.track_id,
+    )
+    curriculum_course = stage(
+        db, request, identity, CurriculumCourse, "curriculumCourse", link_payload
+    )
+    receipt = CoursePlacementReceipt(
+        actor_id=identity.user.id,
+        client_id=payload.client_id,
+        institution_id=course.institution_id,
+        digest=digest,
+        course_id=course.id,
+        curriculum_course_id=curriculum_course.id,
+    )
+    db.add(receipt)
+    commit(db)
+    db.refresh(receipt)
+    return placement_view(db, identity, receipt, replayed=False)
+
+
+def read_placement(db, request, client_id):
+    identity = auth.current_identity(request, db)
+    receipt = db.get(CoursePlacementReceipt, (identity.user.id, client_id))
+    if receipt is None:
+        raise failure("저장된 제출을 찾을 수 없습니다. 저장되지 않았다면 다시 제출하세요.", 404)
+    return placement_view(db, identity, receipt, replayed=True)
 
 
 def references(db, identity, model, record_id):
@@ -272,6 +360,14 @@ def references(db, identity, model, record_id):
         # A profile FK must prevent catalog deletion without exposing a student's
         # identity, profile/source values, or the number of private references.
         result.append({"id": record_id, "kind": "protected_reference", "name": "보호된 연결 참조"})
+    personal_key = {Course: "catalog_course_id", CurriculumCourse: "curriculum_course_id"}.get(
+        model
+    )
+    if personal_key and db.scalar(
+        select(exists().where(getattr(CourseRecord, personal_key) == record_id))
+    ):
+        # A student's course record names this catalog entry; keep it resolvable.
+        result.append({"id": record_id, "kind": "protected_reference", "name": "보호된 연결 참조"})
     if model is Course:
         if db.scalar(select(exists().where(OfficialRecordCourseRef.course_id == record_id))):
             result.append(
@@ -286,7 +382,7 @@ def references(db, identity, model, record_id):
             .order_by(RuleProgram.id)
         ):
             result.append({"id": program.id, "kind": "ruleProgram", "name": program.name})
-    return result
+    return [row for index, row in enumerate(result) if row not in result[:index]]
 
 
 def remove(db, request, model, kind, record_id, version):

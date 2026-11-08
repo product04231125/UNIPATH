@@ -124,6 +124,36 @@ def add_resource(path, create_type, update_type, view_type):
         )
 
 
+@router.post(
+    "/course-placements",
+    response_model=dto.CoursePlacementView,
+    status_code=201,
+    responses={200: {"model": dto.CoursePlacementView, "description": "Earlier submission"}},
+)
+def place_course(
+    payload: dto.CoursePlacementCreate,
+    request: Request,
+    response: Response,
+    db: Database,
+    identity: CurrentIdentity,
+):
+    """Create a course and its curriculum link in one transaction.
+
+    Retrying the same client_id with the same body returns the committed result with 200
+    and replayed=true; a different body is 409. Nothing is saved if either part fails.
+    """
+    result = service.place_course(db, request, payload)
+    if result.replayed:
+        response.status_code = 200
+    return result
+
+
+@router.get("/course-placements/{client_id}", response_model=dto.CoursePlacementView)
+def read_placement(client_id: UUID, request: Request, db: Database, identity: CurrentIdentity):
+    """After a lost response: 200 if the submission was committed, 404 if it was not."""
+    return service.read_placement(db, request, client_id)
+
+
 for path, prefix in [
     ("departments", "Department"),
     ("curricula", "Curriculum"),

@@ -66,7 +66,11 @@ class RemotePersonalRecordRepository extends PersonalRecordRepository {
             codec.resource,
             record.id,
             expectedVersion: record.version!,
-            changes: payload.toJson()..remove('client_id'),
+            // PATCH merges on the server: send only the fields this form manages,
+            // so server-only fields such as catalog provenance are never cleared.
+            changes: payload.toJson()
+              ..remove('client_id')
+              ..removeWhere((key, _) => !codec.fields.containsValue(key)),
           );
     ensureOpen();
     _items = [..._items.where((v) => v.id != saved.id), codec.decode(saved)];

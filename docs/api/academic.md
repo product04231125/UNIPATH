@@ -65,8 +65,46 @@ transaction advisory lock 안에서 세션과 역할을 다시 읽는다. 코드
   해제한다. 다른 필드는 기존처럼 전체 교체다. 분류를 모르는 이전 화면이 연결을 지우지 않게 하기 위함이다.
 - 관리자 목록은 `status=active/inactive`로 거를 수 있다. 감사 기록의 `kind`는 `classification`이다.
 
-학생 프로필의 이수 경로와 수강 기록의 원본 참조, 과목·연결 통합 저장은 후속 단계다.
-현재 프로필 `track`은 문자열이며, RAG 적용 범위와 공식 규칙도 이 문자열로 맞춘다.
+학생 프로필의 이수 경로를 분류 ID로 바꾸는 것은 후속 단계다. 현재 프로필 `track`은 문자열이며,
+RAG 적용 범위와 공식 규칙도 이 문자열로 맞춘다.
+
+## 과목 학과 소속
+
+과목은 선택 `department_id`(같은 학교 학과)로 소속 학과를 가진다. `null`은 학교 공통 과목이다.
+기존 과목은 모두 `null`로 시작한다. 다른 학교 학과는 409이고 복합 FK로도 막는다.
+
+- 수정에서 `department_id`를 **생략하면 기존 값을 유지**하고, `null`이면 공통 과목으로 바꾼다.
+  다른 학과로 옮길 수 있다(과목 아래에 학과 범위를 가진 항목이 없기 때문이다).
+- 과목이 속한 학과는 삭제할 수 없고, 학과 참조 확인 API에 그 과목이 나온다.
+- 학생 카탈로그 `GET /catalog/courses?department_id=`는 **그 학과 소속 과목과 그 학과 교육과정에
+  연결된 과목**을 함께 준다. 공통 과목은 연결돼 있을 때만 나온다. `curriculum_id`를 주면 지금처럼
+  그 교육과정에 연결된 과목만 준다.
+
+## 과목·연결 통합 저장
+
+`POST /admin/course-placements`는 새 과목과 그 교육과정 연결을 **한 트랜잭션**으로 만든다.
+어느 한쪽이라도 실패하면 아무것도 저장하지 않는다.
+
+```json
+{
+  "client_id": "<제출마다 새로 만든 UUID>",
+  "course": {"institution_id": "…", "name": "…", "code": "…", "credits": "3",
+             "department_id": null, "classification_id": null, "track_id": null},
+  "link": {"curriculum_id": "…", "category": "major", "required": true,
+           "classification_id": null, "track_id": null, "name": null}
+}
+```
+
+- 연결 `name`을 비우면 과목 이름을 쓴다. 검증은 각각 `POST /admin/courses`, `/admin/curriculum-courses`와
+  같다(학교 범위, 분류 종류·사용 상태, 코드 중복 409).
+- 성공은 201이고 `course`, `curriculum_course`(적용 분류 포함), `replayed=false`를 준다.
+- **같은 `client_id`와 같은 본문으로 다시 보내면** 새로 만들지 않고 처음 결과를 200, `replayed=true`로
+  준다. 본문이 다르면 409다. `client_id`는 관리자 계정마다 따로 관리한다.
+- 응답을 받지 못했으면 `GET /admin/course-placements/{client_id}`로 확인한다. 200이면 저장된 것이고,
+  404면 저장되지 않았으니 같은 `client_id`로 다시 보내면 된다.
+- 만든 과목이나 연결을 나중에 삭제하면 해당 필드가 `null`로 돌아온다. 같은 `client_id`로 다시 만들지 않는다.
+- 감사 기록은 따로 저장할 때와 같이 `academic:course:create`, `academic:curriculumCourse:create` 두 건이다.
+- 이미 있는 과목을 다른 교육과정에 연결하거나 수정하는 것은 기존 API를 쓴다.
 
 ## 검토·새 버전
 

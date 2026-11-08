@@ -1,5 +1,6 @@
 from app.models.academic import (
     Course,
+    CoursePlacementReceipt,
     Curriculum,
     CurriculumCourse,
     Department,
@@ -63,6 +64,7 @@ from app.models.rule_programs import (
 
 __all__ = [
     "AcademicGuidanceBinding",
+    "CoursePlacementReceipt",
     "SchoolClassification",
     "SchoolAdminSignup",
     "SchoolAdminApplication",
