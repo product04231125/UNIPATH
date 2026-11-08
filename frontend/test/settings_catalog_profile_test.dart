@@ -27,6 +27,31 @@ class SettingsCatalogServer implements ApiGateway {
     String path, [
     Map<String, Object?>? body,
   ]) async {
+    if (path.startsWith('catalog/academic/options')) {
+      return {
+        'institution_id': otherId,
+        'departments': [
+          {'id': otherId, 'name': '검증 학과'},
+        ],
+        'tracks': [
+          {'id': 'registered-track', 'name': '학교 등록 경로'},
+        ],
+        'curricula': [],
+      };
+    }
+    if (path.startsWith('me/academic-')) {
+      return {
+        'owner_id': userId,
+        'version': 1,
+        'workspace_version': 1,
+        'institution_id': otherId,
+        'contexts': [],
+        'issues': [],
+        'documents': [],
+        'digest': 'a' * 64,
+        'changes': [],
+      };
+    }
     if (path.startsWith('catalog/')) {
       return {
         'items': [_catalogItem(path)],
@@ -110,6 +135,43 @@ void main() {
     await tester.pumpAndSettle();
     return repository;
   }
+
+  testWidgets(
+    'registered school track opens academic context selection in place',
+    (tester) async {
+      final server = SettingsCatalogServer();
+      server.profile.addAll({
+        'institution_id': otherId,
+        'department_id': otherId,
+        'school': '검증 대학',
+        'department': '검증 학과',
+        'admission_year': 2026,
+        'track': '기존 개인 경로',
+      });
+      final repository = await pumpSettings(tester, server);
+      addTearDown(repository.dispose);
+      final field = find.byKey(const Key('settings-school-track'));
+      expect(tester.widget<InputDecorator>(field).decoration.enabled, isTrue);
+      expect(find.textContaining('연결 전입니다'), findsNothing);
+      await tester.ensureVisible(field);
+      await tester.tap(field);
+      await tester.pumpAndSettle();
+      expect(find.text('주전공·추가 전공 학업 기준'), findsOneWidget);
+      final trackSelect = tester.widget<AnchoredSelectField<String>>(
+        find.byWidgetPredicate(
+          (w) => w is AnchoredSelectField<String> && w.label == '이수 경로',
+        ),
+      );
+      expect(trackSelect.value, '');
+      expect(
+        trackSelect.options.any((option) => option.label == '학교 등록 경로'),
+        isTrue,
+      );
+      expect(repository.profile.track, '기존 개인 경로');
+      expect(server.writes, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   for (final track in <String?>[null, 'school-specific-track']) {
     testWidgets(

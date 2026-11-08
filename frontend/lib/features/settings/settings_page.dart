@@ -115,6 +115,56 @@ class _SettingsPageState extends State<SettingsPage> {
     super.dispose();
   }
 
+  Widget _schoolTrackField(BuildContext context) {
+    final registered =
+        widget.studentApi != null && widget.repository.profile.hasCatalogSchool;
+    final canOpen =
+        registered && !_saving && !GuestPreviewScope.isActive(context);
+    final legacy = switch (_track) {
+      'single_major' => '단일전공',
+      'double_major' => '복수전공',
+      null => '저장된 이수 경로 없음',
+      _ => _track!,
+    };
+    final field = InputDecorator(
+      key: const Key('settings-school-track'),
+      decoration: InputDecoration(
+        labelText: '이수 경로',
+        enabled: canOpen,
+        suffixIcon: canOpen ? const Icon(Icons.open_in_new) : null,
+        helperText: registered
+            ? '학교의 이수 경로·주전공·추가 전공을 연결합니다. 기존 개인 값: $legacy'
+            : '등록 학교·학과를 저장하면 학교의 이수 경로를 연결할 수 있습니다. 기존 값은 유지됩니다.',
+        helperMaxLines: 3,
+      ),
+      child: Text(registered ? '학업 기준 설정' : legacy),
+    );
+    return Semantics(
+      button: canOpen,
+      readOnly: !canOpen,
+      child: InkWell(
+        onTap: canOpen
+            ? () async {
+                if (_dirty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('변경한 설정을 먼저 저장한 뒤 학업 기준을 연결하세요.'),
+                    ),
+                  );
+                  return;
+                }
+                await editStudentAcademicContexts(
+                  context,
+                  StudentAcademicApi.fromStudent(widget.studentApi!),
+                  widget.repository.profile,
+                );
+              }
+            : null,
+        child: field,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_personal) {
@@ -320,26 +370,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                           }),
                                         ),
                                         const SizedBox(height: 14),
-                                        Semantics(
-                                          readOnly: true,
-                                          child: InputDecorator(
-                                            key: const Key(
-                                              'settings-school-track',
-                                            ),
-                                            decoration: const InputDecoration(
-                                              labelText: '이수 경로',
-                                              enabled: false,
-                                              helperText: '학교별 이수 경로 조회 연결 전입니다. 기존 저장값을 유지합니다.',
-                                              helperMaxLines: 3,
-                                            ),
-                                            child: Text(switch (_track) {
-                                              'single_major' => '단일전공',
-                                              'double_major' => '복수전공',
-                                              null => '저장된 이수 경로 없음',
-                                              _ => _track!,
-                                            }),
-                                          ),
-                                        ),
+                                        _schoolTrackField(context),
                                       ],
                                     ),
                                     second: Column(
@@ -444,15 +475,6 @@ class _SettingsPageState extends State<SettingsPage> {
                             ],
                           ),
                         ),
-                        if (widget.studentApi != null &&
-                            widget.repository.profile.hasCatalogSchool &&
-                            !GuestPreviewScope.isActive(context))
-                          StudentAcademicSettingsEntry(
-                            api: StudentAcademicApi.fromStudent(
-                              widget.studentApi!,
-                            ),
-                            profile: widget.repository.profile,
-                          ),
                         if (_saved)
                           FeatureLine.two(
                             primary: '저장되었습니다.',
