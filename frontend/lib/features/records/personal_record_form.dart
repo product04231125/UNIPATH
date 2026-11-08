@@ -99,31 +99,29 @@ Future<void> showPersonalRecordForm({
   var loadedDraftId = appliedDraftId;
   var courseOptions = const <CoursePickOption>[];
   String? selectedCourseId;
-  if (isCourse) {
-    final scope = PersonalRepositoryScope.read(context);
+  final courseIssues = <String>[];
+  var loadingCourses = false;
+  final personalScope = PersonalRepositoryScope.read(context);
+  Future<void> readCourses() async {
+    courseIssues.clear();
     try {
       courseOptions = await loadCoursePickOptions(
         courseRepository: repository,
-        curriculumCourseRepository: scope?.records(
+        curriculumCourseRepository: personalScope?.records(
           PersonalRecordKind.personalCurriculumCourse,
         ),
         studentApi: studentApi,
         institutionId: institutionId,
         departmentId: departmentId,
         curriculumId: curriculumId,
+        onIssue: courseIssues.add,
       );
     } catch (_) {
-      year.dispose();
-      for (final controller in controllers.values) {
-        controller.dispose();
-      }
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('과목 후보를 읽지 못했습니다. 다시 시도하세요.')),
-        );
-      }
-      return;
+      courseIssues.add('개인 과목 후보를 불러오지 못했습니다. 다시 읽기를 눌러 주세요.');
     }
+  }
+  if (isCourse) {
+    await readCourses();
     if (!context.mounted) {
       year.dispose();
       for (final controller in controllers.values) {
@@ -268,10 +266,26 @@ Future<void> showPersonalRecordForm({
                 const SizedBox(height: 16),
               ],
               if (isCourse) ...[
-                if (courseOptions.isEmpty)
-                  const FeatureLine.one(text: '설정·교육과정에서 과목을 먼저 등록하세요')
-                else
-                  Padding(
+                for (final issue in courseIssues)
+                  Semantics(liveRegion: true, child: Text(issue)),
+                if (courseOptions.isEmpty && courseIssues.isEmpty)
+                  const Text('선택한 학교·학과·교육과정에 조회되는 과목이 없습니다. 관리자의 과목 등록·교육과정 연결을 확인하세요.'),
+                TextButton.icon(
+                  onPressed: saving || loadingCourses ? null : () async {
+                    updateDialog(() => loadingCourses = true);
+                    await readCourses();
+                    if (!context.mounted) return;
+                    updateDialog(() {
+                      loadingCourses = false;
+                      if (!courseOptions.any((o) => o.id == selectedCourseId)) {
+                        selectedCourseId = null;
+                      }
+                    });
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: Text(loadingCourses ? '과목 읽는 중…' : '과목 다시 읽기'),
+                ),
+                Padding(
                     padding: const EdgeInsets.only(bottom: 14),
                     child: FormField<String>(
                       initialValue: selectedCourseId ?? '',
@@ -285,7 +299,7 @@ Future<void> showPersonalRecordForm({
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           IgnorePointer(
-                            ignoring: saving,
+                            ignoring: saving || loadingCourses,
                             child: AnchoredSelectField<String>(
                               key: const ValueKey('record-select-course'),
                               searchable: true,
@@ -632,7 +646,7 @@ Future<void> showPersonalRecordForm({
             child: const Text('임시저장'),
           ),
           FilledButton(
-            onPressed: saving || (isCourse && courseOptions.isEmpty)
+            onPressed: saving || loadingCourses || (isCourse && courseOptions.isEmpty)
                 ? null
                 : () async {
                     if (saving || blocked()) return;
@@ -649,7 +663,7 @@ Future<void> showPersonalRecordForm({
                     });
                     try {
                       final linkError = await validateValues?.call(values);
-                      if (!dialogContext.mounted) return;
+                      if (!context.mounted) return;
                       if (blocked()) {
                         updateDialog(() => saving = false);
                         return;
