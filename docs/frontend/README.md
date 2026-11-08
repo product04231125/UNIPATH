@@ -51,7 +51,7 @@ OpenAPI(`/api/v1/docs`)가 기준이다.
 | 경험 | [experience](features/experience.md) | 학생 메뉴에서 제외. 페이지 파일과 서버 경험 CRUD는 유지 |
 | 자격 | [credential](features/credential.md) | 실제 계정 서버 개인 자격 CRUD |
 | 자료 | [portfolio](features/portfolio.md) | 종류·이름·설명 또는 PDF를 기기에 보관 |
-| 채용공고 분석 | [portfolio](features/portfolio.md) | 텍스트·주소·PDF/캡처 중 하나. 불가 이유만 표시하고 결과는 계약 대기 |
+| 채용공고 분석 | [portfolio](features/portfolio.md) | 공고 텍스트+선택 기록 분석 연결(서버 Gemini 설정 전에는 `not_configured`). 주소·PDF/캡처만인 입력은 계약 대기 |
 | AI 도우미 | [assistant](features/assistant.md) | 학교 질의 API·상태/인용 표시·창별 메모리 대화 |
 | 설정 | [settings](features/settings.md) | 실제 계정 서버 학업과 계획·기기 원본 보존 |
 | 외부 링크 | [external-links](features/external-links.md) | 1365·Q-Net·개인 증빙 URL 확인·열기·복사 |
