@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../api/rule_program_models.dart';
-import '../../shared/widgets/external_link_button.dart';
+import '../api/academic_guidance_models.dart';
+import 'guidance_sources.dart';
 import 'assistant_conversation.dart';
 
 /// Displays approved definitions, never a student's evaluation or a computed total.
@@ -38,7 +39,7 @@ class GuidanceCriteriaView extends StatelessWidget {
           ),
         ] else if (selection != null) ...[
           Text(
-            '${conversation.context.institution ?? '등록 학교'} · ${conversation.context.department ?? '등록 학과'} · ${selection.context.admissionYear}학번',
+            '${conversation.context.institution ?? '등록 학교'} · ${conversation.context.department ?? '등록 학과'} · ${selection.context.admissionYear}학번 · ${const {'single_major': '단일전공', 'double_major': '복수전공'}[selection.context.track] ?? selection.context.track}',
           ),
           const SizedBox(height: 12),
           if (rules.isEmpty)
@@ -61,19 +62,29 @@ class GuidanceCriteriaView extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   SelectableText(_definition(item.rule)),
-                  Text(
-                    '적용 입학연도 ${item.program.admissionYearFrom}~${item.program.admissionYearTo}',
-                  ),
                   for (final source in item.rule.evidence) ...[
                     SelectableText(source.excerpt),
-                    ExternalLinkButton(
-                      url: source.sourceUrl,
-                      label: '${source.title} · ${source.page}페이지',
+                    Text(
+                      '${source.title} · ${source.page}페이지',
+                      style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ],
                 ],
               ),
             ),
+          GuidanceSources(
+            sources: [
+              for (final item in rules)
+                for (final source in item.rule.evidence)
+                  GuidanceSource(
+                    title: source.title,
+                    sourceUrl: source.sourceUrl,
+                    page: source.page,
+                    documentId: source.documentId,
+                  ),
+            ],
+            conversation: conversation,
+          ),
         ],
       ],
     );

@@ -54,6 +54,7 @@ Map<String, dynamic> conversationSnapshot(
   'guidance': conversation.guidance?.toJson(),
   'guidance_criteria': conversation.guidanceCriteria?.toJson(),
   'criteria_error': conversation.criteriaError,
+  'guidance_node_id': conversation.guidanceNodeId,
   'guidance_open': conversation.guidanceOpen,
   'guidance_loading': conversation.guidanceLoading,
   'guidance_error': conversation.guidanceError,
@@ -246,6 +247,9 @@ class RemoteConversation extends AssistantConversation {
   bool _registeredOnly = false;
   bool _permissionLoading = true;
   String? _permissionError;
+  String _remoteGuidanceNode = 'home';
+  @override
+  String get guidanceNodeId => guidance?.nodeId ?? _remoteGuidanceNode;
   String? _guidanceUnavailable;
   @override
   String? get guidanceUnavailableReason => _guidanceUnavailable;
@@ -337,6 +341,7 @@ class RemoteConversation extends AssistantConversation {
             Map<String, dynamic>.from(value['guidance_criteria'] as Map),
           );
     criteriaError = value['criteria_error'] as String?;
+    _remoteGuidanceNode = value['guidance_node_id'] as String? ?? 'home';
     guidanceOpen = value['guidance_open'] == true;
     guidanceLoading = value['guidance_loading'] == true;
     guidanceError = value['guidance_error'] as String?;

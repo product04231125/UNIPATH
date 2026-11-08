@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'assistant_api.dart';
@@ -75,7 +77,8 @@ class AssistantConversation extends ChangeNotifier {
   String? guidanceError, guidanceAuditId;
   List<GraduationAuditHeader> auditOptions = const [];
   int _guidanceGeneration = 0;
-  String get guidanceNodeId => guidance?.nodeId ?? 'home';
+  String _requestedGuidanceNode = 'home';
+  String get guidanceNodeId => guidance?.nodeId ?? _requestedGuidanceNode;
   String? get guidanceUnavailableReason {
     if (guidanceApi == null) return '학사 안내에 연결할 수 없습니다. 로그인 상태를 확인해 주세요.';
     return null;
@@ -100,6 +103,7 @@ class AssistantConversation extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    _requestedGuidanceNode = id;
     final generation = ++_guidanceGeneration;
     guidanceLoading = true;
     notifyListeners();
@@ -161,7 +165,10 @@ class AssistantConversation extends ChangeNotifier {
                 (p.departmentId != null &&
                     p.departmentId != selected.departmentId) ||
                 (p.curriculumId != null &&
-                    p.curriculumId != selected.curriculumId),
+                    p.curriculumId != selected.curriculumId) ||
+                selected.admissionYear < p.admissionYearFrom ||
+                selected.admissionYear > p.admissionYearTo ||
+                !p.tracks.contains(selected.track),
           )) {
         throw const FormatException('Unexpected criteria scope');
       }
@@ -243,6 +250,21 @@ class AssistantConversation extends ChangeNotifier {
   bool _disposed = false;
   bool get isClosed => _disposed;
   bool contextAvailable = true;
+  void _reloadOpenGuidance() {
+    final generation = _guidanceGeneration;
+    scheduleMicrotask(() {
+      if (!_disposed &&
+          generation == _guidanceGeneration &&
+          contextAvailable &&
+          guidanceOpen &&
+          mode == AssistantMode.school &&
+          guidance == null &&
+          !guidanceLoading) {
+        unawaited(navigateGuidance(_requestedGuidanceNode));
+      }
+    });
+  }
+
   void setContextAvailable(bool value) {
     if (contextAvailable == value || _disposed) return;
     contextAvailable = value;
@@ -257,6 +279,7 @@ class AssistantConversation extends ChangeNotifier {
     }
     _oncePermissions.clear();
     notifyListeners();
+    if (value) _reloadOpenGuidance();
   }
 
   AssistantMode mode = AssistantMode.school;
@@ -359,6 +382,7 @@ class AssistantConversation extends ChangeNotifier {
     _oncePermissions.clear();
     context = value;
     notifyListeners();
+    _reloadOpenGuidance();
   }
 
   Future<void> send() async {

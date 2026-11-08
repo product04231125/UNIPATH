@@ -1,167 +1,262 @@
 import 'package:flutter/material.dart';
 
 import '../api/academic_guidance_models.dart';
-import '../auth/guidance_asset_gateway.dart';
-import '../../shared/widgets/external_link_button.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import 'assistant_conversation.dart';
-import 'guidance_asset_open.dart';
+import 'guidance_asset_button.dart';
+import 'guidance_sources.dart';
+import 'guidance_menu.dart';
+export 'guidance_asset_button.dart' show GuidanceAssetButton;
 import 'guidance_criteria_view.dart';
 
 class AcademicGuidanceView extends StatelessWidget {
   const AcademicGuidanceView({super.key, required this.conversation});
   final AssistantConversation conversation;
+
+  bool _hasCardDetails(GuidanceCard card) {
+    if (card.type != 'calendar_event') return true;
+    final body = card.body.trim();
+    return (body.isNotEmpty &&
+            body != '${card.dateText} — ${card.title}' &&
+            body != card.title &&
+            body != card.dateText) ||
+        card.imageAssetId != null ||
+        card.table != null ||
+        card.tables != null;
+  }
+
+  bool _collectionWarning(String warning) =>
+      warning.contains('수집 시점') ||
+      warning.contains('수집 시각') ||
+      warning.contains('수집한 지');
+
   @override
   Widget build(BuildContext context) {
     final node = conversation.guidance;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
+    final theme = Theme.of(context);
+    final personal = node?.nodeId == 'summary';
+    final navigation =
+        node?.buttons
+            .where((b) => b.nodeId == 'home' || b.label == '이전 메뉴')
+            .toList() ??
+        <GuidanceButton>[];
+    final options =
+        node?.buttons.where((b) => !navigation.contains(b)).toList() ??
+        <GuidanceButton>[];
+    return Material(
+      color: theme.colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Expanded(
-              child: Text(
-                '학사 안내',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
+            Row(
+              children: [
+                Icon(
+                  Icons.menu_book_outlined,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    node?.title ?? '학교 안내',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+                if (!conversation.registeredOnly)
+                  TextButton(
+                    onPressed: conversation.closeGuidance,
+                    child: const Text('질문으로 돌아가기'),
+                  ),
+              ],
             ),
-            if (!conversation.registeredOnly)
-              TextButton(
-                onPressed: conversation.closeGuidance,
-                child: const Text('질문으로 돌아가기'),
+            const SizedBox(height: 12),
+            if (conversation.guidanceLoading) ...[
+              const LinearProgressIndicator(),
+              const SizedBox(height: 12),
+            ],
+            if (conversation.guidanceError != null) ...[
+              Text(
+                conversation.guidanceError!,
+                style: TextStyle(color: theme.colorScheme.error),
               ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: conversation.guidanceLoading
+                      ? null
+                      : () => conversation.navigateGuidance(
+                          conversation.guidanceNodeId,
+                        ),
+                  child: const Text('안내 다시 읽기'),
+                ),
+              ),
+            ],
+            if (node != null) ...[
+              if (conversation.showingCriteria)
+                GuidanceCriteriaView(conversation: conversation)
+              else ...[
+                for (final warning in node.warnings.where(
+                  (w) => !_collectionWarning(w),
+                ))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(warning),
+                  ),
+                if (node.message.isNotEmpty) Text(node.message),
+                if (node.state == 'unavailable')
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text('자료 준비 중', style: theme.textTheme.labelMedium),
+                  ),
+                if (personal) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: conversation.auditsLoading
+                          ? null
+                          : conversation.refreshAudits,
+                      icon: const Icon(Icons.history, size: 18),
+                      label: const Text('저장된 내 졸업요건 결과 불러오기'),
+                    ),
+                  ),
+                  if (conversation.auditsLoading)
+                    const LinearProgressIndicator(),
+                  for (final audit in conversation.auditOptions)
+                    ListTile(
+                      title: Text('점검 기준일 ${audit.evaluatedOn}'),
+                      subtitle: Text(
+                        const {
+                              'satisfied': '충족',
+                              'not_satisfied': '미충족',
+                              'needs_review': '확인 필요',
+                              'not_applicable': '판정 항목 없음',
+                            }[audit.status] ??
+                            '상태 확인 필요',
+                      ),
+                      leading: Icon(
+                        conversation.guidanceAuditId == audit.id
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_off,
+                      ),
+                      onTap: conversation.guidanceLoading
+                          ? null
+                          : () => conversation.selectAudit(audit.id),
+                    ),
+                  if (!conversation.auditsLoading &&
+                      conversation.auditOptions.isEmpty)
+                    const Text('졸업 요건에서 저장한 본인 점검 결과를 불러올 수 있습니다.'),
+                ],
+                for (var index = 0; index < node.cards.length; index++) ...[
+                  if (index > 0) const Divider(height: 1),
+                  ExpansionTile(
+                    key: ValueKey('${node.nodeId}:$index'),
+                    enabled: _hasCardDetails(node.cards[index]),
+                    trailing: _hasCardDetails(node.cards[index])
+                        ? null
+                        : const SizedBox.shrink(),
+                    tilePadding: EdgeInsets.zero,
+                    title: Text(
+                      node.cards[index].title,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    subtitle: node.cards[index].dateText == null
+                        ? null
+                        : Text(
+                            node.cards[index].dateText!,
+                            style: theme.textTheme.bodySmall,
+                          ),
+                    children: [
+                      _GuidanceCard(
+                        card: node.cards[index],
+                        conversation: conversation,
+                        showHeading: false,
+                      ),
+                    ],
+                  ),
+                ],
+                GuidanceSources(
+                  sources: [
+                    for (final card in node.cards) ...card.sources,
+                    if (node.source != null) node.source!,
+                  ],
+                  conversation: conversation,
+                ),
+              ],
+              if (node.workflow != null) ...[
+                for (final step in node.workflow!.steps) Text(step),
+                if (node.workflow!.id == 'posting')
+                  TextButton(
+                    onPressed: conversation.openCareer,
+                    child: const Text('채용공고 분석으로 이동'),
+                  )
+                else
+                  const Text('이 분석 기능은 준비 중입니다.'),
+              ],
+              if (options.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                GuidanceMenu(
+                  nodeId: conversation.guidanceNodeId,
+                  options: options,
+                  loading: conversation.guidanceLoading,
+                  onSelect: conversation.navigateGuidance,
+                ),
+              ],
+              if (navigation.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final button in navigation)
+                      TextButton.icon(
+                        icon: Icon(
+                          button.nodeId == 'home'
+                              ? Icons.home_outlined
+                              : Icons.arrow_back,
+                          size: 18,
+                        ),
+                        onPressed: conversation.guidanceLoading
+                            ? null
+                            : () =>
+                                  conversation.navigateGuidance(button.nodeId),
+                        label: Text(button.label),
+                      ),
+                  ],
+                ),
+              ],
+              if (!conversation.showingCriteria &&
+                  (conversation.registeredOnly ||
+                      node.notice != null ||
+                      node.snapshotStale == true ||
+                      node.warnings.any(_collectionWarning)))
+                ExpansionTile(
+                  title: Text('자료 정보', style: theme.textTheme.labelMedium),
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: const EdgeInsets.only(bottom: 8),
+                  children: [
+                    if (conversation.registeredOnly)
+                      const Text('서버 수집 참고 자료입니다. 원문의 학교와 적용 대상을 확인해 주세요.'),
+                    if (node.snapshotStale == true)
+                      const Text('최신 내용은 원문에서 확인해 주세요.'),
+                    for (final warning in node.warnings.where(
+                      _collectionWarning,
+                    ))
+                      Text(warning),
+                    if (node.notice != null) Text(node.notice!),
+                  ],
+                ),
+            ],
           ],
         ),
-        if (conversation.registeredOnly) ...[
-          const Text('메뉴를 선택해 학교 안내 자료를 찾아보세요.'),
-          const Text(
-            '현재 서버가 제공하는 수집 자료입니다. 등록 학교와의 연결은 아직 확인되지 않아 원문의 학교·적용 대상을 확인해 주세요.',
-          ),
-          const SizedBox(height: 12),
-        ],
-        if (conversation.guidanceLoading) const LinearProgressIndicator(),
-        if (conversation.guidanceError != null) ...[
-          Text(conversation.guidanceError!),
-          TextButton(
-            onPressed: conversation.guidanceLoading
-                ? null
-                : () => conversation.navigateGuidance(
-                    conversation.guidanceNodeId,
-                  ),
-            child: const Text('안내 다시 읽기'),
-          ),
-        ],
-        if (node != null) ...[
-          Text(
-            node.title ?? '학사 안내',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          if (conversation.showingCriteria)
-            GuidanceCriteriaView(conversation: conversation)
-          else ...[
-            for (final warning in node.warnings)
-              Text(
-                warning,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            if (node.snapshotStale == true)
-              const Text('수집한 지 오래된 자료입니다. 원문의 최신 내용을 확인하세요.'),
-            if (node.fetchedAt != null) Text('수집 시각: ${node.fetchedAt}'),
-            Text(node.message),
-            if (node.state == 'unavailable') const Text('자료 준비 중'),
-            if (node.reason == 'verified_audit_required' ||
-                node.audit != null) ...[
-              TextButton(
-                onPressed: conversation.auditsLoading
-                    ? null
-                    : conversation.refreshAudits,
-                child: const Text('저장된 내 졸업요건 결과 불러오기'),
-              ),
-              if (conversation.auditsLoading) const LinearProgressIndicator(),
-              for (final audit in conversation.auditOptions)
-                Material(
-                  type: MaterialType.transparency,
-                  child: ListTile(
-                    title: Text(
-                      '점검 기준일 ${audit.evaluatedOn} · ${const {'satisfied': '충족', 'not_satisfied': '미충족', 'needs_review': '확인 필요', 'not_applicable': '적용 기준 없음'}[audit.status] ?? '상태 확인 필요'}',
-                    ),
-                    selected: conversation.guidanceAuditId == audit.id,
-                    leading: Icon(
-                      conversation.guidanceAuditId == audit.id
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_off,
-                    ),
-                    onTap: conversation.guidanceLoading
-                        ? null
-                        : () => conversation.selectAudit(audit.id),
-                  ),
-                ),
-              if (!conversation.auditsLoading &&
-                  conversation.auditOptions.isEmpty)
-                const Text(
-                  '현재 학업 프로필에 맞는 공식 감사를 선택해야 합니다. 개인 계산 결과는 사용할 수 없습니다.',
-                ),
-            ],
-            if (node.audit?.currentUsable == false)
-              const Text('재확인 필요 · 과거 기준일의 감사 결과입니다.'),
-            for (final card in node.cards)
-              _GuidanceCard(card: card, conversation: conversation),
-            if (node.source != null) _source(node.source!),
-            if (node.notice != null) Text(node.notice!),
-          ],
-          if (node.workflow != null) ...[
-            for (final step in node.workflow!.steps) Text(step),
-            if (node.workflow!.id == 'posting')
-              TextButton(
-                onPressed: conversation.openCareer,
-                child: const Text('채용공고 분석으로 이동'),
-              )
-            else
-              const Text('이 분석 기능은 준비 중입니다.'),
-          ],
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (final button in node.buttons)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: OutlinedButton(
-                    onPressed: conversation.guidanceLoading
-                        ? null
-                        : () => conversation.navigateGuidance(button.nodeId),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '${button.label}${button.availability == "content_pending" ? " · 준비 중" : ""}',
-                            ),
-                          ),
-                          const Icon(Icons.chevron_right),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ],
+      ),
     );
   }
-
-  Widget _source(GuidanceSource source) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      if (source.title != null) Text(source.title!),
-      if (source.page != null) Text('${source.page}페이지'),
-      if (source.assetId != null)
-        GuidanceAssetButton(conversation: conversation, id: source.assetId!),
-      if (source.sourceUrl != null)
-        ExternalLinkButton(url: source.sourceUrl!, label: '출처 열기'),
-    ],
-  );
 }
 
 class _GuidanceCard extends StatelessWidget {
@@ -169,17 +264,20 @@ class _GuidanceCard extends StatelessWidget {
     required this.card,
     required this.conversation,
     this.expanded = false,
+    this.showHeading = true,
   });
   final GuidanceCard card;
   final AssistantConversation conversation;
   final bool expanded;
+  final bool showHeading;
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 12),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(card.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        if (showHeading)
+          Text(card.title, style: const TextStyle(fontWeight: FontWeight.w700)),
         if (card.extractionStatus == 'ocr_unreviewed')
           const Text('OCR 미검토 · 원본 이미지를 먼저 확인해 주세요.'),
         if (card.imageAssetId != null)
@@ -188,7 +286,15 @@ class _GuidanceCard extends StatelessWidget {
             id: card.imageAssetId!,
             image: true,
           ),
-        if (card.extractionStatus == 'ocr_unreviewed')
+        if (card.type == 'calendar_event' && card.dateText != null) ...[
+          const SizedBox(height: 4),
+          if (showHeading)
+            Text(card.dateText!, style: Theme.of(context).textTheme.bodySmall),
+          if (card.body.trim() != '${card.dateText} — ${card.title}' &&
+              card.body.trim() != card.title &&
+              card.body.trim() != card.dateText)
+            SelectableText(card.body),
+        ] else if (card.extractionStatus == 'ocr_unreviewed')
           ExpansionTile(
             title: const Text('추출 텍스트 보기'),
             children: [SelectableText(card.body)],
@@ -199,7 +305,6 @@ class _GuidanceCard extends StatelessWidget {
                 ? '${card.body.substring(0, 600)}…'
                 : card.body,
           ),
-        if (card.dateText != null) Text(card.dateText!),
         if (card.status != null)
           Text(
             '결과: ${const {'satisfied': '충족', 'not_satisfied': '미충족', 'needs_review': '확인 필요', 'not_applicable': '적용 기준 없음'}[card.status] ?? '상태 확인 필요'}',
@@ -260,18 +365,8 @@ class _GuidanceCard extends StatelessWidget {
             ),
             child: const Text('넓게 자세히 보기'),
           ),
-        for (final source in card.sources) ...[
-          Text(
-            '${source.title ?? "출처"}${source.page == null ? "" : " · ${source.page}페이지"}',
-          ),
-          if (source.assetId != null)
-            GuidanceAssetButton(
-              conversation: conversation,
-              id: source.assetId!,
-            ),
-          if (source.sourceUrl != null)
-            ExternalLinkButton(url: source.sourceUrl!, label: '출처 열기'),
-        ],
+        if (expanded)
+          GuidanceSources(sources: card.sources, conversation: conversation),
       ],
     ),
   );
@@ -303,98 +398,4 @@ class _GuidanceCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class GuidanceAssetButton extends StatefulWidget {
-  const GuidanceAssetButton({
-    super.key,
-    required this.conversation,
-    required this.id,
-    this.image = false,
-  });
-  final AssistantConversation conversation;
-  final String id;
-  final bool image;
-  @override
-  State<GuidanceAssetButton> createState() => _AssetState();
-}
-
-class _AssetState extends State<GuidanceAssetButton> {
-  GuidanceAsset? _asset;
-  bool _loading = false;
-  String? _error;
-  int _generation = 0;
-  @override
-  void didUpdateWidget(covariant GuidanceAssetButton oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.id != widget.id ||
-        oldWidget.conversation != widget.conversation) {
-      _generation++;
-      _asset = null;
-      _loading = false;
-      _error = null;
-    }
-  }
-
-  Future<void> _load() async {
-    final generation = ++_generation;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final value = await widget.conversation.loadGuidanceAsset(widget.id);
-      if (mounted && generation == _generation) setState(() => _asset = value);
-    } catch (_) {
-      if (mounted && generation == _generation) {
-        setState(() => _error = '원문을 읽지 못했습니다. 다시 시도해 주세요.');
-      }
-    } finally {
-      if (mounted && generation == _generation) {
-        setState(() => _loading = false);
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      if (_error != null) Text(_error!),
-      if (_asset == null)
-        TextButton(
-          onPressed: _loading ? null : _load,
-          child: Text(
-            _loading
-                ? '원문 준비 중…'
-                : widget.image
-                ? '원본 이미지 읽기'
-                : '원문 준비',
-          ),
-        ),
-      if (_asset?.contentType == 'image/jpeg')
-        Image.memory(
-          _asset!.bytes,
-          fit: BoxFit.contain,
-          errorBuilder: (_, _, _) => const Text('이미지를 표시하지 못했습니다. 다시 읽어 주세요.'),
-        ),
-      if (_asset?.contentType == 'application/pdf')
-        TextButton(
-          onPressed: () async {
-            try {
-              final opened = await openGuidancePdf(_asset!, widget.id);
-              if (!opened && mounted) {
-                setState(
-                  () => _error =
-                      '원문 창이 열리지 않았다면 팝업 또는 기본 PDF 앱 설정을 확인하고 다시 시도해 주세요.',
-                );
-              }
-            } catch (_) {
-              if (mounted) setState(() => _error = '원문을 열지 못했습니다. 다시 시도해 주세요.');
-            }
-          },
-          child: const Text('원문 PDF 열기'),
-        ),
-    ],
-  );
 }

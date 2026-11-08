@@ -120,6 +120,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(api.paths, ['me/academic-guidance/nodes/home']);
+      await tester.tap(find.text('기타 안내'));
+      await tester.pumpAndSettle();
       expect(find.text('학사일정'), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
       expect(find.textContaining('전송 전 동의'), findsNothing);
@@ -134,6 +136,8 @@ void main() {
       expect(find.byType(TextField), findsOneWidget);
       await tester.enterText(find.byType(TextField), '보존할 내 자료 질문');
       await tester.tap(find.widgetWithText(ChoiceChip, '학교 질문'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('기타 안내'));
       await tester.pumpAndSettle();
       expect(find.text('학사일정'), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
@@ -167,6 +171,8 @@ void main() {
     expect(find.byType(TextField), findsNothing);
     api.failure = null;
     await tester.tap(find.text('안내 다시 읽기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('기타 안내'));
     await tester.pumpAndSettle();
     expect(find.text('학사일정'), findsOneWidget);
     expect(api.paths.length, 2);
@@ -279,9 +285,15 @@ void main() {
     c.setContext(
       const SchoolQueryContext(institutionId: 'other', departmentId: 'other'),
     );
-    api.pending!.complete(node('home'));
+    final old = api.pending!;
+    api.pending = Completer<Map<String, dynamic>>();
+    old.complete({...node('home'), 'title': '이전 학교 응답'});
     await loading;
     expect(c.guidance, isNull);
+    expect(c.guidanceLoading, true);
+    api.pending!.complete({...node('home'), 'title': '새 학교 응답'});
+    await Future<void>.delayed(Duration.zero);
+    expect(c.guidance!.title, '새 학교 응답');
     expect(c.guidanceLoading, false);
     c.dispose();
   });
@@ -365,10 +377,17 @@ void main() {
           ),
         ),
       );
+      expect(find.text('수집 시각:'), findsNothing);
+      await tester.ensureVisible(find.text('자료 정보'));
+      await tester.tap(find.text('자료 정보'));
+      await tester.pumpAndSettle();
       expect(find.text('수집 시점 경고'), findsOneWidget);
+      await tester.ensureVisible(find.text('규정 원문'));
+      await tester.tap(find.text('규정 원문'));
+      await tester.pumpAndSettle();
       expect(find.text('원본 이미지 읽기'), findsOneWidget);
       expect(find.text('공지사항 · 준비 중'), findsOneWidget);
-      expect(find.text('본인 공식 감사 이력 읽기'), findsOneWidget);
+      expect(find.text('저장된 내 졸업요건 결과 불러오기'), findsOneWidget);
       expect(find.text('분류'), findsOneWidget);
       expect(find.text('0'), findsNothing);
       expect(tester.takeException(), isNull);

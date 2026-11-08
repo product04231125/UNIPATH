@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:university_path_frontend/features/api/guidance_api.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/assistant/academic_guidance_view.dart';
+import 'package:university_path_frontend/features/assistant/assistant_panel.dart';
 import 'package:university_path_frontend/features/assistant/assistant_api.dart';
 import 'package:university_path_frontend/features/assistant/assistant_conversation.dart';
 import 'package:university_path_frontend/features/assistant/conversation_bridge.dart';
@@ -21,10 +22,11 @@ class CriteriaGateway extends ApiGateway {
     String path, [
     Map<String, Object?>? body,
   ]) async {
-    expect(method, 'GET');
+    expectSync(method, 'GET');
     paths.add(path);
-    if (path.startsWith('catalog/rule-programs?'))
+    if (path.startsWith('catalog/rule-programs?')) {
       return pending?.future ?? selection;
+    }
     return {
       'schema_version': 'academic-click-v3',
       'node_id': path.split('/').last.split('?').first,
@@ -78,6 +80,65 @@ Future<void> show(WidgetTester tester, AssistantConversation c) async {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  testWidgets(
+    'saving academic profile refreshes the selected criterion instead of leaving a blank tree',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final api = CriteriaGateway();
+      final c = AssistantConversation(
+        guidanceApi: GuidanceApi(api),
+        registeredOnly: true,
+      );
+      await c.showGuidance();
+      await c.navigateGuidance('credits');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.centerRight,
+              child: AssistantPanel(
+                conversation: c,
+                onClose: () {},
+                width: 480,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('학교·학과·교육과정'), findsOneWidget);
+      c.setContextAvailable(false);
+      c.setContextAvailable(true);
+      c.setContext(
+        const SchoolQueryContext(
+          institutionId: contracts.identifier,
+          departmentId: contracts.identifier,
+          curriculumId: contracts.identifier,
+          admissionYear: 2026,
+          track: 'single_major',
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(c.guidanceNodeId, 'credits');
+      expect(c.guidanceLoading, false);
+      expect(
+        c.guidanceCriteria,
+        isNotNull,
+        reason:
+            '${c.criteriaError}; ${api.paths}; ${c.guidance?.nodeId}; open=${c.guidanceOpen}; available=${c.contextAvailable}; mode=${c.mode}',
+      );
+      expect(find.text('필요 학점: 3학점'), findsOneWidget);
+      expect(
+        api.paths.where((p) => p.startsWith('catalog/rule-programs?')),
+        hasLength(1),
+      );
+      await tester.pumpWidget(const SizedBox());
+      c.dispose();
+    },
+  );
   testWidgets(
     'credits displays approved threshold without an audit, summary stays personal',
     (tester) async {
