@@ -46,6 +46,7 @@ URL은 로그인 정보가 없는 HTTP(S) 링크이며 서버에서 가져오거
 
 `approved_hours > 0`을 기록하려면 사용자가 관찰한 `approval=approved`와 `observed_on`이
 필요하다. 이것도 **사용자 입력**이며 서버의 봉사 승인·검증된 실적이 아니다.
+개인 기준 계산은 `reported_hours`를 합산하고, 입력 시간이 없을 때만 이 승인 시간을 쓴다.
 개인 `condition`·`rule_type`·`required_value/current_value`는 저장용 설명/관찰 값이다.
 실행 코드나 공식 졸업 판정 조건으로 자동 해석하지 않는다.
 
