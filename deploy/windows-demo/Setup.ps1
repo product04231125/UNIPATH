@@ -7,8 +7,13 @@ $script:Docker = $null
 
 function Invoke-Docker {
     param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Arguments)
-    & $script:Docker @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "Docker failed (exit $LASTEXITCODE): $($Arguments[0])" }
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $script:Docker @Arguments 2>&1 | ForEach-Object { Write-Output $_.ToString() }
+        $nativeExit = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $previous }
+    if ($nativeExit -ne 0) { throw "Docker failed (exit $nativeExit): $($Arguments[0])" }
 }
 function Find-Docker {
     $command = Get-Command docker.exe -ErrorAction SilentlyContinue

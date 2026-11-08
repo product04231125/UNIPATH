@@ -16,8 +16,13 @@ New-Item -ItemType Directory -Force -Path $bundle | Out-Null
 
 function Invoke-Checked {
     param([string]$Program, [Parameter(ValueFromRemainingArguments=$true)][string[]]$Arguments)
-    & $Program @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "$Program failed (exit $LASTEXITCODE)" }
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $Program @Arguments 2>&1 | ForEach-Object { Write-Output $_.ToString() }
+        $nativeExit = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $previous }
+    if ($nativeExit -ne 0) { throw "$Program failed (exit $nativeExit)" }
 }
 Push-Location $root
 try {
@@ -29,7 +34,7 @@ try {
     $dbImage = 'pgvector/pgvector:0.8.6-pg17-bookworm@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f'
     Write-Output 'Exporting only selected school criteria, courses and requirement checks. Source DB is read-only.'
     Invoke-Checked docker cp (Join-Path $root 'backend/app/operations/demo_bundle.py') "${SourceApiContainer}:/tmp/unipath-demo-export.py"
-    Invoke-Checked docker exec $SourceApiContainer python /tmp/unipath-demo-export.py export --file /tmp/unipath-demo-data.json
+    Invoke-Checked docker exec -e PYTHONPATH=/app $SourceApiContainer python /tmp/unipath-demo-export.py export --file /tmp/unipath-demo-data.json
     Invoke-Checked docker cp "${SourceApiContainer}:/tmp/unipath-demo-data.json" (Join-Path $bundle 'demo-data.json')
     if (-not $ReuseWeb) {
         Push-Location (Join-Path $root 'frontend')
