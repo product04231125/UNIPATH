@@ -44259,8 +44259,8 @@
           "code": {
             "type": "string",
             "maxLength": 64,
-            "minLength": 1,
-            "title": "Code"
+            "title": "Code",
+            "default": ""
           },
           "credits": {
             "anyOf": [
@@ -44282,7 +44282,6 @@
         "required": [
           "name",
           "institution_id",
-          "code",
           "credits"
         ],
         "title": "CourseCreate"
@@ -44362,8 +44361,8 @@
           "code": {
             "type": "string",
             "maxLength": 64,
-            "minLength": 1,
-            "title": "Code"
+            "title": "Code",
+            "default": ""
           },
           "credits": {
             "type": "string",
@@ -44378,7 +44377,6 @@
           "version",
           "name",
           "institution_id",
-          "code",
           "credits"
         ],
         "title": "CoursePublicView"
@@ -44809,8 +44807,8 @@
           "code": {
             "type": "string",
             "maxLength": 64,
-            "minLength": 1,
-            "title": "Code"
+            "title": "Code",
+            "default": ""
           },
           "credits": {
             "anyOf": [
@@ -44833,7 +44831,6 @@
           "expected_version",
           "name",
           "institution_id",
-          "code",
           "credits"
         ],
         "title": "CourseUpdate"
@@ -44889,8 +44886,8 @@
           "code": {
             "type": "string",
             "maxLength": 64,
-            "minLength": 1,
-            "title": "Code"
+            "title": "Code",
+            "default": ""
           },
           "credits": {
             "type": "string",
@@ -44909,7 +44906,6 @@
           "updated_at",
           "name",
           "institution_id",
-          "code",
           "credits"
         ],
         "title": "CourseView"
@@ -50664,9 +50660,9 @@
           },
           "label": {
             "type": "string",
-            "const": "\uac1c\uc778 \uae30\uc900 \uacc4\uc0b0 \u00b7 \ud559\uad50 \uacf5\uc2dd \ud310\uc815 \uc544\ub2d8",
+            "const": "개인 기준 계산 · 학교 공식 판정 아님",
             "title": "Label",
-            "default": "\uac1c\uc778 \uae30\uc900 \uacc4\uc0b0 \u00b7 \ud559\uad50 \uacf5\uc2dd \ud310\uc815 \uc544\ub2d8"
+            "default": "개인 기준 계산 · 학교 공식 판정 아님"
           },
           "status": {
             "type": "string",
@@ -50759,9 +50755,9 @@
           },
           "label": {
             "type": "string",
-            "const": "\uac1c\uc778 \uae30\uc900 \uacc4\uc0b0 \u00b7 \ud559\uad50 \uacf5\uc2dd \ud310\uc815 \uc544\ub2d8",
+            "const": "개인 기준 계산 · 학교 공식 판정 아님",
             "title": "Label",
-            "default": "\uac1c\uc778 \uae30\uc900 \uacc4\uc0b0 \u00b7 \ud559\uad50 \uacf5\uc2dd \ud310\uc815 \uc544\ub2d8"
+            "default": "개인 기준 계산 · 학교 공식 판정 아님"
           },
           "status": {
             "type": "string",
@@ -58508,9 +58504,9 @@
           },
           "label": {
             "type": "string",
-            "const": "\ud559\uad50 \uac80\ud1a0 \uc790\ub8cc \uae30\uc900 \uc878\uc5c5\uc694\uac74 \uac10\uc0ac",
+            "const": "학교 검토 자료 기준 졸업요건 감사",
             "title": "Label",
-            "default": "\ud559\uad50 \uac80\ud1a0 \uc790\ub8cc \uae30\uc900 \uc878\uc5c5\uc694\uac74 \uac10\uc0ac"
+            "default": "학교 검토 자료 기준 졸업요건 감사"
           },
           "status": {
             "type": "string",
@@ -58624,9 +58620,9 @@
           },
           "label": {
             "type": "string",
-            "const": "\ud559\uad50 \uac80\ud1a0 \uc790\ub8cc \uae30\uc900 \uc878\uc5c5\uc694\uac74 \uac10\uc0ac",
+            "const": "학교 검토 자료 기준 졸업요건 감사",
             "title": "Label",
-            "default": "\ud559\uad50 \uac80\ud1a0 \uc790\ub8cc \uae30\uc900 \uc878\uc5c5\uc694\uac74 \uac10\uc0ac"
+            "default": "학교 검토 자료 기준 졸업요건 감사"
           },
           "status": {
             "type": "string",
@@ -60099,7 +60095,7 @@
           "notice": {
             "type": "string",
             "title": "Notice",
-            "default": "\ud559\uad50 \uac80\ud1a0 \uc790\ub8cc \uae30\uc900 \uc548\ub0b4\uc774\uba70 \ud559\uad50\uc758 \ucd5c\uc885 \ud559\uc704 \uc218\uc5ec \uc2b9\uc778\uc744 \ub300\uccb4\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4."
+            "default": "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
           }
         },
         "additionalProperties": false,
@@ -63011,8 +63007,8 @@
           "code": {
             "type": "string",
             "maxLength": 64,
-            "minLength": 1,
-            "title": "Code"
+            "title": "Code",
+            "default": ""
           },
           "credits": {
             "anyOf": [
@@ -63033,7 +63029,6 @@
         "type": "object",
         "required": [
           "name",
-          "code",
           "credits"
         ],
         "title": "AcademicNewCourse"

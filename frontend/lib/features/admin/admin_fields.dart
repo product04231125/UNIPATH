@@ -84,8 +84,9 @@ List<AdminField> adminFields(AdminKind kind) => [
     const AdminField('countryCode', '국가 코드', required: false),
     const AdminField('officialUrl', '공식 사이트 HTTP(S)', required: false),
   ],
-  if (kind == AdminKind.department || kind == AdminKind.course)
-    const AdminField('code', '코드'),
+  if (kind == AdminKind.department) const AdminField('code', '코드'),
+  if (kind == AdminKind.course)
+    const AdminField('code', '학교 과목번호 (선택)', required: false),
   if (kind == AdminKind.curriculum) ...[
     const AdminField('departmentId', '학과', relation: AdminKind.department),
     const AdminField('year', '적용 연도'),

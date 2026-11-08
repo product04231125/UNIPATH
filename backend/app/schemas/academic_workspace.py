@@ -7,6 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, StringConstraints, model_validator
 
+from app.schemas.academic import SchoolCourseCode
 from app.schemas.auth import StrictModel
 
 Label = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
@@ -275,7 +276,7 @@ class AcademicCurriculumList(BaseModel):
 
 class AcademicNewCourse(StrictModel):
     name: Label
-    code: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+    code: SchoolCourseCode = ""
     credits: Credits
 
 

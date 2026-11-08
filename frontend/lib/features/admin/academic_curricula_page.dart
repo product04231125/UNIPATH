@@ -374,9 +374,8 @@ class AcademicCurriculaPageState extends State<AcademicCurriculaPage> {
     final selected = _records(AdminKind.course)
         .where((r) => r.id == _course)
         .firstOrNull;
-    if (selected == null &&
-        (_courseName.text.trim().isEmpty || _courseCode.text.trim().isEmpty)) {
-      setState(() => _error = '과목을 선택하거나 새 과목의 이름과 코드를 입력하세요.');
+    if (selected == null && _courseName.text.trim().isEmpty) {
+      setState(() => _error = '과목을 선택하거나 새 과목의 이름을 입력하세요.');
       return;
     }
     await _send(
@@ -719,7 +718,13 @@ class AcademicCurriculaPageState extends State<AcademicCurriculaPage> {
               for (final row in _entries)
                 ListTile(
                   dense: true,
-                  title: Text('${row['course_name']} · ${row['course_code']}'),
+                  title: Text(
+                    [
+                      row['course_name'],
+                      if ((row['course_code'] as String? ?? '').isNotEmpty)
+                        row['course_code'],
+                    ].join(' · '),
+                  ),
                   subtitle: Text(
                     '${_nodeLabel(row['classification_node_id'] as String)} · ${requirements[row['requirement']]} · ${row['recognized_credits']}학점',
                   ),
@@ -792,7 +797,13 @@ class AcademicCurriculaPageState extends State<AcademicCurriculaPage> {
                     options: [
                       const SelectOption('', '새 과목 등록'),
                       for (final r in _records(AdminKind.course))
-                        SelectOption(r.id, '${r.name} · ${r.value('code')}'),
+                        SelectOption(
+                          r.id,
+                          [
+                            r.name,
+                            if (r.value('code').isNotEmpty) r.value('code'),
+                          ].join(' · '),
+                        ),
                     ],
                     onChanged: (id) {
                       if (disabled) return;
@@ -823,7 +834,7 @@ class AcademicCurriculaPageState extends State<AcademicCurriculaPage> {
                         ),
                       ),
                       FieldLabel(
-                        label: '학교 공식 과목 코드',
+                        label: '학교 과목번호 (선택)',
                         child: TextField(
                           controller: _courseCode,
                           key: const ValueKey('curriculum-new-course-code'),

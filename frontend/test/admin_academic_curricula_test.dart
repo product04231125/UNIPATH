@@ -95,67 +95,72 @@ class CurriculumTransport implements ApiGateway {
 }
 
 void main() {
-  testWidgets(
-    'new course registration uses one shared classification and preserves uncertain retry',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1440, 1100));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      final transport = CurriculumTransport();
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: AcademicCurriculaPage(
-                api: AcademicWorkspaceApi(transport),
-                ownerId: 'owner',
-                schoolId: 'school-a',
-                records: const [],
+  for (final schoolCode in ['SHARED-1', '']) {
+    testWidgets(
+      'new course registration uses one shared classification and preserves uncertain retry',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(1440, 1100));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final transport = CurriculumTransport();
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: AcademicCurriculaPage(
+                  api: AcademicWorkspaceApi(transport),
+                  ownerId: 'owner',
+                  schoolId: 'school-a',
+                  records: const [],
+                ),
               ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      Future<void> enter(String key, String value) async {
-        final field = find.byKey(ValueKey(key));
-        await tester.ensureVisible(field);
-        await tester.enterText(field, value);
+        );
         await tester.pumpAndSettle();
-      }
+        Future<void> enter(String key, String value) async {
+          final field = find.byKey(ValueKey(key));
+          await tester.ensureVisible(field);
+          await tester.enterText(field, value);
+          await tester.pumpAndSettle();
+        }
 
-      await enter('curriculum-new-course-name', '새 공통 과목');
-      await enter('curriculum-new-course-code', 'SHARED-1');
-      await enter('curriculum-source-credits', '3.25');
-      await enter('curriculum-recognized-credits', '3.25');
-      final selector = find.byWidgetPredicate(
-        (w) => w is AnchoredSelectField<String> && w.label == '이수구분·세부분류',
-      );
-      await tester.ensureVisible(selector);
-      await tester.tap(selector);
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(MenuItemButton, '학교 전공'));
-      await tester.pumpAndSettle();
-      final save = find.widgetWithText(FilledButton, '과목 등록·연결');
-      await tester.ensureVisible(save);
-      transport.fail = true;
-      await tester.tap(save);
-      await tester.pumpAndSettle();
-      expect(transport.writes, hasLength(1));
-      expect(
-        find.byKey(const ValueKey('curriculum-new-course-name')),
-        findsOneWidget,
-      );
-      expect(transport.writes.single['classification_node_id'], 'node-1');
-      expect(transport.writes.single.containsKey('category'), isFalse);
-      transport.fail = false;
-      final retry = find.text('같은 요청으로 다시 저장');
-      await tester.ensureVisible(retry);
-      await tester.tap(retry);
-      await tester.pumpAndSettle();
-      expect(transport.writes, hasLength(2));
-      expect(transport.writes[0], equals(transport.writes[1]));
-      expect(find.text('새 공통 과목 · SHARED-1'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    },
-  );
+        await enter('curriculum-new-course-name', '새 공통 과목');
+        await enter('curriculum-new-course-code', schoolCode);
+        await enter('curriculum-source-credits', '3.25');
+        await enter('curriculum-recognized-credits', '3.25');
+        final selector = find.byWidgetPredicate(
+          (w) => w is AnchoredSelectField<String> && w.label == '이수구분·세부분류',
+        );
+        await tester.ensureVisible(selector);
+        await tester.tap(selector);
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(MenuItemButton, '학교 전공'));
+        await tester.pumpAndSettle();
+        final save = find.widgetWithText(FilledButton, '과목 등록·연결');
+        await tester.ensureVisible(save);
+        transport.fail = true;
+        await tester.tap(save);
+        await tester.pumpAndSettle();
+        expect(transport.writes, hasLength(1));
+        expect(
+          find.byKey(const ValueKey('curriculum-new-course-name')),
+          findsOneWidget,
+        );
+        expect(transport.writes.single['classification_node_id'], 'node-1');
+        expect(transport.writes.single.containsKey('category'), isFalse);
+        transport.fail = false;
+        final retry = find.text('같은 요청으로 다시 저장');
+        await tester.ensureVisible(retry);
+        await tester.tap(retry);
+        await tester.pumpAndSettle();
+        expect(transport.writes, hasLength(2));
+        expect(transport.writes[0], equals(transport.writes[1]));
+        expect(
+          find.text(schoolCode.isEmpty ? '새 공통 과목' : '새 공통 과목 · $schoolCode'),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 }

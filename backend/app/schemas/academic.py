@@ -17,6 +17,7 @@ from pydantic import (
 from app.schemas.auth import Name, StrictModel
 
 Code = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+SchoolCourseCode = Annotated[str, StringConstraints(strip_whitespace=True, max_length=64)]
 
 
 def safe_url(value: str) -> str:
@@ -52,7 +53,7 @@ class CurriculumCreate(CatalogCreate):
 
 
 class CourseCreate(CatalogCreate):
-    code: Code
+    code: SchoolCourseCode = ""
     credits: Decimal = Field(ge=0, le=100, max_digits=8, decimal_places=3, allow_inf_nan=False)
 
 

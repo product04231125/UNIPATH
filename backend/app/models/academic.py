@@ -55,10 +55,16 @@ class Curriculum(CatalogRecord, Base):
 class Course(CatalogRecord, Base):
     __tablename__ = "courses"
     __table_args__ = (
-        UniqueConstraint("institution_id", "code"),
+        Index(
+            "uq_courses_school_code",
+            "institution_id",
+            "code",
+            unique=True,
+            postgresql_where=text("code <> ''"),
+        ),
         CheckConstraint("credits >= 0 AND credits <= 100", name="credits"),
     )
-    code: Mapped[str] = mapped_column(String(64))
+    code: Mapped[str] = mapped_column(String(64), default="", server_default="")
     credits: Mapped[Decimal] = mapped_column(Numeric(8, 3))
 
 
