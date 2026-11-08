@@ -408,6 +408,13 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
               padBottom: false,
             ),
             const FeatureLine.one(text: '고른 항목만 포함합니다.'),
+            const CheckboxListTile(
+              key: ValueKey('job-materials-unavailable'),
+              value: false, onChanged: null,
+              title: Text('자료 기록'),
+              subtitle: Text('자료를 비교 근거로 보내는 API는 연결 전입니다. 현재 분석에는 포함되지 않습니다.'),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
             if (_loading)
               const LinearProgressIndicator()
             else if (_failed)

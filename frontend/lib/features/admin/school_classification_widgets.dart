@@ -415,8 +415,11 @@ class SchoolClassificationBindingFields extends StatelessWidget {
                       }
                       if (inferSubcategoryParent && kind == SchoolClassificationKind.subcategory) {
                         final parent = drafts.get(id)?.parentId;
-                        if (parent != null) next[SchoolClassificationKind.category] = parent;
-                        else next.remove(SchoolClassificationKind.category);
+                        if (parent != null) {
+                          next[SchoolClassificationKind.category] = parent;
+                        } else {
+                          next.remove(SchoolClassificationKind.category);
+                        }
                       }
                       drafts.bind(schoolId, target, next);
                     },

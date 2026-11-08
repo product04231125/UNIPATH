@@ -29,7 +29,14 @@ class GraduationPage extends StatelessWidget {
               profile: planning?.profile,
             ),
           const SurfaceCard(
-            child: Text('학교 기준을 가져오는 API가 아직 연결되지 않았습니다.'),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('학교 기준을 가져오는 API가 아직 연결되지 않았습니다.'),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                OutlinedButton(onPressed: null, child: Text('학교 기준 졸업 감사')),
+                OutlinedButton(onPressed: null, child: Text('감사 이력 조회')),
+                OutlinedButton(onPressed: null, child: Text('개인 기준 계산·이력')),
+              ]),
+            ]),
           ),
         ],
       );

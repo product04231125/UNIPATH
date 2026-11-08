@@ -628,7 +628,7 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
               child: const Text('요건 검토·적용'),
             ),
           ],
-          if (_gateway != null) ...[
+          ...[
             const SizedBox(height: 12),
             ResponsivePanels(
               children: [
@@ -654,7 +654,7 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
                   SelectOption(_programId, '현재 저장한 실행 초안'),
               ],
               onChanged: (id) {
-                if (!_busy) _selectProgram(id);
+                if (!_busy && _gateway != null) _selectProgram(id);
               },
             ),
             if (_uncertain || _conflict) ...[
@@ -683,6 +683,7 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
                 FilledButton(
                   onPressed:
                       _busy ||
+                          _gateway == null ||
                           !ready ||
                           widget.metadataDirty ||
                           _uncertain ||
@@ -691,7 +692,7 @@ class AdminRuleExecutionPanelState extends State<AdminRuleExecutionPanel> {
                       : _save,
                   child: const Text('한 줄 요건 저장'),
                 ),
-                OutlinedButton(onPressed: _busy || !ready || widget.metadataDirty || dirty ? null : _openReview,
+                OutlinedButton(onPressed: _busy || _gateway == null || !ready || widget.metadataDirty || dirty ? null : _openReview,
                   child: const Text('실행본 승인·회수 검토')),
 
               ],

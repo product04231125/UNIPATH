@@ -56,7 +56,9 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final old = Gateway();
     await tester.pumpWidget(host(StudentApi(old, ownerId:id)));
-    await tester.pumpAndSettle(); await prepare(tester); await run(tester);
+    await tester.pumpAndSettle();
+    expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('job-materials-unavailable'))).onChanged, isNull);
+    await prepare(tester); await run(tester);
     await tester.pumpWidget(host(StudentApi(Gateway(), ownerId:id)));
     await tester.pumpAndSettle();
     old.pending.single.complete({'analysis_id':id,'status':'not_configured','reason':'analyzer_not_configured','official':false,'comparisons':[],'missing_fields':[]});
