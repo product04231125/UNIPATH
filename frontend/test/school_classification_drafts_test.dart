@@ -50,6 +50,18 @@ void main() {
     expect(restored.get(category.id)!.name, '다른 표시 이름');
     expect(() => restored.remove('a', category.id), throwsStateError);
   });
+  test('name-only classification keeps generated identity and requirement is a built-in choice', () {
+    final drafts = SchoolClassificationDrafts();
+    addTearDown(drafts.dispose);
+    drafts.save(schoolId: 'a', kind: SchoolClassificationKind.category, name: '전공');
+    final row = drafts.entries('a').single;
+    drafts.save(id: row.id, schoolId: 'a', kind: row.kind, name: '전공 수정');
+    expect(drafts.get(row.id)!.code, row.code);
+    final required = drafts.requirementId('a', true);
+    expect(drafts.requirementId('a', true), required);
+    expect(drafts.get(required)!.requiredCourse, isTrue);
+    expect(drafts.get(drafts.requirementId('a', false))!.requiredCourse, isFalse);
+  });
   test('foreign school links, duplicate codes and invalid restores are rejected atomically', () {
     final drafts = SchoolClassificationDrafts();
     addTearDown(drafts.dispose);
@@ -129,10 +141,7 @@ void main() {
       );
       await tester.tap(find.byKey(const ValueKey('classification-add')));
       await tester.pumpAndSettle();
-      await tester.enterText(
-        find.byKey(const ValueKey('classification-code')),
-        'MAJOR',
-      );
+      expect(find.byKey(const ValueKey('classification-code')), findsNothing);
       await tester.enterText(
         find.byKey(const ValueKey('classification-name')),
         '전공',
@@ -148,7 +157,7 @@ void main() {
       await tester.ensureVisible(picker);
       await tester.tap(picker);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('전공 · MAJOR').last);
+      await tester.tap(find.text('전공').last);
       await tester.pumpAndSettle();
       expect(
         drafts.binding('a', 'rule:1')[SchoolClassificationKind.category],
@@ -165,7 +174,7 @@ void main() {
       expect(tester.widget<AnchoredSelectField<String>>(picker).value, row.id);
       expect(
         tester.widget<AnchoredSelectField<String>>(picker).options.last.label,
-        '전공 이름 변경 · MAJOR',
+        '전공 이름 변경',
       );
       final tempSave = find.text('분류·연결 임시저장');
       await tester.ensureVisible(tempSave);
