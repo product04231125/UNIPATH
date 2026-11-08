@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, StringConstraints, model_validator
 
-from app.schemas.academic import SchoolCourseCode
+from app.schemas.academic import GradingBasis, SchoolCourseCode
 from app.schemas.auth import StrictModel
 
 Label = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
@@ -192,7 +192,7 @@ class AcademicCurriculumCourseInput(StrictModel):
     expected_course_version: int = Field(ge=1, strict=True)
     classification_node_id: UUID
     requirement: Requirement
-    recognized_credits: Credits
+    recognized_credits: Credits | None = None
     position: int = Field(ge=0, strict=True)
 
     @model_validator(mode="after")
@@ -233,7 +233,8 @@ class AcademicCurriculumCourseView(BaseModel):
     course_code: str
     classification_node_id: UUID
     requirement: Requirement
-    recognized_credits: Decimal
+    recognized_credits: Decimal | None
+    grading_basis: GradingBasis = "unspecified"
     position: int
 
 
@@ -242,7 +243,8 @@ class AcademicLegacyCurriculumCourse(BaseModel):
     course_version: int
     course_name: str
     course_code: str
-    credits: Decimal
+    credits: Decimal | None
+    grading_basis: GradingBasis = "unspecified"
     legacy_category: str
     legacy_required: bool
 
@@ -277,7 +279,14 @@ class AcademicCurriculumList(BaseModel):
 class AcademicNewCourse(StrictModel):
     name: Label
     code: SchoolCourseCode = ""
-    credits: Credits
+    credits: Credits | None = None
+    grading_basis: GradingBasis = "unspecified"
+
+    @model_validator(mode="after")
+    def credit_state(self):
+        if self.credits is None and self.grading_basis != "pass_fail":
+            raise ValueError("Only P/F courses can have unconfirmed credits")
+        return self
 
 
 class AcademicCourseEntryCreate(StrictModel):
@@ -288,7 +297,7 @@ class AcademicCourseEntryCreate(StrictModel):
     new_course: AcademicNewCourse | None = None
     classification_node_id: UUID
     requirement: Requirement
-    recognized_credits: Credits
+    recognized_credits: Credits | None = None
 
     @model_validator(mode="after")
     def exactly_one_source(self):

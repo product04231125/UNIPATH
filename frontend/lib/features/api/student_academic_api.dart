@@ -40,16 +40,18 @@ class AcademicStudentCourse {
       classificationId = json['classification_node_id'] as String,
       classificationLabel = json['classification_label'] as String? ?? '',
       requirement = json['requirement'] as String,
-      credits = json['recognized_credits'].toString();
+      credits = json['recognized_credits']?.toString() ?? '',
+      gradingBasis = json['grading_basis'] as String? ?? 'unspecified';
   final String id,
       name,
       code,
       classificationId,
       classificationLabel,
       requirement,
-      credits;
+      credits,
+      gradingBasis;
   String get label =>
-      '$name · $code · $classificationLabel · $credits학점 · ${requirement == 'required'
+      '$name · $code · $classificationLabel · ${gradingBasis == 'pass_fail' ? 'P/F · ' : ''}${credits.isEmpty ? '학점 미확인' : '$credits학점'} · ${requirement == 'required'
           ? '필수'
           : requirement == 'elective'
           ? '선택'

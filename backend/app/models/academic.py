@@ -63,9 +63,16 @@ class Course(CatalogRecord, Base):
             postgresql_where=text("code <> ''"),
         ),
         CheckConstraint("credits >= 0 AND credits <= 100", name="credits"),
+        CheckConstraint(
+            "grading_basis IN ('unspecified','graded','pass_fail')", name="grading_basis"
+        ),
+        CheckConstraint("credits IS NOT NULL OR grading_basis = 'pass_fail'", name="known_credits"),
     )
     code: Mapped[str] = mapped_column(String(64), default="", server_default="")
-    credits: Mapped[Decimal] = mapped_column(Numeric(8, 3))
+    credits: Mapped[Decimal | None] = mapped_column(Numeric(8, 3))
+    grading_basis: Mapped[str] = mapped_column(
+        String(16), default="unspecified", server_default="unspecified"
+    )
 
 
 class CurriculumCourse(CatalogRecord, Base):

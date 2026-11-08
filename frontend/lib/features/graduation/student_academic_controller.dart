@@ -46,6 +46,7 @@ String academicEvidenceReason(String reason) =>
       'multiple_major_policy_required': '전공 간 중복 인정 정책 확인 필요',
       'retake_selection_required': '재수강 중 산입 기록을 선택하세요.',
       'earned_credits_required': '취득학점 미확인',
+      'recognized_credits_required': '학교 인정학점 미확인',
       'course_link_required': '교육과정 과목 연결 필요',
     }[reason] ??
     '산입 근거를 확인하세요.';

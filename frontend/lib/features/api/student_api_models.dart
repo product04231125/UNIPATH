@@ -943,7 +943,7 @@ class StudentCoursePublicView implements StudentPayload {
         name: value['name'] as String,
         institutionId: value['institution_id'] as String,
         code: value['code'] as String,
-        credits: _decimal(value['credits']),
+        credits: value['credits'] == null ? '' : _decimal(value['credits']),
       );
   @override
   Map<String, Object?> toJson() => {

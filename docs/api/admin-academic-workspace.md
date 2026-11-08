@@ -110,3 +110,13 @@ academic_requirement_department_refs / track_refs / node_refs를 추가한다.
 않는다. 교육과정 개정에는 이름·번호·인정학점·분류를 독립적으로 보존한다.
 0019는 기존 번호·내부 ID·연결을 바꾸지 않는다. 번호 없는 과목이 남아 있을 때는
 데이터 삭제 없이 이전 제약으로 되돌릴 수 없으므로 downgrade를 거부한다.
+
+P/F는 학점이 아니라 평가 방식이다. 과목의 `grading_basis`는 `unspecified`,
+`graded`, `pass_fail`이며 교육과정 개정에도 당시 값을 보존한다. 기존 과목은
+`unspecified`로 유지한다. `pass_fail`일 때 과목 `credits`와 교육과정
+`recognized_credits`를 숫자 또는 `null`로 저장할 수 있다. `null`은 학점 미확인이며
+명시적인 0학점과 다르다. 일반 과목에는 숫자 학점을 요구한다. 학생 집계는
+인정학점이 미확인이면 `recognized_credits_required`로 표시하고 확정·참고 합계에
+포함하지 않는다. P/F 표시나 성적 문자열만으로 이수를 자동 확정하지 않는다.
+0020은 기존 숫자 학점을 변경하지 않으며, 새 평가 정보나 미확인 학점이 존재하면
+손실을 막기 위해 downgrade를 거부한다.

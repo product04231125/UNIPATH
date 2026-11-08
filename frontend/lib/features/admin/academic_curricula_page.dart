@@ -52,6 +52,7 @@ class AcademicCurriculaPageState extends State<AcademicCurriculaPage> {
       _node = '',
       _requirement = 'required',
       _legacy = '';
+  String _gradingBasis = 'unspecified';
   String? _error, _message;
   String? _editingCourse;
   bool _loading = true, _loaded = false;
@@ -347,7 +348,8 @@ class AcademicCurriculaPageState extends State<AcademicCurriculaPage> {
       return;
     }
     final amount = double.tryParse(_recognized.text);
-    if (amount == null || !amount.isFinite || amount < 0 || amount > 100) {
+    if (!(_gradingBasis == 'pass_fail' && _recognized.text.trim().isEmpty) &&
+        (amount == null || !amount.isFinite || amount < 0 || amount > 100)) {
       setState(() => _error = '인정학점을 0~100 범위로 입력하세요.');
       return;
     }
@@ -357,7 +359,9 @@ class AcademicCurriculaPageState extends State<AcademicCurriculaPage> {
         row.addAll({
           'classification_node_id': _node,
           'requirement': _requirement,
-          'recognized_credits': _recognized.text,
+          'recognized_credits': _recognized.text.trim().isEmpty
+              ? null
+              : _recognized.text,
         });
         _editingCourse = null;
         _course = '';
@@ -390,11 +394,14 @@ class AcademicCurriculaPageState extends State<AcademicCurriculaPage> {
           'new_course': {
             'name': _courseName.text.trim(),
             'code': _courseCode.text.trim(),
-            'credits': _credits.text,
+            'credits': _credits.text.trim().isEmpty ? null : _credits.text,
+            'grading_basis': _gradingBasis,
           },
         'classification_node_id': _node,
         'requirement': _requirement,
-        'recognized_credits': _recognized.text,
+        'recognized_credits': _recognized.text.trim().isEmpty
+            ? null
+            : _recognized.text,
       },
     );
   }
@@ -534,6 +541,7 @@ class AcademicCurriculaPageState extends State<AcademicCurriculaPage> {
                             setState(() {
                               _adopt(null);
                               _legacy = '';
+                              _gradingBasis = 'unspecified';
                             });
                           }
                         },
@@ -726,7 +734,7 @@ class AcademicCurriculaPageState extends State<AcademicCurriculaPage> {
                     ].join(' · '),
                   ),
                   subtitle: Text(
-                    '${_nodeLabel(row['classification_node_id'] as String)} · ${requirements[row['requirement']]} · ${row['recognized_credits']}학점',
+                    '${_nodeLabel(row['classification_node_id'] as String)} · ${requirements[row['requirement']]} · ${row['grading_basis'] == 'pass_fail' ? 'P/F · ' : ''}${row['recognized_credits'] == null ? '학점 미확인' : '${row['recognized_credits']}학점'}',
                   ),
                   trailing: !_editable
                       ? null
@@ -744,7 +752,12 @@ class AcademicCurriculaPageState extends State<AcademicCurriculaPage> {
                                       _requirement =
                                           row['requirement'] as String;
                                       _recognized.text =
-                                          '${row['recognized_credits']}';
+                                          row['recognized_credits']
+                                              ?.toString() ??
+                                          '';
+                                      _gradingBasis =
+                                          row['grading_basis'] as String? ??
+                                          'unspecified';
                                     }),
                               child: const Text('수정'),
                             ),
@@ -814,6 +827,10 @@ class AcademicCurriculaPageState extends State<AcademicCurriculaPage> {
                         final row = _records(AdminKind.course)
                             .where((r) => r.id == id)
                             .firstOrNull;
+                        _gradingBasis =
+                            row?.value('gradingBasis').isNotEmpty == true
+                            ? row!.value('gradingBasis')
+                            : 'unspecified';
                         if (row != null) {
                           _credits.text = row.value('credits');
                           _recognized.text = row.value('credits');
@@ -844,7 +861,20 @@ class AcademicCurriculaPageState extends State<AcademicCurriculaPage> {
                       ),
                     ],
                   ),
-                  _number('과목 기본 학점', _credits),
+                  AnchoredSelectField<String>(
+                    label: '평가 방식',
+                    externalLabel: true,
+                    value: _gradingBasis,
+                    options: const [
+                      SelectOption('unspecified', '미지정'),
+                      SelectOption('graded', '등급 평가'),
+                      SelectOption('pass_fail', 'P/F'),
+                    ],
+                    onChanged: (value) {
+                      if (!disabled) setState(() => _gradingBasis = value);
+                    },
+                  ),
+                  _number('과목 기본 학점 (P/F 미확인 시 비움)', _credits),
                 ],
                 AnchoredSelectField<String>(
                   externalLabel: true,

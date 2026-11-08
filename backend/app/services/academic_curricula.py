@@ -76,6 +76,7 @@ def legacy_courses(db, revision):
             course_name=course.name,
             course_code=course.code,
             credits=course.credits,
+            grading_basis=course.grading_basis,
             legacy_category=link.category,
             legacy_required=link.required,
         )
@@ -194,6 +195,11 @@ def replace(db, request, identity, record_id, payload):
                 item.expected_course_version,
                 f"courses.{index}.course_id",
             )
+            if item.recognized_credits is None and course.grading_basis != "pass_fail":
+                invalid(
+                    f"courses.{index}.recognized_credits",
+                    "Only P/F courses can have unconfirmed credits",
+                )
             entry_node(
                 nodes, item.classification_node_id, f"courses.{index}.classification_node_id"
             )
@@ -214,6 +220,7 @@ def replace(db, request, identity, record_id, payload):
                     classification_node_id=item.classification_node_id,
                     requirement=item.requirement,
                     recognized_credits=item.recognized_credits,
+                    grading_basis=course.grading_basis,
                     position=item.position,
                 )
             )
@@ -289,6 +296,8 @@ def add_course(db, request, identity, record_id, payload):
                 payload.expected_course_version,
                 "course_id",
             )
+        if payload.recognized_credits is None and course.grading_basis != "pass_fail":
+            invalid("recognized_credits", "Only P/F courses can have unconfirmed credits")
         existing = courses(db, revision)
         if any(row.course_id == course.id for row in existing):
             raise academic.failure("이 교육과정에 이미 연결된 과목입니다.")
@@ -304,6 +313,7 @@ def add_course(db, request, identity, record_id, payload):
                 classification_node_id=payload.classification_node_id,
                 requirement=payload.requirement,
                 recognized_credits=payload.recognized_credits,
+                grading_basis=course.grading_basis,
                 position=max([row.position for row in existing], default=-1) + 1,
             )
         )
@@ -391,6 +401,7 @@ def copy_revision(db, request, identity, record_id, payload):
                     classification_node_id=row.classification_node_id,
                     requirement=row.requirement,
                     recognized_credits=row.recognized_credits,
+                    grading_basis=row.grading_basis,
                     position=row.position,
                 )
             )

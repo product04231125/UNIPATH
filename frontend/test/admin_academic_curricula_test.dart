@@ -81,6 +81,7 @@ class CurriculumTransport implements ApiGateway {
             'course_version': 1,
             'course_name': (body!['new_course'] as Map)['name'],
             'course_code': (body['new_course'] as Map)['code'],
+            'grading_basis': (body['new_course'] as Map)['grading_basis'],
             'classification_node_id': body['classification_node_id'],
             'requirement': body['requirement'],
             'recognized_credits': body['recognized_credits'],
@@ -95,7 +96,11 @@ class CurriculumTransport implements ApiGateway {
 }
 
 void main() {
-  for (final schoolCode in ['SHARED-1', '']) {
+  for (final (schoolCode, passFail, credits) in [
+    ('SHARED-1', false, '3.25'),
+    ('', false, '3.25'),
+    ('', true, ''),
+  ]) {
     testWidgets(
       'new course registration uses one shared classification and preserves uncertain retry',
       (tester) async {
@@ -126,8 +131,18 @@ void main() {
 
         await enter('curriculum-new-course-name', '새 공통 과목');
         await enter('curriculum-new-course-code', schoolCode);
-        await enter('curriculum-source-credits', '3.25');
-        await enter('curriculum-recognized-credits', '3.25');
+        await enter('curriculum-source-credits', credits);
+        await enter('curriculum-recognized-credits', credits);
+        if (passFail) {
+          final grading = find.byWidgetPredicate(
+            (w) => w is AnchoredSelectField<String> && w.label == '평가 방식',
+          );
+          await tester.ensureVisible(grading);
+          await tester.tap(grading);
+          await tester.pumpAndSettle();
+          await tester.tap(find.widgetWithText(MenuItemButton, 'P/F'));
+          await tester.pumpAndSettle();
+        }
         final selector = find.byWidgetPredicate(
           (w) => w is AnchoredSelectField<String> && w.label == '이수구분·세부분류',
         );
@@ -159,6 +174,18 @@ void main() {
           find.text(schoolCode.isEmpty ? '새 공통 과목' : '새 공통 과목 · $schoolCode'),
           findsOneWidget,
         );
+        if (passFail) {
+          expect(transport.writes.last['recognized_credits'], isNull);
+          expect(
+            (transport.writes.last['new_course'] as Map)['credits'],
+            isNull,
+          );
+          expect(
+            (transport.writes.last['new_course'] as Map)['grading_basis'],
+            'pass_fail',
+          );
+          expect(find.textContaining('P/F · 학점 미확인'), findsOneWidget);
+        }
         expect(tester.takeException(), isNull);
       },
     );

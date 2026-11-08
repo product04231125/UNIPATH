@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/features/api/student_academic_api.dart';
+import 'package:university_path_frontend/features/api/student_api_models.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/graduation/student_academic_controller.dart';
 import 'package:university_path_frontend/features/graduation/student_academic_page.dart';
@@ -413,6 +414,29 @@ Future<void> choose(
 }
 
 void main() {
+  test('catalog P/F unknown credits decode without a numeric value', () {
+    final course = StudentCoursePublicView.fromJson({
+      'id': 'course',
+      'version': 1,
+      'name': 'P/F 실습',
+      'institution_id': 'school',
+      'code': '',
+      'credits': null,
+      'grading_basis': 'pass_fail',
+    });
+    expect(course.credits, isEmpty);
+    final academic = AcademicStudentCourse({
+      'id': 'entry',
+      'course_name': 'P/F 실습',
+      'course_code': '',
+      'classification_node_id': 'node',
+      'requirement': 'elective',
+      'grading_basis': 'pass_fail',
+      'recognized_credits': null,
+    });
+    expect(academic.label, contains('P/F · 학점 미확인'));
+    expect(academic.label, isNot(contains('0학점')));
+  });
   setUpAll(() async {
     if (!capture) return;
     await (FontLoader('Pretendard')..addFont(

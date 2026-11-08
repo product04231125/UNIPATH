@@ -44272,17 +44272,29 @@
               {
                 "type": "string",
                 "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Credits"
+          },
+          "grading_basis": {
+            "type": "string",
+            "enum": [
+              "unspecified",
+              "graded",
+              "pass_fail"
+            ],
+            "title": "Grading Basis",
+            "default": "unspecified"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "name",
-          "institution_id",
-          "credits"
+          "institution_id"
         ],
         "title": "CourseCreate"
       },
@@ -44365,9 +44377,26 @@
             "default": ""
           },
           "credits": {
+            "title": "Credits",
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "grading_basis": {
             "type": "string",
-            "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)",
-            "title": "Credits"
+            "enum": [
+              "unspecified",
+              "graded",
+              "pass_fail"
+            ],
+            "title": "Grading Basis",
+            "default": "unspecified"
           }
         },
         "additionalProperties": false,
@@ -44376,8 +44405,7 @@
           "id",
           "version",
           "name",
-          "institution_id",
-          "credits"
+          "institution_id"
         ],
         "title": "CoursePublicView"
       },
@@ -44820,9 +44848,22 @@
               {
                 "type": "string",
                 "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Credits"
+          },
+          "grading_basis": {
+            "type": "string",
+            "enum": [
+              "unspecified",
+              "graded",
+              "pass_fail"
+            ],
+            "title": "Grading Basis",
+            "default": "unspecified"
           }
         },
         "additionalProperties": false,
@@ -44830,8 +44871,7 @@
         "required": [
           "expected_version",
           "name",
-          "institution_id",
-          "credits"
+          "institution_id"
         ],
         "title": "CourseUpdate"
       },
@@ -44890,9 +44930,26 @@
             "default": ""
           },
           "credits": {
+            "title": "Credits",
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "grading_basis": {
             "type": "string",
-            "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)",
-            "title": "Credits"
+            "enum": [
+              "unspecified",
+              "graded",
+              "pass_fail"
+            ],
+            "title": "Grading Basis",
+            "default": "unspecified"
           }
         },
         "additionalProperties": false,
@@ -44905,8 +44962,7 @@
           "created_at",
           "updated_at",
           "name",
-          "institution_id",
-          "credits"
+          "institution_id"
         ],
         "title": "CourseView"
       },
@@ -62421,6 +62477,9 @@
               {
                 "type": "string",
                 "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Recognized Credits"
@@ -62432,8 +62491,7 @@
           "client_id",
           "expected_version",
           "classification_node_id",
-          "requirement",
-          "recognized_credits"
+          "requirement"
         ],
         "title": "AcademicCourseEntryCreate"
       },
@@ -62497,6 +62555,9 @@
               {
                 "type": "string",
                 "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Recognized Credits"
@@ -62514,7 +62575,6 @@
           "expected_course_version",
           "classification_node_id",
           "requirement",
-          "recognized_credits",
           "position"
         ],
         "title": "AcademicCurriculumCourseInput"
@@ -62563,13 +62623,30 @@
             "title": "Requirement"
           },
           "recognized_credits": {
-            "type": "string",
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-            "title": "Recognized Credits"
+            "title": "Recognized Credits",
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "position": {
             "type": "integer",
             "title": "Position"
+          },
+          "grading_basis": {
+            "type": "string",
+            "enum": [
+              "unspecified",
+              "graded",
+              "pass_fail"
+            ],
+            "title": "Grading Basis",
+            "default": "unspecified"
           }
         },
         "type": "object",
@@ -62971,9 +63048,16 @@
             "title": "Course Code"
           },
           "credits": {
-            "type": "string",
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-            "title": "Credits"
+            "title": "Credits",
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "legacy_category": {
             "type": "string",
@@ -62982,6 +63066,16 @@
           "legacy_required": {
             "type": "boolean",
             "title": "Legacy Required"
+          },
+          "grading_basis": {
+            "type": "string",
+            "enum": [
+              "unspecified",
+              "graded",
+              "pass_fail"
+            ],
+            "title": "Grading Basis",
+            "default": "unspecified"
           }
         },
         "type": "object",
@@ -63020,16 +63114,28 @@
               {
                 "type": "string",
                 "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Credits"
+          },
+          "grading_basis": {
+            "type": "string",
+            "enum": [
+              "unspecified",
+              "graded",
+              "pass_fail"
+            ],
+            "title": "Grading Basis",
+            "default": "unspecified"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "name",
-          "credits"
+          "name"
         ],
         "title": "AcademicNewCourse"
       },
@@ -64643,9 +64749,16 @@
             "title": "Requirement"
           },
           "recognized_credits": {
-            "type": "string",
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-            "title": "Recognized Credits"
+            "title": "Recognized Credits",
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "position": {
             "type": "integer",
@@ -64654,6 +64767,16 @@
           "classification_label": {
             "type": "string",
             "title": "Classification Label"
+          },
+          "grading_basis": {
+            "type": "string",
+            "enum": [
+              "unspecified",
+              "graded",
+              "pass_fail"
+            ],
+            "title": "Grading Basis",
+            "default": "unspecified"
           }
         },
         "type": "object",

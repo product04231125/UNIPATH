@@ -211,7 +211,10 @@ class AcademicCurriculumCourse(Base):
     course_code: Mapped[str] = mapped_column(String(64))
     classification_node_id: Mapped[UUID] = mapped_column()
     requirement: Mapped[str] = mapped_column(String(20))
-    recognized_credits: Mapped[Decimal] = mapped_column(Numeric(8, 3))
+    recognized_credits: Mapped[Decimal | None] = mapped_column(Numeric(8, 3))
+    grading_basis: Mapped[str] = mapped_column(
+        String(16), default="unspecified", server_default="unspecified"
+    )
     position: Mapped[int] = mapped_column(Integer)
     __table_args__ = (
         UniqueConstraint("id", "institution_id"),
@@ -240,6 +243,12 @@ class AcademicCurriculumCourse(Base):
         ),
         CheckConstraint("course_version >= 1 AND position >= 0", name="versions"),
         CheckConstraint("recognized_credits >= 0 AND recognized_credits <= 100", name="credits"),
+        CheckConstraint(
+            "grading_basis IN ('unspecified','graded','pass_fail')", name="grading_basis"
+        ),
+        CheckConstraint(
+            "recognized_credits IS NOT NULL OR grading_basis = 'pass_fail'", name="known_credits"
+        ),
         CheckConstraint(
             "requirement IN ('required','elective','not_specified')", name="requirement"
         ),

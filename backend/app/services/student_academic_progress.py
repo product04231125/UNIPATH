@@ -112,6 +112,8 @@ def progress(db, owner):
                         state, reason = "needs_review", "multiple_major_policy_required"
                     elif len({link.course_record_id for link in by_course[entry.course_id]}) > 1:
                         state, reason = "needs_review", "retake_selection_required"
+                    elif entry.recognized_credits is None:
+                        state, reason = "needs_review", "recognized_credits_required"
                     elif link.earned_credits is None:
                         state, reason = "needs_review", "earned_credits_required"
                     else:
@@ -119,7 +121,11 @@ def progress(db, owner):
                         amount = min(link.earned_credits, entry.recognized_credits)
                         included[record.id] = amount
                     uncertain |= state == "needs_review"
-                    if state == "needs_review" and link.earned_credits is not None:
+                    if (
+                        state == "needs_review"
+                        and link.earned_credits is not None
+                        and entry.recognized_credits is not None
+                    ):
                         amount = min(link.earned_credits, entry.recognized_credits)
                     evidence.append(
                         dto.StudentAcademicCreditEvidence(
