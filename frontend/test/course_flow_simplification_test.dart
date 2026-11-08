@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/api/student_api.dart';
-import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/records/course/course_page.dart';
 import 'package:university_path_frontend/features/records/personal_record_form.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
@@ -17,38 +16,6 @@ import 'package:university_path_frontend/app.dart';
 import 'student_academic_integration_test.dart' as academic;
 import 'remote_personal_ui_test.dart' as remote;
 import 'support/personal_gateway.dart';
-import 'support/auth_fixture.dart';
-
-class BulkGateway extends PersonalGateway {
-  Map<String, Object?>? firstBody;
-  bool loseResponse = true;
-  @override
-  Future<Map<String, dynamic>?> request(
-    String method,
-    String path, [
-    Map<String, Object?>? body,
-  ]) async {
-    if (path == 'me/academic-contexts') {
-      return {
-        'owner_id': userId,
-        'institution_id': 'school',
-        'version': 1,
-        'contexts': [],
-        'issues': [],
-      };
-    }
-    if (path == 'me/course-records/resolve-academic-links') {
-      calls.add((method, path, body));
-      firstBody ??= Map.of(body!);
-      if (loseResponse) {
-        loseResponse = false;
-        throw const AuthFailure('연결 결과 미확인', status: 503);
-      }
-      return {'owner_id': userId, 'linked_count': 1, 'unresolved': []};
-    }
-    return super.request(method, path, body);
-  }
-}
 
 void main() {
   setUpAll(() async {
@@ -186,36 +153,28 @@ void main() {
     },
   );
   testWidgets(
-    'bulk lost response retries the identical command and freezes edits',
+    'captured course records stay editable without academic-code linking',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1440, 1000));
       addTearDown(() => tester.binding.setSurfaceSize(null));
-      final gateway = BulkGateway();
+      final gateway = PersonalGateway();
       await tester.pumpWidget(
         remote.scope(gateway, CoursePage(studentApi: gateway.api)),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('기존 과목 일괄 연결'));
-      await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<TextButton>(find.widgetWithText(TextButton, '수정'))
-            .onPressed,
-        isNull,
-      );
-      await tester.tap(find.text('같은 요청으로 연결 다시 확인'));
-      await tester.pumpAndSettle();
-      final writes = gateway.calls
-          .where((c) => c.$2 == 'me/course-records/resolve-academic-links')
-          .toList();
-      expect(writes, hasLength(2));
-      expect(writes[0].$3, writes[1].$3);
-      expect(find.textContaining('1과목 연결 완료'), findsOneWidget);
+      expect(find.text('합성 course'), findsOneWidget);
+      expect(find.text('기존 과목 일괄 연결'), findsNothing);
+      expect(find.text('교육과정 과목 확인'), findsNothing);
+      expect(find.text('학점 산입 연결'), findsNothing);
       expect(
         tester
             .widget<TextButton>(find.widgetWithText(TextButton, '수정'))
             .onPressed,
         isNotNull,
+      );
+      expect(
+        gateway.calls.any((call) => call.$2.startsWith('me/academic-')),
+        isFalse,
       );
       expect(tester.takeException(), isNull);
     },

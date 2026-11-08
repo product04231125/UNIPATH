@@ -17,7 +17,6 @@ import 'personal_repository_scope.dart';
 import '../auth/auth_api.dart';
 import '../auth/guest_preview_scope.dart';
 import '../api/student_api.dart';
-import '../api/student_academic_api.dart';
 import 'course/course_status.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/external_link_button.dart';
@@ -78,64 +77,6 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
   Listenable? _importChanges;
   int _loadRevision = 0;
   bool _formOpen = false;
-  bool _resolving = false;
-  Map<String, Object?>? _resolveBody;
-  String? _resolveMessage;
-
-  Future<void> _resolveCourses() async {
-    if (_resolving || widget.studentApi == null) return;
-    if (GuestPreviewScope.isActive(context)) {
-      GuestPreviewScope.showBlockedMessage(context);
-      return;
-    }
-    setState(() {
-      _resolving = true;
-      _resolveMessage = null;
-    });
-    var saved = false;
-    try {
-      final api = StudentAcademicApi.fromStudent(widget.studentApi!);
-      if (_resolveBody == null) {
-        final workspace = await api.workspace();
-        _resolveBody = StudentAcademicApi.freeze({
-          'client_id': PersonalRecord.newId(),
-          'expected_version': workspace.version,
-        });
-      }
-      final result = api.owned(
-        await api.gateway.request(
-          'POST',
-          'me/course-records/resolve-academic-links',
-          _resolveBody,
-        ),
-      );
-      _resolveBody = null;
-      saved = true;
-      if (!mounted) return;
-      setState(
-        () => _resolveMessage =
-            '${result['linked_count']}과목 연결 완료 · ${(result['unresolved'] as List).length}과목은 수정에서 과목을 확인하세요.',
-      );
-      await _repository.load();
-    } catch (e) {
-      if (e is AuthFailure &&
-          [400, 401, 403, 404, 409, 422].contains(e.status)) {
-        _resolveBody = null;
-      }
-      if (mounted) {
-        setState(
-          () => _resolveMessage = saved
-              ? '연결은 완료됐습니다. 목록을 다시 불러오세요.'
-              : e is AuthFailure
-              ? e.message
-              : '연결 결과를 확인하지 못했습니다. 다시 시도하세요.',
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _resolving = false);
-    }
-  }
-
   @override
   void initState() {
     super.initState();
@@ -300,9 +241,6 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                 '${record.value('credits')}학점',
               if (record.value('gradingBasis') == 'pass_fail') 'P/F',
               courseStatusLabel(record.value('completion')),
-              if (_repository.isServerBacked &&
-                  record.value('academicEntryId').isEmpty)
-                '교육과정 과목 확인',
             ].where((v) => v.isNotEmpty).join(' · ')
           : _fields
                 .where(
@@ -381,16 +319,12 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               label: field.label,
             ),
           TextButton(
-            onPressed: _resolving || _resolveBody != null
-                ? null
-                : () => _showForm(record: record),
+            onPressed: () => _showForm(record: record),
             child: Text('수정'),
           ),
           TextButton(
             style: destructiveButtonStyle(context),
-            onPressed: _resolving || _resolveBody != null
-                ? null
-                : () => _delete(record),
+            onPressed: () => _delete(record),
             child: Text('삭제'),
           ),
         ],
@@ -464,20 +398,6 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               if (widget.kind == PersonalRecordKind.course) ...[
                 const SizedBox(height: 12),
                 const Text('이수 완료 과목의 학점이 자동 반영됩니다. 변경은 각 과목의 수정에서 관리하세요.'),
-                if (widget.studentApi != null &&
-                    _repository.isServerBacked &&
-                    !GuestPreviewScope.isActive(context))
-                  TextButton(
-                    onPressed: _resolving ? null : _resolveCourses,
-                    child: Text(
-                      _resolving
-                          ? '기존 과목 연결 중…'
-                          : _resolveBody != null
-                          ? '같은 요청으로 연결 다시 확인'
-                          : '기존 과목 일괄 연결',
-                    ),
-                  ),
-                if (_resolveMessage != null) Text(_resolveMessage!),
                 const SizedBox(height: 24),
                 Wrap(
                   spacing: 16,
@@ -553,13 +473,13 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       actions: [
         if (canAdd) ...[
           FilledButton.icon(
-            onPressed: _resolving || _resolveBody != null ? null : _showForm,
+            onPressed: _showForm,
             icon: const Icon(Icons.add),
             label: Text(widget.addLabel),
           ),
           OutlinedButton(
             key: const Key('record-menu-load-draft'),
-            onPressed: _resolving || _resolveBody != null ? null : _loadDraft,
+            onPressed: _loadDraft,
             child: const Text('불러오기'),
           ),
         ],
