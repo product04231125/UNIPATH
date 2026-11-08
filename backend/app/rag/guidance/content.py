@@ -84,7 +84,8 @@ def _build(signature):
                         {
                             "type": "calendar_event",
                             "title": event["title"],
-                            "body": f"{event['date_text']} — {event['title']}",
+                            # Extra explanation only; title and date_text carry the rest.
+                            "body": event.get("description", ""),
                             "start_date": event["start_date"],
                             "end_date": event["end_date"],
                             "date_text": event["date_text"],

@@ -26,6 +26,8 @@ class GuidanceReason(StrEnum):
     UNKNOWN_NODE = "unknown_node"
     APPROVED_CONTENT_NOT_CONFIGURED = "approved_content_not_configured"
     VERIFIED_AUDIT_REQUIRED = "verified_audit_required"
+    # A graduation item without an audit: read its criteria from /catalog/rule-programs.
+    GENERAL_CRITERIA = "general_criteria"
     AUDIT_RENDERED = "audit_rendered"
     INVALID_AUDIT_PROJECTION = "invalid_audit_projection"
     CALENDAR_SNAPSHOT = "calendar_snapshot"
@@ -109,6 +111,8 @@ class GuidanceQuantities(StrictModel):
 class GuidanceCard(StrictModel):
     type: GuidanceCardType
     title: str
+    # Card text. For calendar_event it is extra explanation only and is empty when the
+    # source has none; show title and date_text instead of repeating them.
     body: str
     sources: list[GuidanceSource] = Field(default_factory=list)
     start_date: str | None = None
@@ -183,5 +187,17 @@ class AcademicGuidance(StrictModel):
     integration_state: Literal["connected", "adapter_not_connected"] | None = None
     missing_fields: list[str] = Field(default_factory=list)
     audit: GuidanceAudit | None = None
+    # With reason=general_criteria: the rule kind to show from /catalog/rule-programs.
+    criteria_kind: (
+        Literal[
+            "minimum_credits",
+            "required_courses",
+            "minimum_volunteer_hours",
+            "any_certificate",
+            "thesis",
+            "manual_review",
+        ]
+        | None
+    ) = None
     issues: list[AuditIssue] = Field(default_factory=list)
     notice: str | None = None

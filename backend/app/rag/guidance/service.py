@@ -38,13 +38,15 @@ NODES = {
     "tuition": ("등록금", "home", "unavailable"),
     "dormitory": ("기숙사", "home", "unavailable"),
     "departments": ("학부·학과", "home", "unavailable"),
+    # summary is the student's own audit; the others are general criteria first and show
+    # one item of an audit only when the caller names a verified audit.
     "summary": ("내 졸업요건 요약", "graduation", "audit"),
-    "credits": ("이수학점", "graduation", "audit"),
-    "courses": ("필수과목", "graduation", "audit"),
-    "volunteer": ("봉사", "graduation", "audit"),
-    "certificate": ("자격", "graduation", "audit"),
-    "thesis": ("논문", "graduation", "audit"),
-    "review": ("추가 확인 항목", "graduation", "audit"),
+    "credits": ("이수학점", "graduation", "criteria"),
+    "courses": ("필수과목", "graduation", "criteria"),
+    "volunteer": ("봉사", "graduation", "criteria"),
+    "certificate": ("자격", "graduation", "criteria"),
+    "thesis": ("논문", "graduation", "criteria"),
+    "review": ("추가 확인 항목", "graduation", "criteria"),
 }
 NOTICE = "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
 
@@ -301,7 +303,19 @@ def respond(node_id="home", *, audit=None):
             reason="approved_content_not_configured",
             message="검토된 안내 자료를 준비 중입니다. 현재 이 항목의 정보를 제공할 수 없습니다.",
         )
-    elif mode == "audit":
+    elif mode == "criteria" and audit is None:
+        # General criteria live in the school's approved rule programs (GET
+        # /catalog/rule-programs). Nothing personal is required to read them.
+        response.update(
+            reason="general_criteria",
+            message=(
+                "이 항목의 기준은 학교가 승인한 졸업 기준에서 안내합니다. "
+                "내 충족 여부는 '내 졸업요건 요약'에서 확인해 주세요."
+            ),
+            criteria_kind=KINDS[node_id],
+        )
+        response["buttons"].insert(0, {**_button("summary"), "label": "내 충족 여부 보기"})
+    elif mode in ("audit", "criteria"):
         if audit is None:
             response.update(
                 state="needs_input",

@@ -583,6 +583,7 @@ class AcademicGuidance implements AcademicGuidancePayload {
     this.integrationState,
     this.missingFields = const [],
     this.audit,
+    this.criteriaKind,
     this.issues = const [],
     this.notice,
   });
@@ -607,6 +608,7 @@ class AcademicGuidance implements AcademicGuidancePayload {
   final String? integrationState;
   final List<String> missingFields;
   final GuidanceAudit? audit;
+  final String? criteriaKind;
   final List<GuidanceAuditIssue> issues;
   final String? notice;
   factory AcademicGuidance.fromJson(Map<String, dynamic> value) =>
@@ -626,6 +628,7 @@ class AcademicGuidance implements AcademicGuidancePayload {
           "unknown_node",
           "approved_content_not_configured",
           "verified_audit_required",
+          "general_criteria",
           "audit_rendered",
           "invalid_audit_projection",
           "calendar_snapshot",
@@ -708,6 +711,16 @@ class AcademicGuidance implements AcademicGuidancePayload {
             : GuidanceAudit.fromJson(
                 Map<String, dynamic>.from(value['audit'] as Map),
               ),
+        criteriaKind: value['criteria_kind'] == null
+            ? null
+            : _choice(value['criteria_kind'], [
+                "minimum_credits",
+                "required_courses",
+                "minimum_volunteer_hours",
+                "any_certificate",
+                "thesis",
+                "manual_review",
+              ]),
         issues: value['issues'] == null
             ? const []
             : List.unmodifiable(
@@ -742,6 +755,7 @@ class AcademicGuidance implements AcademicGuidancePayload {
     'integration_state': integrationState,
     'missing_fields': missingFields.map((v) => v).toList(),
     'audit': audit?.toJson(),
+    'criteria_kind': criteriaKind,
     'issues': issues.map((v) => v.toJson()).toList(),
     'notice': notice,
   };
