@@ -8,6 +8,7 @@ import 'assistant_conversation.dart';
 import 'ai_record_catalog.dart';
 import '../api/academic_guidance_models.dart';
 import '../api/graduation_models.dart';
+import '../api/rule_program_models.dart';
 import '../auth/guidance_asset_gateway.dart';
 
 Map<String, dynamic> _contextSnapshot(SchoolQueryContext context) => {
@@ -51,6 +52,8 @@ Map<String, dynamic> conversationSnapshot(
   'records_error': conversation.recordsError,
   'submission_error': conversation.submissionError,
   'guidance': conversation.guidance?.toJson(),
+  'guidance_criteria': conversation.guidanceCriteria?.toJson(),
+  'criteria_error': conversation.criteriaError,
   'guidance_open': conversation.guidanceOpen,
   'guidance_loading': conversation.guidanceLoading,
   'guidance_error': conversation.guidanceError,
@@ -328,6 +331,12 @@ class RemoteConversation extends AssistantConversation {
         : AcademicGuidance.fromJson(
             Map<String, dynamic>.from(value['guidance'] as Map),
           );
+    guidanceCriteria = value['guidance_criteria'] == null
+        ? null
+        : OfficialProgramSelection.fromJson(
+            Map<String, dynamic>.from(value['guidance_criteria'] as Map),
+          );
+    criteriaError = value['criteria_error'] as String?;
     guidanceOpen = value['guidance_open'] == true;
     guidanceLoading = value['guidance_loading'] == true;
     guidanceError = value['guidance_error'] as String?;

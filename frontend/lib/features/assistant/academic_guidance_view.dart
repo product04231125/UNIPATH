@@ -6,6 +6,7 @@ import '../../shared/widgets/external_link_button.dart';
 import '../../shared/widgets/content_scroll_view.dart';
 import 'assistant_conversation.dart';
 import 'guidance_asset_open.dart';
+import 'guidance_criteria_view.dart';
 
 class AcademicGuidanceView extends StatelessWidget {
   const AcademicGuidanceView({super.key, required this.conversation});
@@ -55,55 +56,59 @@ class AcademicGuidanceView extends StatelessWidget {
             node.title ?? '학사 안내',
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          for (final warning in node.warnings)
-            Text(
-              warning,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          if (node.snapshotStale == true)
-            const Text('수집한 지 오래된 자료입니다. 원문의 최신 내용을 확인하세요.'),
-          if (node.fetchedAt != null) Text('수집 시각: ${node.fetchedAt}'),
-          Text(node.message),
-          if (node.state == 'unavailable') const Text('자료 준비 중'),
-          if (node.reason == 'verified_audit_required' ||
-              node.audit != null) ...[
-            TextButton(
-              onPressed: conversation.auditsLoading
-                  ? null
-                  : conversation.refreshAudits,
-              child: const Text('본인 공식 감사 이력 읽기'),
-            ),
-            if (conversation.auditsLoading) const LinearProgressIndicator(),
-            for (final audit in conversation.auditOptions)
-              Material(
-                type: MaterialType.transparency,
-                child: ListTile(
-                  title: Text(
-                    '${audit.evaluatedOn} · ${const {'satisfied': '충족', 'not_satisfied': '미충족', 'needs_review': '확인 필요', 'not_applicable': '적용 기준 없음'}[audit.status] ?? '상태 확인 필요'}',
+          if (conversation.showingCriteria)
+            GuidanceCriteriaView(conversation: conversation)
+          else ...[
+            for (final warning in node.warnings)
+              Text(
+                warning,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            if (node.snapshotStale == true)
+              const Text('수집한 지 오래된 자료입니다. 원문의 최신 내용을 확인하세요.'),
+            if (node.fetchedAt != null) Text('수집 시각: ${node.fetchedAt}'),
+            Text(node.message),
+            if (node.state == 'unavailable') const Text('자료 준비 중'),
+            if (node.reason == 'verified_audit_required' ||
+                node.audit != null) ...[
+              TextButton(
+                onPressed: conversation.auditsLoading
+                    ? null
+                    : conversation.refreshAudits,
+                child: const Text('저장된 내 졸업요건 결과 불러오기'),
+              ),
+              if (conversation.auditsLoading) const LinearProgressIndicator(),
+              for (final audit in conversation.auditOptions)
+                Material(
+                  type: MaterialType.transparency,
+                  child: ListTile(
+                    title: Text(
+                      '점검 기준일 ${audit.evaluatedOn} · ${const {'satisfied': '충족', 'not_satisfied': '미충족', 'needs_review': '확인 필요', 'not_applicable': '적용 기준 없음'}[audit.status] ?? '상태 확인 필요'}',
+                    ),
+                    selected: conversation.guidanceAuditId == audit.id,
+                    leading: Icon(
+                      conversation.guidanceAuditId == audit.id
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                    ),
+                    onTap: conversation.guidanceLoading
+                        ? null
+                        : () => conversation.selectAudit(audit.id),
                   ),
-                  selected: conversation.guidanceAuditId == audit.id,
-                  leading: Icon(
-                    conversation.guidanceAuditId == audit.id
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off,
-                  ),
-                  onTap: conversation.guidanceLoading
-                      ? null
-                      : () => conversation.selectAudit(audit.id),
                 ),
-              ),
-            if (!conversation.auditsLoading &&
-                conversation.auditOptions.isEmpty)
-              const Text(
-                '현재 학업 프로필에 맞는 공식 감사를 선택해야 합니다. 개인 계산 결과는 사용할 수 없습니다.',
-              ),
+              if (!conversation.auditsLoading &&
+                  conversation.auditOptions.isEmpty)
+                const Text(
+                  '현재 학업 프로필에 맞는 공식 감사를 선택해야 합니다. 개인 계산 결과는 사용할 수 없습니다.',
+                ),
+            ],
+            if (node.audit?.currentUsable == false)
+              const Text('재확인 필요 · 과거 기준일의 감사 결과입니다.'),
+            for (final card in node.cards)
+              _GuidanceCard(card: card, conversation: conversation),
+            if (node.source != null) _source(node.source!),
+            if (node.notice != null) Text(node.notice!),
           ],
-          if (node.audit?.currentUsable == false)
-            const Text('재확인 필요 · 과거 기준일의 감사 결과입니다.'),
-          for (final card in node.cards)
-            _GuidanceCard(card: card, conversation: conversation),
-          if (node.source != null) _source(node.source!),
-          if (node.notice != null) Text(node.notice!),
           if (node.workflow != null) ...[
             for (final step in node.workflow!.steps) Text(step),
             if (node.workflow!.id == 'posting')

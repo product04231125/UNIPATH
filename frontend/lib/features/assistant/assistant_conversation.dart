@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'assistant_api.dart';
 import '../api/academic_guidance_models.dart';
 import '../api/guidance_api.dart';
+import '../api/rule_program_api.dart';
+import '../api/rule_program_models.dart';
 import '../auth/auth_api.dart';
 import '../settings/ai_consent_preferences.dart';
 import 'ai_record_catalog.dart';
@@ -57,7 +59,18 @@ class AssistantConversation extends ChangeNotifier {
   final bool registeredOnly;
   final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenCareer;
+  static const criteriaKinds = <String, String>{
+    'credits': 'minimum_credits',
+    'courses': 'required_courses',
+    'volunteer': 'minimum_volunteer_hours',
+    'certificate': 'any_certificate',
+    'thesis': 'thesis',
+    'review': 'manual_review',
+  };
   AcademicGuidance? guidance;
+  OfficialProgramSelection? guidanceCriteria;
+  String? criteriaError;
+  bool get showingCriteria => criteriaKinds.containsKey(guidance?.nodeId);
   bool guidanceOpen = false, guidanceLoading = false, auditsLoading = false;
   String? guidanceError, guidanceAuditId;
   List<GraduationAuditHeader> auditOptions = const [];
@@ -91,9 +104,17 @@ class AssistantConversation extends ChangeNotifier {
     guidanceLoading = true;
     notifyListeners();
     try {
-      final node = await guidanceApi!.node(id, auditId: guidanceAuditId);
+      final node = await guidanceApi!.node(
+        id,
+        auditId: id == 'summary' ? guidanceAuditId : null,
+      );
       if (_disposed || generation != _guidanceGeneration) return;
       guidance = node;
+      guidanceCriteria = null;
+      criteriaError = null;
+      if (criteriaKinds.containsKey(node.nodeId)) {
+        await _loadCriteria(generation);
+      }
     } on AuthFailure catch (e) {
       if (!_disposed && generation == _guidanceGeneration) {
         guidanceError = e.status == 404
@@ -108,6 +129,46 @@ class AssistantConversation extends ChangeNotifier {
       if (!_disposed && generation == _guidanceGeneration) {
         guidanceLoading = false;
         notifyListeners();
+      }
+    }
+  }
+
+  Future<void> _loadCriteria(int generation) async {
+    final scope = context;
+    if (!contextAvailable ||
+        !scope.hasRegisteredSchool ||
+        scope.curriculumId == null ||
+        scope.admissionYear == null ||
+        scope.track == null) {
+      criteriaError = '학교·학과·교육과정·입학연도·이수경로를 설정하면 해당 기준을 볼 수 있습니다.';
+      return;
+    }
+    try {
+      final selected = OfficialSelectionContext(
+        institutionId: scope.institutionId!,
+        departmentId: scope.departmentId!,
+        curriculumId: scope.curriculumId!,
+        admissionYear: scope.admissionYear!,
+        track: scope.track!,
+      );
+      final result = await OfficialProgramApi(guidanceApi!.api)
+          .select(selected);
+      if (_disposed || generation != _guidanceGeneration) return;
+      if (result.context.toJson().toString() != selected.toJson().toString() ||
+          result.programs.any(
+            (p) =>
+                p.institutionId != selected.institutionId ||
+                (p.departmentId != null &&
+                    p.departmentId != selected.departmentId) ||
+                (p.curriculumId != null &&
+                    p.curriculumId != selected.curriculumId),
+          )) {
+        throw const FormatException('Unexpected criteria scope');
+      }
+      guidanceCriteria = result;
+    } catch (_) {
+      if (!_disposed && generation == _guidanceGeneration) {
+        criteriaError = '학교의 요건 기준을 읽지 못했습니다. 다시 읽거나 설정의 학업 정보를 확인해 주세요.';
       }
     }
   }
@@ -189,6 +250,8 @@ class AssistantConversation extends ChangeNotifier {
       _guidanceGeneration++;
       guidanceLoading = false;
       guidance = null;
+      guidanceCriteria = null;
+      criteriaError = null;
       guidanceAuditId = null;
       auditOptions = const [];
     }
@@ -288,6 +351,8 @@ class AssistantConversation extends ChangeNotifier {
       _guidanceGeneration++;
       guidanceLoading = false;
       guidance = null;
+      guidanceCriteria = null;
+      criteriaError = null;
       guidanceAuditId = null;
       auditOptions = const [];
     }
