@@ -13,18 +13,6 @@ class AcademicGuidanceView extends StatelessWidget {
   const AcademicGuidanceView({super.key, required this.conversation});
   final AssistantConversation conversation;
 
-  bool _hasCardDetails(GuidanceCard card) {
-    if (card.type != 'calendar_event') return true;
-    final body = card.body.trim();
-    return (body.isNotEmpty &&
-            body != '${card.dateText} — ${card.title}' &&
-            body != card.title &&
-            body != card.dateText) ||
-        card.imageAssetId != null ||
-        card.table != null ||
-        card.tables != null;
-  }
-
   bool _collectionWarning(String warning) =>
       warning.contains('수집 시점') ||
       warning.contains('수집 시각') ||
@@ -108,7 +96,14 @@ class AcademicGuidanceView extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(warning),
                   ),
-                if (node.message.isNotEmpty) Text(node.message),
+                if (node.message.trim().isNotEmpty &&
+                    node.message.trim() != node.title?.trim() &&
+                    !node.cards.any(
+                      (card) =>
+                          node.message.trim() == card.title.trim() ||
+                          node.message.trim() == card.body.trim(),
+                    ))
+                  Text(node.message),
                 if (node.state == 'unavailable')
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
@@ -155,30 +150,11 @@ class AcademicGuidanceView extends StatelessWidget {
                 ],
                 for (var index = 0; index < node.cards.length; index++) ...[
                   if (index > 0) const Divider(height: 1),
-                  ExpansionTile(
-                    key: ValueKey('${node.nodeId}:$index'),
-                    enabled: _hasCardDetails(node.cards[index]),
-                    trailing: _hasCardDetails(node.cards[index])
-                        ? null
-                        : const SizedBox.shrink(),
-                    tilePadding: EdgeInsets.zero,
-                    title: Text(
-                      node.cards[index].title,
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    subtitle: node.cards[index].dateText == null
-                        ? null
-                        : Text(
-                            node.cards[index].dateText!,
-                            style: theme.textTheme.bodySmall,
-                          ),
-                    children: [
-                      _GuidanceCard(
-                        card: node.cards[index],
-                        conversation: conversation,
-                        showHeading: false,
-                      ),
-                    ],
+                  _GuidanceCard(
+                    card: node.cards[index],
+                    conversation: conversation,
+                    showHeading:
+                        node.cards[index].title.trim() != node.title?.trim(),
                   ),
                 ],
                 GuidanceSources(
@@ -259,6 +235,24 @@ class AcademicGuidanceView extends StatelessWidget {
   }
 }
 
+String _displayBody(GuidanceCard card) {
+  final lines = card.body.split('\n');
+  var first = 0;
+  var removedHeading = false;
+  while (first < lines.length) {
+    final line = lines[first].trim();
+    if (line == card.title.trim() && line.isNotEmpty) {
+      removedHeading = true;
+      first++;
+    } else if (line.isEmpty) {
+      first++;
+    } else {
+      break;
+    }
+  }
+  return removedHeading ? lines.skip(first).join('\n') : card.body;
+}
+
 class _GuidanceCard extends StatelessWidget {
   const _GuidanceCard({
     required this.card,
@@ -293,18 +287,14 @@ class _GuidanceCard extends StatelessWidget {
           if (card.body.trim() != '${card.dateText} — ${card.title}' &&
               card.body.trim() != card.title &&
               card.body.trim() != card.dateText)
-            SelectableText(card.body),
+            SelectableText(_displayBody(card)),
         ] else if (card.extractionStatus == 'ocr_unreviewed')
           ExpansionTile(
             title: const Text('추출 텍스트 보기'),
-            children: [SelectableText(card.body)],
+            children: [SelectableText(_displayBody(card))],
           )
-        else
-          SelectableText(
-            !expanded && card.body.length > 600
-                ? '${card.body.substring(0, 600)}…'
-                : card.body,
-          ),
+        else if (_displayBody(card).trim().isNotEmpty)
+          SelectableText(_displayBody(card)),
         if (card.status != null)
           Text(
             '결과: ${const {'satisfied': '충족', 'not_satisfied': '미충족', 'needs_review': '확인 필요', 'not_applicable': '적용 기준 없음'}[card.status] ?? '상태 확인 필요'}',
@@ -354,6 +344,7 @@ class _GuidanceCard extends StatelessWidget {
                               card: card,
                               conversation: conversation,
                               expanded: true,
+                              showHeading: false,
                             ),
                           ),
                         ),

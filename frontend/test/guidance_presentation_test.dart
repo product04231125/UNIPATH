@@ -60,7 +60,52 @@ Map<String, dynamic> calendar() => {
   ],
 };
 
+Map<String, dynamic> scholarship() => {
+  ...tree.node('scholarship:eligibility'),
+  'title': '장학금 자격 제한',
+  'message': '장학금 자격 제한',
+  'cards': [
+    {
+      'type': 'reference_text',
+      'title': '장학금 자격 제한',
+      'body': '장학금 자격 제한\n\n장학금 자격 제한\n제12조 (자격 제한) :\n학칙 위반, 휴학 및 제적, 8개 학기 초과자\n세부내용 장학 규정 제12조 제4항',
+      'sources': [source],
+    },
+  ],
+};
+
 void main() {
+  testWidgets(
+    'school answer is open with one heading and preserves legal text',
+    (tester) async {
+      final c = tree.conversation(
+        tree.AcademicGateway()..response = scholarship(),
+      );
+      await c.showGuidance();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: AcademicGuidanceView(conversation: c),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('장학금 자격 제한'), findsOneWidget);
+      final body = tester
+          .widget<SelectableText>(find.byType(SelectableText))
+          .data!;
+      expect(body, startsWith('제12조 (자격 제한) :'));
+      expect(body, contains('8개 학기 초과자'));
+      expect(body, contains('장학 규정 제12조 제4항'));
+      expect(find.widgetWithText(ExpansionTile, '장학금 자격 제한'), findsNothing);
+      expect(find.byType(ExternalLinkButton), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      c.dispose();
+    },
+  );
+
   testWidgets(
     'sections drill down using received IDs without requesting synthetic nodes',
     (tester) async {
@@ -155,9 +200,7 @@ void main() {
       expect(find.text('수집 시점에 게시된 일정입니다.'), findsNothing);
       expect(find.text('이전 메뉴'), findsOneWidget);
       expect(find.text('처음으로'), findsOneWidget);
-      expect(find.text('학사 시스템에서 신청합니다.'), findsNothing);
-      await tester.tap(find.text('복학 신청'));
-      await tester.pumpAndSettle();
+
       expect(find.text('학사 시스템에서 신청합니다.'), findsOneWidget);
       expect(find.text('신년 하례식'), findsOneWidget);
       expect(find.text('01. 02(금)'), findsOneWidget);
@@ -206,7 +249,7 @@ void main() {
         ],
       });
     final dates = tree.conversation(tree.AcademicGateway())
-      ..guidance = AcademicGuidance.fromJson(calendar());
+      ..guidance = AcademicGuidance.fromJson(scholarship());
     final visualCriteria = rules.selection();
     visualCriteria['programs'][0]['rules'][0]['condition']['minimum'] = '130';
     final definition = tree.conversation(tree.AcademicGateway())

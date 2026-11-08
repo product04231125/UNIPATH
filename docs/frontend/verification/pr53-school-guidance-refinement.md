@@ -30,3 +30,9 @@
 - 로컬 1280×720에서 첫 분야 → 수업·학사 → 졸업 → 일반 기준 → 이수학점과 학사일정 → 2026 → 1월을 확인했다. 캡처는 output/pr53-school-guidance-refinement/visuals/local-tree-template.png, local-tree-criteria.png, local-profile-refresh-after-fix.png 참조. 테마3종/글자2배의 합성 렌더4장도 보관한다. Windows는 빌드 근거이며 OS 분리 창 실기는 이번 완료 범위에 포함하지 않는다.
 
 - 최종 명령: `flutter test --no-pub test/guidance_criteria_test.dart test/academic_guidance_test.dart` 15통과, 기존 IPC3통과 재사용; `flutter test --no-pub test/guidance_presentation_test.dart --dart-define=GUIDANCE_CAPTURE=true` 4통과(3기능+1렌더). `flutter analyze --no-pub` 문제 없음. Web·Windows Release 빌드 통과. 로컬 실기에서 빈 펼침/본문 대비를 보완했기 때문에 표현·분석·빌드를 추가 실행했으며 최종 소스를 검증했다.
+
+## 후속 수정: 본문 상시 표시·중복 제목 제거 (2026-11-08)
+
+- 사용자 장학금 자격 제한 화면의 제목3회/불필요한 펼침 문제를 학교 질문 공통 표시에서 수정했다. 위의 본문 접힘 결정은 이 후속 요구로 대체한다. 일반 카드 본문은 바로 표시하며 장문도 600자에서 자르지 않는다. OCR 미검토의 원문 우선·표·근거는 유지한다.
+- 화면 제목과 동일한 카드 제목/메시지, 메시지와 완전히 동일한 카드 본문의 중복 표시를 생략한다. 본문의 시작에서 카드 제목과 완전히 같은 줄만 걷어내며 조항 번호·수치·조건·본문 내부의 단어 반복을 임의로 제거하지 않는다. 넓은 상세 보기에서도 제목을 중복 출력하지 않는다. API/서버 코드는 변경하지 않았다.
+- 합성 장학금 사례에서 제목1회·제12조·8개 학기·제4항 보존·본문 즉시 표시 회귀를 추가했다. 관련 academic_guidance/presentation 15통과(렌더 포함), analyze 문제 없음. Web/Windows Release 빌드 확인. desktop 1440×1000의 3테마/크림 글자2배 렌더를 확인했다. 배포 서버/외부 AI/Windows OS 분리 창 실기는 실행하지 않았다.

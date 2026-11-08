@@ -382,9 +382,6 @@ void main() {
       await tester.tap(find.text('자료 정보'));
       await tester.pumpAndSettle();
       expect(find.text('수집 시점 경고'), findsOneWidget);
-      await tester.ensureVisible(find.text('규정 원문'));
-      await tester.tap(find.text('규정 원문'));
-      await tester.pumpAndSettle();
       expect(find.text('원본 이미지 읽기'), findsOneWidget);
       expect(find.text('공지사항 · 준비 중'), findsOneWidget);
       expect(find.text('저장된 내 졸업요건 결과 불러오기'), findsOneWidget);
