@@ -601,6 +601,39 @@ void main() {
     expect(tester.takeException(), isNull);
   });
   testWidgets(
+    'common scope appears once while narrower item and group scopes remain visible',
+    (tester) async {
+      final transport = AcademicTransport();
+      transport.contexts.add({
+        ...transport.contexts.first,
+        'id': 'extra',
+        'department_name': '추가학과',
+        'primary': false,
+      });
+      transport.docs[0]['context_ids'] = ['context', 'extra'];
+      transport.docs[0]['node_contexts'] = {
+        'line': ['extra', 'context'],
+        'narrow': ['extra'],
+      };
+      (transport.docs[0]['content'] as Map)['lines'] = [
+        {'id': 'line', 'text': '공통 요건'},
+        {'id': 'narrow', 'text': '추가 전공 요건'},
+      ];
+      transport.docs[1]['context_ids'] = ['context', 'extra'];
+      transport.docs[1]['node_contexts'] = {
+        'group': ['extra'],
+        'item': ['extra'],
+      };
+      await mount(tester, transport);
+      expect(find.text('적용: 추가학과 · 단일전공 · 2026'), findsOneWidget);
+      expect(find.textContaining('적용: 추가학과 · 단일전공 · 2026 /'), findsNothing);
+      await tester.tap(find.widgetWithText(ChoiceChip, '인증 요건'));
+      await tester.pumpAndSettle();
+      expect(find.text('적용: 추가학과 · 단일전공 · 2026'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
     'credit table uses server exact progress with aligned multilevel headers',
     (tester) async {
       final key = await mount(tester, AcademicTransport());

@@ -105,7 +105,25 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
     if (yes == true && mounted) await c.activate();
   }
 
-  Widget _item(AcademicStudentDocument d, AcademicStudentItem item) {
+  String? _scopeLabel(
+    AcademicStudentDocument d,
+    String id, [
+    List<String>? parentContexts,
+  ]) {
+    final ids = d.nodeContexts[id];
+    final parent = parentContexts ?? d.contextIds;
+    if (ids == null ||
+        (ids.toSet().containsAll(parent) && parent.toSet().containsAll(ids))) {
+      return null;
+    }
+    return _contextLabels(ids);
+  }
+
+  Widget _item(
+    AcademicStudentDocument d,
+    AcademicStudentItem item, {
+    List<String>? parentContexts,
+  }) {
     final response = d.response(item.id);
     final blocked =
         c.disabled ||
@@ -129,8 +147,8 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(item.text),
-          if (d.nodeContexts[item.id] case final ids?)
-            Text('적용: ${_contextLabels(ids)}'),
+          if (_scopeLabel(d, item.id, parentContexts) case final label?)
+            Text('적용: $label'),
           Wrap(
             spacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
@@ -170,8 +188,9 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
   Widget _group(
     AcademicStudentDocument d,
     AcademicStudentGroup group,
-    int depth,
-  ) => Padding(
+    int depth, [
+    List<String>? parentContexts,
+  ]) => Padding(
     padding: EdgeInsets.only(left: depth == 0 ? 0 : 16, top: 12),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -180,8 +199,24 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
           '${group.label} · ${group.choiceLabel} · ${academicStatus(d.groupResults[group.id] ?? 'needs_review')}',
           style: Theme.of(context).textTheme.titleSmall,
         ),
-        ...group.items.map((i) => _item(d, i)),
-        ...group.groups.map((g) => _group(d, g, depth + 1)),
+        if (_scopeLabel(d, group.id, parentContexts) case final label?)
+          Text('적용: $label'),
+        ...group.items.map(
+          (i) => _item(
+            d,
+            i,
+            parentContexts:
+                d.nodeContexts[group.id] ?? parentContexts ?? d.contextIds,
+          ),
+        ),
+        ...group.groups.map(
+          (g) => _group(
+            d,
+            g,
+            depth + 1,
+            d.nodeContexts[group.id] ?? parentContexts ?? d.contextIds,
+          ),
+        ),
         for (final text in group.exemptions) Text('면제 안내: $text'),
       ],
     ),
@@ -304,8 +339,13 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
           ...d.lines.map(
             (line) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                '${line.text}\n적용: ${_contextLabels(d.nodeContexts[line.id] ?? d.contextIds)}',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(line.text),
+                  if (_scopeLabel(d, line.id) case final label?)
+                    Text('적용: $label'),
+                ],
               ),
             ),
           ),
