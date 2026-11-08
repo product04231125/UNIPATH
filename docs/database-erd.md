@@ -33,6 +33,11 @@ rule_sets·graduation_rules·official_documents를 추가했다. `0004_personal_
 상위 분류와 모든 참조를 `(id, institution_id)` 복합 FK로 같은 학교에 묶는다.
 `0016_guidance_bindings`는 학교별 학사 안내 자료 연결 테이블을 추가해 총 52개 도메인 테이블을
 구현한다. 학교 UUID가 기본키라 학교마다 연결은 하나다. 묶음 ID와 확인한 판본 해시를 저장한다.
+`0017_course_catalog_links`는 과목의 소속 학과(`courses.department_id`, 같은 학교 복합 FK, `NULL`은 공통),
+과목·연결 통합 저장 영수증(`course_placement_receipts`, 관리자·제출 ID 기본키), 수강 기록의 카탈로그 원본
+참조(`personal_course_records.catalog_course_id/version`, `curriculum_course_id/version`)를 추가해 총 53개
+도메인 테이블을 구현한다. 수강 기록의 연결 참조는 `(curriculum_course_id, catalog_course_id)` 복합 FK로
+같은 과목의 연결임을 DB에서도 보장한다.
 아래 전체 논리 ERD/단계 표의 개별 학생 기록 엔터티는 학교 검토 묶음으로 우선 구현한다.
 공식 감사는 최소 입력·조건·결과를 JSONB 스냅샷으로 구현하고 별도 결과 행 테이블은 만들지 않는다.
 벡터 임베딩과 전체 진로/채용 확장은 도입 계획이다.
@@ -918,7 +923,7 @@ erDiagram
 
 ## 단계별 도입 계획과 현재 구현
 
-현재 물리 구현은 `0016_guidance_bindings`까지 총 52개 도메인 테이블이다.
+현재 물리 구현은 `0017_course_catalog_links`까지 총 53개 도메인 테이블이다.
 선택 자료의 [개인화·채용 분석 최소 계약](api/job-analysis.md)은 기존 개인 테이블을 본인
 범위에서 읽으며 공고·개인 문맥·결과의 새 저장소를 만들지 않는다. `JobPosting`,
 `JobRequirement`, `JobMatch` 등은 전체 2차 MVP의 후속 영속 모델이다.

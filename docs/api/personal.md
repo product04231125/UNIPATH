@@ -28,7 +28,7 @@
 | 경로 | 공통 필드 외 주요 입력 |
 | --- | --- |
 | `/events` | `starts_at`, `ends_at`(시간대 offset 필수), `time_zone`(IANA), `category=academic/personal/activity/deadline` |
-| `/course-records` | `term`, `category`, `credits`(0 초과~100, 소수 3자리), 선택 `section/course_code/grade`, `completion=planned/in_progress/recorded` |
+| `/course-records` | `term`, `category`, `credits`(0 초과~100, 소수 3자리), 선택 `section/course_code/grade`, `completion=planned/in_progress/recorded`, 선택 원본 참조 `catalog_course_id/catalog_course_version/curriculum_course_id/curriculum_course_version` |
 | `/activity-records` | 기관·역할, 시작/종료일, `reported_hours`, 관찰한 `approved_hours/approval/observed_on` |
 | `/experience-records` | `experience_type`, 기관·역할·기간·결과, 자유 서술 `status_label` |
 | `/credential-records` | `provider/level`, 취득/만료일, `status_label`, `evidence_url` |
@@ -43,6 +43,16 @@
 기간·취득/만료·유효기간은 역전을 거부한다. 숫자는 유한한 0 이상이며 학점은 0을 허용하지 않는다.
 URL은 로그인 정보가 없는 HTTP(S) 링크이며 서버에서 가져오거나 학교 증빙을 검증하지 않는다.
 자유 서술 상태는 `status_label` 등으로 보존하며 기계적 승인 상태로 해석하지 않는다.
+
+수강 기록의 **원본 참조**는 학생이 학교 카탈로그에서 고른 과목과 교육과정 연결, 그때 본 각각의
+`version`이다. 학생에게 분류를 다시 입력받지 않고 서버가 원본 ID로 적용 분류를 다시 찾을 수 있게 한다.
+
+- ID와 버전은 함께 보낸다(아니면 422). 연결은 그 과목의 연결이어야 하고, 과목은 프로필 등록 학교의
+  과목이어야 한다(아니면 409). 보낸 버전이 지금 카탈로그 버전과 다르면 409이며 다시 조회해 고른다.
+- 원본 참조를 바꾸지 않는 수정은 카탈로그가 바뀌었거나 등록 학교가 바뀌어도 그대로 저장된다.
+  `null` 4개를 보내면 원본 참조를 지운다. 기록의 학점·이수구분 등은 계속 학생 입력이며 공식 기록이 아니다.
+- 학생 기록이 가리키는 과목·연결은 관리자가 삭제할 수 없다. 참조 확인에는 누구의 기록인지 드러내지 않는
+  `protected_reference`로만 나온다. 개인 자료 가져오기(`/me/personal-imports`)도 같은 검증을 거친다.
 
 `approved_hours > 0`을 기록하려면 사용자가 관찰한 `approval=approved`와 `observed_on`이
 필요하다. 이것도 **사용자 입력**이며 서버의 봉사 승인·검증된 실적이 아니다.

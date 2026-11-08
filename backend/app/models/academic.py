@@ -83,6 +83,8 @@ class Course(CatalogRecord, Base):
     )
     code: Mapped[str] = mapped_column(String(64))
     credits: Mapped[Decimal] = mapped_column(Numeric(8, 3))
+    # Owning department; None is a course shared across the school.
+    department_id: Mapped[UUID | None] = mapped_column(index=True)
     # School defaults; a curriculum link may override each one.
     classification_id: Mapped[UUID | None] = mapped_column(index=True)
     track_id: Mapped[UUID | None] = mapped_column(index=True)
@@ -127,6 +129,22 @@ class CurriculumCourse(CatalogRecord, Base):
         if self.track_id:
             return "curriculum_course"
         return "course" if self.course_track_id else None
+
+
+class CoursePlacementReceipt(Base):
+    """Replays one atomic course-and-link creation per administrator client ID."""
+
+    __tablename__ = "course_placement_receipts"
+    actor_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    client_id: Mapped[UUID] = mapped_column(primary_key=True)
+    institution_id: Mapped[UUID] = mapped_column(ForeignKey("institutions.id"))
+    digest: Mapped[str] = mapped_column(String(64))
+    # Later deletion keeps the receipt so a retry still answers instead of recreating.
+    course_id: Mapped[UUID | None] = mapped_column(ForeignKey("courses.id", ondelete="SET NULL"))
+    curriculum_course_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("curriculum_courses.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ReviewedRecord(CatalogRecord):
@@ -203,6 +221,14 @@ SchoolClassification.__table__.append_constraint(
         ["school_classifications.id", "school_classifications.institution_id"],
     )
 )
+Course.__table__.append_constraint(
+    ForeignKeyConstraint(
+        ["department_id", "institution_id"],
+        ["departments.id", "departments.institution_id"],
+    )
+)
+# Lets a student course record prove its link belongs to the course it names.
+CurriculumCourse.__table__.append_constraint(UniqueConstraint("id", "course_id"))
 for model in (Course, CurriculumCourse):
     for column in ("classification_id", "track_id"):
         model.__table__.append_constraint(

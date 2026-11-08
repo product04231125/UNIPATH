@@ -223,6 +223,10 @@ class StudentCourseRecordCreate implements StudentPayload {
     this.courseCode = "",
     this.grade = "",
     this.completion = "planned",
+    this.catalogCourseId,
+    this.catalogCourseVersion,
+    this.curriculumCourseId,
+    this.curriculumCourseVersion,
   });
   final String title;
   final String detail;
@@ -234,6 +238,10 @@ class StudentCourseRecordCreate implements StudentPayload {
   final String courseCode;
   final String grade;
   final String completion;
+  final String? catalogCourseId;
+  final int? catalogCourseVersion;
+  final String? curriculumCourseId;
+  final int? curriculumCourseVersion;
   factory StudentCourseRecordCreate.fromJson(Map<String, dynamic> value) =>
       StudentCourseRecordCreate(
         title: value['title'] as String,
@@ -252,6 +260,18 @@ class StudentCourseRecordCreate implements StudentPayload {
         completion: value['completion'] == null
             ? "planned"
             : value['completion'] as String,
+        catalogCourseId: value['catalog_course_id'] == null
+            ? null
+            : value['catalog_course_id'] as String,
+        catalogCourseVersion: value['catalog_course_version'] == null
+            ? null
+            : value['catalog_course_version'] as int,
+        curriculumCourseId: value['curriculum_course_id'] == null
+            ? null
+            : value['curriculum_course_id'] as String,
+        curriculumCourseVersion: value['curriculum_course_version'] == null
+            ? null
+            : value['curriculum_course_version'] as int,
       );
   @override
   Map<String, Object?> toJson() => {
@@ -265,6 +285,10 @@ class StudentCourseRecordCreate implements StudentPayload {
     'course_code': courseCode,
     'grade': grade,
     'completion': completion,
+    'catalog_course_id': catalogCourseId,
+    'catalog_course_version': catalogCourseVersion,
+    'curriculum_course_id': curriculumCourseId,
+    'curriculum_course_version': curriculumCourseVersion,
   };
 }
 
@@ -931,6 +955,7 @@ class StudentCoursePublicView implements StudentPayload {
     required this.institutionId,
     required this.code,
     required this.credits,
+    this.departmentId,
   });
   final String id;
   final int version;
@@ -940,6 +965,7 @@ class StudentCoursePublicView implements StudentPayload {
   final String institutionId;
   final String code;
   final String credits;
+  final String? departmentId;
   factory StudentCoursePublicView.fromJson(Map<String, dynamic> value) =>
       StudentCoursePublicView(
         id: value['id'] as String,
@@ -952,6 +978,9 @@ class StudentCoursePublicView implements StudentPayload {
         institutionId: value['institution_id'] as String,
         code: value['code'] as String,
         credits: _decimal(value['credits']),
+        departmentId: value['department_id'] == null
+            ? null
+            : value['department_id'] as String,
       );
   @override
   Map<String, Object?> toJson() => {
@@ -963,6 +992,7 @@ class StudentCoursePublicView implements StudentPayload {
     'institution_id': institutionId,
     'code': code,
     'credits': credits,
+    'department_id': departmentId,
   };
 }
 

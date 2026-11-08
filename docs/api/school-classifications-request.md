@@ -15,7 +15,10 @@
 | 학생의 학교별 이수 경로·분류 목록 | `GET /catalog/classifications?institution_id=` (사용 중인 분류) |
 | 과목·교육과정 연결의 분류 참조와 우선순위 | `classification_id`·`track_id`, 연결 값 우선, `effective_*`·`*_source` 반환 |
 | 다른 학교·종류 불일치·사용 중지 참조·버전 충돌 | 409, 기존 오류 envelope |
-| 프로필 이수 경로 참조, 수강 기록 원본 참조, 과목·연결 통합 저장, 과목 학과 소속 | 후속 단계 |
+| 수강 기록 원본 참조 | `/me/course-records`의 `catalog_course_id/version`, `curriculum_course_id/version` ([개인 API](personal.md)) |
+| 과목·연결 통합 저장 | `POST /admin/course-placements`, 응답 유실 확인 `GET /admin/course-placements/{client_id}` |
+| 과목 학과 소속 | 과목 `department_id`, `null`은 학교 공통 |
+| 프로필 이수 경로 참조 | 후속 단계 |
 
 프로필 이수 경로를 분류 ID로 바꾸려면 RAG 적용 범위와 공식 규칙이 쓰는 이수경로 문자열과의
 대응을 먼저 정해야 한다.

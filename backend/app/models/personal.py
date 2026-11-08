@@ -101,9 +101,25 @@ class CourseRecord(OwnedRecord, Base):
     course_code: Mapped[str] = mapped_column(String(128), default="")
     grade: Mapped[str] = mapped_column(String(128), default="")
     completion: Mapped[str] = mapped_column(String(16), default="planned")
+    # Catalog provenance: what the student picked and the version they saw. The record
+    # values above stay the student's own; these never make the record official.
+    catalog_course_id: Mapped[UUID | None] = mapped_column(ForeignKey("courses.id"), index=True)
+    catalog_course_version: Mapped[int | None] = mapped_column(Integer)
+    curriculum_course_id: Mapped[UUID | None] = mapped_column(index=True)
+    curriculum_course_version: Mapped[int | None] = mapped_column(Integer)
     __table_args__ = (
         CheckConstraint("credits > 0 AND credits <= 100", name="credits"),
         CheckConstraint("completion IN ('planned','in_progress','recorded')", name="completion"),
+        CheckConstraint(
+            "(catalog_course_id IS NULL) = (catalog_course_version IS NULL) AND "
+            "(curriculum_course_id IS NULL) = (curriculum_course_version IS NULL) AND "
+            "(curriculum_course_id IS NULL OR catalog_course_id IS NOT NULL)",
+            name="catalog_source",
+        ),
+        ForeignKeyConstraint(
+            ["curriculum_course_id", "catalog_course_id"],
+            ["curriculum_courses.id", "curriculum_courses.course_id"],
+        ),
     )
 
 
