@@ -12,6 +12,7 @@ knowledge = importlib.import_module("app.schemas.knowledge")
 jobs = importlib.import_module("app.schemas.job_analysis")
 personal = importlib.import_module("app.schemas.personalization")
 personalized = importlib.import_module("app.schemas.personalized_guidance")
+bindings = importlib.import_module("app.schemas.guidance_bindings")
 MODELS = [
     guidance.GuidanceButton,
     guidance.GuidanceSource,
@@ -35,6 +36,11 @@ MODELS = [
     personal.PersonalizationContext,
     jobs.PersonalEvidenceCitation,
     personalized.PersonalizedGuidanceResponse,
+    bindings.GuidanceBundle,
+    bindings.GuidanceBundleList,
+    bindings.GuidanceBindingView,
+    bindings.GuidanceBindingSave,
+    bindings.StudentGuidanceBinding,
 ]
 NAMES = {model.__name__: model.__name__ for model in MODELS}
 NAMES.update(

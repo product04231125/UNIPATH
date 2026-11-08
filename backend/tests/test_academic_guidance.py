@@ -3,6 +3,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from test_academic import operator, school
 from test_auth import auth_client as auth_client
 from test_auth import auth_db as auth_db
 from test_auth import authorization, register
@@ -10,10 +11,45 @@ from test_graduation import ME, audit, fixture, review
 
 from app.rag.guidance import catalog, respond
 from app.rag.guidance.assets import asset_index, resolve_asset
+from app.rag.guidance.bundles import BUNDLE_ID, bundles
 from app.schemas.academic_guidance import AcademicGuidance
 
 ROOT = "/api/v1/me/academic-guidance"
 integration = pytest.mark.integration
+
+
+def bind(c, root, institution_id):
+    response = c.put(
+        "/api/v1/admin/institutions/" + institution_id + "/academic-guidance",
+        headers=root,
+        json={
+            "bundle_id": BUNDLE_ID,
+            "edition": bundles()[BUNDLE_ID]["edition"],
+            "expected_version": 0,
+        },
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def enroll(c, owner, institution_id):
+    version = c.get("/api/v1/me/planning-profile", headers=owner).json()["version"]
+    response = c.patch(
+        "/api/v1/me/planning-profile",
+        headers=owner,
+        json={"institution_id": institution_id, "expected_version": version},
+    )
+    assert response.status_code == 200, response.text
+
+
+def bound_student(c, db, email):
+    """A student whose registered school shows the collected bundle."""
+    root = operator(c, db)
+    institution = school(c, root)
+    bind(c, root, institution["id"])
+    owner = authorization(register(c, email))
+    enroll(c, owner, institution["id"])
+    return owner
 
 
 def test_every_collected_node_matches_the_published_contract():
@@ -53,10 +89,10 @@ def test_asset_resolver_rejects_everything_outside_the_verified_index():
 
 
 @integration
-def test_guidance_requires_login_and_navigates_without_personal_data(auth_client):
+def test_guidance_requires_login_and_navigates_without_personal_data(auth_client, auth_db):
     c = auth_client
     assert c.get(ROOT + "/nodes/home").status_code == 401
-    owner = authorization(register(c, "guidance@example.test"))
+    owner = bound_student(c, auth_db, "guidance@example.test")
     home = c.get(ROOT + "/nodes/home", headers=owner)
     assert home.status_code == 200, home.text
     assert home.headers["Cache-Control"] == "no-store"
@@ -74,9 +110,9 @@ def test_guidance_requires_login_and_navigates_without_personal_data(auth_client
 
 
 @integration
-def test_assets_are_served_only_by_verified_hash_to_authenticated_users(auth_client):
+def test_assets_are_served_only_by_verified_hash_to_authenticated_users(auth_client, auth_db):
     c = auth_client
-    owner = authorization(register(c, "asset@example.test"))
+    owner = bound_student(c, auth_db, "asset@example.test")
     identifier, relative = next(iter(asset_index().items()))
     assert c.get(ROOT + "/assets/" + identifier).status_code == 401
     response = c.get(ROOT + "/assets/" + identifier, headers=owner)
@@ -93,9 +129,9 @@ def test_assets_are_served_only_by_verified_hash_to_authenticated_users(auth_cli
 
 
 @integration
-def test_workflow_state_reports_only_the_connected_analysis(auth_client):
+def test_workflow_state_reports_only_the_connected_analysis(auth_client, auth_db):
     c = auth_client
-    owner = authorization(register(c, "workflow@example.test"))
+    owner = bound_student(c, auth_db, "workflow@example.test")
     assert (
         c.get(ROOT + "/nodes/career:posting", headers=owner).json()["integration_state"]
         == "adapter_not_connected"
@@ -120,7 +156,9 @@ def test_guidance_presents_the_owner_audit_without_recomputing_it(
     auth_client, auth_db, credits, status, card_status
 ):
     c = auth_client
-    root, _, ctx, owner, *_ = fixture(c, auth_db, credits=credits)
+    root, inst, ctx, owner, *_ = fixture(c, auth_db, credits=credits)
+    bind(c, root, inst["id"])
+    enroll(c, owner, inst["id"])
     review(c, root, ctx)
     result, _ = audit(c, owner, ctx)
     assert result["status"] == status
@@ -139,6 +177,7 @@ def test_guidance_presents_the_owner_audit_without_recomputing_it(
     # A number passed by the client has no way into this response.
     assert "official" not in value["audit"]
     other = authorization(register(c, "guidance-other@example.test"))
+    enroll(c, other, inst["id"])
     denied = c.get(ROOT + "/nodes/credits", headers=other, params={"audit_id": result["id"]})
     assert denied.status_code == 404
     missing = c.get(ROOT + "/nodes/credits", headers=owner, params={"audit_id": str(uuid4())})

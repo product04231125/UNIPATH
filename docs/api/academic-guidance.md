@@ -4,6 +4,32 @@
 본문을 그대로 돌려준다. 안내 자료는 참고 자료이며 졸업 판정을 계산하지 않는다.
 로그인이 필요하고 응답은 `no-store`다. 원본은 `backend/app/rag/guidance/`다.
 
+## 학교 연결
+
+수집 자료는 학교에 연결해야 학생에게 보인다. 지금 제공하는 자료 묶음은 경동대학교 수집본
+(`kduniv-academic-guidance`) 하나다. 연결은 공식 승인이나 RAG 근거 승인이 아니다.
+
+| 경로 | 동작 |
+|---|---|
+| `GET /admin/academic-guidance-bundles` | 묶음 목록. `bundle_id`, 이름, 출처 학교, 공식 URL, `edition`, `fetched_at`, `availability` |
+| `GET /admin/institutions/{id}/academic-guidance` | 학교의 연결. `state=unbound/bound/unavailable`, `version`(없으면 0) |
+| `PUT /admin/institutions/{id}/academic-guidance` | `bundle_id`, `edition`, `expected_version`(새 연결 0)으로 연결·교체 |
+| `DELETE /admin/institutions/{id}/academic-guidance?expected_version=N` | 연결 해제. 해제 후 상태를 200으로 반환 |
+| `GET /me/academic-guidance/binding` | 학생의 등록 학교 기준 상태. `school_required/unbound/bound/unavailable` |
+
+- 학교관리자는 자기 활성 학교만, 슈퍼관리자는 모든 학교를 연결한다. 학생은 연결 API를 쓸 수 없다.
+- `edition`은 자료 파일의 해시다. 목록의 현재 판본과 다르면 409로 막는다. 버전 충돌도 409다.
+  자료를 새로 수집하면 판본이 바뀌고, 연결은 새 판본을 그대로 보여 주면서 `edition_changed=true`를
+  알린다. 관리자가 다시 저장하면 새 판본을 확인한 것으로 기록한다.
+- 연결·해제는 학교의 감사 기록(`academic:institution:guidance_bind`/`guidance_unbind`)으로 남는다.
+- 등록 학교는 학생 프로필의 `institution_id`다. 등록 학교가 없으면 모든 노드가
+  `needs_input/school_required`, 연결이 없으면 `unavailable/school_guidance_not_connected`이고
+  카드·버튼은 비어 있다. 원문 파일은 404다. 다른 학교의 연결된 자료를 섞어 보여 주지 않는다.
+- 노드·파일 조회의 `institution_id`는 기본값이 등록 학교다. 학생은 등록 학교만 지정할 수 있고(다르면
+  404), 관리자는 자기 범위의 학교를 미리 볼 수 있다(범위 밖 403).
+- 해제·교체 뒤 이전 노드 ID로 다시 조회하면 그 시점의 연결 상태로 답한다. 화면은 표시 중인 내용을
+  비우고 `binding`과 첫 메뉴를 다시 조회한다.
+
 ## 노드 조회
 
 `GET /api/v1/me/academic-guidance/nodes/{node_id}?audit_id={uuid}`

@@ -1,6 +1,7 @@
 """Walk the demo path on a running API with a new synthetic student and report timings.
 
-    python3 backend/scripts/smoke_demo_flow.py --base-url http://127.0.0.1:8012
+    python3 backend/scripts/smoke_demo_flow.py --base-url http://127.0.0.1:8012 \
+        --institution-id <academic guidance가 연결된 학교 UUID>
 
 Creates one synthetic account and one synthetic record. It contains no real student data
 and sends external_processing_consent=false, so it never calls a paid model by itself.
@@ -66,7 +67,7 @@ def require(condition, message):
         raise SystemExit("FAILED: " + message)
 
 
-def run(client):
+def run(client, institution_id=None):
     email = f"demo-{uuid4().hex[:12]}@example.test"
     account = client.call(
         "register",
@@ -82,6 +83,19 @@ def run(client):
     )
     client.token = account["access_token"]
     print("1. 학생 가입: ok")
+    if institution_id is None:
+        value = client.call("guidance node", "GET", "/me/academic-guidance/nodes/home")
+        require(value["reason"] == "school_required", "등록 학교 없이 안내가 표시됐습니다")
+        print("2. 등록 학교 없음: 안내 차단 확인. --institution-id를 주면 안내까지 확인합니다.")
+        return
+    client.call(
+        "profile",
+        "PATCH",
+        "/me/planning-profile",
+        {"institution_id": institution_id, "expected_version": 0},
+    )
+    binding = client.call("guidance binding", "GET", "/me/academic-guidance/binding")
+    require(binding["state"] == "bound", "등록 학교에 안내 자료가 연결되지 않았습니다")
 
     seen = {}
     for node in NODES:
@@ -161,9 +175,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--repeat", type=int, default=20)
+    parser.add_argument("--institution-id")
     args = parser.parse_args()
     client = Client(args.base_url)
-    run(client)
+    run(client, args.institution_id)
+    if args.institution_id is None:
+        return 0
     for _ in range(args.repeat):
         for node in NODES:
             client.call("guidance node", "GET", "/me/academic-guidance/nodes/" + quote(node))
