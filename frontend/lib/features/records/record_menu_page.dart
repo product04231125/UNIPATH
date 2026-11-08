@@ -18,7 +18,7 @@ import '../auth/auth_api.dart';
 import '../auth/guest_preview_scope.dart';
 import '../api/student_api.dart';
 import '../api/student_academic_api.dart';
-import '../graduation/student_academic_course_link.dart';
+import 'course/course_status.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/external_link_button.dart';
 import '../planning/planning_profile_cta.dart';
@@ -78,6 +78,63 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
   Listenable? _importChanges;
   int _loadRevision = 0;
   bool _formOpen = false;
+  bool _resolving = false;
+  Map<String, Object?>? _resolveBody;
+  String? _resolveMessage;
+
+  Future<void> _resolveCourses() async {
+    if (_resolving || widget.studentApi == null) return;
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return;
+    }
+    setState(() {
+      _resolving = true;
+      _resolveMessage = null;
+    });
+    var saved = false;
+    try {
+      final api = StudentAcademicApi.fromStudent(widget.studentApi!);
+      if (_resolveBody == null) {
+        final workspace = await api.workspace();
+        _resolveBody = StudentAcademicApi.freeze({
+          'client_id': PersonalRecord.newId(),
+          'expected_version': workspace.version,
+        });
+      }
+      final result = api.owned(
+        await api.gateway.request(
+          'POST',
+          'me/course-records/resolve-academic-links',
+          _resolveBody,
+        ),
+      );
+      _resolveBody = null;
+      saved = true;
+      if (!mounted) return;
+      setState(
+        () => _resolveMessage =
+            '${result['linked_count']}과목 연결 완료 · ${(result['unresolved'] as List).length}과목은 수정에서 과목을 확인하세요.',
+      );
+      await _repository.load();
+    } catch (e) {
+      if (e is AuthFailure &&
+          [400, 401, 403, 404, 409, 422].contains(e.status)) {
+        _resolveBody = null;
+      }
+      if (mounted) {
+        setState(
+          () => _resolveMessage = saved
+              ? '연결은 완료됐습니다. 목록을 다시 불러오세요.'
+              : e is AuthFailure
+              ? e.message
+              : '연결 결과를 확인하지 못했습니다. 다시 시도하세요.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _resolving = false);
+    }
+  }
 
   @override
   void initState() {
@@ -235,20 +292,32 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     final isCourse = widget.kind == PersonalRecordKind.course;
     final entry = RecordMockEntry(
       title: record.value('title'),
-      detail: _fields
-          .where(
-            (f) =>
-                f.key != 'title' &&
-                record.value(f.key).isNotEmpty &&
-                (widget.kind != PersonalRecordKind.activity ||
-                    activityVisibleKeys.contains(f.key)),
-          )
-          .map(
-            (f) => f.key == 'term' && isCourse
-                ? '수강 기간: ${CourseTerm.parse(record.value('term')).label}'
-                : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
-          )
-          .join(' · '),
+      detail: isCourse
+          ? [
+              '수강 기간: ${CourseTerm.parse(record.value('term')).label}',
+              record.value('category'),
+              if (record.value('credits').isNotEmpty)
+                '${record.value('credits')}학점',
+              if (record.value('gradingBasis') == 'pass_fail') 'P/F',
+              courseStatusLabel(record.value('completion')),
+              if (_repository.isServerBacked &&
+                  record.value('academicEntryId').isEmpty)
+                '교육과정 과목 확인',
+            ].where((v) => v.isNotEmpty).join(' · ')
+          : _fields
+                .where(
+                  (f) =>
+                      f.key != 'title' &&
+                      record.value(f.key).isNotEmpty &&
+                      (widget.kind != PersonalRecordKind.activity ||
+                          activityVisibleKeys.contains(f.key)),
+                )
+                .map(
+                  (f) => f.key == 'term' && isCourse
+                      ? '수강 기간: ${CourseTerm.parse(record.value('term')).label}'
+                      : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
+                )
+                .join(' · '),
       status: '개인 기록',
     );
     return FeatureLine.two(
@@ -267,17 +336,40 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           // Course ownership is settings/profile context; keep the badge on
           // activity/credential/experience menus only.
           if (!isCourse) StatusBadge(status: entry.status),
-          if (isCourse &&
-              widget.studentApi != null &&
-              _repository.isServerBacked &&
-              !GuestPreviewScope.isActive(context))
+          if (isCourse)
             TextButton(
-              onPressed: () => editStudentAcademicCourseLink(
-                context,
-                StudentAcademicApi.fromStudent(widget.studentApi!),
-                recordId: record.id,
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: Text(record.value('title')),
+                  content: SingleChildScrollView(
+                    child: SelectableText(
+                      _fields
+                          .where(
+                            (f) =>
+                                !{
+                                  'title',
+                                  'academicContextId',
+                                  'academicEntryId',
+                                }.contains(f.key) &&
+                                record.value(f.key).isNotEmpty,
+                          )
+                          .map(
+                            (f) =>
+                                '${f.label}: ${f.key == 'completion' ? courseStatusLabel(record.value(f.key)) : f.optionLabels[record.value(f.key)] ?? record.value(f.key)}',
+                          )
+                          .join('\n'),
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('닫기'),
+                    ),
+                  ],
+                ),
               ),
-              child: const Text('학점 산입 연결'),
+              child: const Text('상세 보기'),
             ),
           for (final field in _fields.where(
             (f) =>
@@ -289,12 +381,16 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               label: field.label,
             ),
           TextButton(
-            onPressed: () => _showForm(record: record),
+            onPressed: _resolving || _resolveBody != null
+                ? null
+                : () => _showForm(record: record),
             child: Text('수정'),
           ),
           TextButton(
             style: destructiveButtonStyle(context),
-            onPressed: () => _delete(record),
+            onPressed: _resolving || _resolveBody != null
+                ? null
+                : () => _delete(record),
             child: Text('삭제'),
           ),
         ],
@@ -366,6 +462,22 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                 ),
               ],
               if (widget.kind == PersonalRecordKind.course) ...[
+                const SizedBox(height: 12),
+                const Text('이수 완료 과목의 학점이 자동 반영됩니다. 변경은 각 과목의 수정에서 관리하세요.'),
+                if (widget.studentApi != null &&
+                    _repository.isServerBacked &&
+                    !GuestPreviewScope.isActive(context))
+                  TextButton(
+                    onPressed: _resolving ? null : _resolveCourses,
+                    child: Text(
+                      _resolving
+                          ? '기존 과목 연결 중…'
+                          : _resolveBody != null
+                          ? '같은 요청으로 연결 다시 확인'
+                          : '기존 과목 일괄 연결',
+                    ),
+                  ),
+                if (_resolveMessage != null) Text(_resolveMessage!),
                 const SizedBox(height: 24),
                 Wrap(
                   spacing: 16,
@@ -419,7 +531,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                 ),
                 FeatureLine.one(
                   text:
-                      '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점',
+                      '취득학점 합계 ${personal.where((r) => courseStatusLabel(r.value('completion')) == '이수 완료').fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점',
                 ),
               ],
               if (widget.kind == PersonalRecordKind.activity)
@@ -441,13 +553,13 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       actions: [
         if (canAdd) ...[
           FilledButton.icon(
-            onPressed: _showForm,
+            onPressed: _resolving || _resolveBody != null ? null : _showForm,
             icon: const Icon(Icons.add),
             label: Text(widget.addLabel),
           ),
           OutlinedButton(
             key: const Key('record-menu-load-draft'),
-            onPressed: _loadDraft,
+            onPressed: _resolving || _resolveBody != null ? null : _loadDraft,
             child: const Text('불러오기'),
           ),
         ],

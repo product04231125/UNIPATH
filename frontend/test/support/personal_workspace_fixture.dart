@@ -19,7 +19,9 @@ Map<String, String> fixtureValues(PersonalRecordKind kind) => {
       'section': 'A',
       'courseCode': 'CS101',
       'grade': 'A',
-      'completion': '이수 기록',
+      'completion': '이수 완료',
+      'academicContextId': '',
+      'academicEntryId': '',
       'gradingBasis': 'unspecified',
     },
     PersonalRecordKind.activity => {

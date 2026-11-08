@@ -17,6 +17,17 @@ class StudentAcademicCommand(StrictModel):
     expected_version: int = Field(ge=0, strict=True)
 
 
+class StudentCourseResolutionItem(StrictModel):
+    record_id: UUID
+    reason: Literal["no_match", "ambiguous"]
+
+
+class StudentCourseResolution(StrictModel):
+    owner_id: UUID
+    linked_count: int
+    unresolved: list[StudentCourseResolutionItem]
+
+
 class StudentAcademicContextInput(StrictModel):
     id: UUID | None = None
     department_id: UUID

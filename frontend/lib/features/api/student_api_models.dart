@@ -224,6 +224,8 @@ class StudentCourseRecordCreate implements StudentPayload {
     this.courseCode = "",
     this.grade = "",
     this.completion = "planned",
+    this.academicContextId,
+    this.academicEntryId,
   });
   final String title;
   final String detail;
@@ -236,6 +238,8 @@ class StudentCourseRecordCreate implements StudentPayload {
   final String courseCode;
   final String grade;
   final String completion;
+  final String? academicContextId;
+  final String? academicEntryId;
   factory StudentCourseRecordCreate.fromJson(Map<String, dynamic> value) =>
       StudentCourseRecordCreate(
         title: value['title'] as String,
@@ -257,6 +261,12 @@ class StudentCourseRecordCreate implements StudentPayload {
         completion: value['completion'] == null
             ? "planned"
             : value['completion'] as String,
+        academicContextId: value['academic_context_id'] == null
+            ? null
+            : value['academic_context_id'] as String,
+        academicEntryId: value['academic_entry_id'] == null
+            ? null
+            : value['academic_entry_id'] as String,
       );
   @override
   Map<String, Object?> toJson() => {
@@ -271,6 +281,8 @@ class StudentCourseRecordCreate implements StudentPayload {
     'course_code': courseCode,
     'grade': grade,
     'completion': completion,
+    'academic_context_id': academicContextId,
+    'academic_entry_id': academicEntryId,
   };
 }
 

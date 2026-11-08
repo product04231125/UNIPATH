@@ -28,6 +28,8 @@ const _courseIdentityKeys = {
   'credits',
   'category',
   'gradingBasis',
+  'academicContextId',
+  'academicEntryId',
 };
 // Plan: course form shows searchable pick + term/grade/completion/section only.
 // Keep `detail` in field schema/wire as empty (or existing) value; hide free-text UI.
@@ -76,7 +78,17 @@ Future<void> showPersonalRecordForm({
   }
   if (!context.mounted || blocked()) return;
   onFieldsReady?.call(fields);
-  String seed(String key) => draftValues?[key] ?? record?.value(key) ?? '';
+  String seed(String key) {
+    final value = draftValues?[key] ?? record?.value(key) ?? '';
+    return key == 'completion'
+        ? switch (value) {
+            '계획' => '수강 예정',
+            '이수 기록' => '이수 완료',
+            _ => value,
+          }
+        : value;
+  }
+
   final controllers = {
     for (final field in fields)
       field.key: TextEditingController(text: seed(field.key)),
@@ -145,6 +157,12 @@ Future<void> showPersonalRecordForm({
           credits: record.value('credits'),
           category: record.value('category'),
           sourceLabel: '현재 기록',
+          academicContextId: record.value('academicContextId').isEmpty
+              ? null
+              : record.value('academicContextId'),
+          curriculumCourseId: record.value('academicEntryId').isEmpty
+              ? null
+              : record.value('academicEntryId'),
           gradingBasis: record.value('gradingBasis').isEmpty
               ? 'unspecified'
               : record.value('gradingBasis'),
@@ -176,6 +194,10 @@ Future<void> showPersonalRecordForm({
     controllers['credits']?.text = option.credits;
     controllers['category']?.text = option.category;
     controllers['gradingBasis']?.text = option.gradingBasis;
+    controllers['academicContextId']?.text = option.academicContextId ?? '';
+    controllers['academicEntryId']?.text = option.academicContextId == null
+        ? ''
+        : option.curriculumCourseId ?? '';
   }
 
   if (draftValues != null && selectedCourse() != null) {
@@ -252,9 +274,7 @@ Future<void> showPersonalRecordForm({
                   controllers[field.key]!.text !=
                       (isCourse && field.key == 'term'
                           ? initialSemester
-                          : (draftValues?[field.key] ??
-                                record?.value(field.key) ??
-                                '')) &&
+                          : seed(field.key)) &&
                   (record != null ||
                       draftValues != null ||
                       controllers[field.key]!.text.trim().isNotEmpty),

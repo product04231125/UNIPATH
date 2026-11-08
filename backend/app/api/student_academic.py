@@ -93,3 +93,21 @@ def course_link(
 @router.get("/me/academic-credit-progress", response_model=dto.StudentAcademicCreditProgress)
 def credit_progress(db: Database, identity: CurrentIdentity):
     return progress(db, identity.user.id)
+
+
+@router.post(
+    "/me/course-records/resolve-academic-links", response_model=dto.StudentCourseResolution
+)
+def resolve_courses(
+    payload: dto.StudentAcademicCommand, request: Request, db: Database, identity: CurrentIdentity
+):
+    from app.core.auth_errors import conflict
+    from app.services.student_course_records import resolve
+
+    def action(owner):
+        workspace = service.workspace(db, owner)
+        if (workspace.version if workspace else 0) != payload.expected_version:
+            raise conflict()
+        return dto.StudentCourseResolution.model_validate(resolve(db, owner))
+
+    return service.mutate(db, request, payload, "resolve-course-links", action)

@@ -4,6 +4,19 @@
 기존 인증·학업 프로필·개인 기록·학교 과목·졸업 감사·개인 계산 계약은 유지한다.
 학교 공식 승인과 특수 학사정책 자동 판정은 이 API에 포함하지 않는다.
 
+## 수강 등록과 일괄 연결
+
+일반 학생 흐름은 개인 수강 POST/PATCH의 `academic_context_id/academic_entry_id`로
+과목 연결을 함께 저장한다. 이수 완료의 학점은 개인 과목 학점에서 파생하며 재입력하지 않는다.
+기존 `PUT .../{record_id}/academic-link`는 호환용으로 유지하고 일반 화면에서는 사용하지 않는다.
+
+`POST /api/v1/me/course-records/resolve-academic-links`는 `client_id/expected_version`으로
+현재 전공 연결 버전을 확인하고 기존 수강을 일괄 연결한다. 응답은 `owner_id/linked_count/unresolved`다.
+각 미연결 결과는 `record_id/reason=no_match|ambiguous`를 제공한다. 현재 전공의 과목 코드가
+정확히 일치하고 후보가 하나인 경우만 연결한다. 이름·비슷한 코드로 추정하지 않는다.
+같은 client_id의 재시도는 같은 저장 결과를 반환한다. 타인 기록과 학교 관리자 권한 우회는 허용하지 않는다.
+원본 문장·학점·성적·메모·기존 수강 상태를 보존하며 연결을 추가한 기록의 version만 갱신한다.
+
 ## 저장과 소유권
 
 `0018_student_academic`은 기존 schema에 7개 테이블만 추가한다.

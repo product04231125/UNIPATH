@@ -136,10 +136,14 @@ class CourseRecordCreate(PersonalCreate):
     section: ShortText = ""
     course_code: ShortText = ""
     grade: ShortText = ""
-    completion: Literal["planned", "in_progress", "recorded"] = "planned"
+    completion: Literal["planned", "in_progress", "recorded", "not_completed"] = "planned"
+    academic_context_id: UUID | None = None
+    academic_entry_id: UUID | None = None
 
     @model_validator(mode="after")
     def valid_course_credits(self):
+        if bool(self.academic_context_id) != bool(self.academic_entry_id):
+            raise ValueError("Select a curriculum course and its academic context together")
         if self.grading_basis != "pass_fail" and (self.credits is None or self.credits <= 0):
             raise ValueError("Only P/F records may have zero or unconfirmed credits")
         return self

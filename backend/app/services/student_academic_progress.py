@@ -91,7 +91,11 @@ def progress(db, owner):
                     if not link.included:
                         reason = "excluded_by_student"
                     elif record.completion != "recorded":
-                        reason = "not_recorded"
+                        reason = (
+                            "not_completed"
+                            if record.completion == "not_completed"
+                            else "not_recorded"
+                        )
                     elif matched is False:
                         reason = "outside_column"
                     elif current.issues:

@@ -156,6 +156,8 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
       ),
     ],
     PersonalRecordKind.course => const [
+      PersonalRecordField('academicContextId', '학업 기준 연결'),
+      PersonalRecordField('academicEntryId', '교육과정 과목 연결'),
       PersonalRecordField('term', '학기', required: true),
       PersonalRecordField('category', '이수구분', required: true),
       PersonalRecordField(
@@ -179,8 +181,8 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
       ),
       PersonalRecordField(
         'completion',
-        '개인 기록 상태',
-        options: ['계획', '수강 중', '이수 기록'],
+        '수강 상태',
+        options: ['수강 예정', '수강 중', '이수 완료', '미이수'],
       ),
     ],
     PersonalRecordKind.activity => const [

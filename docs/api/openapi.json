@@ -42281,6 +42281,135 @@
           }
         }
       }
+    },
+    "/api/v1/me/course-records/resolve-academic-links": {
+      "post": {
+        "tags": [
+          "student academic requirements"
+        ],
+        "summary": "Resolve Courses",
+        "operationId": "resolve_courses_api_v1_me_course_records_resolve_academic_links_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentAcademicCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentCourseResolution"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -44515,7 +44644,8 @@
             "enum": [
               "planned",
               "in_progress",
-              "recorded"
+              "recorded",
+              "not_completed"
             ],
             "title": "Completion",
             "default": "planned"
@@ -44529,6 +44659,30 @@
             ],
             "title": "Grading Basis",
             "default": "unspecified"
+          },
+          "academic_context_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Context Id"
+          },
+          "academic_entry_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Entry Id"
           }
         },
         "additionalProperties": false,
@@ -44687,7 +44841,8 @@
                 "enum": [
                   "planned",
                   "in_progress",
-                  "recorded"
+                  "recorded",
+                  "not_completed"
                 ]
               },
               {
@@ -44711,6 +44866,30 @@
               }
             ],
             "title": "Grading Basis"
+          },
+          "academic_context_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Context Id"
+          },
+          "academic_entry_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Entry Id"
           }
         },
         "additionalProperties": false,
@@ -44829,7 +45008,8 @@
             "enum": [
               "planned",
               "in_progress",
-              "recorded"
+              "recorded",
+              "not_completed"
             ],
             "title": "Completion",
             "default": "planned"
@@ -44843,6 +45023,30 @@
             ],
             "title": "Grading Basis",
             "default": "unspecified"
+          },
+          "academic_context_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Context Id"
+          },
+          "academic_entry_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Entry Id"
           }
         },
         "additionalProperties": false,
@@ -48401,7 +48605,8 @@
             "enum": [
               "planned",
               "in_progress",
-              "recorded"
+              "recorded",
+              "not_completed"
             ],
             "title": "Completion",
             "default": "planned"
@@ -48415,6 +48620,30 @@
             ],
             "title": "Grading Basis",
             "default": "unspecified"
+          },
+          "academic_context_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Context Id"
+          },
+          "academic_entry_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Entry Id"
           }
         },
         "additionalProperties": false,
@@ -65885,6 +66114,79 @@
           "issues"
         ],
         "title": "StudentAcademicWorkspaceView"
+      },
+      "StudentAcademicCommand": {
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Id"
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Expected Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "client_id",
+          "expected_version"
+        ],
+        "title": "StudentAcademicCommand"
+      },
+      "StudentCourseResolution": {
+        "properties": {
+          "owner_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Owner Id"
+          },
+          "linked_count": {
+            "type": "integer",
+            "title": "Linked Count"
+          },
+          "unresolved": {
+            "items": {
+              "$ref": "#/components/schemas/StudentCourseResolutionItem"
+            },
+            "type": "array",
+            "title": "Unresolved"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "owner_id",
+          "linked_count",
+          "unresolved"
+        ],
+        "title": "StudentCourseResolution"
+      },
+      "StudentCourseResolutionItem": {
+        "properties": {
+          "record_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Record Id"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "no_match",
+              "ambiguous"
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "record_id",
+          "reason"
+        ],
+        "title": "StudentCourseResolutionItem"
       }
     },
     "securitySchemes": {

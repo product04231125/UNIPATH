@@ -15,6 +15,7 @@ class CoursePickOption {
     required this.sourceLabel,
     this.curriculumCourseId,
     this.curriculumId,
+    this.academicContextId,
     this.requiredCourse,
     this.gradingBasis = 'unspecified',
   });
@@ -27,6 +28,7 @@ class CoursePickOption {
   final String sourceLabel;
   final String gradingBasis;
   final String? curriculumCourseId, curriculumId;
+  final String? academicContextId;
   final bool? requiredCourse;
   String get categoryLabel => switch (category) {
     'major' => '전공',
@@ -107,6 +109,7 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
                 sourceLabel:
                     '학교 교육과정 · ${context.curriculum} · ${context.track}',
                 curriculumId: context.curriculumId,
+                academicContextId: context.id,
                 curriculumCourseId: course.id,
                 gradingBasis: course.gradingBasis,
                 requiredCourse: switch (course.requirement) {
@@ -229,6 +232,12 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
         credits: record.value('credits'),
         category: record.value('category'),
         sourceLabel: '내 수강 기록',
+        academicContextId: record.value('academicContextId').isEmpty
+            ? null
+            : record.value('academicContextId'),
+        curriculumCourseId: record.value('academicEntryId').isEmpty
+            ? null
+            : record.value('academicEntryId'),
         gradingBasis: record.value('gradingBasis').isEmpty
             ? 'unspecified'
             : record.value('gradingBasis'),

@@ -123,6 +123,7 @@ Future<PersonalRecordRepository> seed(Map<String, String> periods) async {
           'term': row.value,
           'category': '전공',
           'credits': '3',
+          'completion': '이수 기록',
         },
       ),
     );
@@ -182,12 +183,12 @@ void main() {
       expect(find.text('작년 과목'), findsNothing);
       expect(find.text('기존 과목'), findsNothing);
       expect(find.text('계절 과목'), findsNothing);
-      expect(find.textContaining('개인 입력 합계 3.0학점'), findsOneWidget);
+      expect(find.textContaining('취득학점 합계 3.0학점'), findsOneWidget);
       await choose(tester, 'year', '연도 미지정');
       expect(find.text('기존 과목'), findsOneWidget);
       await choose(tester, 'term', '여름 계절학기');
       expect(find.textContaining('선택한 연도·학기에 맞는 개인 기록이 없습니다'), findsOneWidget);
-      expect(find.textContaining('개인 입력 합계 0.0학점'), findsOneWidget);
+      expect(find.textContaining('취득학점 합계 0.0학점'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -208,7 +209,10 @@ void main() {
       await tester.tap(find.text('수강 과목 추가'));
       await tester.pumpAndSettle();
       expect(find.text('학교 과목 조회에 연결되지 않았습니다.'), findsOneWidget);
-      expect(find.byKey(const ValueKey('record-select-course')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('record-select-course')),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey('record-field-title')), findsNothing);
       expect(find.byKey(const ValueKey('record-field-credits')), findsNothing);
       expect(find.byKey(const ValueKey('record-field-detail')), findsNothing);
@@ -219,7 +223,10 @@ void main() {
         isNull,
       );
       expect(find.text('학교 과목 조회에 연결되지 않았습니다.'), findsOneWidget);
-      expect(find.byKey(const ValueKey('record-select-course')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('record-select-course')),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );

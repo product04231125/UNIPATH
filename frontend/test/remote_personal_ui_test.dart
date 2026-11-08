@@ -150,6 +150,8 @@ void main() {
           'grade',
           'completion',
           'grading_basis',
+          'academic_context_id',
+          'academic_entry_id',
         ]),
       );
       expect(find.textContaining('수강 기간: 2024년 겨울 계절학기'), findsOneWidget);

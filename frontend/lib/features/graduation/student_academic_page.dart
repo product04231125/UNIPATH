@@ -10,7 +10,6 @@ import '../auth/guest_preview_scope.dart';
 import '../planning/planning_repository.dart';
 import 'student_academic_contexts.dart';
 import 'student_academic_controller.dart';
-import 'student_academic_course_link.dart';
 import 'student_academic_response_editor.dart';
 import 'student_academic_history.dart';
 
@@ -354,18 +353,6 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
                   OutlinedButton(
                     onPressed: c.disabled || _guest ? null : _contexts,
                     child: const Text('학업 기준 설정'),
-                  ),
-                  OutlinedButton(
-                    onPressed: c.disabled || _guest
-                        ? null
-                        : () async {
-                            await editStudentAcademicCourseLink(
-                              context,
-                              widget.api,
-                            );
-                            if (mounted) await c.load();
-                          },
-                    child: const Text('수강 기록 연결'),
                   ),
                   TextButton(
                     onPressed: c.saving || c.uncertain ? null : c.load,

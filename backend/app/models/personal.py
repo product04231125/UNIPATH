@@ -113,7 +113,9 @@ class CourseRecord(OwnedRecord, Base):
         CheckConstraint(
             "grading_basis IN ('unspecified','graded','pass_fail')", name="grading_basis"
         ),
-        CheckConstraint("completion IN ('planned','in_progress','recorded')", name="completion"),
+        CheckConstraint(
+            "completion IN ('planned','in_progress','recorded','not_completed')", name="completion"
+        ),
     )
 
 

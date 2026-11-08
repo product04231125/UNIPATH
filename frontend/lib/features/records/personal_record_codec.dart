@@ -38,6 +38,8 @@ class PersonalRecordCodec {
         'grade': 'grade',
         'completion': 'completion',
         'gradingBasis': 'grading_basis',
+        'academicContextId': 'academic_context_id',
+        'academicEntryId': 'academic_entry_id',
       },
       PersonalRecordKind.activity => {
         'organization': 'organization',
@@ -111,6 +113,8 @@ class PersonalRecordCodec {
     },
   };
   static const nullable = {
+    'academic_context_id',
+    'academic_entry_id',
     'started_on',
     'ended_on',
     'earned_on',
@@ -129,6 +133,9 @@ class PersonalRecordCodec {
     'related_record',
   };
   static const completions = {
+    '수강 예정': 'planned',
+    '이수 완료': 'recorded',
+    '미이수': 'not_completed',
     '계획': 'planned',
     '수강 중': 'in_progress',
     '이수 기록': 'recorded',
