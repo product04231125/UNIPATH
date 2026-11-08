@@ -642,6 +642,8 @@ class AcademicGuidance implements AcademicGuidancePayload {
           "scholarship_table_row",
           "career_inputs_required",
           "career_sources",
+          "school_required",
+          "school_guidance_not_connected",
         ]),
         message: value['message'] as String,
         cards: List.unmodifiable(
@@ -1210,5 +1212,187 @@ class PersonalizedGuidanceResponse implements AcademicGuidancePayload {
     'school_chunk_ids': schoolChunkIds.map((v) => v).toList(),
     'personal_citations': personalCitations.map((v) => v.toJson()).toList(),
     'missing_fields': missingFields.map((v) => v).toList(),
+  };
+}
+
+class GuidanceBundle implements AcademicGuidancePayload {
+  const GuidanceBundle({
+    required this.bundleId,
+    required this.name,
+    required this.sourceSchool,
+    required this.officialUrl,
+    required this.schemaVersion,
+    required this.edition,
+    required this.fetchedAt,
+    required this.availability,
+  });
+  final String bundleId;
+  final String name;
+  final String sourceSchool;
+  final String officialUrl;
+  final String schemaVersion;
+  final String edition;
+  final DateTime fetchedAt;
+  final String availability;
+  factory GuidanceBundle.fromJson(Map<String, dynamic> value) => GuidanceBundle(
+    bundleId: value['bundle_id'] as String,
+    name: value['name'] as String,
+    sourceSchool: value['source_school'] as String,
+    officialUrl: value['official_url'] as String,
+    schemaVersion: value['schema_version'] as String,
+    edition: value['edition'] as String,
+    fetchedAt: DateTime.parse(value['fetched_at'] as String),
+    availability: _choice(value['availability'], ["available", "unavailable"]),
+  );
+  @override
+  Map<String, Object?> toJson() => {
+    'bundle_id': bundleId,
+    'name': name,
+    'source_school': sourceSchool,
+    'official_url': officialUrl,
+    'schema_version': schemaVersion,
+    'edition': edition,
+    'fetched_at': fetchedAt.toUtc().toIso8601String(),
+    'availability': availability,
+  };
+}
+
+class GuidanceBundleList implements AcademicGuidancePayload {
+  const GuidanceBundleList({required this.items, this.nextCursor});
+  final List<GuidanceBundle> items;
+  final String? nextCursor;
+  factory GuidanceBundleList.fromJson(Map<String, dynamic> value) =>
+      GuidanceBundleList(
+        items: List.unmodifiable(
+          (value['items'] as List).map(
+            (v) => GuidanceBundle.fromJson(Map<String, dynamic>.from(v as Map)),
+          ),
+        ),
+        nextCursor: value['next_cursor'] == null
+            ? null
+            : value['next_cursor'] as String,
+      );
+  @override
+  Map<String, Object?> toJson() => {
+    'items': items.map((v) => v.toJson()).toList(),
+    'next_cursor': nextCursor,
+  };
+}
+
+class GuidanceBindingView implements AcademicGuidancePayload {
+  const GuidanceBindingView({
+    required this.institutionId,
+    required this.state,
+    required this.version,
+    this.bundleId,
+    this.boundEdition,
+    this.bundle,
+    this.editionChanged = false,
+    this.updatedBy,
+    this.updatedAt,
+  });
+  final String institutionId;
+  final String state;
+  final int version;
+  final String? bundleId;
+  final String? boundEdition;
+  final GuidanceBundle? bundle;
+  final bool editionChanged;
+  final String? updatedBy;
+  final DateTime? updatedAt;
+  factory GuidanceBindingView.fromJson(Map<String, dynamic> value) =>
+      GuidanceBindingView(
+        institutionId: value['institution_id'] as String,
+        state: _choice(value['state'], ["unbound", "bound", "unavailable"]),
+        version: value['version'] as int,
+        bundleId: value['bundle_id'] == null
+            ? null
+            : value['bundle_id'] as String,
+        boundEdition: value['bound_edition'] == null
+            ? null
+            : value['bound_edition'] as String,
+        bundle: value['bundle'] == null
+            ? null
+            : GuidanceBundle.fromJson(
+                Map<String, dynamic>.from(value['bundle'] as Map),
+              ),
+        editionChanged: value['edition_changed'] == null
+            ? false
+            : value['edition_changed'] as bool,
+        updatedBy: value['updated_by'] == null
+            ? null
+            : value['updated_by'] as String,
+        updatedAt: value['updated_at'] == null
+            ? null
+            : DateTime.parse(value['updated_at'] as String),
+      );
+  @override
+  Map<String, Object?> toJson() => {
+    'institution_id': institutionId,
+    'state': state,
+    'version': version,
+    'bundle_id': bundleId,
+    'bound_edition': boundEdition,
+    'bundle': bundle?.toJson(),
+    'edition_changed': editionChanged,
+    'updated_by': updatedBy,
+    'updated_at': updatedAt?.toUtc().toIso8601String(),
+  };
+}
+
+class GuidanceBindingSave implements AcademicGuidancePayload {
+  const GuidanceBindingSave({
+    required this.bundleId,
+    required this.edition,
+    required this.expectedVersion,
+  });
+  final String bundleId;
+  final String edition;
+  final int expectedVersion;
+  factory GuidanceBindingSave.fromJson(Map<String, dynamic> value) =>
+      GuidanceBindingSave(
+        bundleId: value['bundle_id'] as String,
+        edition: value['edition'] as String,
+        expectedVersion: value['expected_version'] as int,
+      );
+  @override
+  Map<String, Object?> toJson() => {
+    'bundle_id': bundleId,
+    'edition': edition,
+    'expected_version': expectedVersion,
+  };
+}
+
+class StudentGuidanceBinding implements AcademicGuidancePayload {
+  const StudentGuidanceBinding({
+    required this.state,
+    this.institutionId,
+    this.bundle,
+  });
+  final String state;
+  final String? institutionId;
+  final GuidanceBundle? bundle;
+  factory StudentGuidanceBinding.fromJson(Map<String, dynamic> value) =>
+      StudentGuidanceBinding(
+        state: _choice(value['state'], [
+          "school_required",
+          "unbound",
+          "bound",
+          "unavailable",
+        ]),
+        institutionId: value['institution_id'] == null
+            ? null
+            : value['institution_id'] as String,
+        bundle: value['bundle'] == null
+            ? null
+            : GuidanceBundle.fromJson(
+                Map<String, dynamic>.from(value['bundle'] as Map),
+              ),
+      );
+  @override
+  Map<String, Object?> toJson() => {
+    'state': state,
+    'institution_id': institutionId,
+    'bundle': bundle?.toJson(),
   };
 }

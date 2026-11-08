@@ -51,12 +51,34 @@ class CurriculumCreate(CatalogCreate):
     year: int = Field(ge=1000, le=9999, strict=True)
 
 
-class CourseCreate(CatalogCreate):
+class ClassificationCreate(CatalogCreate):
+    """category=이수구분, subcategory=세부분류(상위 category 필수), track=이수 경로."""
+
+    kind: Literal["category", "subcategory", "track"]
+    parent_id: UUID | None = None
+    description: Annotated[str, StringConstraints(strip_whitespace=True, max_length=1000)] = ""
+    official_code: Code | None = None
+    status: Literal["active", "inactive"] = "active"
+
+    @model_validator(mode="after")
+    def parent_only_for_subcategory(self):
+        if (self.kind == "subcategory") != (self.parent_id is not None):
+            raise ValueError("Only a subcategory has a parent category")
+        return self
+
+
+class ClassificationRefs(StrictModel):
+    # classification_id: category or subcategory. track_id: track. Both from the same school.
+    classification_id: UUID | None = None
+    track_id: UUID | None = None
+
+
+class CourseCreate(CatalogCreate, ClassificationRefs):
     code: Code
     credits: Decimal = Field(ge=0, le=100, max_digits=8, decimal_places=3, allow_inf_nan=False)
 
 
-class CurriculumCourseCreate(CatalogCreate):
+class CurriculumCourseCreate(CatalogCreate, ClassificationRefs):
     curriculum_id: UUID
     course_id: UUID
     category: Literal["major", "general", "other"]
@@ -115,6 +137,10 @@ class CourseUpdate(CourseCreate, ExpectedVersion):
     pass
 
 
+class ClassificationUpdate(ClassificationCreate, ExpectedVersion):
+    pass
+
+
 class CurriculumCourseUpdate(CurriculumCourseCreate, ExpectedVersion):
     pass
 
@@ -162,7 +188,20 @@ class CourseView(CourseCreate, CatalogView):
     pass
 
 
-class CurriculumCourseView(CurriculumCourseCreate, CatalogView):
+class ClassificationView(ClassificationCreate, CatalogView):
+    status: Literal["active", "inactive"]
+
+
+class EffectiveClassification(BaseModel):
+    """What applies to the link: its own value first, then the course default."""
+
+    effective_classification_id: UUID | None
+    classification_source: Literal["curriculum_course", "course"] | None
+    effective_track_id: UUID | None
+    track_source: Literal["curriculum_course", "course"] | None
+
+
+class CurriculumCourseView(CurriculumCourseCreate, EffectiveClassification, CatalogView):
     pass
 
 

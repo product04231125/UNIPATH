@@ -27,7 +27,7 @@ def add_resource(path, create_type, update_type, view_type):
         identity: CurrentIdentity,
         institution_id: UUID | None = None,
         query: Annotated[str, Query(max_length=128)] = "",
-        status: Literal["active", "draft", "applied"] | None = None,
+        status: Literal["active", "inactive", "draft", "applied"] | None = None,
         cursor: UUID | None = None,
         limit: Limit = 100,
     ):
@@ -129,6 +129,7 @@ for path, prefix in [
     ("curricula", "Curriculum"),
     ("courses", "Course"),
     ("curriculum-courses", "CurriculumCourse"),
+    ("classifications", "Classification"),
     ("rule-sets", "RuleSet"),
     ("rules", "Rule"),
     ("documents", "Document"),

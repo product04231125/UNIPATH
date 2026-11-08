@@ -28,6 +28,11 @@ rule_sets·graduation_rules·official_documents를 추가했다. `0004_personal_
 승인 시 명시한 기존 학교 또는 새 학교와 관리 범위를 연결한다. 신청자/client_id UNIQUE,
 신청자/학교명 정규화 키의 대기 부분 UNIQUE 및 상태·결정 CHECK를 적용한다.
 학교 메타데이터/버전/삭제 표시와 범위 회수 사유도 추가한다.
+`0015_school_classifications`는 학교별 이수구분·세부분류·이수 경로 테이블을 추가해 총 51개
+도메인 테이블을 구현한다. 과목·교육과정 연결에 선택 `classification_id`·`track_id`를 추가하고,
+상위 분류와 모든 참조를 `(id, institution_id)` 복합 FK로 같은 학교에 묶는다.
+`0016_guidance_bindings`는 학교별 학사 안내 자료 연결 테이블을 추가해 총 52개 도메인 테이블을
+구현한다. 학교 UUID가 기본키라 학교마다 연결은 하나다. 묶음 ID와 확인한 판본 해시를 저장한다.
 아래 전체 논리 ERD/단계 표의 개별 학생 기록 엔터티는 학교 검토 묶음으로 우선 구현한다.
 공식 감사는 최소 입력·조건·결과를 JSONB 스냅샷으로 구현하고 별도 결과 행 테이블은 만들지 않는다.
 벡터 임베딩과 전체 진로/채용 확장은 도입 계획이다.
@@ -913,7 +918,7 @@ erDiagram
 
 ## 단계별 도입 계획과 현재 구현
 
-현재 물리 구현은 `0014_school_admin_signups`까지 총 50개 도메인 테이블이다.
+현재 물리 구현은 `0016_guidance_bindings`까지 총 52개 도메인 테이블이다.
 선택 자료의 [개인화·채용 분석 최소 계약](api/job-analysis.md)은 기존 개인 테이블을 본인
 범위에서 읽으며 공고·개인 문맥·결과의 새 저장소를 만들지 않는다. `JobPosting`,
 `JobRequirement`, `JobMatch` 등은 전체 2차 MVP의 후속 영속 모델이다.

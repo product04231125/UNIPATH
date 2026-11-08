@@ -10,8 +10,9 @@
 | `institutions` | 이름, 선택 국가 코드(대문자 2자), 공식 HTTP(S) URL |
 | `departments` | 학교 UUID, 이름, 코드 |
 | `curricula` | 학교·학과 UUID, 이름, 적용 연도(1000~9999) |
-| `courses` | 학교 UUID, 이름, 코드, 0~100 학점(소수 3자리 이내) |
-| `curriculum-courses` | 학교·교육과정·과목 UUID, 이름, 이수구분 `major/general/other`, boolean `required` |
+| `courses` | 학교 UUID, 이름, 코드, 0~100 학점(소수 3자리 이내), 선택 `classification_id`·`track_id`(과목 기본 분류) |
+| `curriculum-courses` | 학교·교육과정·과목 UUID, 이름, 이수구분 `major/general/other`, boolean `required`, 선택 `classification_id`·`track_id` |
+| `classifications` | 학교 UUID, 이름, `kind`, 세부분류의 상위 `parent_id`, 선택 설명·학교 공식 코드, `status=active/inactive` |
 | `rule-sets` | 학교 UUID, 선택 학과·교육과정 UUID, 이름, 선택 시작·종료일 |
 | `rules` | 묶음과 같은 범위/기간, 선택 묶음 UUID, 규칙 종류, 조건 설명, 선택 출처 URL |
 | `documents` | 범위/기간, 이름, 원문 HTTP(S) URL, 종류, 선택 관련 규칙 UUID |
@@ -41,6 +42,31 @@ transaction advisory lock 안에서 세션과 역할을 다시 읽는다. 코드
 이전 감사와 회수된 관리 범위의 FK를 보존한다. 개인 프로필이 학과/교육과정을 참조하면 학생 식별자·내용·인원 수 없이 보호된 참조 표시만
 반환하고 삭제를 차단한다. 다른 항목은 참조 없는 초안만 삭제하며
 적용본은 항상 보존한다. 이름/코드는 기존 보관 자료와 충돌할 수 있으며 조용히 재사용하지 않는다.
+
+## 학교별 분류
+
+`classifications`는 학교마다 따로 관리하는 이수구분(`category`), 세부분류(`subcategory`),
+이수 경로(`track`)다. 분류의 정체성은 서버가 만든 UUID다. 이름·설명은 자유 입력이며
+이름이 같아도 연결하거나 합치지 않는다. 이름을 바꿔도 ID와 기존 연결은 그대로다.
+분류 코드는 요구하지 않고, 학교 공식 코드가 따로 있을 때만 `official_code`에 적는다.
+필수/선택은 분류가 아니라 기존 `curriculum-courses.required`를 쓴다.
+
+- 세부분류는 같은 학교 이수구분 하나를 `parent_id`로 가져야 한다. 다른 종류는 `parent_id`가 없다.
+  `kind`는 생성 뒤 바꿀 수 없다(409). 다른 학교 분류 참조는 409이고 복합 FK로도 막는다.
+- 과목과 교육과정 연결은 `classification_id`(이수구분 또는 세부분류)와 `track_id`(이수 경로)를
+  가질 수 있다. 종류가 맞지 않으면 409다.
+- 실제 적용 값은 **교육과정 연결의 값이 우선**하고, 없으면 과목 기본값이다. 연결 응답의
+  `effective_classification_id`·`effective_track_id`가 적용 값이고 `classification_source`·`track_source`가
+  출처(`curriculum_course`/`course`/null)다. 과목 기본값을 바꾸면 값이 없는 연결에 바로 반영된다.
+- 사용 중지(`status=inactive`)한 분류나 상위가 사용 중지된 세부분류는 새로 연결할 수 없다(409).
+  이미 연결된 항목은 값을 유지하고 다른 필드를 수정할 수 있다. 연결된 분류와 하위 세부분류가 있는
+  이수구분은 삭제할 수 없고, 참조 확인 API로 연결된 과목·연결을 보여 준다.
+- 과목·연결 수정에서 `classification_id`·`track_id`를 **생략하면 기존 값을 유지**하고, `null`을 보내면
+  해제한다. 다른 필드는 기존처럼 전체 교체다. 분류를 모르는 이전 화면이 연결을 지우지 않게 하기 위함이다.
+- 관리자 목록은 `status=active/inactive`로 거를 수 있다. 감사 기록의 `kind`는 `classification`이다.
+
+학생 프로필의 이수 경로와 수강 기록의 원본 참조, 과목·연결 통합 저장은 후속 단계다.
+현재 프로필 `track`은 문자열이며, RAG 적용 범위와 공식 규칙도 이 문자열로 맞춘다.
 
 ## 검토·새 버전
 

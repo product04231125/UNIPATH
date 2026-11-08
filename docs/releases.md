@@ -215,6 +215,12 @@ UID 10001이 읽을 수 있어야 하므로 `chown root:10001`, `chmod 640`으�
 합성 시나리오를 확인한다. 시연 경로는 `python3 backend/scripts/smoke_demo_flow.py --base-url 주소`로
 점검한다. 이 스크립트는 합성 계정과 기록을 하나씩 만든다.
 
+## 학사 안내 연결
+
+`0016_guidance_bindings` 이후 학사 안내는 학교에 연결해야 학생에게 보인다. 배포 뒤 관리자 화면 또는
+`PUT /api/v1/admin/institutions/{학교 UUID}/academic-guidance`로 시연 학교를 연결한다. 연결 전에는
+학생 화면이 "연결된 학사 안내 자료가 아직 없습니다"를 표시한다.
+
 ## 게이트웨이 한도
 
 스테이징과 프로덕션 바깥 게이트웨이의 요청 한도는 2 MiB다. 앱 프록시는 로그인 16 KiB·일반 관리자

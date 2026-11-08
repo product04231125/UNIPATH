@@ -925,6 +925,8 @@ class StudentCoursePublicView implements StudentPayload {
   const StudentCoursePublicView({
     required this.id,
     required this.version,
+    this.classificationId,
+    this.trackId,
     required this.name,
     required this.institutionId,
     required this.code,
@@ -932,6 +934,8 @@ class StudentCoursePublicView implements StudentPayload {
   });
   final String id;
   final int version;
+  final String? classificationId;
+  final String? trackId;
   final String name;
   final String institutionId;
   final String code;
@@ -940,6 +944,10 @@ class StudentCoursePublicView implements StudentPayload {
       StudentCoursePublicView(
         id: value['id'] as String,
         version: value['version'] as int,
+        classificationId: value['classification_id'] == null
+            ? null
+            : value['classification_id'] as String,
+        trackId: value['track_id'] == null ? null : value['track_id'] as String,
         name: value['name'] as String,
         institutionId: value['institution_id'] as String,
         code: value['code'] as String,
@@ -949,6 +957,8 @@ class StudentCoursePublicView implements StudentPayload {
   Map<String, Object?> toJson() => {
     'id': id,
     'version': version,
+    'classification_id': classificationId,
+    'track_id': trackId,
     'name': name,
     'institution_id': institutionId,
     'code': code,
@@ -960,6 +970,12 @@ class StudentCurriculumCoursePublicView implements StudentPayload {
   const StudentCurriculumCoursePublicView({
     required this.id,
     required this.version,
+    required this.effectiveClassificationId,
+    required this.classificationSource,
+    required this.effectiveTrackId,
+    required this.trackSource,
+    this.classificationId,
+    this.trackId,
     required this.name,
     required this.institutionId,
     required this.curriculumId,
@@ -969,6 +985,12 @@ class StudentCurriculumCoursePublicView implements StudentPayload {
   });
   final String id;
   final int version;
+  final String? effectiveClassificationId;
+  final String? classificationSource;
+  final String? effectiveTrackId;
+  final String? trackSource;
+  final String? classificationId;
+  final String? trackId;
   final String name;
   final String institutionId;
   final String curriculumId;
@@ -980,6 +1002,22 @@ class StudentCurriculumCoursePublicView implements StudentPayload {
   ) => StudentCurriculumCoursePublicView(
     id: value['id'] as String,
     version: value['version'] as int,
+    effectiveClassificationId: value['effective_classification_id'] == null
+        ? null
+        : value['effective_classification_id'] as String,
+    classificationSource: value['classification_source'] == null
+        ? null
+        : value['classification_source'] as String,
+    effectiveTrackId: value['effective_track_id'] == null
+        ? null
+        : value['effective_track_id'] as String,
+    trackSource: value['track_source'] == null
+        ? null
+        : value['track_source'] as String,
+    classificationId: value['classification_id'] == null
+        ? null
+        : value['classification_id'] as String,
+    trackId: value['track_id'] == null ? null : value['track_id'] as String,
     name: value['name'] as String,
     institutionId: value['institution_id'] as String,
     curriculumId: value['curriculum_id'] as String,
@@ -991,12 +1029,70 @@ class StudentCurriculumCoursePublicView implements StudentPayload {
   Map<String, Object?> toJson() => {
     'id': id,
     'version': version,
+    'effective_classification_id': effectiveClassificationId,
+    'classification_source': classificationSource,
+    'effective_track_id': effectiveTrackId,
+    'track_source': trackSource,
+    'classification_id': classificationId,
+    'track_id': trackId,
     'name': name,
     'institution_id': institutionId,
     'curriculum_id': curriculumId,
     'course_id': courseId,
     'category': category,
     'required': required,
+  };
+}
+
+class StudentClassificationPublicView implements StudentPayload {
+  const StudentClassificationPublicView({
+    required this.id,
+    required this.version,
+    required this.name,
+    required this.institutionId,
+    required this.kind,
+    this.parentId,
+    this.description = "",
+    this.officialCode,
+    required this.status,
+  });
+  final String id;
+  final int version;
+  final String name;
+  final String institutionId;
+  final String kind;
+  final String? parentId;
+  final String description;
+  final String? officialCode;
+  final String status;
+  factory StudentClassificationPublicView.fromJson(
+    Map<String, dynamic> value,
+  ) => StudentClassificationPublicView(
+    id: value['id'] as String,
+    version: value['version'] as int,
+    name: value['name'] as String,
+    institutionId: value['institution_id'] as String,
+    kind: value['kind'] as String,
+    parentId: value['parent_id'] == null ? null : value['parent_id'] as String,
+    description: value['description'] == null
+        ? ""
+        : value['description'] as String,
+    officialCode: value['official_code'] == null
+        ? null
+        : value['official_code'] as String,
+    status: value['status'] as String,
+  );
+  @override
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'version': version,
+    'name': name,
+    'institution_id': institutionId,
+    'kind': kind,
+    'parent_id': parentId,
+    'description': description,
+    'official_code': officialCode,
+    'status': status,
   };
 }
 

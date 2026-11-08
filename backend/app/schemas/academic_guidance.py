@@ -42,6 +42,9 @@ class GuidanceReason(StrEnum):
     SCHOLARSHIP_TABLE_ROW = "scholarship_table_row"
     CAREER_INPUTS_REQUIRED = "career_inputs_required"
     CAREER_SOURCES = "career_sources"
+    # The student has no registered school, or that school has no linked bundle.
+    SCHOOL_REQUIRED = "school_required"
+    SCHOOL_GUIDANCE_NOT_CONNECTED = "school_guidance_not_connected"
 
 
 class GuidanceCardType(StrEnum):
