@@ -813,13 +813,24 @@ class AdminEditorState extends State<AdminEditor> {
     );
   }
 
+  bool get _hasCourseClassifications =>
+      widget.kind == AdminKind.course ||
+      widget.kind == AdminKind.curriculumCourse;
+
   Widget _mixedLayout() {
     final basic = _fields
         .where((f) => f.key == 'name' || f.key == 'institutionId')
         .toList();
     final remaining = _fields.where((f) => !basic.contains(f)).toList();
     final beside = remaining.where(_besideDetailsField).toList();
-    final below = remaining.where((f) => !_besideDetailsField(f)).toList();
+    final courseFields = _hasCourseClassifications
+        ? remaining
+              .where((f) => f.key == 'category' || f.key == 'required')
+              .toList()
+        : <AdminField>[];
+    final below = remaining
+        .where((f) => !_besideDetailsField(f) && !courseFields.contains(f))
+        .toList();
     final gap = FeatureLine.slotGap(context);
     final rightColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -877,10 +888,39 @@ class AdminEditorState extends State<AdminEditor> {
                   ),
                 if (below.isNotEmpty)
                   _compactDetails([
-                    for (final group in adminFieldGroups(below).values) ...group,
+                    for (final group in adminFieldGroups(below).values)
+                      ...group,
                   ]),
+                if (_hasCourseClassifications) ...[
+                  FeatureLine.section(text: '과목 분류', padTop: below.isNotEmpty),
+                  Column(
+                    key: ValueKey(
+                      'admin-course-classifications-${widget.kind.name}',
+                    ),
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _compactDetails(courseFields),
+                      if (widget.classificationDrafts != null) ...[
+                        const SizedBox(height: 16),
+                        const Text('추가 학교 분류는 임시저장만 지원하며 학생 기준에는 반영되지 않습니다.'),
+                        SchoolClassificationBindingFields(
+                          drafts: widget.classificationDrafts!,
+                          schoolId: _resolvedInstitution(),
+                          target: _classificationTarget,
+                          locked: saving || _metadataLocked,
+                          kinds: const [
+                            SchoolClassificationKind.subcategory,
+                            SchoolClassificationKind.track,
+                          ],
+                          inferSubcategoryParent: true,
+                          showHeading: false,
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
                 if (_isRule) _executionPanel(),
-                if (_usesClassifications && widget.classificationDrafts != null)
+                if (!_hasCourseClassifications && _usesClassifications && widget.classificationDrafts != null)
                   SchoolClassificationBindingFields(
                     drafts: widget.classificationDrafts!, schoolId: _resolvedInstitution(), target: _classificationTarget,
                     locked: saving || _metadataLocked,

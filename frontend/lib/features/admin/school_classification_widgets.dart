@@ -5,6 +5,7 @@ import '../../shared/drafts/form_draft_store.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/feature_line.dart';
+import '../../shared/widgets/feature_actions.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/surface_card.dart';
 import '../../shared/app_style.dart';
@@ -112,6 +113,124 @@ class _SectionState extends State<SchoolClassificationSection> {
     }
   }
 
+  final _listControllers = {
+    for (final kind in SchoolClassificationKind.values)
+      kind: ScrollController(),
+  };
+
+  @override
+  void didUpdateWidget(covariant SchoolClassificationSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.schoolId == widget.schoolId) return;
+    _message = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      for (final controller in _listControllers.values) {
+        if (controller.hasClients) controller.jumpTo(0);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _listControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Widget _list(BuildContext context, SchoolClassificationKind kind) {
+    final items = widget.drafts.entries(widget.schoolId, kind);
+    final colors = Theme.of(context).colorScheme;
+    final compact = OutlinedButton.styleFrom(
+      minimumSize: const Size(0, 36),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+    return Container(
+      key: ValueKey('classification-list-${kind.name}'),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: colors.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FeatureLine.section(
+            text: kind.label,
+            padTop: false,
+            trailing: Text('${items.length}개'),
+          ),
+          if (items.isEmpty) Text('등록한 ${kind.label}이 없습니다. 분류 초안 추가에서 등록하세요.'),
+          if (items.isNotEmpty)
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.textScalerOf(context).scale(64) * 3,
+              ),
+              child: Scrollbar(
+                controller: _listControllers[kind],
+                thumbVisibility: true,
+                child: ListView.separated(
+                  primary: false,
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.only(right: 16),
+                  controller: _listControllers[kind],
+                  itemCount: items.length,
+                  separatorBuilder: (_, _) =>
+                      Divider(height: 1, color: colors.outlineVariant),
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    final details = [
+                      if (item.parentId != null)
+                        widget.drafts.get(item.parentId)?.name ?? '',
+                      if (item.description.isNotEmpty) item.description,
+                    ].where((text) => text.isNotEmpty).join(' · ');
+                    return Padding(
+                      key: ValueKey('classification-row-${item.id}'),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: details.isEmpty
+                                ? FeatureLine.one(text: item.name)
+                                : FeatureLine.two(
+                                    primary: item.name,
+                                    secondary: details,
+                                    divided: false,
+                                  ),
+                          ),
+                          const SizedBox(width: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              OutlinedButton(
+                                style: compact,
+                                onPressed: _busy ? null : () => _edit(item),
+                                child: const Text('수정'),
+                              ),
+                              FilledButton(
+                                style: destructiveButtonStyle(context)
+                                    .merge(compact),
+                                onPressed: _busy ? null : () => _remove(item),
+                                child: const Text('초안 삭제'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => SurfaceCard(
     child: AnimatedBuilder(
@@ -119,27 +238,39 @@ class _SectionState extends State<SchoolClassificationSection> {
       builder: (context, _) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const FeatureLine.section(text: '학교별 교육과정 분류', padTop: false),
-          Text(widget.schoolName),
-          const Text(
-            '등록 API 연결 전입니다. 지금은 분류와 연결 초안을 편집·임시저장하며 학생 기준에는 반영되지 않습니다.',
+          FeatureLine.section(
+            text: '학교별 교육과정 분류',
+            padTop: false,
+            trailing: OutlinedButton(
+              onPressed: _busy ? null : () => _persist(true),
+              child: const Text('분류·연결 불러오기'),
+            ),
           ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          FeatureLine.two(
+            primary: widget.schoolName,
+            secondary: '학교 분류 저장은 연결 전입니다. 지금은 임시저장만 가능하며 학생 기준에는 반영되지 않습니다.',
+            divided: false,
+          ),
+          if (_busy) const LinearProgressIndicator(),
+          if (_message != null)
+            Semantics(liveRegion: true, child: Text(_message!)),
+          for (final kind in SchoolClassificationKind.values.where(
+            (k) => k != SchoolClassificationKind.requirement,
+          )) ...[
+            SizedBox(height: FeatureLine.slotGap(context)),
+            _list(context, kind),
+          ],
+          FeatureActions(
             children: [
-              OutlinedButton(
+              FilledButton.icon(
                 key: const ValueKey('classification-add'),
                 onPressed: _busy ? null : () => _edit(),
-                child: const Text('분류 초안 추가'),
+                icon: const Icon(Icons.add),
+                label: const Text('분류 초안 추가'),
               ),
-              TextButton(
+              OutlinedButton(
                 onPressed: _busy ? null : () => _persist(false),
                 child: const Text('분류·연결 임시저장'),
-              ),
-              TextButton(
-                onPressed: _busy ? null : () => _persist(true),
-                child: const Text('분류·연결 불러오기'),
               ),
               const FilledButton(
                 onPressed: null,
@@ -147,39 +278,6 @@ class _SectionState extends State<SchoolClassificationSection> {
               ),
             ],
           ),
-          if (_busy) const LinearProgressIndicator(),
-          if (_message != null) Text(_message!),
-          for (final kind in SchoolClassificationKind.values.where((k) => k != SchoolClassificationKind.requirement)) ...[
-            const SizedBox(height: 12),
-            Text(kind.label, style: Theme.of(context).textTheme.titleMedium),
-            if (widget.drafts.entries(widget.schoolId, kind).isEmpty)
-              const Text('등록한 분류 초안이 없습니다.'),
-            for (final item in widget.drafts.entries(widget.schoolId, kind))
-              ListTile(
-                title: Text(item.name),
-                subtitle: Text(
-                  [
-                    if (item.parentId != null)
-                      widget.drafts.get(item.parentId)?.name ?? '',
-                    if (item.requiredCourse != null)
-                      item.requiredCourse! ? '필수' : '선택',
-                    if (item.description.isNotEmpty) item.description,
-                  ].join(' · '),
-                ),
-                trailing: Wrap(
-                  children: [
-                    TextButton(
-                      onPressed: _busy ? null : () => _edit(item),
-                      child: const Text('수정'),
-                    ),
-                    TextButton(
-                      onPressed: _busy ? null : () => _remove(item),
-                      child: const Text('초안 삭제'),
-                    ),
-                  ],
-                ),
-              ),
-          ],
         ],
       ),
     ),
@@ -355,11 +453,13 @@ class SchoolClassificationBindingFields extends StatelessWidget {
     this.locked = false,
     this.kinds = SchoolClassificationKind.values,
     this.inferSubcategoryParent = false,
+    this.showHeading = true,
   });
   final SchoolClassificationDrafts drafts;
   final String schoolId, target;
   final bool locked;
   final bool inferSubcategoryParent;
+  final bool showHeading;
   final List<SchoolClassificationKind> kinds;
   @override
   Widget build(BuildContext context) {
@@ -371,7 +471,7 @@ class SchoolClassificationBindingFields extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(inferSubcategoryParent ? '세부분류·이수 경로 초안 · 서버 저장 전' : '분류 연결 초안 · 서버 저장 전'),
+            if (showHeading) Text(inferSubcategoryParent ? '세부분류·이수 경로 초안 · 서버 저장 전' : '분류 연결 초안 · 서버 저장 전'),
             for (final kind in kinds)
               Padding(
                 padding: const EdgeInsets.only(top: 6),

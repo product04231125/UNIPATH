@@ -296,6 +296,27 @@ class _SettingsPageState extends State<SettingsPage> {
                                             _dirty = true;
                                           }),
                                         ),
+                                        const SizedBox(height: 14),
+                                        Semantics(
+                                          readOnly: true,
+                                          child: InputDecorator(
+                                            key: const Key(
+                                              'settings-school-track',
+                                            ),
+                                            decoration: const InputDecoration(
+                                              labelText: '이수 경로',
+                                              enabled: false,
+                                              helperText: '학교별 이수 경로 조회 연결 전입니다. 기존 저장값을 유지합니다.',
+                                              helperMaxLines: 3,
+                                            ),
+                                            child: Text(switch (_track) {
+                                              'single_major' => '단일전공',
+                                              'double_major' => '복수전공',
+                                              null => '저장된 이수 경로 없음',
+                                              _ => _track!,
+                                            }),
+                                          ),
+                                        ),
                                       ],
                                     ),
                                     second: Column(
@@ -303,31 +324,6 @@ class _SettingsPageState extends State<SettingsPage> {
                                           CrossAxisAlignment.stretch,
                                       children: [
                                         const FeatureLine.one(text: '개인 계획'),
-                                        AnchoredSelectField<String?>(
-                                          value: _track,
-                                          label: '이수경로',
-                                          options: [
-                                            const SelectOption(null, '미입력'),
-                                            const SelectOption(
-                                              'single_major',
-                                              '단일전공',
-                                            ),
-                                            const SelectOption(
-                                              'double_major',
-                                              '복수전공',
-                                            ),
-                                            if (_track != null &&
-                                                _track != 'single_major' &&
-                                                _track != 'double_major')
-                                              SelectOption(_track, _track!),
-                                          ],
-                                          onChanged: (value) => setState(() {
-                                            _track = value;
-                                            _saved = false;
-                                            _dirty = true;
-                                          }),
-                                        ),
-                                        const SizedBox(height: 18),
                                         AnchoredSelectField<int?>(
                                           value: _academicYearOverride,
                                           label: '개인 계획 학년',

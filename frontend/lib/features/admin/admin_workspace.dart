@@ -1458,8 +1458,10 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 if (_section != '/admin/rules' || _ruleView == 'line')
                   for (final kind
                       in sectionKinds[_section] ?? <AdminKind>[]) ...[
-                    if (_section != '/admin/curricula' || kind == _curriculumView) _records(kind),
-                    SizedBox(height: FeatureLine.slotGap(context)),
+                    if (_section != '/admin/curricula' || kind == _curriculumView) ...[
+                      _records(kind),
+                      SizedBox(height: FeatureLine.slotGap(context)),
+                    ],
                   ]
                 else if (_ruleView == 'grid')
                   _schoolScopedTable(

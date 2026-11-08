@@ -13,6 +13,8 @@ import 'package:university_path_frontend/shared/widgets/anchored_select_field.da
 import 'support/auth_fixture.dart';
 
 class SettingsCatalogServer implements ApiGateway {
+  final writes = <Map<String, Object?>>[];
+  AuthFailure? profileFailure;
   final profile = <String, dynamic>{
     'owner_id': userId,
     'version': 0,
@@ -33,7 +35,9 @@ class SettingsCatalogServer implements ApiGateway {
     }
     if (path == 'me/planning-profile') {
       if (method == 'PATCH') {
-        if (body!['expected_version'] != profile['version']) {
+        writes.add(Map.of(body!));
+        if (profileFailure != null) throw profileFailure!;
+        if (body['expected_version'] != profile['version']) {
           throw const AuthFailure('다른 변경이 있습니다.', status: 409);
         }
         profile.addAll(body);
@@ -105,6 +109,54 @@ void main() {
     );
     await tester.pumpAndSettle();
     return repository;
+  }
+
+  for (final track in <String?>[null, 'school-specific-track']) {
+    testWidgets(
+      'school track stays read-only and survives settings retry: $track',
+      (tester) async {
+        final server = SettingsCatalogServer()..profile['track'] = track;
+        final repository = await pumpSettings(tester, server);
+        addTearDown(repository.dispose);
+        final field = find.byKey(const Key('settings-school-track'));
+        expect(field, findsOneWidget);
+        expect(
+          find.descendant(
+            of: field,
+            matching: find.text(track ?? '저장된 이수 경로 없음'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.byWidgetPredicate(
+            (w) => w is AnchoredSelectField<String?> && w.label == '이수경로',
+          ),
+          findsNothing,
+        );
+        expect(find.text('단일전공'), findsNothing);
+        expect(find.text('복수전공'), findsNothing);
+        expect(
+          tester.getTopLeft(field).dy,
+          lessThan(tester.getTopLeft(find.text('개인 계획')).dy),
+        );
+        final year = find.byWidgetPredicate(
+          (w) => w is AnchoredSelectField<int?> && w.label == '개인 계획 학년',
+        );
+        tester.widget<AnchoredSelectField<int?>>(year).onChanged(4);
+        await tester.pumpAndSettle();
+        server.profileFailure = const AuthFailure('합성 저장 실패', status: 422);
+        await saveSettings(tester);
+        expect(find.textContaining('합성 저장 실패'), findsOneWidget);
+        expect(tester.widget<AnchoredSelectField<int?>>(year).value, 4);
+        expect(server.writes.single['track'], track);
+        server.profileFailure = null;
+        await saveSettings(tester);
+        expect(repository.profile.track, track);
+        expect(repository.profile.academicYearOverride, 4);
+        expect(server.writes.last['track'], track);
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
   testWidgets('empty server settings start from registered school catalog', (
