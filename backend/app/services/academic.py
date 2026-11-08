@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import exists, func, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.core.auth_errors import AuthError, conflict, forbidden
@@ -409,7 +409,29 @@ def update_institution(db, request, record_id, payload):
     return item
 
 
-def history(db, identity, institution_id, cursor, limit):
+SCOPE_ACTIONS = ("scope_granted", "scope_revoked")
+
+
+def kind_condition(kind):
+    """The inverse of the kind labels assigned in history()."""
+    action = IdentityAudit.action
+    if kind == "scope":
+        return action.in_(SCOPE_ACTIONS)
+    if kind == "institution":
+        return or_(
+            action == "institution_created",
+            action.startswith("academic:institution:", autoescape=True),
+        )
+    if kind == "account":
+        return and_(
+            ~action.startswith("academic:", autoescape=True),
+            action.not_in((*SCOPE_ACTIONS, "institution_created")),
+        )
+    return action.startswith(f"academic:{kind}:", autoescape=True)
+
+
+def history(db, identity, institution_id, cursor, limit, filters=None):
+    filters = filters or {}
     if identity.user.role not in (Role.SUPER_ADMIN, Role.SCHOOL_ADMIN):
         raise forbidden()
     statement = select(IdentityAudit)
@@ -424,6 +446,15 @@ def history(db, identity, institution_id, cursor, limit):
                 AdminScope.status == "active",
             )
         )
+    for key in ("target_id", "actor_id", "action"):
+        if filters.get(key) is not None:
+            statement = statement.where(getattr(IdentityAudit, key) == filters[key])
+    if filters.get("kind"):
+        statement = statement.where(kind_condition(filters["kind"]))
+    if filters.get("occurred_from"):
+        statement = statement.where(IdentityAudit.occurred_at >= filters["occurred_from"])
+    if filters.get("occurred_to"):
+        statement = statement.where(IdentityAudit.occurred_at < filters["occurred_to"])
     if cursor:
         statement = statement.where(IdentityAudit.id > cursor)
     result = []

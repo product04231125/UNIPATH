@@ -97,7 +97,17 @@ transaction advisory lock 안에서 세션과 역할을 다시 읽는다. 코드
   기존 `/role`, `/status`도 유지한다. 자신의 계정 변경은 금지하며 정지는 세션을 폐기한다.
 - `POST /scopes/{id}/revoke`: 기존 `expected_version`에 선택 `reason`(최대 500자)을 추가했다.
   회수 사유는 범위의 `revocation_reason`에 저장하며 자유 입력을 감사 로그에 복제하지 않는다.
-- `GET /audit-logs`: 학교·UUID cursor·limit 필터와 `items/next_cursor`.
+- `GET /audit-logs`: 학교·UUID cursor·limit 필터와 `items/next_cursor`. 다음 조건을 AND로 더 받는다.
+  - `target_id`, `actor_id`: 대상·수행자 UUID 일치.
+  - `kind`: 응답의 `kind`와 같은 값(`institution`, `department`, `curriculum`, `course`,
+    `curriculumCourse`, `ruleSet`, `rule`, `document`, `classification`, `scope`, `account`). 모르는 값은 422.
+  - `action`: 전체 행동 문자열 일치(예: `academic:course:update`, `scope_granted`).
+  - `occurred_from`, `occurred_to`: 시간대가 있는 ISO 8601 시각(`Z` 또는 `+09:00`). 시작은 포함하고
+    끝은 제외한다. 시간대가 없거나 시작이 끝보다 늦지 않으면 422.
+  - 정렬과 cursor는 기존처럼 기록 UUID 순이다. 조건을 바꾸면 cursor를 처음부터 다시 쓴다.
+  - 감사 기록은 성공한 변경만 남기므로 결과 필터는 없다. 이름·설명 같은 문자열은 기록하지 않아
+    텍스트 검색도 없다. 대상 이름 검색은 목록 API로 ID를 찾은 뒤 `target_id`로 거른다.
+  - 학교관리자는 필터와 관계없이 자신의 활성 학교 범위 기록만 받는다.
   슈퍼관리자는 전체, 학교관리자는 현재 활성 범위의 학교 메타데이터만 조회한다.
   성공한 변경을 기록하며 실패 요청의 영구 감사 저장은 구현하지 않았다.
 
