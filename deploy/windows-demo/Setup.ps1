@@ -41,6 +41,17 @@ function Test-DockerReady {
         return $LASTEXITCODE -eq 0 -and $output -eq 'linux'
     } finally { $ErrorActionPreference = $previous }
 }
+function Assert-LocalDocker {
+    if ($env:DOCKER_HOST -and $env:DOCKER_HOST -notlike 'npipe://*') {
+        throw 'Select a local Docker Desktop connection. Remote Docker hosts are not supported by this installer.'
+    }
+    $context = & $script:Docker context show
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot read the Docker Desktop context.' }
+    $endpoint = & $script:Docker context inspect $context --format '{{.Endpoints.docker.Host}}'
+    if ($LASTEXITCODE -ne 0 -or $endpoint -notlike 'npipe://*') {
+        throw 'Choose the local Docker Desktop Linux engine context, then run again.'
+    }
+}
 function Test-Wsl {
     $output = (& wsl.exe --version 2>&1 | Out-String).Replace([string][char]0,'')
     if ($LASTEXITCODE -ne 0) { return $false }
@@ -49,6 +60,7 @@ function Test-Wsl {
 }
 function Initialize-Docker {
     $script:Docker = Find-Docker
+    if ($script:Docker) { Assert-LocalDocker }
     if ($script:Docker -and (Test-DockerReady)) {
         Invoke-Docker -Arguments @('compose','version')
         return
@@ -95,6 +107,7 @@ function Initialize-Docker {
         if ($installed.ExitCode -ne 0) { throw "Docker installation stopped (exit $($installed.ExitCode))." }
         $script:Docker = Find-Docker
         if (-not $script:Docker) { throw 'Docker installation is incomplete. Run Docker Desktop once, then retry.' }
+        Assert-LocalDocker
     }
     if (-not (Test-DockerReady)) {
         $desktop = @("$env:LOCALAPPDATA\Programs\DockerDesktop\Docker Desktop.exe", "$env:ProgramFiles\Docker\Docker\Docker Desktop.exe") |
@@ -119,6 +132,7 @@ try {
     if ($Stop) {
         $script:Docker = Find-Docker
         if (-not $script:Docker -or -not (Test-Path -LiteralPath $envFile)) { Write-Output 'Demo is not installed.'; exit 0 }
+        Assert-LocalDocker
         Invoke-Docker -Arguments @('compose','--env-file',$envFile,'-f',$composeFile,'-p','unipath-demo','stop')
         Write-Output 'Demo stopped. Saved records are preserved.'
         exit 0
@@ -140,6 +154,11 @@ try {
     }
     $settings = @("POSTGRES_PASSWORD=$dbPassword","API_IMAGE=$($manifest.api_image)","WEB_IMAGE=$($manifest.web_image)","DB_IMAGE=$($manifest.db_image)")
     [IO.File]::WriteAllLines($envFile,$settings,(New-Object Text.UTF8Encoding($false)))
+    # Compose's process environment takes precedence over --env-file.
+    $env:POSTGRES_PASSWORD = $dbPassword
+    $env:API_IMAGE = $manifest.api_image
+    $env:WEB_IMAGE = $manifest.web_image
+    $env:DB_IMAGE = $manifest.db_image
     $accountsFile = Join-Path $StateDirectory 'accounts.json'
     if (-not (Test-Path -LiteralPath $accountsFile)) {
         $accounts = @{student=(New-DemoPassword);admin=(New-DemoPassword)}

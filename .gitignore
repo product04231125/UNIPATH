@@ -24,6 +24,7 @@ backend/dist/
 dist/
 backups/
 *.dump
+/output/windows-demo*/
 
 # Agent instructions, skills and personal tool settings stay local.
 [Aa][Gg][Ee][Nn][Tt].[Mm][Dd]
