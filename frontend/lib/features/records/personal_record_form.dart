@@ -22,7 +22,13 @@ import 'personal_repository_scope.dart';
 String personalRecordDraftScreenId(PersonalRecordKind kind) =>
     'personal_record.${kind.name}';
 
-const _courseIdentityKeys = {'title', 'courseCode', 'credits', 'category'};
+const _courseIdentityKeys = {
+  'title',
+  'courseCode',
+  'credits',
+  'category',
+  'gradingBasis',
+};
 // Plan: course form shows searchable pick + term/grade/completion/section only.
 // Keep `detail` in field schema/wire as empty (or existing) value; hide free-text UI.
 const _courseHiddenInputKeys = {..._courseIdentityKeys, 'detail'};
@@ -70,17 +76,14 @@ Future<void> showPersonalRecordForm({
   }
   if (!context.mounted || blocked()) return;
   onFieldsReady?.call(fields);
-  String seed(String key) =>
-      draftValues?[key] ?? record?.value(key) ?? '';
+  String seed(String key) => draftValues?[key] ?? record?.value(key) ?? '';
   final controllers = {
     for (final field in fields)
       field.key: TextEditingController(text: seed(field.key)),
   };
   final isCourse = kind == PersonalRecordKind.course;
   final originalTerm = record?.value('term') ?? '';
-  final period = CourseTerm.parse(
-    draftValues?['term'] ?? originalTerm,
-  );
+  final period = CourseTerm.parse(draftValues?['term'] ?? originalTerm);
   final initialYear = record == null && draftValues == null
       ? '${DateTime.now().year}'
       : period.year;
@@ -119,6 +122,7 @@ Future<void> showPersonalRecordForm({
       courseIssues.add('개인 과목 후보를 불러오지 못했습니다. 다시 읽기를 눌러 주세요.');
     }
   }
+
   if (isCourse) {
     await readCourses();
     if (!context.mounted) {
@@ -141,13 +145,17 @@ Future<void> showPersonalRecordForm({
           credits: record.value('credits'),
           category: record.value('category'),
           sourceLabel: '현재 기록',
+          gradingBasis: record.value('gradingBasis').isEmpty
+              ? 'unspecified'
+              : record.value('gradingBasis'),
         );
         courseOptions = [...courseOptions, current];
         selectedCourseId = current.id;
       }
     }
     final restoredId = draftValues?['_courseSelectionId'];
-    if (restoredId != null && courseOptions.any((option) => option.id == restoredId)) {
+    if (restoredId != null &&
+        courseOptions.any((option) => option.id == restoredId)) {
       selectedCourseId = restoredId;
     }
   }
@@ -160,14 +168,19 @@ Future<void> showPersonalRecordForm({
   }
   final initialCourseId = selectedCourseId;
   CoursePickOption? selectedCourse() => courseOptions
-      .where((option) => option.id == selectedCourseId).firstOrNull;
+      .where((option) => option.id == selectedCourseId)
+      .firstOrNull;
   void applyCourse(CoursePickOption option) {
     controllers['title']?.text = option.title;
     controllers['courseCode']?.text = option.courseCode;
     controllers['credits']?.text = option.credits;
     controllers['category']?.text = option.category;
+    controllers['gradingBasis']?.text = option.gradingBasis;
   }
-  if (draftValues != null && selectedCourse() != null) applyCourse(selectedCourse()!);
+
+  if (draftValues != null && selectedCourse() != null) {
+    applyCourse(selectedCourse()!);
+  }
 
   bool periodChanged() =>
       isCourse &&
@@ -179,7 +192,8 @@ Future<void> showPersonalRecordForm({
   String? error;
   Map<String, String> currentValues() {
     final values = {
-      for (final field in fields) field.key: controllers[field.key]!.text.trim(),
+      for (final field in fields)
+        field.key: controllers[field.key]!.text.trim(),
     };
     if (isCourse) {
       values['term'] = record != null && !periodChanged()
@@ -197,13 +211,15 @@ Future<void> showPersonalRecordForm({
       final entry = await drafts.add(
         collectionKey,
         summary: formDraftSummaryFromValues(values),
-        payload: {...values, if (isCourse) '_courseSelectionId': selectedCourseId},
+        payload: {
+          ...values,
+          if (isCourse) '_courseSelectionId': selectedCourseId,
+        },
       );
       loadedDraftId = entry.id;
       if (messengerContext.mounted) {
-        ScaffoldMessenger.of(messengerContext).showSnackBar(
-          const SnackBar(content: Text('임시저장했습니다.')),
-        );
+        ScaffoldMessenger.of(messengerContext)
+            .showSnackBar(const SnackBar(content: Text('임시저장했습니다.')));
       }
       return true;
     } catch (_) {
@@ -268,103 +284,107 @@ Future<void> showPersonalRecordForm({
                 for (final issue in courseIssues)
                   Semantics(liveRegion: true, child: Text(issue)),
                 if (courseOptions.isEmpty && courseIssues.isEmpty)
-                  const Text('선택한 학교·학과·교육과정에 조회되는 과목이 없습니다. 관리자의 과목 등록·교육과정 연결을 확인하세요.'),
+                  const Text(
+                    '선택한 학교·학과·교육과정에 조회되는 과목이 없습니다. 관리자의 과목 등록·교육과정 연결을 확인하세요.',
+                  ),
                 TextButton.icon(
-                  onPressed: saving || loadingCourses ? null : () async {
-                    updateDialog(() => loadingCourses = true);
-                    await readCourses();
-                    if (!context.mounted) return;
-                    updateDialog(() {
-                      loadingCourses = false;
-                      if (!courseOptions.any((o) => o.id == selectedCourseId)) {
-                        selectedCourseId = null;
-                      }
-                    });
-                  },
+                  onPressed: saving || loadingCourses
+                      ? null
+                      : () async {
+                          updateDialog(() => loadingCourses = true);
+                          await readCourses();
+                          if (!context.mounted) return;
+                          updateDialog(() {
+                            loadingCourses = false;
+                            if (!courseOptions.any(
+                              (o) => o.id == selectedCourseId,
+                            )) {
+                              selectedCourseId = null;
+                            }
+                          });
+                        },
                   icon: const Icon(Icons.refresh),
                   label: Text(loadingCourses ? '과목 읽는 중…' : '과목 다시 읽기'),
                 ),
                 Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: FormField<String>(
-                      initialValue: selectedCourseId ?? '',
-                      validator: (value) => selectedCourse() == null
-                          ? '과목을 선택하세요.'
-                          : selectedCourse()?.id.startsWith('catalog:') == true &&
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: FormField<String>(
+                    initialValue: selectedCourseId ?? '',
+                    validator: (value) => selectedCourse() == null
+                        ? '과목을 선택하세요.'
+                        : selectedCourse()?.id.startsWith('catalog:') == true &&
                               selectedCourse()?.curriculumCourseId == null
-                          ? '학교 교육과정의 분류 연결이 필요합니다.'
-                          : null,
-                      builder: (state) => Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          IgnorePointer(
-                            ignoring: saving || loadingCourses,
-                            child: AnchoredSelectField<String>(
-                              key: const ValueKey('record-select-course'),
-                              searchable: true,
-                              searchLabel: '과목 이름·코드 검색',
-                              value: selectedCourseId ?? '',
-                              label: fieldRequirementLabel(
-                                '과목',
-                                required: true,
-                              ),
-                              options: [
-                                const SelectOption('', '선택하세요'),
-                                for (final option in courseOptions)
-                                  SelectOption(option.id, option.label),
-                              ],
-                              onChanged: (value) {
-                                final option = courseOptions
-                                    .where((item) => item.id == value)
-                                    .firstOrNull;
-                                updateDialog(() {
-                                  selectedCourseId = value.isEmpty
-                                      ? null
-                                      : value;
-                                  if (option != null) applyCourse(option);
-                                });
-                                state.didChange(value);
-                              },
+                        ? '학교 교육과정의 분류 연결이 필요합니다.'
+                        : null,
+                    builder: (state) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        IgnorePointer(
+                          ignoring: saving || loadingCourses,
+                          child: AnchoredSelectField<String>(
+                            key: const ValueKey('record-select-course'),
+                            searchable: true,
+                            searchLabel: '과목 이름·코드 검색',
+                            value: selectedCourseId ?? '',
+                            label: fieldRequirementLabel('과목', required: true),
+                            options: [
+                              const SelectOption('', '선택하세요'),
+                              for (final option in courseOptions)
+                                SelectOption(option.id, option.label),
+                            ],
+                            onChanged: (value) {
+                              final option = courseOptions
+                                  .where((item) => item.id == value)
+                                  .firstOrNull;
+                              updateDialog(() {
+                                selectedCourseId = value.isEmpty ? null : value;
+                                if (option != null) applyCourse(option);
+                              });
+                              state.didChange(value);
+                            },
+                          ),
+                        ),
+                        if (selectedCourseId != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              [
+                                controllers['title']?.text ?? '',
+                                if ((controllers['courseCode']?.text ?? '')
+                                    .isNotEmpty)
+                                  controllers['courseCode']!.text,
+                                if ((controllers['credits']?.text ?? '')
+                                    .isNotEmpty)
+                                  formatCreditsLabel(
+                                    controllers['credits']!.text,
+                                  ),
+                                if ((controllers['category']?.text ?? '')
+                                    .isNotEmpty)
+                                  selectedCourse()?.categoryLabel ??
+                                      controllers['category']!.text,
+                                if (selectedCourse()?.requiredCourse != null)
+                                  selectedCourse()!.requirementLabel,
+                              ].where((part) => part.isNotEmpty).join(' · '),
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
-                          if (selectedCourseId != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                [
-                                  controllers['title']?.text ?? '',
-                                  if ((controllers['courseCode']?.text ?? '')
-                                      .isNotEmpty)
-                                    controllers['courseCode']!.text,
-                                  if ((controllers['credits']?.text ?? '')
-                                      .isNotEmpty)
-                                    formatCreditsLabel(
-                                      controllers['credits']!.text,
-                                    ),
-                                  if ((controllers['category']?.text ?? '')
-                                      .isNotEmpty)
-                                    selectedCourse()?.categoryLabel ?? controllers['category']!.text,
-                                  if (selectedCourse()?.requiredCourse != null)
-                                    selectedCourse()!.requirementLabel,
-                                ].where((part) => part.isNotEmpty).join(' · '),
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ),
-                          if (selectedCourse()?.id.startsWith('catalog:') == true)
-                            Text(selectedCourse()!.curriculumCourseId == null
+                        if (selectedCourse()?.id.startsWith('catalog:') == true)
+                          Text(
+                            selectedCourse()!.curriculumCourseId == null
                                 ? '교육과정의 분류 연결을 확인하지 못했습니다. 학업 프로필의 교육과정을 선택하거나 관리자에게 연결을 요청하세요.'
-                                : '이수구분과 필수 여부는 학교 교육과정에 연결된 기준을 사용합니다.'),
-                          if (state.hasError)
-                            Text(
-                              state.errorText!,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
+                                : '이수구분과 필수 여부는 학교 교육과정에 연결된 기준을 사용합니다.',
+                          ),
+                        if (state.hasError)
+                          Text(
+                            state.errorText!,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
                             ),
-                        ],
-                      ),
+                          ),
+                      ],
                     ),
                   ),
+                ),
               ],
               for (final field in fields) ...[
                 if ((isCourse && _courseHiddenInputKeys.contains(field.key)) ||
@@ -645,12 +665,19 @@ Future<void> showPersonalRecordForm({
             child: const Text('임시저장'),
           ),
           FilledButton(
-            onPressed: saving || loadingCourses || (isCourse && courseOptions.isEmpty)
+            onPressed:
+                saving || loadingCourses || (isCourse && courseOptions.isEmpty)
                 ? null
                 : () async {
                     if (saving || blocked()) return;
                     if (!form.currentState!.validate()) return;
                     final values = currentValues();
+                    if (isCourse &&
+                        values['gradingBasis'] != 'pass_fail' &&
+                        (double.tryParse(values['credits'] ?? '') ?? 0) <= 0) {
+                      updateDialog(() => error = '과목의 학점을 확인하세요.');
+                      return;
+                    }
                     final crossError = personalRecordCrossError(values);
                     if (crossError != null) {
                       updateDialog(() => error = crossError);

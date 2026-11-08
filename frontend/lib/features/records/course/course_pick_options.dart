@@ -1,6 +1,7 @@
 import '../../api/student_api.dart';
 import '../../api/student_api_models.dart';
 import '../../api/student_catalog_api.dart';
+import '../../api/student_academic_api.dart';
 import '../../../shared/credits_format.dart';
 import '../personal_record_repository.dart';
 
@@ -15,6 +16,7 @@ class CoursePickOption {
     this.curriculumCourseId,
     this.curriculumId,
     this.requiredCourse,
+    this.gradingBasis = 'unspecified',
   });
 
   final String id;
@@ -23,18 +25,25 @@ class CoursePickOption {
   final String credits;
   final String category;
   final String sourceLabel;
+  final String gradingBasis;
   final String? curriculumCourseId, curriculumId;
   final bool? requiredCourse;
   String get categoryLabel => switch (category) {
-    'major' => '전공', 'general' => '교양', 'other' => '기타', _ => category,
+    'major' => '전공',
+    'general' => '교양',
+    'other' => '기타',
+    _ => category,
   };
   String get requirementLabel => switch (requiredCourse) {
-    true => '필수', false => '선택', null => '필수 여부 미제공',
+    true => '필수',
+    false => '선택',
+    null => '필수 여부 미제공',
   };
 
   String get label {
     final parts = <String>[
       sourceLabel,
+      if (gradingBasis == 'pass_fail') 'P/F',
       [title, if (courseCode.isNotEmpty) '($courseCode)'].join(' '),
       if (credits.isNotEmpty) formatCreditsLabel(credits),
       if (category.isNotEmpty) categoryLabel,
@@ -72,7 +81,49 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
   } else if (school.isEmpty) {
     onIssue?.call('설정에서 등록된 학교·학과·교육과정을 선택하고 저장하세요.');
   }
+  var useLegacyCatalog = false;
   if (studentApi != null && school.isNotEmpty) {
+    try {
+      final workspace = await StudentAcademicApi.fromStudent(studentApi)
+          .workspace();
+      if (workspace.institutionId != school) {
+        onIssue?.call('저장된 학교와 학업 기준이 다릅니다. 설정에서 학업 기준을 확인하세요.');
+      } else if (workspace.contexts.isEmpty) {
+        useLegacyCatalog = true;
+      } else if (workspace.issues.isNotEmpty) {
+        onIssue?.call('학업 기준을 다시 확인하세요. 현재 교육과정 과목을 불러올 수 없습니다.');
+      } else {
+        for (final context in workspace.contexts.where(
+          (c) => c.institutionId == school,
+        )) {
+          for (final course in context.courses) {
+            add(
+              CoursePickOption(
+                id: 'academic:${context.id}:${course.id}',
+                title: course.name,
+                courseCode: course.code,
+                credits: course.credits,
+                category: course.classificationLabel,
+                sourceLabel:
+                    '학교 교육과정 · ${context.curriculum} · ${context.track}',
+                curriculumId: context.curriculumId,
+                curriculumCourseId: course.id,
+                gradingBasis: course.gradingBasis,
+                requiredCourse: switch (course.requirement) {
+                  'required' => true,
+                  'elective' => false,
+                  _ => null,
+                },
+              ),
+            );
+          }
+        }
+      }
+    } catch (_) {
+      onIssue?.call('학교 과목을 불러오지 못했습니다. 학업 기준을 확인하고 다시 읽기를 눌러 주세요.');
+    }
+  }
+  if (studentApi != null && school.isNotEmpty && useLegacyCatalog) {
     final catalog = StudentCatalogApi(studentApi.api);
     final courses = <StudentCoursePublicView>[];
     try {
@@ -108,8 +159,11 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
           cursor: cursor,
         );
         for (final link in page.items) {
-          if (link.institutionId == school && link.courseId.isNotEmpty &&
-              (curriculumId == null || curriculumId.isEmpty || link.curriculumId == curriculumId)) {
+          if (link.institutionId == school &&
+              link.courseId.isNotEmpty &&
+              (curriculumId == null ||
+                  curriculumId.isEmpty ||
+                  link.curriculumId == curriculumId)) {
             (links[link.courseId] ??= []).add(link);
           }
         }
@@ -132,6 +186,7 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
           title: course.name,
           courseCode: course.code,
           credits: course.credits,
+          gradingBasis: course.gradingBasis,
           category: link?.category ?? '',
           sourceLabel: '학교 과목',
           curriculumCourseId: link?.id,
@@ -156,7 +211,9 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
         category: record.value('category'),
         sourceLabel: '내 교육과정',
         requiredCourse: switch (record.value('requiredCourse')) {
-          'true' || '필수' => true, 'false' || '선택' => false, _ => null,
+          'true' || '필수' => true,
+          'false' || '선택' => false,
+          _ => null,
         },
       ),
     );
@@ -172,6 +229,9 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
         credits: record.value('credits'),
         category: record.value('category'),
         sourceLabel: '내 수강 기록',
+        gradingBasis: record.value('gradingBasis').isEmpty
+            ? 'unspecified'
+            : record.value('gradingBasis'),
       ),
     );
   }

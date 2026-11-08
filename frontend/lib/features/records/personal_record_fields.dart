@@ -168,6 +168,16 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
       PersonalRecordField('courseCode', '과목 코드'),
       PersonalRecordField('grade', '원 성적 표기'),
       PersonalRecordField(
+        'gradingBasis',
+        '평가 방식',
+        options: ['unspecified', 'graded', 'pass_fail'],
+        optionLabels: {
+          'unspecified': '미지정',
+          'graded': '등급 평가',
+          'pass_fail': 'P/F',
+        },
+      ),
+      PersonalRecordField(
         'completion',
         '개인 기록 상태',
         options: ['계획', '수강 중', '이수 기록'],

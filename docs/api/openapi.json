@@ -44480,11 +44480,14 @@
               {
                 "type": "number",
                 "maximum": 100.0,
-                "exclusiveMinimum": 0.0
+                "minimum": 0.0
               },
               {
                 "type": "string",
                 "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Credits"
@@ -44516,6 +44519,16 @@
             ],
             "title": "Completion",
             "default": "planned"
+          },
+          "grading_basis": {
+            "type": "string",
+            "enum": [
+              "unspecified",
+              "graded",
+              "pass_fail"
+            ],
+            "title": "Grading Basis",
+            "default": "unspecified"
           }
         },
         "additionalProperties": false,
@@ -44619,7 +44632,7 @@
               {
                 "type": "number",
                 "maximum": 100.0,
-                "exclusiveMinimum": 0.0
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -44682,6 +44695,22 @@
               }
             ],
             "title": "Completion"
+          },
+          "grading_basis": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "unspecified",
+                  "graded",
+                  "pass_fail"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grading Basis"
           }
         },
         "additionalProperties": false,
@@ -44766,9 +44795,16 @@
             "title": "Category"
           },
           "credits": {
-            "type": "string",
-            "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)",
-            "title": "Credits"
+            "title": "Credits",
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "section": {
             "type": "string",
@@ -44797,6 +44833,16 @@
             ],
             "title": "Completion",
             "default": "planned"
+          },
+          "grading_basis": {
+            "type": "string",
+            "enum": [
+              "unspecified",
+              "graded",
+              "pass_fail"
+            ],
+            "title": "Grading Basis",
+            "default": "unspecified"
           }
         },
         "additionalProperties": false,
@@ -48320,11 +48366,14 @@
               {
                 "type": "number",
                 "maximum": 100.0,
-                "exclusiveMinimum": 0.0
+                "minimum": 0.0
               },
               {
                 "type": "string",
                 "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,9}0*$)\\d{0,5}\\.\\d{0,3}0*$)"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Credits"
@@ -48356,6 +48405,16 @@
             ],
             "title": "Completion",
             "default": "planned"
+          },
+          "grading_basis": {
+            "type": "string",
+            "enum": [
+              "unspecified",
+              "graded",
+              "pass_fail"
+            ],
+            "title": "Grading Basis",
+            "default": "unspecified"
           }
         },
         "additionalProperties": false,

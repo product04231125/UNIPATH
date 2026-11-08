@@ -37,6 +37,7 @@ class PersonalRecordCodec {
         'courseCode': 'course_code',
         'grade': 'grade',
         'completion': 'completion',
+        'gradingBasis': 'grading_basis',
       },
       PersonalRecordKind.activity => {
         'organization': 'organization',
@@ -174,7 +175,13 @@ class PersonalRecordCodec {
     for (final entry in fields.entries) {
       final value = values[entry.key] ?? '';
       Object? converted = value;
-      if (value.isEmpty && nullable.contains(entry.value)) {
+      if (entry.key == 'gradingBasis') {
+        converted = value.isEmpty ? 'unspecified' : value;
+      } else if (entry.key == 'credits' &&
+          value.isEmpty &&
+          kind == PersonalRecordKind.course) {
+        converted = null;
+      } else if (value.isEmpty && nullable.contains(entry.value)) {
         converted = null;
       } else if (entry.key == 'completion') {
         converted = value.isEmpty ? 'planned' : completions[value];

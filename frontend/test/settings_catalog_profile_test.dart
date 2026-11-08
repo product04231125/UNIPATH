@@ -42,6 +42,9 @@ class SettingsCatalogServer implements ApiGateway {
               'id': 'published-$year',
               'name': '$year학년도 게시 교육과정',
               'revision': 1,
+              'scope': {
+                'clauses': [{}],
+              },
             },
         ],
       };

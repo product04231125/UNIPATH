@@ -12,7 +12,22 @@ class AcademicOption {
   AcademicOption(Map<String, dynamic> json)
     : id = json['id'] as String,
       name = json['name'] as String,
-      revision = json['revision'] as int?;
+      revision = json['revision'] as int?,
+      scope = json['scope'] == null ? null : academicMap(json['scope']);
+  final Map<String, dynamic>? scope;
+  bool appliesTo(String department, String track, int? year) {
+    if (scope == null || year == null) return false;
+    return academicMaps(scope!['clauses']).any(
+      (c) =>
+          (c['department_id'] == null || c['department_id'] == department) &&
+          (c['admission_from'] == null ||
+              (year >= (c['admission_from'] as int) &&
+                  year <= (c['admission_to'] as int))) &&
+          ((c['track_mode'] ?? 'all') == 'all' ||
+              (c['track_ids'] as List? ?? []).contains(track)),
+    );
+  }
+
   final String id, name;
   final int? revision;
   String get label => revision == null ? name : '$name · $revision판';

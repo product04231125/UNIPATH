@@ -126,6 +126,14 @@ def main():
                 else json.dumps(field.get("default"), ensure_ascii=False)
             )
             is_required = wire in required
+            empty_decimal = (
+                wire == "credits"
+                and name in {"StudentCourseRecordCreate", "StudentCoursePublicView"}
+                and nullable
+            )
+            if empty_decimal:
+                nullable = False
+                default = '""'
             if not is_required and default == "null":
                 nullable = True
             fields.append(f"final {dart_type}{'?' if nullable else ''} {key};")
@@ -136,10 +144,15 @@ def main():
             )
             expression = f"value['{wire}']"
             read = decode(kind, dart_type, expression)
-            if not is_required or nullable:
+            if not is_required or nullable or empty_decimal:
                 read = f"{expression} == null ? {default} : {read}"
             reads.append(f"{key}: {read}")
-            writes.append(f"'{wire}': {encode(kind, key, nullable)}")
+            encoded = (
+                f"{key}.isEmpty ? null : {key}"
+                if empty_decimal
+                else encode(kind, key, nullable)
+            )
+            writes.append(f"'{wire}': {encoded}")
         output.append(
             f"\nclass {name} implements StudentPayload {{\n"
             f"const {name}({{{', '.join(arguments)}}});\n"

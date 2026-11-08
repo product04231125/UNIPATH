@@ -126,7 +126,8 @@ class StudentAcademicContextsEditorState
   @override
   void initState() {
     super.initState();
-    c = StudentAcademicController(widget.api)..addListener(_changed);
+    c = StudentAcademicController(widget.api, contextsOnly: true)
+      ..addListener(_changed);
     _load();
   }
 
@@ -170,7 +171,10 @@ class StudentAcademicContextsEditorState
     if (!mounted) return;
     try {
       final school = c.workspace?.institutionId;
-      if (!c.loaded || school == null) {
+      if (!c.loaded) {
+        throw StateError(c.error ?? '학업 기준을 불러오지 못했습니다.');
+      }
+      if (school == null) {
         throw StateError('먼저 설정에서 등록 학교·주학과·입학연도를 저장하세요.');
       }
       final options = await widget.api.options(school);
@@ -207,6 +211,10 @@ class StudentAcademicContextsEditorState
         setState(() => _error = '각 전공의 학과·경로·교육과정·네 자리 적용 입학연도를 확인하세요.');
         return;
       }
+      if (!_eligible(d).any((o) => o.id == d.curriculum)) {
+        setState(() => _error = '학과·이수 경로·적용 입학연도에 맞는 교육과정을 다시 선택하세요.');
+        return;
+      }
     }
     setState(() => _error = null);
     final yes = await c.send('PUT', 'me/academic-contexts', {
@@ -240,6 +248,15 @@ class StudentAcademicContextsEditorState
     if (selected.isNotEmpty && !options.any((o) => o.id == selected))
       SelectOption(selected, '이전 선택 · 다시 확인'),
   ];
+  List<AcademicOption> _eligible(_ContextDraft d) => _options!.curricula
+      .where(
+        (o) => o.appliesTo(d.department, d.track, int.tryParse(d.year.text)),
+      )
+      .toList();
+  void _recheck(_ContextDraft d) {
+    if (!_eligible(d).any((o) => o.id == d.curriculum)) d.curriculum = '';
+  }
+
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -285,7 +302,10 @@ class StudentAcademicContextsEditorState
                   options: _choices(_options!.departments, d.department),
                   onChanged: (value) {
                     if (!blocked && !d.primary) {
-                      setState(() => d.department = value);
+                      setState(() {
+                        d.department = value;
+                        _recheck(d);
+                      });
                     }
                   },
                 ),
@@ -295,14 +315,19 @@ class StudentAcademicContextsEditorState
                   value: d.track,
                   options: _choices(_options!.tracks, d.track),
                   onChanged: (value) {
-                    if (!blocked) setState(() => d.track = value);
+                    if (!blocked) {
+                      setState(() {
+                        d.track = value;
+                        _recheck(d);
+                      });
+                    }
                   },
                 ),
                 AnchoredSelectField<String>(
                   externalLabel: true,
                   label: '교육과정',
                   value: d.curriculum,
-                  options: _choices(_options!.curricula, d.curriculum),
+                  options: _choices(_eligible(d), d.curriculum),
                   onChanged: (value) {
                     if (!blocked) setState(() => d.curriculum = value);
                   },
@@ -311,6 +336,7 @@ class StudentAcademicContextsEditorState
                   label: '적용 입학연도',
                   child: TextField(
                     controller: d.year,
+                    onChanged: (_) => setState(() => _recheck(d)),
                     enabled: !blocked,
                     keyboardType: TextInputType.number,
                     inputFormatters: [

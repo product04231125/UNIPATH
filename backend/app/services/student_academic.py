@@ -808,6 +808,8 @@ def save_course_link(db, request, record_id, payload):
             invalid("entry_id", "선택한 전공 교육과정의 과목을 선택하세요.")
         if record.version != payload.expected_record_version:
             raise conflict()
+        if payload.earned_credits is not None and record.credits is None:
+            invalid("earned_credits", "수강 기록의 학점을 먼저 확인하세요.")
         if payload.earned_credits is not None and payload.earned_credits > record.credits:
             invalid("earned_credits", "취득학점은 수강 기록의 학점을 초과할 수 없습니다.")
         link = db.scalar(

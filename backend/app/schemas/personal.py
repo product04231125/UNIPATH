@@ -128,11 +128,21 @@ class EventCreate(PersonalCreate):
 class CourseRecordCreate(PersonalCreate):
     term: Name
     category: Name
-    credits: Credits
+    credits: (
+        Annotated[Decimal, Field(ge=0, le=100, max_digits=8, decimal_places=3, allow_inf_nan=False)]
+        | None
+    )
+    grading_basis: Literal["unspecified", "graded", "pass_fail"] = "unspecified"
     section: ShortText = ""
     course_code: ShortText = ""
     grade: ShortText = ""
     completion: Literal["planned", "in_progress", "recorded"] = "planned"
+
+    @model_validator(mode="after")
+    def valid_course_credits(self):
+        if self.grading_basis != "pass_fail" and (self.credits is None or self.credits <= 0):
+            raise ValueError("Only P/F records may have zero or unconfirmed credits")
+        return self
 
 
 class DatedRecord(PersonalCreate):

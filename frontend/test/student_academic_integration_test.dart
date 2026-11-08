@@ -228,7 +228,14 @@ class AcademicTransport implements ApiGateway {
             {'id': 'extra-track', 'name': '복수전공'},
           ],
           'curricula': [
-            {'id': 'curriculum', 'name': '공통 교육과정', 'revision': 1},
+            {
+              'id': 'curriculum',
+              'name': '공통 교육과정',
+              'revision': 1,
+              'scope': {
+                'clauses': [{}],
+              },
+            },
           ],
         };
       }

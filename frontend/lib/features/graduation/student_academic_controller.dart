@@ -53,7 +53,8 @@ String academicEvidenceReason(String reason) =>
 
 /// An owner-bound screen state. Successful writes are never repeated after a read failure.
 class StudentAcademicController extends ChangeNotifier {
-  StudentAcademicController(this.api);
+  StudentAcademicController(this.api, {this.contextsOnly = false});
+  final bool contextsOnly;
   final StudentAcademicApi api;
   AcademicStudentWorkspace? workspace;
   AcademicStudentRequirements? requirements;
@@ -81,6 +82,14 @@ class StudentAcademicController extends ChangeNotifier {
     error = null;
     _notify();
     try {
+      if (contextsOnly) {
+        final w = await api.workspace();
+        if (!_disposed && epoch == _epoch) {
+          workspace = w;
+          loaded = true;
+        }
+        return;
+      }
       final results = await Future.wait<Object>([
         api.workspace(),
         api.requirements(),

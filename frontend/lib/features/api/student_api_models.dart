@@ -219,6 +219,7 @@ class StudentCourseRecordCreate implements StudentPayload {
     required this.term,
     required this.category,
     required this.credits,
+    this.gradingBasis = "unspecified",
     this.section = "",
     this.courseCode = "",
     this.grade = "",
@@ -230,6 +231,7 @@ class StudentCourseRecordCreate implements StudentPayload {
   final String term;
   final String category;
   final String credits;
+  final String gradingBasis;
   final String section;
   final String courseCode;
   final String grade;
@@ -243,7 +245,10 @@ class StudentCourseRecordCreate implements StudentPayload {
             : value['client_id'] as String,
         term: value['term'] as String,
         category: value['category'] as String,
-        credits: _decimal(value['credits']),
+        credits: value['credits'] == null ? "" : _decimal(value['credits']),
+        gradingBasis: value['grading_basis'] == null
+            ? "unspecified"
+            : value['grading_basis'] as String,
         section: value['section'] == null ? "" : value['section'] as String,
         courseCode: value['course_code'] == null
             ? ""
@@ -260,7 +265,8 @@ class StudentCourseRecordCreate implements StudentPayload {
     'client_id': clientId,
     'term': term,
     'category': category,
-    'credits': credits,
+    'credits': credits.isEmpty ? null : credits,
+    'grading_basis': gradingBasis,
     'section': section,
     'course_code': courseCode,
     'grade': grade,
@@ -927,8 +933,9 @@ class StudentCoursePublicView implements StudentPayload {
     required this.version,
     required this.name,
     required this.institutionId,
-    required this.code,
-    required this.credits,
+    this.code = "",
+    this.credits = "",
+    this.gradingBasis = "unspecified",
   });
   final String id;
   final int version;
@@ -936,14 +943,18 @@ class StudentCoursePublicView implements StudentPayload {
   final String institutionId;
   final String code;
   final String credits;
+  final String gradingBasis;
   factory StudentCoursePublicView.fromJson(Map<String, dynamic> value) =>
       StudentCoursePublicView(
         id: value['id'] as String,
         version: value['version'] as int,
         name: value['name'] as String,
         institutionId: value['institution_id'] as String,
-        code: value['code'] as String,
-        credits: value['credits'] == null ? '' : _decimal(value['credits']),
+        code: value['code'] == null ? "" : value['code'] as String,
+        credits: value['credits'] == null ? "" : _decimal(value['credits']),
+        gradingBasis: value['grading_basis'] == null
+            ? "unspecified"
+            : value['grading_basis'] as String,
       );
   @override
   Map<String, Object?> toJson() => {
@@ -952,7 +963,8 @@ class StudentCoursePublicView implements StudentPayload {
     'name': name,
     'institution_id': institutionId,
     'code': code,
-    'credits': credits,
+    'credits': credits.isEmpty ? null : credits,
+    'grading_basis': gradingBasis,
   };
 }
 
