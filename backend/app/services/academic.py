@@ -373,6 +373,29 @@ def update_institution(db, request, record_id, payload):
     return item
 
 
+def audit_kind(action):
+    if action.startswith("academic:"):
+        operation = action.split(":")[1]
+        for prefix, kind in (
+            ("classification_", "classification"),
+            ("track_", "studyTrack"),
+            ("curriculum_", "curriculum"),
+            ("requirement_", "rule"),
+        ):
+            if operation.startswith(prefix):
+                return kind
+        return operation
+    if action.startswith("local_pdf_import:"):
+        return {"track": "studyTrack", "requirement": "rule"}.get(
+            action.split(":")[1], "other"
+        )
+    if action in ("scope_granted", "scope_revoked"):
+        return "scope"
+    if action == "institution_created":
+        return "institution"
+    return "account"
+
+
 def history(db, identity, institution_id, cursor, limit):
     if identity.user.role not in (Role.SUPER_ADMIN, Role.SCHOOL_ADMIN):
         raise forbidden()
@@ -392,17 +415,7 @@ def history(db, identity, institution_id, cursor, limit):
         statement = statement.where(IdentityAudit.id > cursor)
     result = []
     for row in db.scalars(statement.order_by(IdentityAudit.id).limit(limit + 1)):
-        kind = (
-            row.action.split(":")[1]
-            if row.action.startswith("academic:")
-            else (
-                "scope"
-                if row.action in ("scope_granted", "scope_revoked")
-                else "institution"
-                if row.action == "institution_created"
-                else "account"
-            )
-        )
+        kind = audit_kind(row.action)
         result.append(
             {
                 "id": row.id,

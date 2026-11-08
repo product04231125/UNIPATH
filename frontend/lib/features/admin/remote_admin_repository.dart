@@ -251,7 +251,10 @@ class RemoteAdminRepository extends AdminRepository {
             action: action.startsWith('academic:')
                 ? action.split(':').last
                 : action,
-            kind: AdminKind.values.firstWhere((k) => k.name == e['kind']),
+            kind: AdminKind.values
+                .where((k) => k.name == e['kind'])
+                .firstOrNull,
+            rawKind: e['kind'] as String? ?? '',
             result: 'success',
             requestId: e['request_id'] as String? ?? '',
             at: DateTime.parse(e['occurred_at'] as String),

@@ -1127,7 +1127,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     onTap: () => _navigate('/admin/history'),
                     child: FeatureLine.two(
                       primary:
-                          '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
+                          '${entry.kindLabel} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
                       secondary:
                           _find(entry.targetId) != null &&
                               _repo.canRead(_actor, _find(entry.targetId)!)
@@ -1156,7 +1156,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   Iterable<AdminAuditEntry> _filteredHistory(Iterable<AdminAuditEntry> scoped) {
     final query = _historyQuery.text.trim().toLowerCase();
     return scoped.where((entry) {
-      if (_historyKind.isNotEmpty && entry.kind.name != _historyKind) {
+      if (_historyKind.isNotEmpty && entry.kindName != _historyKind) {
         return false;
       }
       if (_historyAction.isNotEmpty && entry.action != _historyAction) {
@@ -1167,7 +1167,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       final actor = _actorName(entry.actorId);
       final action = _actionLabel(entry.action);
       final haystack =
-          '${entry.kind.label} $target $actor $action ${entry.action}'
+          '${entry.kindLabel} $target $actor $action ${entry.action}'
               .toLowerCase();
       return haystack.contains(query);
     });
@@ -1177,7 +1177,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     final allScoped = _repo.history.reversed.where(_historyInScope).toList();
     final entries = _filteredHistory(allScoped).toList();
     final kindOptions = {
-      for (final entry in allScoped) entry.kind.name: entry.kind.label,
+      for (final entry in allScoped) entry.kindName: entry.kindLabel,
     };
     final actionOptions = {
       for (final entry in allScoped) entry.action: _actionLabel(entry.action),
@@ -1240,7 +1240,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             for (final entry in entries) ...[
               FeatureLine.two(
                 primary:
-                    '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
+                    '${entry.kindLabel} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
                 secondary:
                     '${_timeLabel(entry.at)} · ${_actorName(entry.actorId)} · ${_relationName(entry.targetId).isEmpty ? '삭제되었거나 볼 수 없는 항목' : _relationName(entry.targetId)}',
               ),

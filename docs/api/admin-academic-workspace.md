@@ -96,3 +96,9 @@ academic_requirement_department_refs / track_refs / node_refs를 추가한다.
 검증: 별도 PostgreSQL17/pgvector 합성 컨테이너에서 migration과 실제 저장·재조회·
 게시·복사·버전 충돌·멱등성·타 학교 FK·학생 권한 거부를 검사한다.
 운영 DB 적용·배포·제품 원격 푸시는 수행하지 않았다.
+
+관리 감사 이력의 `kind`는 작업명이 아닌 대상 종류다. 새 분류 작업은
+`classification`, 이수 경로는 `studyTrack`, 교육과정은 `curriculum`,
+졸업요건은 `rule`로 반환한다. 기존 이력을 삭제·수정하지 않고 조회 시 분류한다.
+클라이언트는 기존 작업명 형태와 알 수 없는 종류도 보존하며, 한 이력의 새 종류로
+관리 현황 전체 조회를 중단하지 않는다.
