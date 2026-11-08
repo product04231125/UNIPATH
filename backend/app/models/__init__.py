@@ -7,6 +7,12 @@ from app.models.academic import (
     OfficialDocument,
     RuleSet,
 )
+from app.models.academic_workspace import (
+    AcademicMutationReceipt,
+    ClassificationNode,
+    ClassificationRevision,
+    StudyTrack,
+)
 from app.models.admin_applications import SchoolAdminApplication
 from app.models.admin_signups import SchoolAdminSignup
 from app.models.base import Base
@@ -60,6 +66,10 @@ from app.models.rule_programs import (
 )
 
 __all__ = [
+    "AcademicMutationReceipt",
+    "ClassificationNode",
+    "ClassificationRevision",
+    "StudyTrack",
     "SchoolAdminSignup",
     "SchoolAdminApplication",
     "Base",
