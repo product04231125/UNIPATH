@@ -1,4 +1,6 @@
-/// Local certification-requirement draft. Not a rule-programs DTO.
+import '../records/personal_record_repository.dart';
+
+/// Editor model; the academic workspace adapter owns its wire representation.
 enum GraduationCertificationChoice { all, pickOne, pickN }
 
 enum GraduationCertificationKind {
@@ -16,10 +18,12 @@ class GraduationCertificationItem {
     required this.id,
     this.label = '',
     this.kind = GraduationCertificationKind.text,
+    this.scope,
   });
   final String id;
   String label;
   GraduationCertificationKind kind;
+  Map<String, dynamic>? scope;
 }
 
 class GraduationCertificationGroup {
@@ -31,6 +35,7 @@ class GraduationCertificationGroup {
     List<GraduationCertificationItem>? items,
     List<GraduationCertificationGroup>? groups,
     List<String>? exemptions,
+    this.scope,
   }) : items = items ?? [],
        groups = groups ?? [],
        exemptions = exemptions ?? [];
@@ -44,6 +49,7 @@ class GraduationCertificationGroup {
   final List<GraduationCertificationItem> items;
   final List<GraduationCertificationGroup> groups;
   final List<String> exemptions;
+  Map<String, dynamic>? scope;
 }
 
 class GraduationCertificationDraft {
@@ -55,9 +61,7 @@ class GraduationCertificationDraft {
   String departmentId;
   final List<GraduationCertificationGroup> groups;
 
-  static int _nextId = 0;
-  static String newId([String prefix = 'cert']) =>
-      '$prefix-${DateTime.now().microsecondsSinceEpoch}-${_nextId++}';
+  static String newId([String prefix = 'cert']) => PersonalRecord.newId();
 }
 
 GraduationCertificationDraft copyCertificationDraft(
@@ -68,6 +72,7 @@ GraduationCertificationDraft copyCertificationDraft(
         id: group.id,
         label: group.label,
         choice: group.choice,
+        scope: group.scope,
         pickCount: group.pickCount,
         items: [
           for (final item in group.items)
@@ -75,6 +80,7 @@ GraduationCertificationDraft copyCertificationDraft(
               id: item.id,
               label: item.label,
               kind: item.kind,
+              scope: item.scope,
             ),
         ],
         groups: group.groups.map(copyGroup).toList(),

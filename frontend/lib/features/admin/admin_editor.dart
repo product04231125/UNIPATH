@@ -34,6 +34,7 @@ class AdminEditor extends StatefulWidget {
     this.onRevokeRequested,
     this.onClosed,
     this.classificationDrafts,
+    this.sourceCourseOnly = false,
   });
   final AdminRepository repository;
   final String actorId, schoolId;
@@ -45,6 +46,7 @@ class AdminEditor extends StatefulWidget {
   final VoidCallback? onRevokeRequested;
   final VoidCallback? onClosed;
   final SchoolClassificationDrafts? classificationDrafts;
+  final bool sourceCourseOnly;
   @override
   State<AdminEditor> createState() => AdminEditorState();
 }
@@ -85,8 +87,16 @@ class AdminEditorState extends State<AdminEditor> {
   String? _error, _message;
   String? _loadedDraftId;
   final _classificationDraftId = PersonalRecord.newId();
-  String get _classificationTarget => '${widget.kind.name}:${(_isRule ? _rule : _currentRecord)?.id ?? _classificationDraftId}';
-  bool get _usesClassifications => [AdminKind.course, AdminKind.curriculumCourse, AdminKind.ruleSet, AdminKind.rule].contains(widget.kind);
+  String get _classificationTarget =>
+      '${widget.kind.name}:${(_isRule ? _rule : _currentRecord)?.id ?? _classificationDraftId}';
+  bool get _usesClassifications =>
+      !widget.sourceCourseOnly &&
+      [
+        AdminKind.course,
+        AdminKind.curriculumCourse,
+        AdminKind.ruleSet,
+        AdminKind.rule,
+      ].contains(widget.kind);
   final _drafts = FormDraftStore.instance;
   bool get saving => _saving || _panelBusy;
   bool get dirty =>
@@ -131,9 +141,7 @@ class AdminEditorState extends State<AdminEditor> {
     final ok = await _saveDraftQuiet();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(ok ? '임시저장했습니다.' : '임시저장하지 못했습니다. 입력은 유지됩니다.'),
-      ),
+      SnackBar(content: Text(ok ? '임시저장했습니다.' : '임시저장하지 못했습니다. 입력은 유지됩니다.')),
     );
   }
 
@@ -193,7 +201,9 @@ class AdminEditorState extends State<AdminEditor> {
     if (_isSchoolKind || _isCurriculumKind) {
       _form.currentState?.clearError();
     }
-    if (widget.kind == AdminKind.course) _fillCourseLink(record);
+    if (widget.kind == AdminKind.course && !widget.sourceCourseOnly) {
+      _fillCourseLink(record);
+    }
     _savedRecord = record;
     _executionKey = GlobalKey<AdminRuleExecutionPanelState>();
   }
@@ -268,9 +278,15 @@ class AdminEditorState extends State<AdminEditor> {
         ? [const AdminField('reason', '회수 사유', multiline: true)]
         : [
             ...widget.repository.fields(widget.kind),
-            if (widget.kind == AdminKind.course) ...[
-              const AdminField('curriculumId', '교육과정', relation: AdminKind.curriculum),
-              ...adminFields(AdminKind.curriculumCourse).where((f) => f.key == 'category' || f.key == 'required'),
+            if (widget.kind == AdminKind.course &&
+                !widget.sourceCourseOnly) ...[
+              const AdminField(
+                'curriculumId',
+                '교육과정',
+                relation: AdminKind.curriculum,
+              ),
+              ...adminFields(AdminKind.curriculumCourse)
+                  .where((f) => f.key == 'category' || f.key == 'required'),
             ],
           ];
     _initial = {
@@ -288,7 +304,9 @@ class AdminEditorState extends State<AdminEditor> {
       for (final f in _fields)
         f.key: TextEditingController(text: _initial[f.key]),
     };
-    if (widget.kind == AdminKind.course) _fillCourseLink(widget.record);
+    if (widget.kind == AdminKind.course && !widget.sourceCourseOnly) {
+      _fillCourseLink(widget.record);
+    }
     if (_isRule) {
       for (final c in _controllers.values) {
         c.addListener(_refreshRule);
@@ -297,11 +315,20 @@ class AdminEditorState extends State<AdminEditor> {
   }
 
   void _fillCourseLink(AdminRecord? course, {String? curriculumId}) {
-    final links = widget.repository.records.where((r) => r.kind == AdminKind.curriculumCourse &&
-      r.value('courseId') == course?.id && (curriculumId == null || r.value('curriculumId') == curriculumId)).toList();
+    if (widget.sourceCourseOnly) return;
+    final links = widget.repository.records
+        .where(
+          (r) =>
+              r.kind == AdminKind.curriculumCourse &&
+              r.value('courseId') == course?.id &&
+              (curriculumId == null || r.value('curriculumId') == curriculumId),
+        )
+        .toList();
     final link = links.length == 1 ? links.single : null;
     for (final key in ['curriculumId', 'category', 'required']) {
-      final value = key == 'curriculumId' && curriculumId != null ? curriculumId : link?.value(key) ?? '';
+      final value = key == 'curriculumId' && curriculumId != null
+          ? curriculumId
+          : link?.value(key) ?? '';
       _controllers[key]!.text = value;
       if (curriculumId == null) _initial[key] = value;
     }
@@ -410,7 +437,11 @@ class AdminEditorState extends State<AdminEditor> {
         final bindingTarget = _classificationTarget;
         final values = {
           ...?(_isRule ? _rule : _currentRecord)?.values,
-          for (final f in widget.kind == AdminKind.course ? widget.repository.fields(AdminKind.course) : _fields) f.key: _value(f.key).trim(),
+          for (final f
+              in widget.kind == AdminKind.course
+                  ? widget.repository.fields(AdminKind.course)
+                  : _fields)
+            f.key: _value(f.key).trim(),
           if (widget.repository.live && widget.kind != AdminKind.institution)
             'institutionId': _resolvedInstitution(),
         };
@@ -422,13 +453,21 @@ class AdminEditorState extends State<AdminEditor> {
               values: values,
             );
         var savedId = record.id;
-        if (widget.kind == AdminKind.course) {
+        if (widget.kind == AdminKind.course && !widget.sourceCourseOnly) {
           _savedRecord = await _courseRegistration.save(
-            repository: widget.repository, actorId: widget.actorId, courseValues: values,
-            original: _currentRecord, curriculumId: _value('curriculumId'),
-            category: _value('category'), requiredCourse: _value('required'));
+            repository: widget.repository,
+            actorId: widget.actorId,
+            courseValues: values,
+            original: _currentRecord,
+            curriculumId: _value('curriculumId'),
+            category: _value('category'),
+            requiredCourse: _value('required'),
+          );
           savedId = _savedRecord!.id;
-        } else if ((_isRule || _usesClassifications && widget.classificationDrafts != null) && widget.repository is RemoteAdminRepository) {
+        } else if ((_isRule ||
+                widget.sourceCourseOnly ||
+                _usesClassifications && widget.classificationDrafts != null) &&
+            widget.repository is RemoteAdminRepository) {
           _savedRecord = await (widget.repository as RemoteAdminRepository)
               .saveWithResult(widget.actorId, record);
           savedId = _savedRecord!.id;
@@ -440,7 +479,11 @@ class AdminEditorState extends State<AdminEditor> {
                 .firstOrNull;
           }
         }
-        widget.classificationDrafts?.moveBinding(_resolvedInstitution(), bindingTarget, '${widget.kind.name}:$savedId');
+        widget.classificationDrafts?.moveBinding(
+          _resolvedInstitution(),
+          bindingTarget,
+          '${widget.kind.name}:$savedId',
+        );
         final draftId = _loadedDraftId;
         if (draftId != null) {
           await _drafts.delete(_draftCollectionKey, draftId);
@@ -629,7 +672,8 @@ class AdminEditorState extends State<AdminEditor> {
                 enabled: !saving && !_metadataLocked,
                 maxLines: field.multiline ? 3 : 1,
                 decoration: InputDecoration(
-                  helperText: widget.kind == AdminKind.rule && field.key == 'sourceUrl'
+                  helperText:
+                      widget.kind == AdminKind.rule && field.key == 'sourceUrl'
                       ? '공개 가능한 학교 규정 주소를 입력하세요. 관리자가 원문을 확인하며, 현재 학생 화면에는 이 주소를 표시하지 않습니다.'
                       : null,
                   helperMaxLines: 3,
@@ -665,10 +709,12 @@ class AdminEditorState extends State<AdminEditor> {
                     onChanged: (v) {
                       setState(() {
                         _controllers[field.key]!.text = v;
-                        if (widget.kind == AdminKind.course && field.key == 'curriculumId') {
+                        if (widget.kind == AdminKind.course &&
+                            field.key == 'curriculumId') {
                           _fillCourseLink(_currentRecord, curriculumId: v);
                         }
-                        if (widget.kind == AdminKind.course && field.key == 'institutionId') {
+                        if (widget.kind == AdminKind.course &&
+                            field.key == 'institutionId') {
                           _fillCourseLink(null);
                         }
                         if (field.key == 'ruleSetId' && v.isNotEmpty) {
@@ -745,10 +791,7 @@ class AdminEditorState extends State<AdminEditor> {
   /// Scope / leftover identity fields sit beside the list under basic info.
   /// Source, period, rule, and settings fields stay in the full-width block.
   bool _besideDetailsField(AdminField field) => switch (field.key) {
-    'departmentId' ||
-    'curriculumId' ||
-    'userId' ||
-    'scopeType' => true,
+    'departmentId' || 'curriculumId' || 'userId' || 'scopeType' => true,
     'sourceUrl' ||
     'officialUrl' ||
     'documentType' ||
@@ -814,7 +857,7 @@ class AdminEditorState extends State<AdminEditor> {
   }
 
   bool get _hasCourseClassifications =>
-      widget.kind == AdminKind.course ||
+      widget.kind == AdminKind.course && !widget.sourceCourseOnly ||
       widget.kind == AdminKind.curriculumCourse;
 
   Widget _mixedLayout() {
@@ -920,14 +963,25 @@ class AdminEditorState extends State<AdminEditor> {
                   ),
                 ],
                 if (_isRule) _executionPanel(),
-                if (!_hasCourseClassifications && _usesClassifications && widget.classificationDrafts != null)
+                if (!_hasCourseClassifications &&
+                    _usesClassifications &&
+                    widget.classificationDrafts != null)
                   SchoolClassificationBindingFields(
-                    drafts: widget.classificationDrafts!, schoolId: _resolvedInstitution(), target: _classificationTarget,
+                    drafts: widget.classificationDrafts!,
+                    schoolId: _resolvedInstitution(),
+                    target: _classificationTarget,
                     locked: saving || _metadataLocked,
-                    kinds: widget.kind == AdminKind.course || widget.kind == AdminKind.curriculumCourse
-                        ? const [SchoolClassificationKind.subcategory, SchoolClassificationKind.track]
+                    kinds:
+                        widget.kind == AdminKind.course ||
+                            widget.kind == AdminKind.curriculumCourse
+                        ? const [
+                            SchoolClassificationKind.subcategory,
+                            SchoolClassificationKind.track,
+                          ]
                         : SchoolClassificationKind.values,
-                    inferSubcategoryParent: widget.kind == AdminKind.course || widget.kind == AdminKind.curriculumCourse,
+                    inferSubcategoryParent:
+                        widget.kind == AdminKind.course ||
+                        widget.kind == AdminKind.curriculumCourse,
                   ),
                 if (_message != null)
                   Semantics(liveRegion: true, child: Text(_message!)),

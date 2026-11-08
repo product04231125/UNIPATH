@@ -165,11 +165,13 @@ class GraduationCertificationPreview extends StatelessWidget {
     required this.draft,
     required this.schoolName,
     required this.departments,
+    this.showContext = true,
   });
 
   final GraduationCertificationDraft draft;
   final String schoolName;
   final List<AdminRecord> departments;
+  final bool showContext;
 
   String get _departmentName =>
       departments.where((d) => d.id == draft.departmentId).firstOrNull?.name ??
@@ -182,7 +184,7 @@ class GraduationCertificationPreview extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          '$schoolName $_departmentName 졸업자격요건',
+          showContext ? '$schoolName $_departmentName 졸업자격요건' : '인증 요건',
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 12),
