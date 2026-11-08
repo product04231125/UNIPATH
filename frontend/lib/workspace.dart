@@ -6,8 +6,11 @@ import 'app_shell/workspace_shell.dart';
 import 'shared/pending_ui_action.dart';
 import 'features/assistant/assistant_window_host.dart';
 import 'features/settings/chat_preferences.dart';
+import 'features/settings/ai_consent_preferences.dart';
 import 'features/assistant/assistant_conversation.dart';
 import 'features/assistant/assistant_api.dart';
+import 'features/assistant/ai_record_catalog.dart';
+import 'features/api/guidance_api.dart';
 import 'features/assistant/assistant_panel.dart';
 import 'features/assistant/shared_school_context.dart';
 import 'features/assistant/conversation_bridge.dart';
@@ -32,8 +35,8 @@ import 'features/settings/settings_page.dart';
 import 'features/schedule/schedule_page.dart';
 import 'features/auth/guest_preview_scope.dart';
 
-/// Coordinates navigation, mock-data visibility, and the assistant window.
-/// Feature pages own their own mock state and input interactions.
+/// Coordinates navigation and the assistant window.
+/// Product pages show personal/server records; fixtures stay isolated.
 class Workspace extends StatefulWidget {
   const Workspace({
     super.key,
@@ -103,10 +106,30 @@ class _WorkspaceState extends State<Workspace> {
   Future<void>? _endingSession;
   final _assistantButtonFocus = FocusNode(debugLabel: 'AI 도우미 열기');
   late final ChatPreferences _chatPreferences;
+  late final AiConsentPreferences? _aiConsent = widget.studentApi == null
+      ? null
+      : AiConsentPreferences(ownerId: widget.studentApi!.ownerId);
   var _chatWidth = 360.0;
   final _assistantPanelKey = GlobalKey();
   late final _assistantConversation = AssistantConversation(
-    api: widget.assistantFactory?.call(),
+    api:
+        widget.assistantFactory?.call() ??
+        (widget.studentApi == null
+            ? null
+            : RegisteredAssistantApi(widget.studentApi!.api)),
+    registeredOnly: widget.assistantFactory == null,
+    guidanceApi: widget.studentApi == null
+        ? null
+        : GuidanceApi(
+            widget.studentApi!.api,
+            ownerId: widget.studentApi!.ownerId,
+          ),
+    consent: _aiConsent,
+    loadRecords: widget.studentApi == null
+        ? null
+        : () => loadAiRecords(widget.studentApi!),
+    onOpenSettings: () => _selectPage(_labels.length),
+    onOpenCareer: () => _selectPage(7),
   );
   late final PlanningRepository _planningRepository = () {
     final base = widget.studentApi == null
@@ -115,8 +138,9 @@ class _WorkspaceState extends State<Workspace> {
     if (widget.guestPreview) base.blockWrites(GuestPreviewScope.blockedMessage);
     return base;
   }();
-  late final StudentApi? _personalApi =
-      widget.guestPreview ? null : widget.studentApi;
+  late final StudentApi? _personalApi = widget.guestPreview
+      ? null
+      : widget.studentApi;
   late final PersonalCalculationController? _personalCalculations =
       _personalApi == null
       ? null
@@ -159,7 +183,7 @@ class _WorkspaceState extends State<Workspace> {
       );
       native.bindConversation(
         _conversationBridge!.read,
-        _conversationBridge!.command,
+        _conversationBridge!.dispatch,
       );
       native.bindSchoolProfile(
         () {
@@ -181,6 +205,7 @@ class _WorkspaceState extends State<Workspace> {
     _planningRepository.load();
     _chatPreferences = widget.chatPreferences ?? ChatPreferences();
     _chatPreferences.load();
+    _aiConsent?.load();
     widget.windowHost.isMaximized().then(_onMaximized, onError: (Object _) {});
     _mainWindowMaximizeSubscription = widget.windowHost.maximizeChanges.listen(
       _onMaximized,
@@ -268,6 +293,7 @@ class _WorkspaceState extends State<Workspace> {
     _planningRepository.removeListener(_refreshProfile);
     _planningRepository.dispose();
     if (widget.chatPreferences == null) _chatPreferences.dispose();
+    _aiConsent?.dispose();
     super.dispose();
   }
 
@@ -402,13 +428,14 @@ class _WorkspaceState extends State<Workspace> {
         4 => const ActivityPage(),
         5 => const CredentialPage(),
         6 => MaterialsPage(key: _materials),
-        7 => JobAnalysisPage(studentApi: _personalApi),
+        7 => JobAnalysisPage(api: _personalApi, consent: _aiConsent),
         _ when index == settingsPage - 1 => SettingsPage(
           repository: _planningRepository,
           chatPreferences: widget.windowHost.supportsDetached
               ? _chatPreferences
               : null,
           studentApi: widget.studentApi,
+          aiConsent: _aiConsent,
           previewInstitutionId: widget.previewInstitutionId,
         ),
         _ => const SizedBox.shrink(),

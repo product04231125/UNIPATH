@@ -1,19 +1,19 @@
 import 'dart:typed_data';
-import '../../api/job_analysis_api.dart';
-import '../../api/job_analysis_models.dart';
-import '../../api/student_api.dart';
-import '../../auth/auth_api.dart';
-import '../../auth/guest_preview_scope.dart';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
-import '../../../shared/widgets/feature_line.dart';
 import '../../../shared/widgets/feature_page.dart';
 import '../../../shared/widgets/field_label.dart';
 import '../../../shared/widgets/surface_card.dart';
-import '../personal_record_repository.dart';
-import '../personal_repository_scope.dart';
+import '../../api/student_api.dart';
+import '../../api/guidance_api.dart';
+import '../../api/job_analysis_models.dart';
+import '../../assistant/ai_record_catalog.dart';
+import '../../auth/auth_api.dart';
+import '../../auth/guest_preview_scope.dart';
+import '../../settings/ai_consent_preferences.dart';
+import '../../settings/ai_consent_section.dart';
 
 const jobPostingFileMaxBytes = 10 * 1024 * 1024;
 
@@ -69,422 +69,385 @@ bool _isWebp(Uint8List bytes) =>
     String.fromCharCodes(bytes.sublist(8, 12)) == 'WEBP';
 
 class JobAnalysisPage extends StatefulWidget {
-  const JobAnalysisPage({super.key, this.pickFile, this.studentApi});
-
-  final StudentApi? studentApi;
-
+  const JobAnalysisPage({
+    super.key,
+    this.pickFile,
+    this.api,
+    this.consent,
+    this.loadRecords,
+  });
   final Future<XFile?> Function()? pickFile;
-
+  final StudentApi? api;
+  final AiConsentPreferences? consent;
+  final Future<List<AiRecordOption>> Function()? loadRecords;
   @override
   State<JobAnalysisPage> createState() => JobAnalysisPageState();
 }
 
 class JobAnalysisPageState extends State<JobAnalysisPage> {
-  static const _kinds = [
-    PersonalRecordKind.activity,
-    PersonalRecordKind.experience,
-    PersonalRecordKind.credential,
-    PersonalRecordKind.portfolio,
-  ];
-  static const _kindLabels = {
-    PersonalRecordKind.activity: '활동',
-    PersonalRecordKind.experience: '경험',
-    PersonalRecordKind.credential: '자격',
-    PersonalRecordKind.portfolio: '성과',
-  };
-
   final _posting = TextEditingController();
-  final _url = TextEditingController();
-  final _selected = <String>{};
-  final _records = <PersonalRecordKind, List<PersonalRecord>>{};
-  Uint8List? _fileBytes;
-  String _fileName = '';
-  String? _fileError;
-  var _fileBusy = false;
-  var _loading = true;
-  var _failed = false;
-  bool _busy = false;
+  List<AiRecordOption> _options = const [];
+  final _selected = <String, AiRecordOption>{};
+  bool _loading = true, _failed = false, _sending = false;
+  bool _requesting = false;
   int _revision = 0;
+  String? _error, _recordMessage, _requestId;
   JobAnalysisResponse? _result;
-  String? _error;
-  List<String> _errorFields = [];
-
-  @override
-  void didUpdateWidget(covariant JobAnalysisPage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.studentApi?.ownerId != widget.studentApi?.ownerId || !identical(oldWidget.studentApi?.api, widget.studentApi?.api)) {
-      _revision++;
-      _busy = false;
-      _selected.clear();
-      _records.clear();
-      _posting.clear();
-      _url.clear();
-      _fileBytes = null;
-      _fileName = '';
-      _result = null;
-      _error = null;
-      _load();
-    }
-  }
-
-
+  bool get _connected => widget.api != null && widget.consent != null;
+  bool get _canAnalyze =>
+      _connected &&
+      !GuestPreviewScope.isActive(context) &&
+      !_loading &&
+      !_failed &&
+      !_sending;
   @override
   void initState() {
     super.initState();
-    _posting.addListener(_onInput);
-    _url.addListener(_onInput);
     _load();
   }
 
   @override
+  void didUpdateWidget(covariant JobAnalysisPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.api?.ownerId != widget.api?.ownerId ||
+        !identical(oldWidget.api?.api, widget.api?.api) ||
+        !identical(oldWidget.consent, widget.consent)) {
+      _revision++;
+      _sending = false;
+      _requesting = false;
+      _selected.clear();
+      _options = const [];
+      _posting.clear();
+      _result = null;
+      _error = null;
+      _requestId = null;
+      _load();
+    }
+  }
+
+  @override
   void dispose() {
-    _posting.removeListener(_onInput);
-    _url.removeListener(_onInput);
     _posting.dispose();
-    _url.dispose();
     super.dispose();
   }
 
-  void _onInput() {
-    if (mounted) setState(() { _result = null; _error = null; _errorFields = []; });
-  }
-
-  bool get _urlInvalid {
-    final text = _url.text.trim();
-    if (text.isEmpty) return false;
-    final uri = Uri.tryParse(text);
-    return uri == null ||
-        (uri.scheme != 'http' && uri.scheme != 'https') ||
-        uri.host.isEmpty;
-  }
-
-  String get _unavailableReason {
-    final reasons = <String>[
-      if (widget.studentApi == null) '로그인한 계정의 분석 연결이 필요합니다.',
-      if (_posting.text.trim().isEmpty && _hasPostingInput) '주소·파일만 분석하는 기능은 연결 전입니다. 공고 텍스트를 붙여 넣으세요.',
-      if (_posting.text.trim().length > 20000) '공고 텍스트는 20,000자 이내로 입력하세요.',
-    ];
-    if (!_hasPostingInput) {
-      reasons.add('공고 텍스트, 주소, PDF·캡처 중 하나가 필요합니다.');
+  Future<void> _load() async {
+    if (_sending) return;
+    final revision = _revision;
+    setState(() {
+      _loading = true;
+      _failed = false;
+      _recordMessage = null;
+    });
+    try {
+      final options = widget.loadRecords != null
+          ? await widget.loadRecords!()
+          : widget.api == null
+          ? <AiRecordOption>[]
+          : await loadAiRecords(widget.api!, includeCourses: false);
+      if (!mounted || revision != _revision) return;
+      final removed = _selected.entries
+          .where(
+            (e) => !options.any(
+              (r) => r.key == e.key && r.version == e.value.version,
+            ),
+          )
+          .map((e) => e.key)
+          .toList();
+      for (final key in removed) {
+        _selected.remove(key);
+      }
+      setState(() {
+        _options = options;
+        _loading = false;
+        if (removed.isNotEmpty) _recordMessage = '변경되거나 삭제된 기록은 다시 선택해 주세요.';
+      });
+    } catch (_) {
+      if (mounted && revision == _revision) {
+        setState(() {
+          _loading = false;
+          _failed = true;
+          _recordMessage = '개인 기록을 읽지 못했습니다. 입력과 기존 선택을 유지했습니다.';
+        });
+      }
     }
-    if (_urlInvalid) {
-      reasons.add('주소가 http:// 또는 https:// 로 시작하는 형식이 아닙니다.');
-    }
-    if (_fileError != null) reasons.add(_fileError!);
-    if (_selected.isEmpty) reasons.add('비교할 기록을 선택하세요.');
-    if (_selected.length > 20) reasons.add('비교 기록은 20개까지 선택하세요.');
-    if (widget.studentApi != null && _selected.isNotEmpty && _evidence.length != _selected.length) reasons.add('기록을 다시 불러온 뒤 서버에 저장된 기록을 선택하세요.');
-    return reasons.join(' ');
   }
-
-  bool get _hasPostingInput =>
-      _posting.text.trim().isNotEmpty ||
-      (_url.text.trim().isNotEmpty && !_urlInvalid) ||
-      _fileBytes != null;
-
-  List<PersonalEvidenceSelection> get _evidence => [
-    for (final kind in _kinds)
-      for (final record in _records[kind] ?? const <PersonalRecord>[])
-        if (_selected.contains(_key(kind, record)) && record.version != null)
-          PersonalEvidenceSelection(
-            kind: kind == PersonalRecordKind.portfolio ? 'achievement' : kind.name,
-            recordId: record.id, expectedVersion: record.version!,
-          ),
-  ];
-  bool get _canAnalyze => widget.studentApi != null && !_busy && !_loading && !_failed &&
-    !GuestPreviewScope.isActive(context) && _posting.text.trim().isNotEmpty &&
-    _posting.text.trim().length <= 20000 && !_urlInvalid && _fileError == null &&
-    _selected.isNotEmpty && _selected.length <= 20 && _evidence.length == _selected.length;
 
   Future<void> _analyze() async {
     if (!_canAnalyze) return;
-    final revision = ++_revision;
-    final api = widget.studentApi!;
-    final request = JobAnalysisRequest(postingText: _posting.text.trim(), records: _evidence);
-    setState(() { _busy = true; _result = null; _error = null; _errorFields = []; });
-    try {
-      final result = await JobAnalysisApi(api.api).analyze(request);
-      if (!mounted || revision != _revision || widget.studentApi?.ownerId != api.ownerId || GuestPreviewScope.isActive(context)) return;
-      setState(() => _result = result);
-    } on AuthFailure catch (error) {
-      if (mounted && revision == _revision) setState(() { _error = error.message; _errorFields = error.fields; });
-    } catch (_) {
-      if (mounted && revision == _revision) setState(() => _error = '분석 결과를 확인하지 못했습니다. 입력과 선택을 유지했으니 다시 시도하세요.');
-    } finally {
-      if (mounted && revision == _revision) setState(() => _busy = false);
-    }
-  }
-
-  String get _statusLabel => switch (_result?.status) {
-    'completed' => '분석 완료',
-    'needs_user_input' => '입력 확인 필요',
-    'not_configured' => '분석기 연결 전',
-    'insufficient_evidence' => '근거 부족',
-    'failed' => '분석 실패',
-    _ => _busy ? '분석 중' : '분석 준비',
-  };
-  String get _resultReason => switch (_result?.reason) {
-    'compared_with_personal_evidence' => '선택한 기록과 공고를 비교했습니다.',
-    'personal_records_required' => '비교할 기록을 선택하세요.',
-    'analyzer_not_configured' => '서버 분석기가 아직 연결되지 않았습니다. 입력은 유지했습니다.',
-    'no_requirements_found' => '공고에서 비교할 요건을 찾지 못했습니다.',
-    'analysis_failed' => '서버가 분석을 완료하지 못했습니다. 다시 시도할 수 있습니다.',
-    _ => _unavailableReason,
-  };
-
-  Future<void> _pickFile() async {
-    if (_fileBusy) return;
-    setState(() {
-      _fileBusy = true;
-      _fileError = null;
-    });
-    try {
-      final file = await (widget.pickFile ?? pickJobPostingFile)();
-      if (file == null) return;
-      if (await file.length() > jobPostingFileMaxBytes) {
-        throw StateError('PDF·캡처는 10MB 이하로 선택하세요.');
-      }
-      final bytes = await file.readAsBytes();
-      validateJobPostingFile(file.name, bytes);
-      if (!mounted) return;
-      setState(() {
-        _fileBytes = bytes;
-        _fileName = file.name;
-        _fileError = null;
-      });
-    } catch (error) {
-      if (mounted) {
-        setState(
-          () => _fileError = error is StateError
-              ? error.message
-              : '파일을 읽지 못했습니다. 이전 입력은 유지했습니다. 다시 선택하세요.',
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _fileBusy = false);
-    }
-  }
-
-  Future<void> _load() async {
     final revision = _revision;
+    final api = widget.api!;
+    final consent = widget.consent!;
+    final posting = _posting.text.trim();
     setState(() {
-      _result = null;
       _error = null;
-      _loading = true;
-      _failed = false;
+      _requestId = null;
     });
+    if (posting.isEmpty ||
+        posting.runes.length > 20000 ||
+        _selected.isEmpty ||
+        _selected.length > 20) {
+      setState(() => _error = '공고 본문(1~20,000자)과 비교할 기록 1~20개를 선택해 주세요.');
+      return;
+    }
+    final choices = _selected.values
+        .map(
+          (r) => PersonalEvidenceSelection(
+            kind: r.kind,
+            recordId: r.id,
+            expectedVersion: r.version,
+          ),
+        )
+        .toList(growable: false);
+    setState(() => _sending = true);
     try {
-      final scope = PersonalRepositoryScope.read(context);
-      final loaded = <PersonalRecordKind, List<PersonalRecord>>{};
-      for (final kind in _kinds) {
-        final repo = scope?.records(kind) ?? PersonalRecordRepository(kind);
-        await repo.load();
-        loaded[kind] = repo.records;
+      if (!await requestAiConsent(
+            context,
+            consent,
+            AiConsentFeature.jobAnalysis,
+          ) ||
+          !mounted ||
+          revision != _revision ||
+          GuestPreviewScope.isActive(context)) {
+        return;
       }
+      setState(() {
+        _result = null;
+        _requesting = true;
+      });
+      final result = await GuidanceApi(api.api).analyze(
+        JobAnalysisRequest(
+          postingText: posting,
+          records: choices,
+          externalProcessingConsent: true,
+        ),
+      );
+      if (mounted &&
+          revision == _revision &&
+          !GuestPreviewScope.isActive(context)) {
+        setState(() => _result = result);
+      }
+    } on AuthFailure catch (e) {
       if (mounted && revision == _revision) {
         setState(() {
-          _records
-            ..clear()
-            ..addAll(loaded);
-          final valid = {for (final kind in _kinds) for (final record in _records[kind] ?? const <PersonalRecord>[]) _key(kind, record)};
-          _selected.retainWhere(valid.contains);
-          _loading = false;
+          _error = e.status == 409
+              ? '선택한 기록이 변경되었습니다. 입력을 유지했습니다. 기록을 다시 읽고 선택해 주세요.'
+              : e.status == 422 &&
+                    e.fields.any(
+                      (field) =>
+                          field.split('.').last ==
+                          'external_processing_consent',
+                    )
+              ? '전송 동의 항목을 서버가 처리하지 못했습니다. 앱과 서버의 API 버전을 확인해 주세요. 입력과 기록 선택은 유지했습니다.'
+              : e.message;
+          _requestId = e.requestId;
         });
       }
     } catch (_) {
       if (mounted && revision == _revision) {
+        setState(() => _error = '분석 응답을 확인하지 못했습니다. 입력을 유지했습니다. 다시 시도해 주세요.');
+      }
+    } finally {
+      if (mounted && revision == _revision) {
         setState(() {
-          _failed = true;
-          _loading = false;
+          _sending = false;
+          _requesting = false;
         });
       }
     }
   }
 
-  String _key(PersonalRecordKind kind, PersonalRecord record) =>
-      '${kind.name}/${record.id}';
-
+  String _status(JobAnalysisResponse result) => switch (result.status) {
+    'completed' => '분석 완료',
+    'not_configured' => '분석 기능 준비 중',
+    'needs_user_input' => '추가 입력 필요',
+    'insufficient_evidence' => '분석 근거 부족',
+    _ => '분석 실패',
+  };
+  String _reason(JobAnalysisResponse result) => switch (result.reason) {
+    'analyzer_not_configured' => '분석 모델이 아직 설정되지 않았습니다. 입력을 유지했습니다.',
+    'external_processing_consent_required' =>
+      'Google 외부 전송 동의를 확인하고 다시 실행해 주세요.',
+    'personal_records_required' => '비교할 개인 기록을 선택해 주세요.',
+    'no_requirements_found' => '공고에서 비교할 요건을 찾지 못했습니다.',
+    _ => '분석을 완료하지 못했습니다. 입력을 유지하고 다시 시도할 수 있습니다.',
+  };
   @override
   Widget build(BuildContext context) => FeaturePage(
     title: '채용공고 분석',
-    description: '공고와 고른 기록으로 분석을 준비합니다.',
+    description: '공고 본문과 고른 기록을 비교합니다.',
     body: [
       SurfaceCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const FeatureLine.section(
-              text: '공고 입력',
-              padTop: false,
-              padBottom: false,
-            ),
-            const SizedBox(height: 8),
             FieldLabel(
               label: '채용공고 텍스트',
               child: TextFormField(
                 key: const ValueKey('job-posting-text'),
                 controller: _posting,
-                enabled: !_busy,
-                maxLength: 20000,
+                enabled: !_sending,
                 minLines: 6,
                 maxLines: 12,
-                decoration:
-                    InputDecoration(hintText: '비교할 공고 본문을 붙여 넣으세요.', errorText: _errorFields.any((field) => field.contains('posting_text')) ? '공고 텍스트를 확인하세요.' : null),
-              ),
-            ),
-            const SizedBox(height: 16),
-            FieldLabel(
-              label: '채용공고 주소',
-              child: TextFormField(
-                key: const ValueKey('job-posting-url'),
-                controller: _url,
-                enabled: !_busy,
-                keyboardType: TextInputType.url,
-                decoration: InputDecoration(
-                  hintText: 'https://',
-                  errorText: _urlInvalid
-                      ? 'http:// 또는 https:// 로 시작하는 주소를 입력하세요.'
-                      : null,
+                decoration: const InputDecoration(
+                  hintText: '비교할 공고 본문을 붙여 넣으세요.',
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            FieldLabel(
-              label: '공고 PDF·캡처',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text('텍스트, 주소, PDF·캡처 중 하나만 있어도 됩니다.'),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: OutlinedButton(
-                      key: const ValueKey('job-posting-file'),
-                      onPressed: _fileBusy || _busy ? null : _pickFile,
-                      child: Text(_fileBusy ? '파일 읽는 중…' : 'PDF·캡처 선택'),
-                    ),
-                  ),
-                  if (_fileError != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      _fileError!,
-                      key: const ValueKey('job-posting-file-error'),
-                    ),
-                  ],
-                  if (_fileBytes != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      '$_fileName · ${(_fileBytes!.length / 1024).ceil()}KB',
-                      key: const ValueKey('job-posting-file-name'),
-                    ),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton(
-                        key: const ValueKey('job-posting-file-clear'),
-                        onPressed: _busy ? null : () => setState(() {
-                          _fileBytes = null;
-                          _fileName = '';
-                          _fileError = null;
-                        }),
-                        child: const Text('첨부 제외'),
-                      ),
-                    ),
-                  ],
-                ],
+            const FieldLabel(
+              label: '채용공고 주소 · 준비 중',
+              child: TextField(
+                key: ValueKey('job-posting-url'),
+                enabled: false,
+                decoration: InputDecoration(hintText: '주소 분석은 준비 중입니다.'),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('PDF·캡처 분석은 준비 중입니다. 현재는 공고 본문을 붙여 넣어 분석할 수 있습니다.'),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton(
+                key: ValueKey('job-posting-file'),
+                onPressed: null,
+                child: Text('PDF·캡처 선택 · 준비 중'),
               ),
             ),
           ],
         ),
       ),
-      SizedBox(height: FeatureLine.slotGap(context)),
+      const SizedBox(height: 16),
       SurfaceCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FeatureLine.section(
-              text: '비교에 넣을 개인 기록',
-              trailing: FeatureLine.reload(onPressed: _busy || _loading ? null : _load),
-              padTop: false,
-              padBottom: false,
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    '비교에 넣을 개인 기록',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _loading || _sending ? null : _load,
+                  child: const Text('기록 다시 읽기'),
+                ),
+              ],
             ),
-            const FeatureLine.one(text: '고른 항목만 포함합니다.'),
-            const CheckboxListTile(
-              key: ValueKey('job-materials-unavailable'),
-              value: false, onChanged: null,
-              title: Text('자료 기록'),
-              subtitle: Text('자료를 비교 근거로 보내는 API는 연결 전입니다. 현재 분석에는 포함되지 않습니다.'),
-              controlAffinity: ListTileControlAffinity.leading,
+            const Text('직접 고른 서버 기록만 포함합니다. 개인 PDF는 전송하지 않습니다.'),
+            const Material(
+              type: MaterialType.transparency,
+              child: CheckboxListTile(
+                key: ValueKey('job-materials-unavailable'),
+                contentPadding: EdgeInsets.zero,
+                value: false,
+                onChanged: null,
+                title: Text('자료 기록'),
+                subtitle: Text(
+                  '자료를 비교 근거로 보내는 API는 연결 전입니다. 현재 분석에는 포함되지 않습니다.',
+                ),
+              ),
             ),
-            if (_loading)
-              const LinearProgressIndicator()
-            else if (_failed)
-              const FeatureLine.one(text: '개인 기록을 읽지 못했습니다. 선택한 항목은 유지합니다.')
-            else if (_records.values.every((list) => list.isEmpty))
-              const FeatureLine.one(
-                text: '선택할 개인 기록이 없습니다. 활동·경험·자격·성과 메뉴에서 기록을 추가한 뒤 다시 열어 주세요.',
-              )
-            else
-              for (final kind in _kinds)
-                if ((_records[kind] ?? const []).isNotEmpty) ...[
-                  FeatureLine.section(text: _kindLabels[kind]!),
-                  for (final record in _records[kind]!)
-                    FeatureLine.one(
-                      text: record.value('title'),
-                      leading: Checkbox(
-                        key: ValueKey('job-record-${_key(kind, record)}'),
-                        value: _selected.contains(_key(kind, record)),
-                        onChanged: _busy ? null : (value) {
-                          setState(() {
-                            _result = null;
-                            _error = null;
-                            final key = _key(kind, record);
-                            if (value == true) {
-                              _selected.add(key);
+            if (_loading) const LinearProgressIndicator(),
+            if (_recordMessage != null) Text(_recordMessage!),
+            if (!_loading && !_failed && _options.isEmpty)
+              const Text('선택할 개인 기록이 없습니다. 활동·경험·자격·성과 기록을 추가한 뒤 다시 읽어 주세요.'),
+            for (final record in _options)
+              Material(
+                type: MaterialType.transparency,
+                child: CheckboxListTile(
+                  key: ValueKey('job-record-${record.key}'),
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(record.title),
+                  subtitle: Text('${record.kindLabel} · 버전 ${record.version}'),
+                  value: _selected.containsKey(record.key),
+                  onChanged: _sending
+                      ? null
+                      : (value) => setState(() {
+                          if (value == true) {
+                            if (_selected.length >= 20) {
+                              _recordMessage = '최대 20개까지 선택할 수 있습니다.';
                             } else {
-                              _selected.remove(key);
+                              _selected[record.key] = record;
                             }
-                          });
-                        },
-                      ),
-                    ),
-                ],
-            if (_selected.isNotEmpty)
-              FeatureLine.one(text: '선택한 기록 ${_selected.length}개'),
+                          } else {
+                            _selected.remove(record.key);
+                          }
+                        }),
+                ),
+              ),
+            Text('선택한 기록 ${_selected.length}/20개'),
           ],
         ),
       ),
-      SizedBox(height: FeatureLine.slotGap(context)),
+      const SizedBox(height: 16),
       SurfaceCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const FeatureLine.section(
-              text: '분석 상태',
-              padTop: false,
-              padBottom: false,
+            if (!_connected)
+              const Text('채용 분석을 사용하려면 로그인해 주세요. 공고와 개인 기록은 전송하지 않았습니다.'),
+            if (widget.consent != null)
+              AnimatedBuilder(
+                animation: widget.consent!,
+                builder: (context, _) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.consent!.allows(AiConsentFeature.jobAnalysis)
+                          ? 'Google 외부 AI 전송 허용 중 · 설정에서 변경'
+                          : 'Google 외부 AI 전송 · 실행 전 동의 확인',
+                    ),
+                    if (widget.consent!.error != null)
+                      Text(widget.consent!.error!),
+                    if (widget.consent!.loadFailed)
+                      TextButton(
+                        onPressed: widget.consent!.retry,
+                        child: const Text('전송 설정 다시 읽기'),
+                      ),
+                  ],
+                ),
+              ),
+            if (_error != null)
+              Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            if (_requestId != null) SelectableText('문의 식별자: $_requestId'),
+            FilledButton(
+              key: const ValueKey('job-analysis-run'),
+              onPressed: _canAnalyze ? _analyze : null,
+              child: Text(_sending ? '분석 중…' : '공고 분석'),
             ),
-            if (_busy) const LinearProgressIndicator(),
-            FeatureLine.one(text: '상태: $_statusLabel'),
-            if (_error != null) Text(_error!, key: const ValueKey('job-analysis-error')),
-            if (_url.text.trim().isNotEmpty || _fileBytes != null) const Text('이번 분석에는 붙여 넣은 텍스트와 선택한 기록만 보냅니다. 주소와 첨부 파일은 보내지 않습니다.'),
-            FeatureLine.one(
-              key: const ValueKey('job-analysis-reason'),
-              text: '이유: $_resultReason',
-            ),
-            if (_result?.comparisons.isEmpty ?? true) const FeatureLine.one(text: '답변: 받은 답변 없음'),
-            if (_result?.comparisons.isEmpty ?? true) const FeatureLine.one(text: '근거: 받은 근거 없음'),
-            if (_result?.comparisons.isEmpty ?? true) const FeatureLine.one(text: '불확실한 부분: 받은 내용 없음'),
-            for (final row in _result?.comparisons ?? const <JobRequirementComparison>[]) ...[
-              FeatureLine.section(text: row.requirement),
-              Text(switch (row.status) { 'supported' => '근거 있음', 'partially_supported' => '일부 근거 있음', _ => '근거 부족' }),
-              Text(row.explanation),
-              Text('공고 근거: ${row.postingEvidence.excerpt}'),
-              for (final evidence in row.personalEvidence) Text('선택 기록 근거: ${evidence.excerpt}'),
+            if (_requesting) const LinearProgressIndicator(),
+            if (_result != null) ...[
+              Text(
+                _status(_result!),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              if (_result!.status != 'completed') Text(_reason(_result!)),
+              for (final item in _result!.comparisons) ...[
+                const Divider(),
+                Text(
+                  '${item.priority == "required" ? "필수" : "우대"} · ${item.requirement}',
+                ),
+                Text(switch (item.status) {
+                  'supported' => '근거 있음',
+                  'partially_supported' => '일부 근거 있음',
+                  _ => '근거 부족',
+                }),
+                SelectableText('공고 근거: ${item.postingEvidence.excerpt}'),
+                for (final citation in item.personalEvidence)
+                  SelectableText(
+                    '내 기록 근거 (버전 ${citation.version}): ${citation.excerpt}',
+                  ),
+                SelectableText(item.explanation),
+              ],
             ],
           ],
         ),
       ),
     ],
-    actions: [FilledButton(key: const ValueKey('job-analysis-run'), onPressed: _canAnalyze ? _analyze : null, child: Text(_busy ? '분석 중…' : '분석 실행'))],
   );
 }

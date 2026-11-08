@@ -72,47 +72,54 @@ void main() {
     },
   );
 
-  testWidgets('school draft and selection survive dock overlay transitions', (
-    tester,
-  ) async {
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.binding.setSurfaceSize(const Size(900, 768));
-    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(FloatingActionButton));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('학교 정보 설정'));
-    await tester.pumpAndSettle();
-    final school = find
-        .descendant(
-          of: find.byType(SchoolQueryContextForm),
-          matching: find.byType(TextFormField),
-        )
-        .first;
-    await tester.ensureVisible(school);
-    await tester.enterText(school, '보존할 학교');
-    final controller = tester.widget<TextFormField>(school).controller!;
-    controller.selection = const TextSelection(baseOffset: 1, extentOffset: 3);
-    final state = tester.state(find.byType(SchoolQueryContextForm));
-    for (final size in [
-      const Size(1440, 900),
-      const Size(480, 520),
-      const Size(1440, 900),
-    ]) {
-      await tester.binding.setSurfaceSize(size);
+  testWidgets(
+    'question draft mode and selection survive desktop dock transitions',
+    (tester) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.binding.setSurfaceSize(const Size(900, 768));
+      await tester.pumpWidget(
+        const UniversityPathApp(startAuthenticated: true),
+      );
       await tester.pumpAndSettle();
-      expect(
-        identical(tester.state(find.byType(SchoolQueryContextForm)), state),
-        isTrue,
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(SchoolQueryContextForm), findsNothing);
+      await tester.tap(find.widgetWithText(ChoiceChip, '내 자료로 질문'));
+      await tester.pumpAndSettle();
+      final question = find.byType(TextField);
+      await tester.enterText(question, '보존할 질문');
+      final controller = tester.widget<TextField>(question).controller!;
+      controller.selection = const TextSelection(
+        baseOffset: 1,
+        extentOffset: 3,
       );
-      expect(controller.text, '보존할 학교');
-      expect(
-        controller.selection,
-        const TextSelection(baseOffset: 1, extentOffset: 3),
-      );
-      expect(tester.takeException(), isNull);
-    }
-  });
+      final state = tester.state(find.byType(AssistantPanel));
+      for (final size in [
+        const Size(1440, 900),
+        const Size(900, 768),
+        const Size(1440, 900),
+      ]) {
+        await tester.binding.setSurfaceSize(size);
+        await tester.pumpAndSettle();
+        expect(
+          identical(tester.state(find.byType(AssistantPanel)), state),
+          isTrue,
+        );
+        expect(controller.text, '보존할 질문');
+        expect(
+          tester
+              .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '내 자료로 질문'))
+              .selected,
+          true,
+        );
+        expect(
+          controller.selection,
+          const TextSelection(baseOffset: 1, extentOffset: 3),
+        );
+        expect(tester.takeException(), isNull);
+      }
+    },
+  );
 
   for (final width in [220.0, 360.0, 480.0]) {
     testWidgets('inline settings remain scrollable at $width and scale 2', (

@@ -6,6 +6,8 @@
 
 ## 현재 구현
 
+- 2026-11-08: 학생 작업 공간에서 예시 데이터 표시를 끄고, 펼친/접힌 사이드바의 목업 전환 항목을 제거했다. 개인 입력·서버 기록과 빈 상태는 유지하며 격리된 fixture는 테스트에서만 명시적으로 사용할 수 있다.
+
 - Flutter SDK Router로 주요 메뉴 선택과 URL을 연결한다. Web은 기본 hash 전략을 사용해
   `/#/schedule`처럼 진입하며 별도 서버 rewrite나 라우터 패키지를 추가하지 않는다.
 - 경로는 `/home`, `/schedule`, `/courses`, `/graduation`, `/activities`,

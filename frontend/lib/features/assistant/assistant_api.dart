@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../api/api_base_url.dart';
 import '../api/school_knowledge_models.dart';
+import '../auth/auth_api.dart';
 
 enum AssistantStatus { grounded, insufficientEvidence, needsUserInput, failed }
 
@@ -14,17 +15,63 @@ class SchoolQueryContext {
     this.department,
     this.admissionYear,
     this.track,
+    this.institutionId,
+    this.departmentId,
+    this.curriculumId,
   });
   final String? institution;
   final String? department;
   final int? admissionYear;
   final String? track;
+  final String? institutionId, departmentId, curriculumId;
+  bool get hasRegisteredSchool => institutionId != null && departmentId != null;
+  Map<String, Object?> catalogJson() => {
+    'institution_id': institutionId,
+    'department_id': departmentId,
+    'curriculum_id': curriculumId,
+    'admission_year': admissionYear,
+    'track': track,
+  };
   Map<String, Object?> toJson() => {
     'institution': institution,
     'department': department,
     'admission_year': admissionYear,
     'track': track,
   };
+}
+
+/// Authenticated UUID contract; the gateway is captured for one account/session.
+class RegisteredAssistantApi implements AssistantGateway {
+  const RegisteredAssistantApi(this.api);
+  final ApiGateway api;
+  @override
+  Future<AssistantResult> query(
+    String question,
+    SchoolQueryContext context,
+  ) async {
+    if (!context.hasRegisteredSchool) {
+      throw const AssistantApiException(
+        '설정에서 등록된 학교·학과를 선택해 주세요. 개인 설정은 학교 질문을 지원하지 않습니다.',
+      );
+    }
+    try {
+      return AssistantResult.fromJson(
+        (await api.request('POST', 'me/school-queries', {
+          'question': question,
+          'context': context.catalogJson(),
+        }))!,
+      );
+    } on AuthFailure catch (e) {
+      throw AssistantApiException(
+        e.message,
+        fields: e.fields,
+        requestId: e.requestId,
+      );
+    }
+  }
+
+  @override
+  void close() {} // Shared authenticated gateway belongs to the workspace.
 }
 
 class AssistantCitation {
@@ -115,20 +162,28 @@ class AssistantResult {
     ],
   };
 
-  String get label => switch (status) {
-    AssistantStatus.grounded => '공식 문서 근거',
-    AssistantStatus.insufficientEvidence => '공식 근거 부족',
-    AssistantStatus.needsUserInput => '추가 확인 필요',
-    AssistantStatus.failed => '질의 처리 실패',
+  String get label => switch (reason) {
+    'no_approved_matching_evidence' => '학교 자료 검색 결과 없음',
+    'document_context_not_approved_or_incomplete' => '학교 자료 검토 필요',
+    'answer_generator_not_configured' => '외부 AI 연결 설정 필요',
+    'rag_processing_failed' => '학교 자료 검색 처리 실패',
+    _ => switch (status) {
+      AssistantStatus.grounded => '공식 문서 근거',
+      AssistantStatus.insufficientEvidence => '공식 근거 부족',
+      AssistantStatus.needsUserInput => '추가 확인 필요',
+      AssistantStatus.failed => '질의 처리 실패',
+    },
   };
   String get message {
     if (status == AssistantStatus.grounded) return answer!;
     if (reason == 'rule_engine_required') {
-      return '졸업 가능 여부는 별도 졸업감사로 확인해야 합니다. 현재 졸업감사 기능은 준비 중입니다.';
+      return '졸업 가능 여부는 별도 졸업감사 결과로 확인해야 합니다. 졸업 요건 화면에서 확인해 주세요.';
     }
     if (reason == 'conflicting_admission_year') {
       return '질문 속 입학연도와 질의 정보가 다릅니다. 입학연도를 확인한 뒤 다시 질문해 주세요.';
     }
+    final diagnostic = schoolQueryDiagnostic(reason);
+    if (diagnostic != null) return diagnostic;
     return switch (status) {
       AssistantStatus.insufficientEvidence =>
         '현재 적용 가능한 승인 문서 근거가 부족합니다. 학교의 공식 안내를 확인해 주세요.',
@@ -139,6 +194,20 @@ class AssistantResult {
     };
   }
 }
+
+/// Explain only the server's reported stage; missing evidence does not prove a bad UUID.
+String? schoolQueryDiagnostic(String reason) => switch (reason) {
+  'no_approved_matching_evidence' => '학교 자료 검색 API는 응답했지만, 이 질문과 학업 정보에 맞는 승인 문서가 조회되지 않았습니다. 관리자에서 학교·학과 연결과 문서 등록·승인·적용 범위를 확인해야 합니다. 자료가 등록돼 있다면 질문에 해당하는 내용이 포함됐는지도 확인해 주세요.',
+  'document_context_not_approved_or_incomplete' => '검색된 학교 문서의 승인 또는 적용 범위가 확인되지 않았습니다. 관리자에서 문서의 검토 상태와 학생의 입학연도·이수경로에 적용되는지 확인해야 합니다.',
+  'answer_generator_not_configured' =>
+    '학교 자료는 검색됐지만 외부 AI 답변 생성기가 설정되지 않았습니다. 백엔드의 Vertex AI 연결 설정이 필요합니다.',
+  'rag_processing_failed' =>
+    '학교 자료 조회·검색 처리에 실패했습니다. 서버의 자료 연결과 검색 처리 상태를 확인해야 합니다.',
+  'generator_reported_insufficient_evidence' =>
+    '외부 AI가 조회된 자료만으로는 답변할 수 없다고 응답했습니다. 질문을 구체화하거나 관련 학교 자료를 확인해 주세요.',
+  'invalid_generator_output' || 'invalid_generator_citations' => '외부 AI 응답 또는 인용을 검증하지 못해 답변을 표시하지 않았습니다. 다시 시도하고 문제가 계속되면 서버의 AI 응답 처리를 확인해야 합니다.',
+  _ => null,
+};
 
 class AssistantApiException implements Exception {
   const AssistantApiException(

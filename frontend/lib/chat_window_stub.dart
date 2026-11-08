@@ -1,9 +1,11 @@
+import 'dart:async';
+
 Future<bool> isDetachedChatWindow() async => false;
 Stream<String> appearanceChanges() => const Stream.empty();
 Future<void> publishAppearance(String palette) async {}
 void bindConversation(
   Map<String, dynamic> Function()? read,
-  Map<String, dynamic> Function(Map<String, dynamic>)? command,
+  FutureOr<Map<String, dynamic>> Function(Map<String, dynamic>)? command,
 ) {}
 void bindConversationClose(Future<bool> Function()? prepare) {}
 Stream<Map<String, dynamic>> conversationChanges() => const Stream.empty();
