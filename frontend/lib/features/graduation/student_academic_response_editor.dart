@@ -11,8 +11,9 @@ Future<void> editStudentAcademicResponse(
   BuildContext context,
   StudentAcademicController controller,
   AcademicStudentDocument document,
-  AcademicStudentItem item,
-) async {
+  AcademicStudentItem item, {
+  bool recordsOnly = false,
+}) async {
   final key = GlobalKey<StudentAcademicResponseEditorState>(),
       changes = ValueNotifier<int>(0);
   try {
@@ -21,7 +22,7 @@ Future<void> editStudentAcademicResponse(
       builder: (context) => AnimatedBuilder(
         animation: changes,
         builder: (context, _) => InputDialog(
-          title: const Text('요건 확인'),
+          title: Text(recordsOnly ? '인증 기록 연결' : '요건 확인'),
           changes: changes,
           saving: key.currentState?.blocked ?? true,
           hasContent: () => key.currentState?.dirty ?? false,
@@ -30,6 +31,7 @@ Future<void> editStudentAcademicResponse(
             controller: controller,
             document: document,
             item: item,
+            recordsOnly: recordsOnly,
             onChanged: () => changes.value++,
           ),
           actions: [
@@ -55,11 +57,13 @@ class StudentAcademicResponseEditor extends StatefulWidget {
     required this.document,
     required this.item,
     required this.onChanged,
+    this.recordsOnly = false,
   });
   final StudentAcademicController controller;
   final AcademicStudentDocument document;
   final AcademicStudentItem item;
   final VoidCallback onChanged;
+  final bool recordsOnly;
   @override
   State<StudentAcademicResponseEditor> createState() =>
       StudentAcademicResponseEditorState();
@@ -155,25 +159,28 @@ class StudentAcademicResponseEditorState
           _error ?? c.error!,
           style: TextStyle(color: Theme.of(context).colorScheme.error),
         ),
-      AnchoredSelectField<String>(
-        label: '내 확인',
-        externalLabel: true,
-        value: _value == null
-            ? 'unknown'
-            : _value!
-            ? 'yes'
-            : 'no',
-        options: const [
-          SelectOption('unknown', '미확인'),
-          SelectOption('yes', 'O · 충족'),
-          SelectOption('no', 'X · 미충족'),
-        ],
-        onChanged: (value) {
-          if (!blocked) {
-            setState(() => _value = value == 'unknown' ? null : value == 'yes');
-          }
-        },
-      ),
+      if (!widget.recordsOnly)
+        AnchoredSelectField<String>(
+          label: '내 확인',
+          externalLabel: true,
+          value: _value == null
+              ? 'unknown'
+              : _value!
+              ? 'yes'
+              : 'no',
+          options: const [
+            SelectOption('unknown', '미확인'),
+            SelectOption('yes', 'O · 충족'),
+            SelectOption('no', 'X · 미충족'),
+          ],
+          onChanged: (value) {
+            if (!blocked) {
+              setState(
+                () => _value = value == 'unknown' ? null : value == 'yes',
+              );
+            }
+          },
+        ),
       if (widget.document.kind == 'certification') ...[
         const SizedBox(height: 12),
         const Text('연결할 본인 기록 · 여러 개 선택 가능'),
@@ -247,7 +254,7 @@ class StudentAcademicResponseEditorState
         ),
       FilledButton(
         onPressed: blocked || _error != null || !_recordsReady ? null : _save,
-        child: const Text('내 확인 저장'),
+        child: Text(widget.recordsOnly ? '기록 연결 저장' : '내 확인 저장'),
       ),
     ],
   );

@@ -459,7 +459,10 @@ void main() {
   ) async {
     final transport = AcademicTransport()..active = false;
     final boundary = await mount(tester, transport);
-    expect(find.text('O/X 확인'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('academic-response-line-true')),
+      findsNothing,
+    );
     await tester.tap(find.text('새 기준 본문·적용 대상 보기'));
     await tester.pumpAndSettle();
     await screenshot(tester, boundary, 'preview-before-activation');
@@ -472,7 +475,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(transport.writes.single['body']['expected_digest'], 'a' * 64);
     expect(transport.active, isTrue);
-    expect(find.text('O/X 확인'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('academic-response-line-true')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
   testWidgets('deleted record can be unlinked after a validation error', (
@@ -501,9 +507,9 @@ void main() {
     await mount(tester, transport);
     await tester.tap(find.widgetWithText(ChoiceChip, '인증 요건'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('O/X·기록 연결'));
+    await tester.tap(find.text('기록 연결'));
     await tester.pumpAndSettle();
-    var save = find.text('내 확인 저장');
+    var save = find.text('기록 연결 저장');
     await tester.ensureVisible(save);
     await tester.tap(save);
     await tester.pumpAndSettle();
@@ -515,7 +521,7 @@ void main() {
     await tester.ensureVisible(deleted);
     await tester.tap(deleted);
     await tester.pumpAndSettle();
-    save = find.text('내 확인 저장');
+    save = find.text('기록 연결 저장');
     await tester.ensureVisible(save);
     await tester.tap(save);
     await tester.pumpAndSettle();
@@ -551,20 +557,37 @@ void main() {
       final transport = AcademicTransport();
       final key = await mount(tester, transport);
       expect(find.text('졸업시험에 합격해야 한다.'), findsOneWidget);
-      await tester.tap(find.text('O/X 확인'));
-      await tester.pumpAndSettle();
-      await choose(tester, '내 확인', 'O · 충족');
       transport.failWrite = true;
-      await tester.tap(find.text('내 확인 저장'));
+      await tester.tap(
+        find.byKey(const ValueKey('academic-response-line-true')),
+      );
       await tester.pumpAndSettle();
       expect(transport.writes, hasLength(1));
       expect(transport.writes.single['body']['value'], isTrue);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(
+        tester
+            .widget<ChoiceChip>(
+              find.byKey(const ValueKey('academic-response-line-false')),
+            )
+            .onSelected,
+        isNull,
+      );
       transport.failWrite = false;
       await tester.tap(find.text('같은 요청으로 다시 저장').last);
       await tester.pumpAndSettle();
       expect(transport.writes, hasLength(2));
       expect(transport.writes[0], transport.writes[1]);
       expect(find.text('O · 충족'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const ValueKey('academic-response-line-false')),
+      );
+      await tester.pumpAndSettle();
+      expect(transport.writes.last['body']['value'], isFalse);
+      await tester.tap(find.text('초기화'));
+      await tester.pumpAndSettle();
+      expect(transport.writes.last['body']['value'], isNull);
+      expect(find.byType(AlertDialog), findsNothing);
       expect(tester.takeException(), isNull);
       await screenshot(tester, key, 'checklist');
     },
@@ -577,23 +600,23 @@ void main() {
       await tester.tap(find.widgetWithText(ChoiceChip, '인증 요건'));
       await tester.pumpAndSettle();
       await screenshot(tester, key, 'certification');
-      await tester.tap(find.text('O/X·기록 연결'));
+      await tester.tap(find.text('기록 연결'));
       await tester.pumpAndSettle();
       final check = find.widgetWithText(CheckboxListTile, '합성 자격');
       await tester.ensureVisible(check);
       await tester.tap(check);
       await tester.pumpAndSettle();
-      final select = tester.widget<AnchoredSelectField<String>>(
+      expect(
         find.byWidgetPredicate(
           (w) => w is AnchoredSelectField<String> && w.label == '내 확인',
         ),
+        findsNothing,
       );
-      expect(select.value, 'unknown');
-      await choose(tester, '내 확인', 'O · 충족');
-      final save = find.text('내 확인 저장');
+      final save = find.text('기록 연결 저장');
       await tester.ensureVisible(save);
       await tester.tap(save);
       await tester.pumpAndSettle();
+      expect(transport.writes.single['body']['value'], isNull);
       expect(transport.writes.single['body']['records'], [
         {
           'kind': 'credential',
@@ -601,6 +624,16 @@ void main() {
           'expected_version': 2,
         },
       ]);
+      await tester.tap(
+        find.byKey(const ValueKey('academic-response-item-true')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(
+        transport.writes.last['body']['records'],
+        transport.writes.first['body']['records'],
+      );
+      expect(transport.writes.last['body']['value'], isTrue);
       expect(find.textContaining('정보화 · 택1 · 충족'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },

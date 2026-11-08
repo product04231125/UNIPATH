@@ -32,6 +32,7 @@ class StudentAcademicPage extends StatefulWidget {
 class _StudentAcademicPageState extends State<StudentAcademicPage> {
   late StudentAcademicController c;
   String _tab = 'checklist';
+  String? _responseItem;
   bool get _guest => GuestPreviewScope.isActive(context);
   void _changed() {
     if (mounted) setState(() {});
@@ -99,11 +100,21 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
 
   Widget _item(AcademicStudentDocument d, AcademicStudentItem item) {
     final response = d.response(item.id);
-    final text = response?.value == null
-        ? '미확인'
-        : response!.value!
-        ? 'O · 충족'
-        : 'X · 미충족';
+    final blocked =
+        c.disabled ||
+        _guest ||
+        !d.usable ||
+        c.requirements!.issues.any(
+          (issue) =>
+              issue != 'requirement_withdrawn' &&
+              issue != 'requirement_expired',
+        );
+    Future<void> respond(bool? value) async {
+      setState(() => _responseItem = '${d.id}/${item.id}');
+      await c.respond(d, item.id, value, response?.records ?? []);
+    }
+
+    final active = _responseItem == '${d.id}/${item.id}';
     return Padding(
       key: ValueKey('academic-item-${item.id}'),
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -117,25 +128,46 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
             spacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(response?.stale == true ? '$text · 재확인 필요' : text),
+              if (response?.value == null) const Text('미확인'),
+              if (response?.stale == true) const Text('재확인 필요'),
               if (response?.previousValue != null)
                 Text('이전 확인: ${response!.previousValue! ? 'O' : 'X'}'),
+              for (final value in const [true, false])
+                ChoiceChip(
+                  key: ValueKey('academic-response-${item.id}-$value'),
+                  label: Text(value ? 'O · 충족' : 'X · 미충족'),
+                  selected: response?.value == value,
+                  onSelected: blocked ? null : (_) => respond(value),
+                ),
               TextButton(
                 onPressed:
-                    c.disabled ||
-                        _guest ||
-                        !d.usable ||
-                        c.requirements!.issues.any(
-                          (issue) =>
-                              issue != 'requirement_withdrawn' &&
-                              issue != 'requirement_expired',
-                        )
+                    blocked ||
+                        (response?.value == null && response?.stale != true)
                     ? null
-                    : () => editStudentAcademicResponse(context, c, d, item),
-                child: Text(d.kind == 'certification' ? 'O/X·기록 연결' : 'O/X 확인'),
+                    : () => respond(null),
+                child: const Text('초기화'),
               ),
+              if (d.kind == 'certification')
+                TextButton(
+                  onPressed: blocked
+                      ? null
+                      : () => editStudentAcademicResponse(
+                          context,
+                          c,
+                          d,
+                          item,
+                          recordsOnly: true,
+                        ),
+                  child: const Text('기록 연결'),
+                ),
             ],
           ),
+          if (active && c.saving) const Text('저장 중…'),
+          if (active && c.error != null)
+            Text(
+              c.error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           for (final r in response?.records ?? <AcademicStudentRecord>[])
             Text(
               '${r.title}${!r.available
