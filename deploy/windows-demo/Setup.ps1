@@ -47,7 +47,7 @@ function Test-Wsl {
 function Initialize-Docker {
     $script:Docker = Find-Docker
     if ($script:Docker -and (Test-DockerReady)) {
-        Invoke-Docker compose version
+        Invoke-Docker -Arguments @('compose','version')
         return
     }
     $os = Get-CimInstance Win32_OperatingSystem
@@ -102,7 +102,7 @@ function Initialize-Docker {
         while ((Get-Date) -lt $deadline -and -not (Test-DockerReady)) { Start-Sleep -Seconds 3 }
         if (-not (Test-DockerReady)) { throw 'Docker is not ready. Start Docker Desktop in Linux containers mode, then run again.' }
     }
-    Invoke-Docker compose version
+    Invoke-Docker -Arguments @('compose','version')
 }
 
 try {
@@ -116,7 +116,7 @@ try {
     if ($Stop) {
         $script:Docker = Find-Docker
         if (-not $script:Docker -or -not (Test-Path -LiteralPath $envFile)) { Write-Output 'Demo is not installed.'; exit 0 }
-        Invoke-Docker compose --env-file $envFile -f $composeFile -p unipath-demo stop
+        Invoke-Docker -Arguments @('compose','--env-file',$envFile,'-f',$composeFile,'-p','unipath-demo','stop')
         Write-Output 'Demo stopped. Saved records are preserved.'
         exit 0
     }
@@ -149,15 +149,15 @@ try {
     $fingerprint = $manifest.files.'images.tar'
     if (-not (Test-Path -LiteralPath $loaded) -or (Get-Content -Raw -LiteralPath $loaded).Trim() -ne $fingerprint) {
         Write-Output 'Loading bundled Docker images (no registry download)...'
-        Invoke-Docker load --input (Join-Path $PSScriptRoot 'images.tar')
+        Invoke-Docker -Arguments @('load','--input',(Join-Path $PSScriptRoot 'images.tar'))
         Set-Content -LiteralPath $loaded -Value $fingerprint -Encoding ascii
     }
     $compose = @('compose','--env-file',$envFile,'-f',$composeFile,'-p','unipath-demo')
     Write-Output 'Starting the isolated demo database...'
-    Invoke-Docker @compose up -d --wait db
+    Invoke-Docker -Arguments ($compose + @('up','-d','--wait','db'))
     Write-Output 'Preparing schema and first-run data. Existing demo records are preserved.'
-    Invoke-Docker @compose run --rm --no-deps prepare
-    Invoke-Docker @compose up -d --wait api web
+    Invoke-Docker -Arguments ($compose + @('run','--rm','--no-deps','prepare'))
+    Invoke-Docker -Arguments ($compose + @('up','-d','--wait','api','web'))
     $ready = Invoke-WebRequest 'http://localhost:38100/api/v1/health/ready' -UseBasicParsing -TimeoutSec 10
     if ($ready.StatusCode -ne 200) { throw 'Application health check failed.' }
     Write-Output 'READY: http://localhost:38100 - Use the launcher Accounts button to view demo logins.'

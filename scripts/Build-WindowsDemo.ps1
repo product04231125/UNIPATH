@@ -33,14 +33,14 @@ try {
     $webImage = "unipath-demo-web:${commit}-${suffix}"
     $dbImage = 'pgvector/pgvector:0.8.6-pg17-bookworm@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f'
     Write-Output 'Exporting only selected school criteria, courses and requirement checks. Source DB is read-only.'
-    Invoke-Checked docker cp (Join-Path $root 'backend/app/operations/demo_bundle.py') "${SourceApiContainer}:/tmp/unipath-demo-export.py"
-    Invoke-Checked docker exec -e PYTHONPATH=/app $SourceApiContainer python /tmp/unipath-demo-export.py export --file /tmp/unipath-demo-data.json
-    Invoke-Checked docker cp "${SourceApiContainer}:/tmp/unipath-demo-data.json" (Join-Path $bundle 'demo-data.json')
+    Invoke-Checked -Program docker -Arguments @('cp',(Join-Path $root 'backend/app/operations/demo_bundle.py'),"${SourceApiContainer}:/tmp/unipath-demo-export.py")
+    Invoke-Checked -Program docker -Arguments @('exec','--env','PYTHONPATH=/app',$SourceApiContainer,'python','/tmp/unipath-demo-export.py','export','--file','/tmp/unipath-demo-data.json')
+    Invoke-Checked -Program docker -Arguments @('cp',"${SourceApiContainer}:/tmp/unipath-demo-data.json",(Join-Path $bundle 'demo-data.json'))
     if (-not $ReuseWeb) {
         Push-Location (Join-Path $root 'frontend')
         try {
-            Invoke-Checked $Flutter pub get --offline
-            Invoke-Checked $Flutter build web --release --no-pub --dart-define=API_BASE_URL=http://localhost:38100
+            Invoke-Checked -Program $Flutter -Arguments @('pub','get','--offline')
+            Invoke-Checked -Program $Flutter -Arguments @('build','web','--release','--no-pub','--dart-define=API_BASE_URL=http://localhost:38100')
         } finally { Pop-Location }
     }
     $web = Join-Path $root 'frontend/build/web'
@@ -50,11 +50,11 @@ try {
     Copy-Item -LiteralPath $web -Destination (Join-Path $webContext 'web') -Recurse
     Copy-Item -LiteralPath (Join-Path $template 'nginx.conf') -Destination $webContext
     Copy-Item -LiteralPath (Join-Path $template 'web.Dockerfile') -Destination (Join-Path $webContext 'Dockerfile')
-    Invoke-Checked docker build --pull=false --target runtime -t $apiImage -f backend/Dockerfile .
-    Invoke-Checked docker build --pull=false -t $webImage $webContext
-    Invoke-Checked docker image inspect $dbImage --format '{{.Id}}'
+    Invoke-Checked -Program docker -Arguments @('build','--pull=false','--target','runtime','-t',$apiImage,'-f','backend/Dockerfile','.')
+    Invoke-Checked -Program docker -Arguments @('build','--pull=false','-t',$webImage,$webContext)
+    Invoke-Checked -Program docker -Arguments @('image','inspect',$dbImage,'--format','{{.Id}}')
     Write-Output 'Saving images for offline application startup...'
-    Invoke-Checked docker save --output (Join-Path $bundle 'images.tar') $apiImage $webImage $dbImage
+    Invoke-Checked -Program docker -Arguments @('save','--output',(Join-Path $bundle 'images.tar'),$apiImage,$webImage,$dbImage)
     foreach ($name in @('Setup.ps1','Enable-Wsl.ps1','compose.yaml','README.txt')) {
         Copy-Item -LiteralPath (Join-Path $template $name) -Destination $bundle
     }
@@ -70,7 +70,7 @@ try {
     $compiler = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
     if (-not (Test-Path -LiteralPath $compiler)) { throw 'Windows .NET Framework C# compiler is required to create the launcher EXE.' }
     $exe = Join-Path $output 'UniversityPath-Demo-Setup.exe'
-    Invoke-Checked $compiler /nologo /target:winexe /platform:x64 "/out:$exe" "/resource:$zip,DemoBundle" /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll (Join-Path $template 'Launcher.cs')
+    Invoke-Checked -Program $compiler -Arguments @('/nologo','/target:winexe','/platform:x64',"/out:$exe","/resource:$zip,DemoBundle",'/r:System.Windows.Forms.dll','/r:System.Drawing.dll','/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll',(Join-Path $template 'Launcher.cs'))
     $checksum = (Get-FileHash -Algorithm SHA256 -LiteralPath $exe).Hash.ToLowerInvariant()
     Set-Content -LiteralPath (Join-Path $output 'UniversityPath-Demo-Setup.sha256') -Value "$checksum  UniversityPath-Demo-Setup.exe" -Encoding ascii
     Write-Output "PACKAGE_READY: $exe"
