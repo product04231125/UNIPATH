@@ -17,6 +17,8 @@ import 'personal_repository_scope.dart';
 import '../auth/auth_api.dart';
 import '../auth/guest_preview_scope.dart';
 import '../api/student_api.dart';
+import '../api/student_academic_api.dart';
+import '../graduation/student_academic_course_link.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/external_link_button.dart';
 import '../planning/planning_profile_cta.dart';
@@ -176,8 +178,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     );
     if (!mounted || entry == null) return;
     final values = {
-      for (final item in entry.payload.entries)
-        item.key: '${item.value ?? ''}',
+      for (final item in entry.payload.entries) item.key: '${item.value ?? ''}',
     };
     await _showForm(draftValues: values, appliedDraftId: entry.id);
   }
@@ -266,6 +267,18 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           // Course ownership is settings/profile context; keep the badge on
           // activity/credential/experience menus only.
           if (!isCourse) StatusBadge(status: entry.status),
+          if (isCourse &&
+              widget.studentApi != null &&
+              _repository.isServerBacked &&
+              !GuestPreviewScope.isActive(context))
+            TextButton(
+              onPressed: () => editStudentAcademicCourseLink(
+                context,
+                StudentAcademicApi.fromStudent(widget.studentApi!),
+                recordId: record.id,
+              ),
+              child: const Text('학점 산입 연결'),
+            ),
           for (final field in _fields.where(
             (f) =>
                 f.type == PersonalFieldType.url &&

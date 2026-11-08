@@ -14,8 +14,10 @@ class _Header {
 
 /// One aligned scroll surface with derived horizontal and vertical header spans.
 class AcademicCreditPreview extends StatefulWidget {
-  const AcademicCreditPreview({super.key, required this.grid});
+  const AcademicCreditPreview({super.key, required this.grid, this.cellText});
   final GraduationCreditGrid grid;
+  final String Function(String rowId, String columnId, String original)?
+  cellText;
   @override
   State<AcademicCreditPreview> createState() => _AcademicCreditPreviewState();
 }
@@ -168,10 +170,11 @@ class _AcademicCreditPreviewState extends State<AcademicCreditPreview> {
   String _text(GraduationCreditGrid grid, String row, String column) {
     if (!grid.columns.any((c) => c.id == column)) return '';
     final cell = grid.cellFor(row, column);
-    return switch (cell.kind) {
+    final original = switch (cell.kind) {
       GraduationCreditCellKind.empty => '',
       GraduationCreditCellKind.notApplicable => '-',
       GraduationCreditCellKind.number => cell.value ?? '',
     };
+    return widget.cellText?.call(row, column, original) ?? original;
   }
 }
