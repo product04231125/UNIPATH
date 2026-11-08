@@ -1,5 +1,11 @@
 # 백엔드 개발환경
 
+관리자 학사 재설계는 migration `0015_admin_academic_foundation`부터
+`0017_admin_academic_requirements`까지의 additive 테이블과
+`/api/v1/admin/academic`을 사용한다. 기존 학생·학사 API는 유지한다.
+학교 분류·교육과정별 과목·한 줄 요건/학점표/인증 요건의 실제 계약과 이전 제한은
+[관리자 학사 API](../docs/api/admin-academic-workspace.md)를 참고한다.
+
 Python 3.12, FastAPI, SQLAlchemy, Psycopg, Alembic, PostgreSQL 17과 pgvector를
 사용한다. Docker 기반 이미지는 Python 3.12.14와 pgvector 0.8.6을 포함하며 digest로
 잠근다. Python 의존성은 `uv.lock`에 잠그며 Docker와 호스트가 같은 잠금 파일을

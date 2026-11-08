@@ -1,6 +1,7 @@
 """Administrator-only contracts for the shared school classification source."""
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -142,3 +143,161 @@ class TrackView(BaseModel):
 class TrackList(BaseModel):
     items: list[TrackView]
     next_cursor: UUID | None
+
+
+class AcademicScopeClause(StrictModel):
+    department_id: UUID | None = None
+    admission_from: int | None = Field(default=None, ge=1000, le=9999, strict=True)
+    admission_to: int | None = Field(default=None, ge=1000, le=9999, strict=True)
+    track_mode: Literal["all", "selected"] = "all"
+    track_ids: list[UUID] = Field(default_factory=list, max_length=32)
+
+    @model_validator(mode="after")
+    def consistent(self):
+        if (self.admission_from is None) != (self.admission_to is None):
+            raise ValueError("Set both admission-year bounds or neither")
+        if self.admission_from is not None and self.admission_from > self.admission_to:
+            raise ValueError("Admission interval is reversed")
+        if (self.track_mode == "selected") != bool(self.track_ids):
+            raise ValueError("Selected tracks require IDs; all tracks require an empty list")
+        if len(set(self.track_ids)) != len(self.track_ids):
+            raise ValueError("Track IDs must be unique")
+        return self
+
+
+class AcademicScope(StrictModel):
+    clauses: list[AcademicScopeClause] = Field(default_factory=list, max_length=100)
+
+
+Credits = Annotated[
+    Decimal, Field(ge=0, le=100, max_digits=8, decimal_places=3, allow_inf_nan=False)
+]
+Requirement = Literal["required", "elective", "not_specified"]
+
+
+class AcademicCurriculumCreate(StrictModel):
+    institution_id: UUID
+    client_id: UUID
+    name: Label
+    classification_revision_id: UUID
+    curriculum_year: int | None = Field(default=None, ge=1000, le=9999, strict=True)
+    legacy_curriculum_id: UUID | None = None
+
+
+class AcademicCurriculumCourseInput(StrictModel):
+    id: UUID | None = None
+    client_ref: ClientRef | None = None
+    course_id: UUID
+    expected_course_version: int = Field(ge=1, strict=True)
+    classification_node_id: UUID
+    requirement: Requirement
+    recognized_credits: Credits
+    position: int = Field(ge=0, strict=True)
+
+    @model_validator(mode="after")
+    def identity(self):
+        if (self.id is None) == (self.client_ref is None):
+            raise ValueError("Use an existing entry id or a new client_ref")
+        return self
+
+
+class AcademicCurriculumReplace(StrictModel):
+    expected_version: int = Field(ge=1, strict=True)
+    client_id: UUID
+    name: Label
+    curriculum_year: int | None = Field(default=None, ge=1000, le=9999, strict=True)
+    classification_revision_id: UUID
+    scope: AcademicScope
+    courses: list[AcademicCurriculumCourseInput] = Field(max_length=1000)
+
+    @model_validator(mode="after")
+    def unique_entries(self):
+        for values in (
+            [entry.course_id for entry in self.courses],
+            [entry.position for entry in self.courses],
+            [str(entry.id) if entry.id else entry.client_ref for entry in self.courses],
+        ):
+            if len(set(values)) != len(values):
+                raise ValueError("Course identities and positions must be unique")
+        return self
+
+
+class AcademicCurriculumCourseView(BaseModel):
+    model_config = {"from_attributes": True}
+    id: UUID
+    logical_id: UUID
+    course_id: UUID
+    course_version: int
+    course_name: str
+    course_code: str
+    classification_node_id: UUID
+    requirement: Requirement
+    recognized_credits: Decimal
+    position: int
+
+
+class AcademicLegacyCurriculumCourse(BaseModel):
+    course_id: UUID
+    course_version: int
+    course_name: str
+    course_code: str
+    credits: Decimal
+    legacy_category: str
+    legacy_required: bool
+
+
+class AcademicCurriculumHeader(BaseModel):
+    model_config = {"from_attributes": True}
+    id: UUID
+    institution_id: UUID
+    lineage_id: UUID
+    legacy_curriculum_id: UUID | None
+    revision: int
+    version: int
+    name: str
+    curriculum_year: int | None
+    classification_revision_id: UUID
+    status: Literal["draft", "published", "withdrawn"]
+    digest: str | None
+
+
+class AcademicCurriculumView(AcademicCurriculumHeader):
+    scope: AcademicScope
+    courses: list[AcademicCurriculumCourseView]
+    legacy_courses: list[AcademicLegacyCurriculumCourse]
+    id_map: dict[str, UUID] = Field(default_factory=dict)
+
+
+class AcademicCurriculumList(BaseModel):
+    items: list[AcademicCurriculumHeader]
+    next_cursor: UUID | None
+
+
+class AcademicNewCourse(StrictModel):
+    name: Label
+    code: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+    credits: Credits
+
+
+class AcademicCourseEntryCreate(StrictModel):
+    client_id: UUID
+    expected_version: int = Field(ge=1, strict=True)
+    course_id: UUID | None = None
+    expected_course_version: int | None = Field(default=None, ge=1, strict=True)
+    new_course: AcademicNewCourse | None = None
+    classification_node_id: UUID
+    requirement: Requirement
+    recognized_credits: Credits
+
+    @model_validator(mode="after")
+    def exactly_one_source(self):
+        if (self.course_id is None) == (self.new_course is None):
+            raise ValueError("Select an existing course or create one, exactly one")
+        if (self.course_id is not None) != (self.expected_course_version is not None):
+            raise ValueError("Existing courses require their version")
+        return self
+
+
+class AcademicCopyInput(StrictModel):
+    client_id: UUID
+    expected_version: int = Field(ge=1, strict=True)

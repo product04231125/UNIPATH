@@ -8,7 +8,15 @@ from app.models.academic import (
     RuleSet,
 )
 from app.models.academic_workspace import (
+    AcademicCurriculumCourse,
+    AcademicCurriculumDepartmentRef,
+    AcademicCurriculumRevision,
+    AcademicCurriculumTrackRef,
     AcademicMutationReceipt,
+    AcademicRequirementDepartmentRef,
+    AcademicRequirementNodeRef,
+    AcademicRequirementRevision,
+    AcademicRequirementTrackRef,
     ClassificationNode,
     ClassificationRevision,
     StudyTrack,
@@ -66,6 +74,14 @@ from app.models.rule_programs import (
 )
 
 __all__ = [
+    "AcademicRequirementRevision",
+    "AcademicRequirementNodeRef",
+    "AcademicRequirementTrackRef",
+    "AcademicRequirementDepartmentRef",
+    "AcademicCurriculumCourse",
+    "AcademicCurriculumDepartmentRef",
+    "AcademicCurriculumRevision",
+    "AcademicCurriculumTrackRef",
     "AcademicMutationReceipt",
     "ClassificationNode",
     "ClassificationRevision",

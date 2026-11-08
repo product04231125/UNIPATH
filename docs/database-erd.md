@@ -1,5 +1,24 @@
 # 확장 데이터베이스 ERD 및 MVP 단계
 
+## 관리자 학사 재설계의 실제 추가 테이블 (2026-11-08)
+
+기존 학교·학과·과목·교육과정·규칙과 학생 테이블은 유지한다. 0015~0017은
+기존 schema에 아래 12개 테이블만 추가한다. 상세 키·제약은 모델/migration과
+[현재 관리자 계약](api/admin-academic-workspace.md)을 따른다.
+
+| migration | 테이블 | 관계 |
+| --- | --- | --- |
+| 0015 | academic_classification_revisions, academic_classification_nodes | 학교별 분류 개정·부모/자식·안정 논리 ID |
+| 0015 | academic_study_tracks, academic_mutation_receipts | 학교 경로·동일 요청 재시도 결과 |
+| 0016 | academic_curriculum_revisions, academic_curriculum_courses | 기존 교육과정 대응·분류 버전·기존 과목 재사용·과정별 인정 기준 |
+| 0016 | academic_curriculum_department_refs, academic_curriculum_track_refs | 적용 범위의 실제 학과/경로 FK |
+| 0017 | academic_requirement_revisions | 종류별 검증 JSONB·공통 범위·개정·게시·철회 |
+| 0017 | academic_requirement_department_refs, academic_requirement_track_refs, academic_requirement_node_refs | 요건 범위·학점표 분류의 FK |
+
+JSONB 범위·본문은 엄격한 종류별 DTO로 검증하고 외부 ID는 동일 학교·고정 분류 버전의
+복합 FK로 보강한다. 게시본은 직접 수정하지 않는다. 학생 프로필·개인 기록·졸업 평가의
+새 테이블은 이번에 추가하지 않는다. 아래 ERD의 계획 모델과 실제 추가분을 구분한다.
+
 이 문서는 UniversityPath AI의 **전체 논리 데이터 모델**과 단계별 실제 도입
 범위를 정의한다. README에 제시된 대표 핵심 엔터티를 바탕으로, 아래 모델은
 자격증·역량·진로·채용·개인화를 확장하기 위한 기준이다.
