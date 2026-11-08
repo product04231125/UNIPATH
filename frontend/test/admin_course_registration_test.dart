@@ -17,8 +17,9 @@ class FailingLinkRepository extends FakeAdminRepository {
   int courseSaves = 0;
   @override
   Future<void> save(String actorId, AdminRecord record) async {
-    if (record.kind == AdminKind.curriculumCourse && failLink)
+    if (record.kind == AdminKind.curriculumCourse && failLink) {
       throw StateError('link offline');
+    }
     if (record.kind == AdminKind.course) courseSaves++;
     await super.save(actorId, record);
   }

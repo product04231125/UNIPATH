@@ -30,10 +30,11 @@ class AdminCourseRegistration {
     required String requiredCourse,
     AdminRecord? original,
   }) async {
-    if (_courseUncertain)
+    if (_courseUncertain) {
       throw StateError(
         '과목 저장 결과가 불명확합니다. 과목 목록을 다시 읽고 등록된 과목의 수정으로 이어가세요. 자동 재전송하지 않습니다.',
       );
+    }
     if (_reloadLink) await repository.load();
     final prior = _savedCourse ?? original;
     final links = repository.records
@@ -44,11 +45,13 @@ class AdminCourseRegistration {
               r.value('curriculumId') == curriculumId,
         )
         .toList();
-    if (links.length > 1)
+    if (links.length > 1) {
       throw StateError('같은 교육과정에 연결이 여러 개 있습니다. 연결 관리에서 확인하세요.');
+    }
     Future<AdminRecord> persist(AdminRecord record) async {
-      if (repository is RemoteAdminRepository)
+      if (repository is RemoteAdminRepository) {
         return repository.saveWithResult(actorId, record);
+      }
       await repository.save(actorId, record);
       return repository.records.firstWhere((r) => r.id == record.id);
     }
@@ -65,8 +68,9 @@ class AdminCourseRegistration {
         );
       } catch (error) {
         if (error is StateError &&
-            (error is! AdminRequestFailure || error.rejected))
+            (error is! AdminRequestFailure || error.rejected)) {
           rethrow;
+        }
         _courseUncertain = true;
         throw StateError(
           '과목 저장 결과를 확인하지 못했습니다. 목록을 다시 읽고 등록된 과목의 수정으로 이어가세요. 입력은 유지하며 자동 재전송하지 않습니다.',
