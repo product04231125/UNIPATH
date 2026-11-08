@@ -44,7 +44,6 @@ class CoursePickOption {
 
   String get label {
     final parts = <String>[
-      sourceLabel,
       if (gradingBasis == 'pass_fail') 'P/F',
       [title, if (courseCode.isNotEmpty) '($courseCode)'].join(' '),
       if (credits.isNotEmpty) formatCreditsLabel(credits),

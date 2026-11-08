@@ -47,6 +47,8 @@ void main() {
       curriculumId: 'old-curriculum',
     );
     expect(options.first.id, 'academic:context:entry');
+    expect(options.first.label, startsWith('공통 설계 (SHARED)'));
+    expect(options.first.label, isNot(contains('학교 교육과정')));
     expect(options.first.category, '교양 / 기초');
     expect(options.first.requiredCourse, isTrue);
     final pf = options.singleWhere((o) => o.id.endsWith(':pf-entry'));

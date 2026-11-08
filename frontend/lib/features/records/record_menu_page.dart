@@ -1,4 +1,5 @@
 import '../../shared/app_style.dart';
+import '../../shared/credits_format.dart';
 
 import 'package:flutter/material.dart';
 
@@ -366,6 +367,17 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     }).toList();
     final isCourse = widget.kind == PersonalRecordKind.course;
     final profile = widget.planning?.profile;
+    int creditUnits(String status) => personal
+        .where((r) => courseStatusLabel(r.value('completion')) == status)
+        .fold(
+          0,
+          (sum, r) =>
+              sum + ((num.tryParse(r.value('credits')) ?? 0) * 1000).round(),
+        );
+    final earned = creditUnits('이수 완료');
+    final planned = creditUnits('수강 예정');
+    String creditLabel(int units) =>
+        formatCreditsLabel((units / 1000).toString());
     final canAdd =
         !isCourse ||
         widget.planning == null ||
@@ -451,7 +463,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                 ),
                 FeatureLine.one(
                   text:
-                      '취득학점 합계 ${personal.where((r) => courseStatusLabel(r.value('completion')) == '이수 완료').fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점',
+                      '취득학점 합계 ${creditLabel(earned)} · 수강 예정 ${creditLabel(planned)} · 총 ${creditLabel(earned + planned)}',
                 ),
               ],
               if (widget.kind == PersonalRecordKind.activity)

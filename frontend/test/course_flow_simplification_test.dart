@@ -129,7 +129,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.textContaining('취득학점 합계 3.0학점'), findsOneWidget);
+      expect(find.textContaining('취득학점 합계 3학점 · 수강 예정 2학점 · 총 5학점'), findsOneWidget);
       expect(find.textContaining('보존할 입력 당시 메모'), findsNothing);
       expect(find.text('학점 산입 연결'), findsNothing);
       expect(find.textContaining('이수 완료'), findsWidgets);

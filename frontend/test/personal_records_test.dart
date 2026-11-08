@@ -561,7 +561,7 @@ void main() {
         expect(find.text('내 과목'), findsOneWidget);
         expect(find.text('자료구조'), findsNothing);
         expect(find.text('개인 기록'), findsNothing);
-        expect(find.textContaining('취득학점 합계 2.0학점'), findsOneWidget);
+        expect(find.textContaining('취득학점 합계 2학점'), findsOneWidget);
         expect(
           find.textContaining('학기별 수강 계획과 개인 이수 기록을 정리합니다.'),
           findsOneWidget,
@@ -698,13 +698,13 @@ void main() {
       );
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('취득학점 합계 5.0학점'), findsOneWidget);
+      expect(find.textContaining('취득학점 합계 5학점'), findsOneWidget);
       await tester.tap(find.text('전체 학기'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('2학기').last);
       await tester.pumpAndSettle();
       expect(find.text('다른 학기 합성 과목'), findsNothing);
-      expect(find.textContaining('취득학점 합계 3.0학점'), findsOneWidget);
+      expect(find.textContaining('취득학점 합계 3학점'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

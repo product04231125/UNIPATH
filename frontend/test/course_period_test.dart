@@ -183,12 +183,12 @@ void main() {
       expect(find.text('작년 과목'), findsNothing);
       expect(find.text('기존 과목'), findsNothing);
       expect(find.text('계절 과목'), findsNothing);
-      expect(find.textContaining('취득학점 합계 3.0학점'), findsOneWidget);
+      expect(find.textContaining('취득학점 합계 3학점'), findsOneWidget);
       await choose(tester, 'year', '연도 미지정');
       expect(find.text('기존 과목'), findsOneWidget);
       await choose(tester, 'term', '여름 계절학기');
       expect(find.textContaining('선택한 연도·학기에 맞는 개인 기록이 없습니다'), findsOneWidget);
-      expect(find.textContaining('취득학점 합계 0.0학점'), findsOneWidget);
+      expect(find.textContaining('취득학점 합계 0학점'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
