@@ -212,10 +212,13 @@ def calculate_case(inputs, saved, condition, on):
                         if observed and row.approval
                         else "needs_review",
                         approved_hours=row.approved_hours if observed else None,
+                        reported_hours=row.reported_hours,
+                        activity_on=row.ended_on or row.started_on,
                     )
                 )
             return (
-                rules.VolunteerRule(**base, minimum=condition.minimum),
+                # Personal calculations use the hours the student entered (#48 B1).
+                rules.VolunteerRule(**base, minimum=condition.minimum, hours_basis="reported"),
                 rules.Snapshot(volunteers=tuple(values)),
                 aliases,
             )

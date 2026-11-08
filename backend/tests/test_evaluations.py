@@ -132,8 +132,8 @@ def test_five_typed_condition_kinds_can_use_personal_observations(auth_client):
         "activity-records",
         {
             "title": "합성 봉사",
-            "reported_hours": "9999",
-            "approved_hours": "12",
+            "reported_hours": "12",
+            "approved_hours": "3",
             "approval": "approved",
             "observed_on": "2026-10-18",
         },
@@ -489,3 +489,52 @@ def test_rule_periods_and_certificate_expiration_include_the_boundary_day(auth_c
         c, h, curriculum, [criterion(future, **conditions[0]["condition"])], as_of="2026-10-20"
     )
     assert expired["status"] == "not_satisfied"
+
+
+@integration
+def test_personal_volunteer_sums_entered_hours_of_selected_activities(auth_client, auth_db):
+    c = auth_client
+    h = authorization(register(c))
+    _, curriculum, _, _, _ = samples(c, h)
+    entered = post(c, h, "activity-records", {"title": "합성 봉사", "reported_hours": "10"})
+    unselected = post(c, h, "activity-records", {"title": "합성 미선택", "reported_hours": "100"})
+    zero = post(c, h, "activity-records", {"title": "합성 0시간", "reported_hours": "0"})
+    legacy = post(
+        c,
+        h,
+        "activity-records",
+        {
+            "title": "합성 이전 입력",
+            "approved_hours": "2",
+            "approval": "approved",
+            "observed_on": "2026-01-01",
+        },
+    )
+    blank = post(c, h, "activity-records", {"title": "합성 시간 없음"})
+    rule = saved_rule(c, h, curriculum, "합성 봉사 기준")
+
+    def run(*activities, minimum="10"):
+        ids = [item["id"] for item in activities]
+        condition = {"kind": "minimum_volunteer_hours", "minimum": minimum, "activity_ids": ids}
+        return calculate(c, h, curriculum, [criterion(rule, **condition)], as_of="2026-11-08")
+
+    first = run(entered)
+    item = first["results"][0]
+    assert (first["status"], item["current"], item["deficit"]) == ("satisfied", "10.000", "0")
+    assert item["evidence_record_ids"] == [entered["id"]]
+    assert unselected["id"] not in str(first)
+    short = run(entered, zero, minimum="12")["results"][0]
+    assert (short["status"], short["current"], short["deficit"]) == (
+        "not_satisfied",
+        "10.000",
+        "2.000",
+    )
+    combined = run(entered, legacy, minimum="12")["results"][0]
+    assert (combined["status"], combined["current"]) == ("satisfied", "12.000")
+    unknown = run(entered, blank, minimum="12")["results"][0]
+    assert (unknown["status"], unknown["deficit"]) == ("needs_review", None)
+    with auth_db() as db:
+        row = db.scalar(select(PersonalEvaluation).where(PersonalEvaluation.id == first["id"]))
+        assert replay(row).model_dump(mode="json") == row.result_json
+        case = row.input_snapshot_json["cases"][0]
+        assert case["rule_set"]["rules"][0]["hours_basis"] == "reported"
