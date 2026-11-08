@@ -36,6 +36,7 @@ from app.api.record_sources import admin_router as record_sources_admin_router
 from app.api.record_sources import router as record_sources_router
 from app.api.rule_programs import public_router as program_catalog_router
 from app.api.rule_programs import router as program_router
+from app.api.student_academic import router as student_academic_router
 from app.core.config import Settings, get_settings
 from app.core.database import create_session_factory
 from app.core.errors import register_error_handlers
@@ -109,6 +110,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(academic_workspace_router, prefix="/api/v1")
     application.include_router(academic_requirements_router, prefix="/api/v1")
     application.include_router(personal_router, prefix="/api/v1")
+    application.include_router(student_academic_router, prefix="/api/v1")
     application.include_router(personal_imports_router, prefix="/api/v1")
     application.include_router(personalization_router, prefix="/api/v1")
     application.include_router(academic_guidance_router, prefix="/api/v1")

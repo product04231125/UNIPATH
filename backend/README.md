@@ -1,5 +1,10 @@
 # 백엔드 개발환경
 
+학생 학사 연결은 migration head `0018_student_academic`의 별도 학생 소유 테이블과
+`/api/v1/catalog/academic/options`, `/api/v1/me/academic-*`를 사용한다.
+기존 개인 기록·감사 이력을 유지하며 새 기준 적용·O/X·기록 연결·학점 진행 상황을
+지원한다. [학생 학사 API](../docs/api/student-academic.md)를 따른다.
+
 관리자 학사 재설계는 migration `0015_admin_academic_foundation`부터
 `0017_admin_academic_requirements`까지의 additive 테이블과
 `/api/v1/admin/academic`을 사용한다. 기존 학생·학사 API는 유지한다.

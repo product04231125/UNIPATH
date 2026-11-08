@@ -72,8 +72,24 @@ from app.models.rule_programs import (
     ProgramRule,
     RuleProgram,
 )
+from app.models.student_academic import (
+    StudentAcademicActivation,
+    StudentAcademicContext,
+    StudentAcademicCourseLink,
+    StudentAcademicDocument,
+    StudentAcademicReceipt,
+    StudentAcademicResponse,
+    StudentAcademicWorkspace,
+)
 
 __all__ = [
+    "StudentAcademicActivation",
+    "StudentAcademicContext",
+    "StudentAcademicCourseLink",
+    "StudentAcademicDocument",
+    "StudentAcademicReceipt",
+    "StudentAcademicResponse",
+    "StudentAcademicWorkspace",
     "AcademicRequirementRevision",
     "AcademicRequirementNodeRef",
     "AcademicRequirementTrackRef",

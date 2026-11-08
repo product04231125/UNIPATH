@@ -1,5 +1,13 @@
 # 확장 데이터베이스 ERD 및 MVP 단계
 
+## 학생 학사 연결의 실제 추가 테이블 (2026-11-08)
+
+`0018_student_academic`은 student_academic_workspaces / contexts / activations /
+documents / responses / course_links / receipts 7개 테이블을 추가한다.
+학생 소유 FK·적용본 스냅샷·항목별 O/X와 기록 버전·교육과정 과목 연결을 저장한다.
+기존 planning_profiles·개인 기록·공식 감사·개인 계산 테이블은 변경하지 않는다.
+실제 소유권·계약·개정 규칙은 [학생 학사 API](api/student-academic.md)를 따른다.
+
 ## 관리자 학사 재설계의 실제 추가 테이블 (2026-11-08)
 
 기존 학교·학과·과목·교육과정·규칙과 학생 테이블은 유지한다. 0015~0017은
