@@ -63,6 +63,7 @@ def progress(db, owner):
             local_links = [link for link in active_links if link.context_id in context_ids]
             cache = {}
             planned_cache = {}
+            ongoing_cache = {}
 
             def record_mode(header, bindings=bindings, headers=headers):
                 return str(header.id) in bindings or any(
@@ -75,10 +76,12 @@ def progress(db, owner):
                 document=document,
                 context_ids=context_ids,
                 planned_cache=planned_cache,
+                ongoing_cache=ongoing_cache,
             ):
                 categories = bindings[str(header.id)]
-                evidence, included, planned = [], {}, {}
+                evidence, included, planned, ongoing = [], {}, {}, {}
                 planned_unknown = False
+                ongoing_unknown = False
                 uncertain = bool(current.issues) or document.status != "published"
                 primary_applies = any(ctxs[key].primary for key in context_ids if key in ctxs)
                 duplicate_codes = {
@@ -104,13 +107,19 @@ def progress(db, owner):
                         state, reason = "needs_review", "major_assignment_required"
                     elif record.completion in ("planned", "in_progress"):
                         reason = (
-                            "planned_record" if record.completion == "planned" else "not_recorded"
+                            "planned_record"
+                            if record.completion == "planned"
+                            else "in_progress_record"
                         )
                         amount = record.credits
                         if reason == "planned_record" and amount is not None:
                             planned[record.id] = amount
                         elif reason == "planned_record":
                             planned_unknown = True
+                        elif amount is not None:
+                            ongoing[record.id] = amount
+                        else:
+                            ongoing_unknown = True
                     elif record.credits is None:
                         state, reason = "needs_review", "earned_credits_required"
                     elif record.course_code in duplicate_codes:
@@ -131,6 +140,9 @@ def progress(db, owner):
                     )
                 planned_cache[header.id] = (
                     None if planned_unknown else sum(planned.values(), Decimal(0))
+                )
+                ongoing_cache[header.id] = (
+                    None if ongoing_unknown else sum(ongoing.values(), Decimal(0))
                 )
                 return (sum(included.values(), Decimal(0)), uncertain, evidence)
 
@@ -160,6 +172,7 @@ def progress(db, owner):
                 headers=headers,
                 planned_cache=planned_cache,
                 from_records=from_records,
+                ongoing_cache=ongoing_cache,
                 record_mode=record_mode,
             ):
                 if header.id in cache:
@@ -174,9 +187,11 @@ def progress(db, owner):
                     for _, _, items in values:
                         for item in items:
                             old = evidence_by_id.get(item.record_id)
-                            score = rank[item.state] + (item.reason == "planned_record")
+                            score = rank[item.state] + (
+                                item.reason in ("planned_record", "in_progress_record")
+                            )
                             if old is None or score > rank[old.state] + (
-                                old.reason == "planned_record"
+                                old.reason in ("planned_record", "in_progress_record")
                             ):
                                 evidence_by_id[item.record_id] = item
                     items = list(evidence_by_id.values())
@@ -201,6 +216,19 @@ def progress(db, owner):
                         for key in header.aggregate_members
                     ):
                         planned_cache[header.id] = None
+                    ongoing_cache[header.id] = sum(
+                        (
+                            item.credits
+                            for item in items
+                            if item.reason == "in_progress_record" and item.credits is not None
+                        ),
+                        Decimal(0),
+                    )
+                    if any(
+                        record_mode(headers[key]) and ongoing_cache.get(key) is None
+                        for key in header.aggregate_members
+                    ):
+                        ongoing_cache[header.id] = None
                     cache[header.id] = (earned, any(v[1] for v in values), items)
                     return cache[header.id]
                 evidence, included = [], {}
@@ -352,6 +380,10 @@ def progress(db, owner):
                         target=target,
                         earned=earned,
                         planned=planned_cache.get(header.id),
+                        in_progress=ongoing_cache.get(header.id),
+                        earned_with_in_progress=earned + ongoing_cache[header.id]
+                        if earned is not None and ongoing_cache.get(header.id) is not None
+                        else None,
                         projected=earned + planned_cache[header.id]
                         if earned is not None and planned_cache.get(header.id) is not None
                         else None,

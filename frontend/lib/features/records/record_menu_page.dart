@@ -375,7 +375,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
               sum + ((num.tryParse(r.value('credits')) ?? 0) * 1000).round(),
         );
     final earned = creditUnits('이수 완료');
-    final planned = creditUnits('수강 예정');
+    final ongoing = creditUnits('수강 중');
     String creditLabel(int units) =>
         formatCreditsLabel((units / 1000).toString());
     final canAdd =
@@ -463,7 +463,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                 ),
                 FeatureLine.one(
                   text:
-                      '취득학점 합계 ${creditLabel(earned)} · 수강 예정 ${creditLabel(planned)} · 총 ${creditLabel(earned + planned)}',
+                      '취득학점 합계 ${creditLabel(earned)} · 수강 중 ${creditLabel(ongoing)} · 총 ${creditLabel(earned + ongoing)}',
                 ),
               ],
               if (widget.kind == PersonalRecordKind.activity)

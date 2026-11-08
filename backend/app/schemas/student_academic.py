@@ -231,6 +231,8 @@ class StudentAcademicCreditCell(StrictModel):
     earned: Decimal | None
     planned: Decimal | None = None
     projected: Decimal | None = None
+    in_progress: Decimal | None = None
+    earned_with_in_progress: Decimal | None = None
     remaining: Decimal | None
     status: Literal["satisfied", "not_satisfied", "needs_review", "not_applicable", "no_target"]
     evidence: list[StudentAcademicCreditEvidence]

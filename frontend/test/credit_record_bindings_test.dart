@@ -55,8 +55,10 @@ class TranscriptTransport extends fixture.AcademicTransport {
         'header_id': 'column',
         'target': '130',
         'earned': '115',
-        'planned': '20',
-        'projected': '135',
+        'planned': '99',
+        'projected': '214',
+        'in_progress': '20',
+        'earned_with_in_progress': '135',
         'remaining': '15',
         'status': 'not_satisfied',
         'evidence': [],
@@ -101,6 +103,16 @@ class ComparisonTransport extends TranscriptTransport {
             'target': ['18', '8', '26', '14', '56', '29', '130'][i],
             'earned': [null, '13', '41', '11', '57', '6', '115'][i],
             'planned': ['1', '0', '2', '3', '3', '12', '20'][i],
+            'in_progress': ['1', '0', '2', '3', '3', '12', '20'][i],
+            'earned_with_in_progress': [
+              null,
+              '13',
+              '43',
+              '14',
+              '60',
+              '18',
+              '135',
+            ][i],
             'projected': [null, '13', '43', '14', '60', '18', '135'][i],
             'remaining': [null, '0', '0', '3', '0', '23', '15'][i],
             'status': i == 0 ? 'needs_review' : 'not_satisfied',
@@ -202,7 +214,7 @@ void main() {
     final key = await fixture.mount(tester, TranscriptTransport());
     await tester.tap(find.text('학점표').first);
     await tester.pumpAndSettle();
-    for (final label in ['기준학점', '취득학점', '예정학점', '취득 + 예정', '부족학점']) {
+    for (final label in ['기준학점', '취득학점', '수강 중 학점', '취득 + 수강 중', '부족학점']) {
       expect(find.text('단일전공\n$label'), findsOneWidget);
     }
     for (final number in ['130', '115', '20', '135', '15']) {

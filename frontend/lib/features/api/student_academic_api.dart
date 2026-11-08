@@ -340,6 +340,8 @@ class AcademicStudentCreditCell {
       earned = j['earned']?.toString(),
       planned = j['planned']?.toString(),
       projected = j['projected']?.toString(),
+      inProgress = j['in_progress']?.toString(),
+      earnedWithInProgress = j['earned_with_in_progress']?.toString(),
       remaining = j['remaining']?.toString(),
       status = j['status'] as String,
       issues = List<String>.from(j['issues'] as List? ?? []),
@@ -348,6 +350,7 @@ class AcademicStudentCreditCell {
           .toList();
   final String rowId, headerId, status;
   final String? target, earned, remaining, planned, projected;
+  final String? inProgress, earnedWithInProgress;
   final List<AcademicStudentEvidence> evidence;
   final List<String> issues;
 }

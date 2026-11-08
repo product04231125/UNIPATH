@@ -36,6 +36,7 @@ String academicEvidenceReason(String reason) =>
       'confirmed': '확인한 이수 기록',
       'transcript_category': '성적표 이수구분으로 산입',
       'planned_record': '수강 예정 · 취득학점 제외',
+      'in_progress_record': '수강 중 · 취득학점 제외',
       'transcript_subcategory_required': '성적표에 없는 세부 이수구분은 추가 자료가 필요합니다.',
       'major_assignment_required': '추가 전공에 산입할 과목 정보가 필요합니다.',
       'excluded_by_student': '학생이 산입 제외',

@@ -98,6 +98,7 @@ void main() {
       for (final row in [
         ['완료 과목', '이수 기록', '3'],
         ['예정 과목', '수강 예정', '2'],
+        ['진행 과목', '수강 중', '1.5'],
         ['미이수 과목', '미이수', '4'],
       ]) {
         await repo.save(
@@ -129,7 +130,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.textContaining('취득학점 합계 3학점 · 수강 예정 2학점 · 총 5학점'), findsOneWidget);
+      expect(
+        find.textContaining('취득학점 합계 3학점 · 수강 중 1.5학점 · 총 4.5학점'),
+        findsOneWidget,
+      );
       expect(find.textContaining('보존할 입력 당시 메모'), findsNothing);
       expect(find.text('학점 산입 연결'), findsNothing);
       expect(find.textContaining('이수 완료'), findsWidgets);

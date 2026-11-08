@@ -215,7 +215,13 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
           cell.headerId: cell,
       };
       if (rowCells.isEmpty) continue;
-      for (final metric in const ['기준학점', '취득학점', '예정학점', '취득 + 예정', '부족학점']) {
+      for (final metric in const [
+        '기준학점',
+        '취득학점',
+        '수강 중 학점',
+        '취득 + 수강 중',
+        '부족학점',
+      ]) {
         displayRows.add(
           AcademicCreditDisplayRow(
             label: '${row.label}\n$metric',
@@ -230,8 +236,8 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
                   final value = switch (metric) {
                     '기준학점' => cell.target,
                     '취득학점' => cell.earned,
-                    '예정학점' => cell.planned,
-                    '취득 + 예정' => cell.projected,
+                    '수강 중 학점' => cell.inProgress,
+                    '취득 + 수강 중' => cell.earnedWithInProgress,
                     _ => cell.remaining,
                   };
                   if (value == null) {

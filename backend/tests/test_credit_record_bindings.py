@@ -56,6 +56,9 @@ def test_transcript_categories_count_without_pdf_course_links_and_preserve_snaps
     create(e, course_code="K-OTHER", category="전공선택", credits="2.5")
     create(e, course_code="K-FAIL", category="전공필수", credits="4.5", completion="not_completed")
     create(e, course_code="K-PLAN", category="전공필수", credits="1.5", completion="planned")
+    create(
+        e, course_code="K-ONGOING", category="전공필수", credits="2.25", completion="in_progress"
+    )
 
     def cells():
         r = e["c"].get(ME + "academic-credit-progress", headers=e["student"])
@@ -68,6 +71,9 @@ def test_transcript_categories_count_without_pdf_course_links_and_preserve_snaps
     assert Decimal(results[total]["earned"]) == Decimal("5.625")
     assert Decimal(results[total]["planned"]) == Decimal("1.5")
     assert Decimal(results[total]["projected"]) == Decimal("7.125")
+    assert Decimal(results[total]["in_progress"]) == Decimal("2.25")
+    assert Decimal(results[total]["earned_with_in_progress"]) == Decimal("7.875")
+    assert Decimal(results[total]["remaining"]) == Decimal("0.375")
     assert results[total]["status"] == "not_satisfied"
     assert results[unknown]["earned"] is None and results[unknown]["remaining"] is None
     assert results[unknown]["issues"] == ["transcript_subcategory_required"]
@@ -93,6 +99,17 @@ def test_transcript_categories_count_without_pdf_course_links_and_preserve_snaps
     )
     assert cells()[a]["planned"] is None
     assert cells()[total]["projected"] is None
+    assert Decimal(cells()[total]["in_progress"]) == Decimal("2.25")
+    create(
+        e,
+        course_code="PF-ONGOING",
+        category="전공필수",
+        credits=None,
+        grading_basis="pass_fail",
+        completion="in_progress",
+    )
+    assert cells()[total]["in_progress"] is None
+    assert cells()[total]["earned_with_in_progress"] is None
 
 
 def test_binding_scope_conflicts_unknown_headers_and_copy(academic_student):
