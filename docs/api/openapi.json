@@ -9583,6 +9583,121 @@
             }
           },
           {
+            "name": "target_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Id"
+            }
+          },
+          {
+            "name": "actor_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor Id"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "institution",
+                    "department",
+                    "curriculum",
+                    "course",
+                    "curriculumCourse",
+                    "ruleSet",
+                    "rule",
+                    "document",
+                    "classification",
+                    "scope",
+                    "account"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "name": "occurred_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Occurred From"
+            }
+          },
+          {
+            "name": "occurred_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Occurred To"
+            }
+          },
+          {
             "name": "cursor",
             "in": "query",
             "required": false,
@@ -9711,7 +9826,8 @@
             },
             "description": "Internal Server Error"
           }
-        }
+        },
+        "description": "Filters combine with AND. The period includes occurred_from and excludes occurred_to."
       }
     },
     "/api/v1/me/planning-profile": {
@@ -45737,9 +45853,9 @@
           },
           "label": {
             "type": "string",
-            "const": "개인 기준 계산 · 학교 공식 판정 아님",
+            "const": "\uac1c\uc778 \uae30\uc900 \uacc4\uc0b0 \u00b7 \ud559\uad50 \uacf5\uc2dd \ud310\uc815 \uc544\ub2d8",
             "title": "Label",
-            "default": "개인 기준 계산 · 학교 공식 판정 아님"
+            "default": "\uac1c\uc778 \uae30\uc900 \uacc4\uc0b0 \u00b7 \ud559\uad50 \uacf5\uc2dd \ud310\uc815 \uc544\ub2d8"
           },
           "status": {
             "type": "string",
@@ -45832,9 +45948,9 @@
           },
           "label": {
             "type": "string",
-            "const": "개인 기준 계산 · 학교 공식 판정 아님",
+            "const": "\uac1c\uc778 \uae30\uc900 \uacc4\uc0b0 \u00b7 \ud559\uad50 \uacf5\uc2dd \ud310\uc815 \uc544\ub2d8",
             "title": "Label",
-            "default": "개인 기준 계산 · 학교 공식 판정 아님"
+            "default": "\uac1c\uc778 \uae30\uc900 \uacc4\uc0b0 \u00b7 \ud559\uad50 \uacf5\uc2dd \ud310\uc815 \uc544\ub2d8"
           },
           "status": {
             "type": "string",
@@ -53581,9 +53697,9 @@
           },
           "label": {
             "type": "string",
-            "const": "학교 검토 자료 기준 졸업요건 감사",
+            "const": "\ud559\uad50 \uac80\ud1a0 \uc790\ub8cc \uae30\uc900 \uc878\uc5c5\uc694\uac74 \uac10\uc0ac",
             "title": "Label",
-            "default": "학교 검토 자료 기준 졸업요건 감사"
+            "default": "\ud559\uad50 \uac80\ud1a0 \uc790\ub8cc \uae30\uc900 \uc878\uc5c5\uc694\uac74 \uac10\uc0ac"
           },
           "status": {
             "type": "string",
@@ -53697,9 +53813,9 @@
           },
           "label": {
             "type": "string",
-            "const": "학교 검토 자료 기준 졸업요건 감사",
+            "const": "\ud559\uad50 \uac80\ud1a0 \uc790\ub8cc \uae30\uc900 \uc878\uc5c5\uc694\uac74 \uac10\uc0ac",
             "title": "Label",
-            "default": "학교 검토 자료 기준 졸업요건 감사"
+            "default": "\ud559\uad50 \uac80\ud1a0 \uc790\ub8cc \uae30\uc900 \uc878\uc5c5\uc694\uac74 \uac10\uc0ac"
           },
           "status": {
             "type": "string",
@@ -55172,7 +55288,7 @@
           "notice": {
             "type": "string",
             "title": "Notice",
-            "default": "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
+            "default": "\ud559\uad50 \uac80\ud1a0 \uc790\ub8cc \uae30\uc900 \uc548\ub0b4\uc774\uba70 \ud559\uad50\uc758 \ucd5c\uc885 \ud559\uc704 \uc218\uc5ec \uc2b9\uc778\uc744 \ub300\uccb4\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4."
           }
         },
         "additionalProperties": false,

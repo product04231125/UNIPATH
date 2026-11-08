@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Query, Request, Response
-from pydantic import create_model
+from pydantic import AwareDatetime, create_model
 
 from app.api.auth import CurrentIdentity, Database
 from app.models.identity import Institution
@@ -179,10 +179,27 @@ def audit_history(
     db: Database,
     identity: CurrentIdentity,
     institution_id: UUID | None = None,
+    target_id: UUID | None = None,
+    actor_id: UUID | None = None,
+    kind: dto.AuditKind | None = None,
+    action: Annotated[str, Query(min_length=1, max_length=40)] | None = None,
+    occurred_from: Annotated[AwareDatetime | None, Query()] = None,
+    occurred_to: Annotated[AwareDatetime | None, Query()] = None,
     cursor: UUID | None = None,
     limit: Limit = 100,
 ):
-    rows = service.history(db, identity, institution_id, cursor, limit)
+    """Filters combine with AND. The period includes occurred_from and excludes occurred_to."""
+    if occurred_from and occurred_to and occurred_from >= occurred_to:
+        raise service.failure("기간의 시작이 끝보다 앞서야 합니다.", 422)
+    filters = {
+        "target_id": target_id,
+        "actor_id": actor_id,
+        "kind": kind,
+        "action": action,
+        "occurred_from": occurred_from,
+        "occurred_to": occurred_to,
+    }
+    rows = service.history(db, identity, institution_id, cursor, limit, filters)
     return {
         "items": rows[:limit],
         "next_cursor": rows[limit - 1]["id"] if len(rows) > limit else None,

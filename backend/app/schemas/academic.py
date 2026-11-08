@@ -189,6 +189,23 @@ class ReferenceList(BaseModel):
     total: int
 
 
+# Kinds the audit history reports. "account" covers every non-catalogue account event.
+AuditKind = Literal[
+    "institution",
+    "department",
+    "curriculum",
+    "course",
+    "curriculumCourse",
+    "ruleSet",
+    "rule",
+    "document",
+    # School classifications (feature/backend-school-classifications); empty until it lands.
+    "classification",
+    "scope",
+    "account",
+]
+
+
 class AuditView(BaseModel):
     id: UUID
     actor_id: UUID | None
