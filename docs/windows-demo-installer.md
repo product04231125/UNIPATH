@@ -55,5 +55,12 @@ EXE는 자체 서명하지 않는다. 코드 서명이 없으므로 Windows 경�
 EXE의 `--verify-bundle`은 UI나 설치를 실행하지 않고 포함 파일을 끝까지 읽어 확인한다.
 Docker가 없는 실제 새 PC에서의 UAC/WSL/재부팅·약관 UI는 개발 PC 검증과 구분한다.
 
+2026-11-09 검증: Windows PowerShell 5.1 파싱·격리 DB 왕복 테스트·Ruff·Web release 빌드와
+C# x64 컴파일을 통과했다. 실제 선별 데이터가 포함된 EXE 자원 확인, 이미지 save/load 태그,
+준비 스크립트의 첫 실행, 학생/관리자 로그인, 수강·응답·학점 API, 종료/재실행 뒤 데이터 지문
+보존을 확인했다. 기존 개발 API는 정상 유지됐다. 잘못된 파일 해시는 Docker 준비 전에,
+원격 Docker 선택은 초기화 전에 거절됐다. 외부 이미지/DB 환경변수를 주입해도 묶음 설정을
+사용하고, 다음 정상 환경의 재실행에서도 연결됐다. 검증용 프로젝트와 볼륨은 정리했다.
+
 설치 방식의 기준은 [Docker Windows 설치 문서](https://docs.docker.com/desktop/setup/install/windows-install/)와
 [Microsoft WSL 설치 문서](https://learn.microsoft.com/en-us/windows/wsl/install)다.
