@@ -5,7 +5,7 @@
 
 각 컬렉션에 `GET /{collection}`, `GET /{collection}/{id}`를 제공한다.
 
-`institutions`, `departments`, `curricula`, `courses`, `curriculum-courses`,
+`institutions`, `departments`, `curricula`, `courses`, `curriculum-courses`, `classifications`,
 `rule-sets`, `rules`, `documents`를 조회한다. 쓰기는 관리자 API만 제공한다.
 DB/버전/관계의 원본은 [학사 API](academic.md), DTO 원본은 [OpenAPI](openapi.json)다.
 
@@ -19,6 +19,10 @@ DB/버전/관계의 원본은 [학사 API](academic.md), DTO 원본은 [OpenAPI]
 - 직접 UUID 조회도 같은 가시성 검사를 사용한다. 초안/기간 밖/교체된 판/삭제 학교는
   404다. 관리자 actor UUID·감사·소유자·비밀번호 등을 응답에 포함하지 않는다.
 - 응답은 no-store이며 `items/next_cursor`를 제공한다. GET은 학생 소속을 변경하지 않는다.
+- `classifications`는 사용 중인 분류만 보여 준다. 사용 중지된 분류는 목록과 상세에서 404지만,
+  이미 연결된 과목·연결의 ID는 그대로 반환한다. 연결의 실제 적용 분류는
+  `effective_classification_id`·`effective_track_id`와 출처 필드로 읽는다. 학생에게 분류를 다시
+  입력받지 않는다.
 
 조건 설명을 조회했다고 Rule Engine 실행식이 되지 않으며, 문서 적용은 RAG 승인 자격이
 아니다. 전체 학교 기준을 읽는 것과 특정 학생에게 공식 적용된다고 판정하는 것은 다르다.

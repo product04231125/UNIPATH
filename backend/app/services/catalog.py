@@ -12,6 +12,7 @@ from app.models.academic import (
     GraduationRule,
     OfficialDocument,
     RuleSet,
+    SchoolClassification,
 )
 from app.models.identity import Institution
 from app.schemas.common import ErrorCode
@@ -82,6 +83,8 @@ def statement(model, on, institution_id=None, department_id=None, curriculum_id=
             query = query.where(
                 or_(model.curriculum_id.is_(None), model.curriculum_id == curriculum_id)
             )
+    elif model == SchoolClassification:
+        query = query.where(model.status == "active")
     elif model == Department and department_id:
         query = query.where(model.id == department_id)
     elif model == Curriculum:

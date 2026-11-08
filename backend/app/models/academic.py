@@ -18,9 +18,10 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    select,
     text,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, column_property, mapped_column
 
 from app.models.base import Base
 
@@ -52,6 +53,28 @@ class Curriculum(CatalogRecord, Base):
     year: Mapped[int] = mapped_column(Integer)
 
 
+class SchoolClassification(CatalogRecord, Base):
+    """School-specific names for course categories, subcategories and study tracks.
+
+    Identity is the ID. Names are free text and never used to merge or match records.
+    """
+
+    __tablename__ = "school_classifications"
+    __table_args__ = (
+        CheckConstraint("kind IN ('category', 'subcategory', 'track')", name="kind"),
+        CheckConstraint("status IN ('active', 'inactive')", name="status"),
+        # Only a subcategory has a parent, and it must point to a category (checked in service).
+        CheckConstraint(
+            "(kind = 'subcategory') = (parent_id IS NOT NULL)", name="subcategory_parent"
+        ),
+    )
+    kind: Mapped[str] = mapped_column(String(16))
+    parent_id: Mapped[UUID | None] = mapped_column(index=True)
+    description: Mapped[str] = mapped_column(String(1000), default="")
+    official_code: Mapped[str | None] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(16), default="active")
+
+
 class Course(CatalogRecord, Base):
     __tablename__ = "courses"
     __table_args__ = (
@@ -60,6 +83,9 @@ class Course(CatalogRecord, Base):
     )
     code: Mapped[str] = mapped_column(String(64))
     credits: Mapped[Decimal] = mapped_column(Numeric(8, 3))
+    # School defaults; a curriculum link may override each one.
+    classification_id: Mapped[UUID | None] = mapped_column(index=True)
+    track_id: Mapped[UUID | None] = mapped_column(index=True)
 
 
 class CurriculumCourse(CatalogRecord, Base):
@@ -72,6 +98,35 @@ class CurriculumCourse(CatalogRecord, Base):
     course_id: Mapped[UUID] = mapped_column(index=True)
     category: Mapped[str] = mapped_column(String(16))
     required: Mapped[bool] = mapped_column(Boolean)
+    classification_id: Mapped[UUID | None] = mapped_column(index=True)
+    track_id: Mapped[UUID | None] = mapped_column(index=True)
+    # Loaded in the same query, so lists do not issue one lookup per link.
+    course_classification_id = column_property(
+        select(Course.classification_id).where(Course.id == course_id).scalar_subquery()
+    )
+    course_track_id = column_property(
+        select(Course.track_id).where(Course.id == course_id).scalar_subquery()
+    )
+
+    @property
+    def effective_classification_id(self):
+        return self.classification_id or self.course_classification_id
+
+    @property
+    def classification_source(self):
+        if self.classification_id:
+            return "curriculum_course"
+        return "course" if self.course_classification_id else None
+
+    @property
+    def effective_track_id(self):
+        return self.track_id or self.course_track_id
+
+    @property
+    def track_source(self):
+        if self.track_id:
+            return "curriculum_course"
+        return "course" if self.course_track_id else None
 
 
 class ReviewedRecord(CatalogRecord):
@@ -131,8 +186,31 @@ for model in (RuleSet, GraduationRule, OfficialDocument):
     )
 
 # Keep school/department membership valid even for non-HTTP database writers.
-for model in (Department, Curriculum, Course, RuleSet, GraduationRule, OfficialDocument):
+for model in (
+    Department,
+    Curriculum,
+    Course,
+    RuleSet,
+    GraduationRule,
+    OfficialDocument,
+    SchoolClassification,
+):
     model.__table__.append_constraint(UniqueConstraint("id", "institution_id"))
+# A reference can never cross schools, even for non-HTTP writers.
+SchoolClassification.__table__.append_constraint(
+    ForeignKeyConstraint(
+        ["parent_id", "institution_id"],
+        ["school_classifications.id", "school_classifications.institution_id"],
+    )
+)
+for model in (Course, CurriculumCourse):
+    for column in ("classification_id", "track_id"):
+        model.__table__.append_constraint(
+            ForeignKeyConstraint(
+                [column, "institution_id"],
+                ["school_classifications.id", "school_classifications.institution_id"],
+            )
+        )
 Curriculum.__table__.append_constraint(
     UniqueConstraint("id", "department_id", "institution_id", name="uq_curricula_scope")
 )
