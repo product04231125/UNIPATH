@@ -47,9 +47,6 @@ class AccountSettingsSection extends StatelessWidget {
     final applications = onApplications ?? inherited?.onApplications;
     final label =
         applicationLabel ?? inherited?.applicationLabel ?? '학교 관리 권한·신청 이력';
-    if (security == null && applications == null) {
-      return const SizedBox.shrink();
-    }
     return Padding(
       padding: EdgeInsets.only(top: FeatureLine.slotGap(context)),
       child: SurfaceCard(
@@ -61,7 +58,8 @@ class AccountSettingsSection extends StatelessWidget {
               padTop: false,
               padBottom: false,
             ),
-            if (security != null) ...[
+            if (security == null) const Text('계정 보안은 로그인한 계정의 서버 연결이 필요합니다.'),
+            ...[
               Align(
                 alignment: Alignment.centerLeft,
                 child: OutlinedButton.icon(

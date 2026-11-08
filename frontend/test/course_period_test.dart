@@ -192,7 +192,7 @@ void main() {
     },
   );
   testWidgets(
-    'course form asks to register a subject when none can be picked',
+    'course form keeps picker and explains disconnection when no subject can be picked',
     (tester) async {
       for (final kind in [
         PersonalRecordKind.course,
@@ -207,7 +207,8 @@ void main() {
       await open(tester);
       await tester.tap(find.text('수강 과목 추가'));
       await tester.pumpAndSettle();
-      expect(find.text('설정·교육과정에서 과목을 먼저 등록하세요'), findsOneWidget);
+      expect(find.text('학교 과목 조회에 연결되지 않았습니다.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('record-select-course')), findsOneWidget);
       expect(find.byKey(const ValueKey('record-field-title')), findsNothing);
       expect(find.byKey(const ValueKey('record-field-credits')), findsNothing);
       expect(find.byKey(const ValueKey('record-field-detail')), findsNothing);
@@ -217,7 +218,8 @@ void main() {
             .onPressed,
         isNull,
       );
-      expect(find.text('설정·교육과정에서 과목을 먼저 등록하세요'), findsOneWidget);
+      expect(find.text('학교 과목 조회에 연결되지 않았습니다.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('record-select-course')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

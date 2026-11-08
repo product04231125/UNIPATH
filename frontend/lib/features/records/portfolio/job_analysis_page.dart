@@ -336,6 +336,19 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
               ],
             ),
             const Text('직접 고른 서버 기록만 포함합니다. 개인 PDF는 전송하지 않습니다.'),
+            const Material(
+              type: MaterialType.transparency,
+              child: CheckboxListTile(
+                key: ValueKey('job-materials-unavailable'),
+                contentPadding: EdgeInsets.zero,
+                value: false,
+                onChanged: null,
+                title: Text('자료 기록'),
+                subtitle: Text(
+                  '자료를 비교 근거로 보내는 API는 연결 전입니다. 현재 분석에는 포함되지 않습니다.',
+                ),
+              ),
+            ),
             if (_loading) const LinearProgressIndicator(),
             if (_recordMessage != null) Text(_recordMessage!),
             if (!_loading && !_failed && _options.isEmpty)

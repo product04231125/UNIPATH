@@ -149,6 +149,14 @@ void main() {
     final old = Gateway();
     await tester.pumpWidget(host(StudentApi(old, ownerId: id)));
     await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<CheckboxListTile>(
+            find.byKey(const ValueKey('job-materials-unavailable')),
+          )
+          .onChanged,
+      isNull,
+    );
     await prepare(tester);
     await run(tester);
     await tester.pumpWidget(host(StudentApi(Gateway(), ownerId: id)));

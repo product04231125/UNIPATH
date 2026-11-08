@@ -186,14 +186,19 @@ class _SettingsPageState extends State<SettingsPage> {
                                   !GuestPreviewScope.isActive(context))
                                 PlanningImportSection(
                                   repository: widget.repository,
-                                ),
-                              if (!GuestPreviewScope.isActive(context))
-                                if (PersonalRepositoryScope.read(context)
-                                        ?.importer
-                                    case final importer?)
-                                  PersonalWorkspaceImportSection(
-                                    importer: importer,
-                                  ),
+                                )
+                              else if (!GuestPreviewScope.isActive(context)) ...[
+                                const Text('기기 학업 정보·일정 이전은 계정 서버 연결 후 사용할 수 있습니다.'),
+                                const OutlinedButton(onPressed: null, child: Text('기기 학업 정보·일정 이전')),
+                              ],
+                              if (!GuestPreviewScope.isActive(context)) ...[
+                                if (PersonalRepositoryScope.read(context)?.importer case final importer?)
+                                  PersonalWorkspaceImportSection(importer: importer)
+                                else ...[
+                                  const Text('수강·활동·포트폴리오 자료 이전은 계정 서버 연결 후 사용할 수 있습니다.'),
+                                  const OutlinedButton(onPressed: null, child: Text('기기 개인 기록 이전')),
+                                ],
+                              ],
                               ExcludeFocus(
                                 excluding: _saving,
                                 child: IgnorePointer(
@@ -230,6 +235,8 @@ class _SettingsPageState extends State<SettingsPage> {
                                             onChanged: _captureCatalogSelection,
                                           )
                                         else ...[
+                                          const Text('등록된 학교·학과·교육과정 목록은 서버 연결 전입니다. 아래 입력은 개인 설정입니다.'),
+                                          const OutlinedButton(onPressed: null, child: Text('등록된 학교·학과·교육과정 선택')),
                                           TextFormField(
                                             controller: _school,
                                             maxLength: 128,

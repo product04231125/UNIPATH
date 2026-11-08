@@ -304,6 +304,23 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             _allSchools ||
             _repo.school(r) == _schoolId),
   );
+  AdminKind _curriculumView = AdminKind.course;
+
+  Future<void> _selectCurriculumView(AdminKind kind) async {
+    final editor = _editorKeys[_curriculumView]?.currentState;
+    if (editor != null && !await editor.allowLeave()) return;
+    if (mounted) setState(() => _curriculumView = kind);
+  }
+
+  Widget _curriculumSwitcher() => Wrap(spacing: 8, runSpacing: 8, children: [
+    for (final kind in [AdminKind.course, AdminKind.curriculum, AdminKind.curriculumCourse])
+      OutlinedButton(
+        key: ValueKey('admin-curriculum-view-${kind.name}'),
+        onPressed: _busy ? null : () => _selectCurriculumView(kind),
+        child: Text(kind == AdminKind.curriculumCourse ? '교육과정 연결 관리' : kind.label),
+      ),
+  ]);
+
   Future<void> _edit(
     AdminKind kind, [
     AdminRecord? record,
@@ -341,6 +358,10 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       if (!mounted) return;
       setState(() => _accountEditId = record.id);
       return;
+    }
+    if ([AdminKind.course, AdminKind.curriculum, AdminKind.curriculumCourse].contains(kind) && _curriculumView != kind) {
+      await _selectCurriculumView(kind);
+      if (!mounted || _curriculumView != kind) return;
     }
     final path = _pathFor(kind);
     if (_section != path || _detailId != null) await _navigate(path);
@@ -1426,6 +1447,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     child: SchoolClassificationSection(drafts: _classificationDrafts, schoolId: _schoolId, schoolName: _relationName(_schoolId)),
                   ),
                   const SizedBox(height: 16),
+                  _curriculumSwitcher(),
+                  const SizedBox(height: 16),
                 ],
                 if (_section == '/admin/documents') const SchoolWorkflowActions(),
                 if (_section == '/admin/rules') ...[
@@ -1435,7 +1458,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 if (_section != '/admin/rules' || _ruleView == 'line')
                   for (final kind
                       in sectionKinds[_section] ?? <AdminKind>[]) ...[
-                    _records(kind),
+                    if (_section != '/admin/curricula' || kind == _curriculumView) _records(kind),
                     SizedBox(height: FeatureLine.slotGap(context)),
                   ]
                 else if (_ruleView == 'grid')

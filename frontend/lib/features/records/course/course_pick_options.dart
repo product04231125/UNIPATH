@@ -56,6 +56,7 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
   String? institutionId,
   String? departmentId,
   String? curriculumId,
+  void Function(String message)? onIssue,
 }) async {
   final options = <CoursePickOption>[];
   final seen = <String>{};
@@ -66,6 +67,11 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
   }
 
   final school = institutionId?.trim() ?? '';
+  if (studentApi == null) {
+    onIssue?.call('학교 과목 조회에 연결되지 않았습니다.');
+  } else if (school.isEmpty) {
+    onIssue?.call('설정에서 등록된 학교·학과·교육과정을 선택하고 저장하세요.');
+  }
   if (studentApi != null && school.isNotEmpty) {
     final catalog = StudentCatalogApi(studentApi.api);
     final courses = <StudentCoursePublicView>[];
@@ -87,7 +93,7 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
         }
       } while (cursor != null);
     } catch (_) {
-      // School catalog is optional; personal sources still fill the list.
+      onIssue?.call('학교 과목을 불러오지 못했습니다. 다시 읽기를 눌러 주세요.');
     }
     final links = <String, List<StudentCurriculumCoursePublicView>>{};
     try {
@@ -113,7 +119,7 @@ Future<List<CoursePickOption>> loadCoursePickOptions({
         }
       } while (cursor != null);
     } catch (_) {
-      // Curriculum links only add category; courses already collected stay.
+      onIssue?.call('교육과정별 이수구분·필수 여부를 불러오지 못했습니다. 다시 읽기를 눌러 주세요.');
     }
     for (final course in courses) {
       if (course.institutionId != school) continue;

@@ -638,7 +638,7 @@ void main() {
   );
 
   testWidgets(
-    'development samples do not expose an unbacked account-security action',
+    'development samples show disconnected account security without an unbacked action',
     (tester) async {
       await tester.pumpWidget(
         const UniversityPathApp(startAuthenticated: true),
@@ -652,7 +652,7 @@ void main() {
       await tester.ensureVisible(settings);
       await tester.tap(settings);
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('settings-account-security')), findsNothing);
+      expect(tester.widget<OutlinedButton>(find.byKey(const Key('settings-account-security'))).onPressed, isNull);
       await tester.pumpWidget(const SizedBox());
     },
   );

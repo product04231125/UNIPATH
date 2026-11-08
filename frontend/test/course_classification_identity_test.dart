@@ -10,7 +10,11 @@ import 'package:university_path_frontend/shared/widgets/anchored_select_field.da
 
 class Catalog implements ApiGateway {
   bool multiple = false;
+  bool fail = false;
+  bool empty = false;
   @override Future<Map<String, dynamic>?> request(String method, String path, [Map<String, Object?>? body]) async {
+    if (fail) throw StateError('offline');
+    if (empty) return {'items': [], 'next_cursor': null};
     if (path.startsWith('catalog/courses?')) {
       return {'items': [for (final id in ['a', 'b']) {
         'id': id, 'version': 1, 'institution_id': 'school', 'name': '같은 이름',
@@ -47,6 +51,36 @@ void main() {
     expect(ambiguous.requiredCourse, isNull);
     expect(ambiguous.curriculumCourseId, isNull);
     expect((await load('curriculum')).first.curriculumCourseId, 'link-a');
+  });
+  testWidgets('empty and failed catalog keep picker visible and retry preserves term input', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 1100));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final gateway = Catalog()..empty = true;
+    final repo = PersonalRecordRepository(PersonalRecordKind.course);
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: Builder(builder: (context) => TextButton(
+      onPressed: () => showPersonalRecordForm(context: context, kind: PersonalRecordKind.course, repository: repo,
+        addLabel: '수강 과목 추가', studentApi: StudentApi(gateway, ownerId: 'owner'), institutionId: 'school', curriculumId: 'curriculum'),
+      child: const Text('열기'),
+    )))));
+    await tester.tap(find.text('열기')); await tester.pumpAndSettle();
+    final picker = find.byKey(const ValueKey('record-select-course'));
+    expect(picker, findsOneWidget);
+    expect(find.textContaining('조회되는 과목이 없습니다'), findsOneWidget);
+    final term = find.byWidgetPredicate((w) => w is AnchoredSelectField<String> && w.label.startsWith('학기'));
+    final field = tester.widget<AnchoredSelectField<String>>(term);
+    field.onChanged(field.options.firstWhere((o) => o.value.isNotEmpty).value);
+    await tester.pumpAndSettle();
+    final chosenTerm = tester.widget<AnchoredSelectField<String>>(term).value;
+    gateway.fail = true;
+    await tester.tap(find.text('과목 다시 읽기')); await tester.pumpAndSettle();
+    expect(picker, findsOneWidget);
+    expect(find.textContaining('학교 과목을 불러오지 못했습니다'), findsOneWidget);
+    expect(find.textContaining('조회되는 과목이 없습니다'), findsNothing);
+    gateway..fail = false..empty = false;
+    await tester.tap(find.text('과목 다시 읽기')); await tester.pumpAndSettle();
+    expect(tester.widget<AnchoredSelectField<String>>(picker).options.length, 3);
+    expect(tester.widget<AnchoredSelectField<String>>(term).value, chosenTerm);
+    expect(tester.takeException(), isNull);
   });
   testWidgets('picking a managed course applies category and required status without another student input', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 1100));

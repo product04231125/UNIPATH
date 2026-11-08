@@ -48,7 +48,7 @@ void main() {
     });
   }
 
-  testWidgets('settings hides account rows without callbacks', (tester) async {
+  testWidgets('settings keeps disconnected account security visible but disabled', (tester) async {
     final repository = PlanningRepository();
     addTearDown(repository.dispose);
     await repository.load();
@@ -58,8 +58,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('계정·정보'), findsNothing);
-    expect(find.byKey(const Key('settings-account-security')), findsNothing);
+    expect(find.text('계정·정보'), findsOneWidget);
+    expect(tester.widget<OutlinedButton>(find.byKey(const Key('settings-account-security'))).onPressed, isNull);
     expect(find.byKey(const Key('settings-school-applications')), findsNothing);
   });
 
@@ -143,7 +143,7 @@ void main() {
     expect(find.text('학교관리자 신청 접수'), findsWidgets);
   });
 
-  testWidgets('sample login does not expose account security in settings', (
+  testWidgets('sample settings expose disabled account security without server action', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
@@ -154,7 +154,7 @@ void main() {
     await tester.ensureVisible(find.text('설정'));
     await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('settings-account-security')), findsNothing);
+    expect(tester.widget<OutlinedButton>(find.byKey(const Key('settings-account-security'))).onPressed, isNull);
     expect(find.byKey(const Key('settings-school-applications')), findsNothing);
     expect(find.text('학교 관리 권한·신청 이력'), findsNothing);
     expect(tester.takeException(), isNull);

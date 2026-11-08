@@ -82,21 +82,18 @@ class _PersonalGraduationWorkspaceState
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final entry in _labels.entries.where(
-              (entry) => factory == null || entry.key.hasServerContract,
-            ))
+            for (final entry in _labels.entries)
               OutlinedButton(
-                onPressed: () => _select(entry.key),
+                onPressed: factory != null && !entry.key.hasServerContract ? null : () => _select(entry.key),
                 style: OutlinedButton.styleFrom(
                   backgroundColor: !_calculation && _kind == entry.key
                       ? Theme.of(context).colorScheme.secondaryContainer
                       : null,
                 ),
-                child: Text(entry.value),
+                child: Text(factory != null && !entry.key.hasServerContract ? '${entry.value} · 서버 연결 전' : entry.value),
               ),
-            if (calculation != null)
               OutlinedButton(
-                onPressed: () => _select(_kind, calculation: true),
+                onPressed: calculation == null ? null : () => _select(_kind, calculation: true),
                 child: const Text('개인 기준 계산·이력'),
               ),
             TextButton(
@@ -111,6 +108,9 @@ class _PersonalGraduationWorkspaceState
             ),
           ],
         ),
+        if (calculation == null) const Text('개인 기준 계산·이력은 계정 서버 연결이 필요합니다.'),
+        if (factory != null && !PersonalRecordKind.personalDepartment.hasServerContract)
+          const Text('개인 학과 관리의 서버 저장 계약은 연결 전입니다.'),
         const SizedBox(height: 12),
         Expanded(
           child: _calculation && calculation != null

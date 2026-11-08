@@ -42,7 +42,7 @@ class _SectionState extends State<SchoolClassificationSection> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('${item.name} 초안을 삭제할까요?'),
-        content: Text('코드: ${item.code}'),
+        content: const Text('이 분류 초안을 삭제합니다.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -149,7 +149,7 @@ class _SectionState extends State<SchoolClassificationSection> {
           ),
           if (_busy) const LinearProgressIndicator(),
           if (_message != null) Text(_message!),
-          for (final kind in SchoolClassificationKind.values) ...[
+          for (final kind in SchoolClassificationKind.values.where((k) => k != SchoolClassificationKind.requirement)) ...[
             const SizedBox(height: 12),
             Text(kind.label, style: Theme.of(context).textTheme.titleMedium),
             if (widget.drafts.entries(widget.schoolId, kind).isEmpty)
@@ -159,7 +159,6 @@ class _SectionState extends State<SchoolClassificationSection> {
                 title: Text(item.name),
                 subtitle: Text(
                   [
-                    item.code,
                     if (item.parentId != null)
                       widget.drafts.get(item.parentId)?.name ?? '',
                     if (item.requiredCourse != null)
@@ -202,7 +201,6 @@ class _ClassificationEditor extends StatefulWidget {
 
 class _ClassificationEditorState extends State<_ClassificationEditor> {
   final _form = GlobalKey<FormState>();
-  late final _code = TextEditingController(text: widget.initial?.code ?? '');
   late final _name = TextEditingController(text: widget.initial?.name ?? '');
   late final _description = TextEditingController(
     text: widget.initial?.description ?? '',
@@ -214,7 +212,6 @@ class _ClassificationEditorState extends State<_ClassificationEditor> {
   String? _error;
   @override
   void dispose() {
-    _code.dispose();
     _name.dispose();
     _description.dispose();
     _changes.dispose();
@@ -223,7 +220,6 @@ class _ClassificationEditorState extends State<_ClassificationEditor> {
 
   bool get _dirty =>
       _kind != (widget.initial?.kind ?? SchoolClassificationKind.category) ||
-      _code.text != (widget.initial?.code ?? '') ||
       _name.text != (widget.initial?.name ?? '') ||
       _description.text != (widget.initial?.description ?? '') ||
       _parent != widget.initial?.parentId ||
@@ -253,7 +249,6 @@ class _ClassificationEditorState extends State<_ClassificationEditor> {
         id: widget.initial?.id,
         schoolId: widget.schoolId,
         kind: _kind,
-        code: _code.text,
         name: _name.text,
         description: _description.text,
         parentId: _kind == SchoolClassificationKind.subcategory
@@ -274,7 +269,7 @@ class _ClassificationEditorState extends State<_ClassificationEditor> {
   @override
   Widget build(BuildContext context) => InputDialog(
     title: Text(widget.initial == null ? '학교 분류 초안 추가' : '학교 분류 초안 수정'),
-    changes: Listenable.merge([_changes, _code, _name, _description]),
+    changes: Listenable.merge([_changes, _name, _description]),
     hasContent: () => _dirty,
     editing: widget.initial != null,
     content: Form(
@@ -287,7 +282,7 @@ class _ClassificationEditorState extends State<_ClassificationEditor> {
               value: _kind,
               label: '분류 종류',
               options: [
-                for (final kind in SchoolClassificationKind.values)
+                for (final kind in SchoolClassificationKind.values.where((k) => k != SchoolClassificationKind.requirement))
                   SelectOption(kind, kind.label),
               ],
               onChanged: (kind) {
@@ -300,7 +295,6 @@ class _ClassificationEditorState extends State<_ClassificationEditor> {
               },
             ),
           ),
-          _field('코드', 'code', _code, 64),
           _field('이름', 'name', _name, 128),
           _field('설명', 'description', _description, 1000, required: false),
           if (_kind == SchoolClassificationKind.subcategory)
@@ -313,7 +307,7 @@ class _ClassificationEditorState extends State<_ClassificationEditor> {
                   widget.schoolId,
                   SchoolClassificationKind.category,
                 ))
-                  SelectOption(row.id, '${row.name} · ${row.code}'),
+                  SelectOption(row.id, row.name),
               ],
               onChanged: (id) {
                 setState(() => _parent = id);
@@ -360,10 +354,12 @@ class SchoolClassificationBindingFields extends StatelessWidget {
     required this.target,
     this.locked = false,
     this.kinds = SchoolClassificationKind.values,
+    this.inferSubcategoryParent = false,
   });
   final SchoolClassificationDrafts drafts;
   final String schoolId, target;
   final bool locked;
+  final bool inferSubcategoryParent;
   final List<SchoolClassificationKind> kinds;
   @override
   Widget build(BuildContext context) {
@@ -375,7 +371,7 @@ class SchoolClassificationBindingFields extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('분류 연결 초안 · 서버 저장 전'),
+            Text(inferSubcategoryParent ? '세부분류·이수 경로 초안 · 서버 저장 전' : '분류 연결 초안 · 서버 저장 전'),
             for (final kind in kinds)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
@@ -385,31 +381,45 @@ class SchoolClassificationBindingFields extends StatelessWidget {
                     key: ValueKey(
                       'classification-binding-$target-${kind.name}',
                     ),
-                    value: values[kind] ?? '',
+                    value: kind == SchoolClassificationKind.requirement
+                        ? switch (drafts.get(values[kind])?.requiredCourse) { true => 'true', false => 'false', null => '' }
+                        : values[kind] ?? '',
                     label: kind.label,
                     searchable: true,
                     options: [
                       const SelectOption('', '연결하지 않음'),
+                      if (kind == SchoolClassificationKind.requirement) ...const [
+                        SelectOption('true', '필수'), SelectOption('false', '선택'),
+                      ],
                       for (final item
                           in drafts
                               .entries(schoolId, kind)
                               .where(
                                 (item) =>
-                                    kind !=
-                                        SchoolClassificationKind.subcategory ||
+                                    kind != SchoolClassificationKind.requirement && (kind !=
+                                        SchoolClassificationKind.subcategory || inferSubcategoryParent ||
                                     item.parentId ==
                                         values[SchoolClassificationKind
-                                            .category],
+                                            .category]),
                               ))
-                        SelectOption(item.id, '${item.name} · ${item.code}'),
+                        SelectOption(item.id, item.name),
                     ],
                     onChanged: (id) {
                       if (locked) return;
                       final next = Map<SchoolClassificationKind, String>.from(
                         values,
-                      )..[kind] = id;
+                      )..[kind] = kind == SchoolClassificationKind.requirement && id.isNotEmpty
+                          ? drafts.requirementId(schoolId, id == 'true') : id;
                       if (kind == SchoolClassificationKind.category) {
                         next.remove(SchoolClassificationKind.subcategory);
+                      }
+                      if (inferSubcategoryParent && kind == SchoolClassificationKind.subcategory) {
+                        final parent = drafts.get(id)?.parentId;
+                        if (parent != null) {
+                          next[SchoolClassificationKind.category] = parent;
+                        } else {
+                          next.remove(SchoolClassificationKind.category);
+                        }
                       }
                       drafts.bind(schoolId, target, next);
                     },

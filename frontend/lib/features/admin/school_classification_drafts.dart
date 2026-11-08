@@ -44,7 +44,7 @@ class SchoolClassification {
         id: value['id'] as String,
         schoolId: value['school'] as String,
         kind: SchoolClassificationKind.values.byName(value['kind'] as String),
-        code: value['code'] as String,
+        code: value['code'] as String? ?? value['id'] as String,
         name: value['name'] as String,
         description: value['description'] as String? ?? '',
         parentId: value['parent'] as String?,
@@ -117,17 +117,18 @@ class SchoolClassificationDrafts extends ChangeNotifier {
     String? id,
     required String schoolId,
     required SchoolClassificationKind kind,
-    required String code,
+    String? code,
     required String name,
     String description = '',
     String? parentId,
     bool? requiredCourse,
   }) {
+    final identity = id ?? PersonalRecord.newId();
     final value = SchoolClassification(
-      id: id ?? PersonalRecord.newId(),
+      id: identity,
       schoolId: schoolId,
       kind: kind,
-      code: code.trim(),
+      code: code?.trim() ?? _items[identity]?.code ?? identity,
       name: name.trim(),
       description: description,
       parentId: parentId,
@@ -136,6 +137,16 @@ class SchoolClassificationDrafts extends ChangeNotifier {
     _validate(value);
     _items[value.id] = value;
     notifyListeners();
+  }
+
+  String requirementId(String school, bool required) {
+    final existing = entries(school, SchoolClassificationKind.requirement)
+        .where((item) => item.requiredCourse == required).firstOrNull;
+    if (existing != null) return existing.id;
+    final id = PersonalRecord.newId();
+    save(id: id, schoolId: school, kind: SchoolClassificationKind.requirement,
+      name: required ? '필수' : '선택', requiredCourse: required);
+    return id;
   }
 
   void remove(String school, String id) {
