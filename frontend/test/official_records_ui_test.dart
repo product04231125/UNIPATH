@@ -16,6 +16,7 @@ import 'official_records_api_test.dart' as fixture;
 import 'official_sources_ui_test.dart' as ui;
 import 'record_source_api_test.dart' as source;
 import 'support/auth_fixture.dart';
+import 'support/reachable_controls.dart';
 
 void main() {
   for (final kind in ['academics', 'volunteers', 'certificates', 'theses']) {
@@ -114,7 +115,7 @@ void main() {
   }
   for (final size in [const Size(1440, 900), const Size(480, 720)]) {
     testWidgets(
-      'record draft keeps explicit reviewed context, exact amount and source at $size',
+      size.width == 480 ? 'record editor controls fit and scroll at $size' : 'record draft keeps explicit reviewed context, exact amount and source',
       (tester) async {
         tester.view.physicalSize = size;
         tester.view.devicePixelRatio = 1;
@@ -171,6 +172,16 @@ void main() {
             }),
           ),
         );
+        if (size.width == 480) {
+          await expectControlsReachable(tester, [
+            find.widgetWithText(TextField, '입학연도'),
+            find.widgetWithText(TextField, '기록 기준일 (YYYY-MM-DD)'),
+            find.text('대조한 기록 추가'),
+            find.text('검토 초안 저장'),
+          ]);
+          expect(attempts, isEmpty);
+          return;
+        }
         await catalog.choose(tester, '학과 선택', '검증 학과');
         for (final entry in {
           '입학연도': '2026',

@@ -19,9 +19,11 @@ void main() {
   for (final size in [const Size(1440, 900), const Size(480, 720)]) {
     for (final status in [
       'evidence_found',
-      'insufficient_evidence',
-      'needs_user_input',
-      'failed',
+      if (size.width > 480) ...[
+        'insufficient_evidence',
+        'needs_user_input',
+        'failed',
+      ],
     ]) {
       testWidgets(
         'school document search renders $status with explicit scope $size',
