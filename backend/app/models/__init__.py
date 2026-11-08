@@ -6,6 +6,7 @@ from app.models.academic import (
     GraduationRule,
     OfficialDocument,
     RuleSet,
+    SchoolClassification,
 )
 from app.models.admin_applications import SchoolAdminApplication
 from app.models.admin_signups import SchoolAdminSignup
@@ -60,6 +61,7 @@ from app.models.rule_programs import (
 )
 
 __all__ = [
+    "SchoolClassification",
     "SchoolAdminSignup",
     "SchoolAdminApplication",
     "Base",

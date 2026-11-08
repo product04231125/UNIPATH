@@ -26,7 +26,6 @@ for prefix in (
     "Department",
     "Curriculum",
     "Course",
-    "CurriculumCourse",
     "RuleSet",
     "Rule",
     "Document",
@@ -35,3 +34,14 @@ for prefix in (
     globals()[prefix + "PublicView"] = create_model(
         prefix + "PublicView", __base__=(getattr(academic, prefix + "Create"), metadata)
     )
+
+
+class CurriculumCoursePublicView(
+    academic.CurriculumCourseCreate, academic.EffectiveClassification, PublicRecord
+):
+    pass
+
+
+class ClassificationPublicView(academic.ClassificationCreate, PublicRecord):
+    # Students only see active classifications here; links keep showing inactive IDs.
+    status: Literal["active"]

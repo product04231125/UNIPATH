@@ -272,6 +272,30 @@ void main() {
     },
   );
 
+  test(
+    'history from a newer server skips kinds this build does not know',
+    () async {
+      final server = AdminServer();
+      Map<String, dynamic> event(String kind, String action) => {
+        'id': newId,
+        'actor_id': userId,
+        'target_id': courseId,
+        'institution_id': schoolId,
+        'action': action,
+        'kind': kind,
+        'occurred_at': '2026-11-08T00:00:00Z',
+        'request_id': null,
+      };
+      server.data['audit-logs'] = [
+        event('course', 'academic:course:create'),
+        event('classification', 'academic:classification:create'),
+      ];
+      final (api, repo) = await connected(server);
+      expect(repo.history.map((e) => e.kind), [AdminKind.course]);
+      repo.dispose();
+      api.close();
+    },
+  );
   test('cookie API on a loopback IP is reported as a host mismatch', () {
     final api = AuthApi(
       client: MockClient((_) async => http.Response('', 401)),
