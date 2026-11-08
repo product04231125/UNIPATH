@@ -481,53 +481,42 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
-  testWidgets('deleted record can be unlinked after a validation error', (
-    tester,
-  ) async {
-    final transport = AcademicTransport();
-    transport.docs[1]['responses'] = [
-      {
-        'item_id': 'item',
-        'value': true,
-        'previous_value': null,
-        'version': 1,
-        'stale': true,
-        'records': [
-          {
-            'record_id': 'deleted',
-            'kind': 'credential',
-            'version': 1,
-            'title': '이전 자격',
-            'available': false,
-            'current_version': null,
-          },
-        ],
-      },
-    ];
-    await mount(tester, transport);
-    await tester.tap(find.widgetWithText(ChoiceChip, '인증 요건'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('기록 연결'));
-    await tester.pumpAndSettle();
-    var save = find.text('기록 연결 저장');
-    await tester.ensureVisible(save);
-    await tester.tap(save);
-    await tester.pumpAndSettle();
-    expect(find.text('삭제되거나 조회할 수 없는 기록 연결을 해제하세요.'), findsOneWidget);
-    final deleted = find.widgetWithText(
-      CheckboxListTile,
-      '삭제되거나 조회할 수 없는 이전 연결',
-    );
-    await tester.ensureVisible(deleted);
-    await tester.tap(deleted);
-    await tester.pumpAndSettle();
-    save = find.text('기록 연결 저장');
-    await tester.ensureVisible(save);
-    await tester.tap(save);
-    await tester.pumpAndSettle();
-    expect(transport.writes.single['body']['records'], isEmpty);
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'old record references disappear and are cleared on the next O/X save',
+    (tester) async {
+      final transport = AcademicTransport();
+      transport.docs[1]['responses'] = [
+        {
+          'item_id': 'item',
+          'value': true,
+          'previous_value': null,
+          'version': 1,
+          'stale': true,
+          'records': [
+            {
+              'record_id': 'deleted',
+              'kind': 'credential',
+              'version': 1,
+              'title': '이전 자격',
+              'available': false,
+              'current_version': null,
+            },
+          ],
+        },
+      ];
+      await mount(tester, transport);
+      await tester.tap(find.widgetWithText(ChoiceChip, '인증 요건'));
+      await tester.pumpAndSettle();
+      expect(find.text('기록 연결'), findsNothing);
+      expect(find.text('이전 자격'), findsNothing);
+      await tester.tap(
+        find.byKey(const ValueKey('academic-response-item-true')),
+      );
+      await tester.pumpAndSettle();
+      expect(transport.writes.single['body']['records'], isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
   test(
     'confirmed write followed by read failure is never sent again',
     () async {
@@ -592,52 +581,25 @@ void main() {
       await screenshot(tester, key, 'checklist');
     },
   );
-  testWidgets(
-    'certification links owned records without automatically checking O',
-    (tester) async {
-      final transport = AcademicTransport();
-      final key = await mount(tester, transport);
-      await tester.tap(find.widgetWithText(ChoiceChip, '인증 요건'));
-      await tester.pumpAndSettle();
-      await screenshot(tester, key, 'certification');
-      await tester.tap(find.text('기록 연결'));
-      await tester.pumpAndSettle();
-      final check = find.widgetWithText(CheckboxListTile, '합성 자격');
-      await tester.ensureVisible(check);
-      await tester.tap(check);
-      await tester.pumpAndSettle();
-      expect(
-        find.byWidgetPredicate(
-          (w) => w is AnchoredSelectField<String> && w.label == '내 확인',
-        ),
-        findsNothing,
-      );
-      final save = find.text('기록 연결 저장');
-      await tester.ensureVisible(save);
-      await tester.tap(save);
-      await tester.pumpAndSettle();
-      expect(transport.writes.single['body']['value'], isNull);
-      expect(transport.writes.single['body']['records'], [
-        {
-          'kind': 'credential',
-          'record_id': 'credential',
-          'expected_version': 2,
-        },
-      ]);
-      await tester.tap(
-        find.byKey(const ValueKey('academic-response-item-true')),
-      );
-      await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsNothing);
-      expect(
-        transport.writes.last['body']['records'],
-        transport.writes.first['body']['records'],
-      );
-      expect(transport.writes.last['body']['value'], isTrue);
-      expect(find.textContaining('정보화 · 택1 · 충족'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    },
-  );
+  testWidgets('certification offers read-only record search and separate O/X', (
+    tester,
+  ) async {
+    final transport = AcademicTransport();
+    final key = await mount(tester, transport);
+    await tester.tap(find.widgetWithText(ChoiceChip, '인증 요건'));
+    await tester.pumpAndSettle();
+    await screenshot(tester, key, 'certification');
+    expect(find.text('기록 연결'), findsNothing);
+    expect(find.text('내 기록 찾기'), findsOneWidget);
+    expect(transport.writes, isEmpty);
+    await tester.tap(find.byKey(const ValueKey('academic-response-item-true')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(transport.writes.single['body']['records'], isEmpty);
+    expect(transport.writes.last['body']['value'], isTrue);
+    expect(find.textContaining('정보화 · 택1 · 충족'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'credit table uses server exact progress with aligned multilevel headers',
     (tester) async {

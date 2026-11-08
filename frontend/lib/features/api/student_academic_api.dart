@@ -136,6 +136,7 @@ class AcademicStudentRecord {
     this.currentVersion,
     this.credits,
     this.completion,
+    this.details = const {},
   });
   factory AcademicStudentRecord.fromSnapshot(Map<String, dynamic> j) =>
       AcademicStudentRecord(
@@ -151,6 +152,7 @@ class AcademicStudentRecord {
   final bool available;
   final int? currentVersion;
   final String? credits, completion;
+  final Map<String, String> details;
   String get identity => '$kind:$id';
   Map<String, Object?> toReference() => {
     'kind': kind,
@@ -449,6 +451,7 @@ class StudentAcademicApi {
 
   Future<List<AcademicStudentRecord>> records({
     bool onlyCourses = false,
+    String? kind,
   }) async {
     const resources = {
       'course': 'course-records',
@@ -459,7 +462,9 @@ class StudentAcademicApi {
     };
     final result = <AcademicStudentRecord>[];
     for (final entry in resources.entries.where(
-      (e) => !onlyCourses || e.key == 'course',
+      (e) =>
+          (!onlyCourses || e.key == 'course') &&
+          (kind == null || kind == e.key),
     )) {
       String? cursor;
       final seen = <String>{};
@@ -480,6 +485,33 @@ class StudentAcademicApi {
               version: r['version'] as int,
               credits: r['credits']?.toString(),
               completion: r['completion'] as String?,
+              details: {
+                for (final entry in const {
+                  'detail': '메모',
+                  'term': '수강 학기',
+                  'category': '이수구분',
+                  'course_code': '과목 코드',
+                  'credits': '학점',
+                  'grade': '성적',
+                  'organization': '기관',
+                  'provider': '발급 기관',
+                  'role': '역할',
+                  'result': '결과',
+                  'status_label': '상태',
+                  'level': '점수·등급',
+                  'earned_on': '취득일',
+                  'expires_on': '만료일',
+                  'started_on': '시작일',
+                  'ended_on': '종료일',
+                  'reported_hours': '활동 시간',
+                  'experience_type': '경험 종류',
+                  'achievement_type': '성과 종류',
+                  'evidence_url': '참고 링크',
+                }.entries)
+                  if (r[entry.key] != null &&
+                      r[entry.key].toString().isNotEmpty)
+                    entry.value: r[entry.key].toString(),
+              },
             ),
           );
         }

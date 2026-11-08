@@ -10,7 +10,7 @@ import '../auth/guest_preview_scope.dart';
 import '../planning/planning_repository.dart';
 import 'student_academic_contexts.dart';
 import 'student_academic_controller.dart';
-import 'student_academic_response_editor.dart';
+import 'student_academic_record_search.dart';
 import 'student_academic_history.dart';
 
 class StudentAcademicPage extends StatefulWidget {
@@ -21,9 +21,11 @@ class StudentAcademicPage extends StatefulWidget {
     this.onLegacy,
     this.onPersonal,
     this.onOpenSettings,
+    this.recordSearch,
   });
   final StudentAcademicApi api;
   final PlanningProfile profile;
+  final AcademicRecordSearchRepository? recordSearch;
   final VoidCallback? onLegacy, onPersonal, onOpenSettings;
   @override
   State<StudentAcademicPage> createState() => _StudentAcademicPageState();
@@ -31,6 +33,7 @@ class StudentAcademicPage extends StatefulWidget {
 
 class _StudentAcademicPageState extends State<StudentAcademicPage> {
   late StudentAcademicController c;
+  late AcademicRecordSearchRepository _recordSearch;
   String _tab = 'checklist';
   String? _responseItem;
   bool get _guest => GuestPreviewScope.isActive(context);
@@ -45,6 +48,8 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
   }
 
   void _init() {
+    _recordSearch =
+        widget.recordSearch ?? AcademicRecordSearchRepository(widget.api);
     c = StudentAcademicController(widget.api)..addListener(_changed);
     c.load();
   }
@@ -111,7 +116,7 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
         );
     Future<void> respond(bool? value) async {
       setState(() => _responseItem = '${d.id}/${item.id}');
-      await c.respond(d, item.id, value, response?.records ?? []);
+      await c.respond(d, item.id, value, []);
     }
 
     final active = _responseItem == '${d.id}/${item.id}';
@@ -147,19 +152,6 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
                     : () => respond(null),
                 child: const Text('초기화'),
               ),
-              if (d.kind == 'certification')
-                TextButton(
-                  onPressed: blocked
-                      ? null
-                      : () => editStudentAcademicResponse(
-                          context,
-                          c,
-                          d,
-                          item,
-                          recordsOnly: true,
-                        ),
-                  child: const Text('기록 연결'),
-                ),
             ],
           ),
           if (active && c.saving) const Text('저장 중…'),
@@ -168,13 +160,12 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
               c.error!,
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
-          for (final r in response?.records ?? <AcademicStudentRecord>[])
-            Text(
-              '${r.title}${!r.available
-                  ? ' · 삭제된 기록'
-                  : r.currentVersion != r.version
-                  ? ' · 변경된 기록'
-                  : ''}',
+          if (!_guest)
+            StudentAcademicRecordSearch(
+              key: ValueKey(
+                'academic-search-${widget.api.ownerId}-${d.id}-${item.id}',
+              ),
+              repository: _recordSearch,
             ),
         ],
       ),
