@@ -354,10 +354,12 @@ class SchoolClassificationBindingFields extends StatelessWidget {
     required this.target,
     this.locked = false,
     this.kinds = SchoolClassificationKind.values,
+    this.inferSubcategoryParent = false,
   });
   final SchoolClassificationDrafts drafts;
   final String schoolId, target;
   final bool locked;
+  final bool inferSubcategoryParent;
   final List<SchoolClassificationKind> kinds;
   @override
   Widget build(BuildContext context) {
@@ -369,7 +371,7 @@ class SchoolClassificationBindingFields extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('분류 연결 초안 · 서버 저장 전'),
+            Text(inferSubcategoryParent ? '세부분류·이수 경로 초안 · 서버 저장 전' : '분류 연결 초안 · 서버 저장 전'),
             for (final kind in kinds)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
@@ -395,7 +397,7 @@ class SchoolClassificationBindingFields extends StatelessWidget {
                               .where(
                                 (item) =>
                                     kind != SchoolClassificationKind.requirement && (kind !=
-                                        SchoolClassificationKind.subcategory ||
+                                        SchoolClassificationKind.subcategory || inferSubcategoryParent ||
                                     item.parentId ==
                                         values[SchoolClassificationKind
                                             .category]),
@@ -410,6 +412,11 @@ class SchoolClassificationBindingFields extends StatelessWidget {
                           ? drafts.requirementId(schoolId, id == 'true') : id;
                       if (kind == SchoolClassificationKind.category) {
                         next.remove(SchoolClassificationKind.subcategory);
+                      }
+                      if (inferSubcategoryParent && kind == SchoolClassificationKind.subcategory) {
+                        final parent = drafts.get(id)?.parentId;
+                        if (parent != null) next[SchoolClassificationKind.category] = parent;
+                        else next.remove(SchoolClassificationKind.category);
                       }
                       drafts.bind(schoolId, target, next);
                     },

@@ -23,9 +23,9 @@ void main() {
       addTearDown(drafts.dispose);
       drafts.save(
         schoolId: 'school-a',
-        kind: SchoolClassificationKind.category,
-        code: 'MAJOR',
-        name: '전공',
+        kind: SchoolClassificationKind.track,
+        code: 'TRACK',
+        name: '단일전공',
       );
       final category = drafts.entries('school-a').single;
       await tester.pumpWidget(
@@ -49,7 +49,7 @@ void main() {
       final picker = find.descendant(
         of: frame,
         matching: find.byWidgetPredicate(
-          (w) => w is AnchoredSelectField<String> && w.label == '이수구분',
+          (w) => w is AnchoredSelectField<String> && w.label == '이수 경로',
         ),
       );
       await tester.ensureVisible(picker);
@@ -68,6 +68,13 @@ void main() {
         await tester.enterText(input, entry.value);
         await tester.pump();
       }
+      for (final entry in {'curriculumId': 'school-a-curr', 'category': 'major', 'required': 'true'}.entries) {
+        final select = find.descendant(of: frame, matching: find.byKey(ValueKey('admin-field-${entry.key}')));
+        tester.widget<AnchoredSelectField<String>>(select).onChanged(entry.value);
+        await tester.pumpAndSettle();
+      }
+      expect(find.byKey(const ValueKey('admin-frame-curriculumCourse')), findsNothing);
+      expect(find.byKey(const ValueKey('admin-frame-curriculum')), findsNothing);
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pumpAndSettle();
       final save = find.descendant(
@@ -84,6 +91,10 @@ void main() {
         drafts.binding('school-a', 'course:${record.id}')[category.kind],
         category.id,
       );
+      final link = repo.records.singleWhere((r) => r.kind == AdminKind.curriculumCourse && r.value('courseId') == record.id);
+      expect(link.value('curriculumId'), 'school-a-curr');
+      expect(link.value('category'), 'major');
+      expect(link.value('required'), 'true');
       final row = find.byKey(ValueKey('admin-row-${record.id}'));
       final edit = find.descendant(
         of: row,
@@ -96,6 +107,8 @@ void main() {
         tester.widget<AnchoredSelectField<String>>(picker).value,
         category.id,
       );
+      final curriculum = find.descendant(of: frame, matching: find.byKey(const ValueKey('admin-field-curriculumId')));
+      expect(tester.widget<AnchoredSelectField<String>>(curriculum).value, 'school-a-curr');
       expect(tester.takeException(), isNull);
     },
   );

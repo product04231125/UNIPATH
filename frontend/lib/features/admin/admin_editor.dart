@@ -12,6 +12,7 @@ import '../../shared/widgets/field_requirement.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../records/personal_record_repository.dart';
 import 'admin_models.dart';
+import 'admin_course_registration.dart';
 import 'admin_fields.dart';
 import 'admin_repository.dart';
 import 'remote_admin_repository.dart';
@@ -50,6 +51,7 @@ class AdminEditor extends StatefulWidget {
 
 class AdminEditorState extends State<AdminEditor> {
   final _form = GlobalKey<FormState>();
+  final _courseRegistration = AdminCourseRegistration();
   late final List<AdminField> _fields;
   late final Map<String, TextEditingController> _controllers;
   late final Map<String, String> _initial;
@@ -180,6 +182,7 @@ class AdminEditorState extends State<AdminEditor> {
   }
 
   void _fill(AdminRecord? record) {
+    _courseRegistration.reset();
     for (final f in _fields) {
       _initial[f.key] = record?.value(f.key) ?? _defaultValue(f);
       _controllers[f.key]!.text = _initial[f.key] ?? '';
@@ -190,6 +193,7 @@ class AdminEditorState extends State<AdminEditor> {
     if (_isSchoolKind || _isCurriculumKind) {
       _form.currentState?.clearError();
     }
+    if (widget.kind == AdminKind.course) _fillCourseLink(record);
     _savedRecord = record;
     _executionKey = GlobalKey<AdminRuleExecutionPanelState>();
   }
@@ -262,7 +266,13 @@ class AdminEditorState extends State<AdminEditor> {
     _savedRecord = widget.record;
     _fields = widget.revoke
         ? [const AdminField('reason', '회수 사유', multiline: true)]
-        : widget.repository.fields(widget.kind);
+        : [
+            ...widget.repository.fields(widget.kind),
+            if (widget.kind == AdminKind.course) ...[
+              const AdminField('curriculumId', '교육과정', relation: AdminKind.curriculum),
+              ...adminFields(AdminKind.curriculumCourse).where((f) => f.key == 'category' || f.key == 'required'),
+            ],
+          ];
     _initial = {
       for (final f in _fields)
         f.key: widget.revoke
@@ -278,10 +288,22 @@ class AdminEditorState extends State<AdminEditor> {
       for (final f in _fields)
         f.key: TextEditingController(text: _initial[f.key]),
     };
+    if (widget.kind == AdminKind.course) _fillCourseLink(widget.record);
     if (_isRule) {
       for (final c in _controllers.values) {
         c.addListener(_refreshRule);
       }
+    }
+  }
+
+  void _fillCourseLink(AdminRecord? course, {String? curriculumId}) {
+    final links = widget.repository.records.where((r) => r.kind == AdminKind.curriculumCourse &&
+      r.value('courseId') == course?.id && (curriculumId == null || r.value('curriculumId') == curriculumId)).toList();
+    final link = links.length == 1 ? links.single : null;
+    for (final key in ['curriculumId', 'category', 'required']) {
+      final value = key == 'curriculumId' && curriculumId != null ? curriculumId : link?.value(key) ?? '';
+      _controllers[key]!.text = value;
+      if (curriculumId == null) _initial[key] = value;
     }
   }
 
@@ -388,7 +410,7 @@ class AdminEditorState extends State<AdminEditor> {
         final bindingTarget = _classificationTarget;
         final values = {
           ...?(_isRule ? _rule : _currentRecord)?.values,
-          for (final f in _fields) f.key: _value(f.key).trim(),
+          for (final f in widget.kind == AdminKind.course ? widget.repository.fields(AdminKind.course) : _fields) f.key: _value(f.key).trim(),
           if (widget.repository.live && widget.kind != AdminKind.institution)
             'institutionId': _resolvedInstitution(),
         };
@@ -400,7 +422,13 @@ class AdminEditorState extends State<AdminEditor> {
               values: values,
             );
         var savedId = record.id;
-        if ((_isRule || _usesClassifications && widget.classificationDrafts != null) && widget.repository is RemoteAdminRepository) {
+        if (widget.kind == AdminKind.course) {
+          _savedRecord = await _courseRegistration.save(
+            repository: widget.repository, actorId: widget.actorId, courseValues: values,
+            original: _currentRecord, curriculumId: _value('curriculumId'),
+            category: _value('category'), requiredCourse: _value('required'));
+          savedId = _savedRecord!.id;
+        } else if ((_isRule || _usesClassifications && widget.classificationDrafts != null) && widget.repository is RemoteAdminRepository) {
           _savedRecord = await (widget.repository as RemoteAdminRepository)
               .saveWithResult(widget.actorId, record);
           savedId = _savedRecord!.id;
@@ -637,6 +665,12 @@ class AdminEditorState extends State<AdminEditor> {
                     onChanged: (v) {
                       setState(() {
                         _controllers[field.key]!.text = v;
+                        if (widget.kind == AdminKind.course && field.key == 'curriculumId') {
+                          _fillCourseLink(_currentRecord, curriculumId: v);
+                        }
+                        if (widget.kind == AdminKind.course && field.key == 'institutionId') {
+                          _fillCourseLink(null);
+                        }
                         if (field.key == 'ruleSetId' && v.isNotEmpty) {
                           final group = widget.repository.records.firstWhere(
                             (r) => r.id == v,
@@ -850,6 +884,10 @@ class AdminEditorState extends State<AdminEditor> {
                   SchoolClassificationBindingFields(
                     drafts: widget.classificationDrafts!, schoolId: _resolvedInstitution(), target: _classificationTarget,
                     locked: saving || _metadataLocked,
+                    kinds: widget.kind == AdminKind.course || widget.kind == AdminKind.curriculumCourse
+                        ? const [SchoolClassificationKind.subcategory, SchoolClassificationKind.track]
+                        : SchoolClassificationKind.values,
+                    inferSubcategoryParent: widget.kind == AdminKind.course || widget.kind == AdminKind.curriculumCourse,
                   ),
                 if (_message != null)
                   Semantics(liveRegion: true, child: Text(_message!)),
