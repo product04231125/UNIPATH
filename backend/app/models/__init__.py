@@ -18,6 +18,7 @@ from app.models.graduation import (
     GraduationCatalogReview,
     GraduationCatalogReviewEvent,
 )
+from app.models.guidance_bindings import AcademicGuidanceBinding
 from app.models.identity import (
     AdminScope,
     AuthSession,
@@ -61,6 +62,7 @@ from app.models.rule_programs import (
 )
 
 __all__ = [
+    "AcademicGuidanceBinding",
     "SchoolClassification",
     "SchoolAdminSignup",
     "SchoolAdminApplication",

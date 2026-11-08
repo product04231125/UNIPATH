@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.academic import router as academic_router
+from app.api.academic_guidance import admin as academic_guidance_admin_router
 from app.api.academic_guidance import router as academic_guidance_router
 from app.api.access import router as access_router
 from app.api.admin_applications import admin_router as admin_applications_router
@@ -108,6 +109,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(personal_imports_router, prefix="/api/v1")
     application.include_router(personalization_router, prefix="/api/v1")
     application.include_router(academic_guidance_router, prefix="/api/v1")
+    application.include_router(academic_guidance_admin_router, prefix="/api/v1")
     application.include_router(official_records_router, prefix="/api/v1")
     application.include_router(official_records_owner_router, prefix="/api/v1")
     application.include_router(record_sources_router, prefix="/api/v1")
