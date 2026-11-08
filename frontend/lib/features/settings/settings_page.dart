@@ -129,7 +129,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final field = InputDecorator(
       key: const Key('settings-school-track'),
       decoration: InputDecoration(
-        labelText: '이수 경로',
+        labelText: '교육과정·이수 경로',
         enabled: canOpen,
         suffixIcon: canOpen ? const Icon(Icons.open_in_new) : null,
         helperText: registered
@@ -294,6 +294,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                             disabled: _saving,
                                             showStudy: false,
                                             showDate: false,
+                                            showCurriculum: false,
                                             initialInstitutionId:
                                                 _pendingInstitutionId,
                                             initialDepartmentId:

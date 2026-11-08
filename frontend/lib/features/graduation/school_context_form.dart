@@ -15,6 +15,7 @@ class SchoolContextForm extends StatefulWidget {
     this.disabled = false,
     this.showStudy = true,
     this.showDate = true,
+    this.showCurriculum = true,
     this.onChanged,
     this.initialInstitutionId,
     this.initialDepartmentId,
@@ -26,6 +27,7 @@ class SchoolContextForm extends StatefulWidget {
   final ApiGateway api;
   final bool disabled;
   final bool showStudy, showDate;
+  final bool showCurriculum;
   final VoidCallback? onChanged;
   final String? initialInstitutionId,
       initialDepartmentId,
@@ -62,7 +64,9 @@ class SchoolContextFormState extends State<SchoolContextForm> {
       ? _department
       : null;
   String? get curriculumId =>
-      departmentId != null && _curricula.any((item) => item.id == _curriculum)
+      departmentId != null &&
+          (!widget.showCurriculum ||
+              _curricula.any((item) => item.id == _curriculum))
       ? _curriculum
       : null;
   String? get institutionName =>
@@ -187,7 +191,7 @@ class SchoolContextFormState extends State<SchoolContextForm> {
       final departments = _school == null
           ? <StudentDepartmentPublicView>[]
           : await _all(StudentCatalogResources.departments, school: _school);
-      final curricula = _department == null
+      final curricula = _department == null || !widget.showCurriculum
           ? <StudentCurriculumPublicView>[]
           : await _all(
               StudentCatalogResources.curricula,
@@ -277,23 +281,29 @@ class SchoolContextFormState extends State<SchoolContextForm> {
       ),
       if (_fieldError('department_id') != null) const Text('학과 입력을 확인하세요.'),
       const SizedBox(height: 12),
-      AnchoredSelectField<String?>(
-        value: _curricula.any((s) => s.id == _curriculum) ? _curriculum : null,
-        label: '교육과정',
-        searchable: true,
-        options: [
-          const SelectOption(null, '교육과정 선택'),
-          ..._curricula.map((s) => SelectOption(s.id, '${s.name} (${s.year})')),
-        ],
-        onChanged: (v) {
-          if (!_loading && !widget.disabled) {
-            setState(() => _curriculum = v);
-            widget.onChanged?.call();
-          }
-        },
-      ),
-      if (_fieldError('curriculum_id') != null) const Text('교육과정 입력을 확인하세요.'),
-      const SizedBox(height: 12),
+      if (widget.showCurriculum)
+        AnchoredSelectField<String?>(
+          value: _curricula.any((s) => s.id == _curriculum)
+              ? _curriculum
+              : null,
+          label: '교육과정',
+          searchable: true,
+          options: [
+            const SelectOption(null, '교육과정 선택'),
+            ..._curricula.map(
+              (s) => SelectOption(s.id, '${s.name} (${s.year})'),
+            ),
+          ],
+          onChanged: (v) {
+            if (!_loading && !widget.disabled) {
+              setState(() => _curriculum = v);
+              widget.onChanged?.call();
+            }
+          },
+        ),
+      if (widget.showCurriculum && _fieldError('curriculum_id') != null)
+        const Text('교육과정 입력을 확인하세요.'),
+      if (widget.showCurriculum) const SizedBox(height: 12),
       if (widget.showStudy)
         TextField(
           controller: year,

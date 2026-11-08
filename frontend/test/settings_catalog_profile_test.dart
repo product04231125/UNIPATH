@@ -36,7 +36,14 @@ class SettingsCatalogServer implements ApiGateway {
         'tracks': [
           {'id': 'registered-track', 'name': '학교 등록 경로'},
         ],
-        'curricula': [],
+        'curricula': [
+          for (final year in [2018, 2019, 2020, 2021, 2025, 2026])
+            {
+              'id': 'published-$year',
+              'name': '$year학년도 게시 교육과정',
+              'revision': 1,
+            },
+        ],
       };
     }
     if (path.startsWith('me/academic-')) {
@@ -147,11 +154,18 @@ void main() {
         'department': '검증 학과',
         'admission_year': 2026,
         'track': '기존 개인 경로',
+        'curriculum_id': otherId,
       });
       final repository = await pumpSettings(tester, server);
       addTearDown(repository.dispose);
       final field = find.byKey(const Key('settings-school-track'));
       expect(tester.widget<InputDecorator>(field).decoration.enabled, isTrue);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is AnchoredSelectField<String?> && w.label == '교육과정',
+        ),
+        findsNothing,
+      );
       expect(find.textContaining('연결 전입니다'), findsNothing);
       await tester.ensureVisible(field);
       await tester.tap(field);
@@ -169,6 +183,24 @@ void main() {
       );
       expect(repository.profile.track, '기존 개인 경로');
       expect(server.writes, isEmpty);
+      final curriculumSelect = tester.widget<AnchoredSelectField<String>>(
+        find.byWidgetPredicate(
+          (w) => w is AnchoredSelectField<String> && w.label == '교육과정',
+        ),
+      );
+      expect(
+        curriculumSelect.options.where((option) => option.value.isNotEmpty),
+        hasLength(6),
+      );
+      expect(
+        curriculumSelect.options.map((option) => option.value),
+        containsAll(['published-2018', 'published-2026']),
+      );
+      await tester.tap(find.text('닫기').last);
+      await tester.pumpAndSettle();
+      await saveSettings(tester);
+      expect(repository.profile.curriculumId, otherId);
+      expect(server.writes.single['curriculum_id'], otherId);
       expect(tester.takeException(), isNull);
     },
   );
@@ -244,11 +276,10 @@ void main() {
     final repository = await pumpSettings(tester, server);
     await choose(tester, '학교 선택', '검증 대학');
     await choose(tester, '학과 선택', '검증 학과');
-    await choose(tester, '교육과정 선택', '검증 과정 (2026)');
     await saveSettings(tester);
     expect(repository.profile.institutionId, otherId);
     expect(repository.profile.departmentId, otherId);
-    expect(repository.profile.curriculumId, otherId);
+    expect(repository.profile.curriculumId, isNull);
     expect(repository.profile.school, '검증 대학');
     expect(repository.profile.department, '검증 학과');
     expect(find.text('등록된 학교 · 검증 대학 · 검증 학과'), findsOneWidget);
