@@ -266,6 +266,23 @@ void main() {
     await tester.tap(find.text('내 기록에 저장'));
     await tester.pumpAndSettle();
     expect(find.text('운영체제'), findsOneWidget);
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('workspace hides fixtures and sample controls by default', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+
+    await tester.tap(find.text('수강 관리'));
+    await tester.pumpAndSettle();
+    expect(find.text('자료구조'), findsNothing);
+    expect(find.byKey(const Key('mock-data-toggle')), findsNothing);
+    expect(find.text('목업용'), findsNothing);
+    expect(find.text('예시 데이터 표시'), findsNothing);
+    expect(find.text('수강 과목 추가'), findsOneWidget);
+    await tester.binding.setSurfaceSize(null);
   });
 
   testWidgets('opens every workspace menu', (tester) async {
@@ -297,8 +314,7 @@ void main() {
 
   testWidgets('saves a personal schedule on this device', (tester) async {
     SharedPreferences.setMockInitialValues({
-      'university_path.personal_planning.v1':
-          '{"profile":{"school":"테스트대학교","department":"컴퓨터공학과","admissionYear":2025},"events":[]}',
+      'university_path.personal_planning.v1': '{"profile":{"school":"테스트대학교","department":"컴퓨터공학과","admissionYear":2025},"events":[]}',
     });
     await tester.binding.setSurfaceSize(const Size(900, 768));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));

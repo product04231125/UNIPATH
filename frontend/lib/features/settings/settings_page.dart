@@ -1,3 +1,5 @@
+import 'ai_consent_preferences.dart';
+import 'ai_consent_section.dart';
 import '../../shared/widgets/responsive_columns.dart';
 
 import 'package:flutter/material.dart';
@@ -31,12 +33,14 @@ class SettingsPage extends StatefulWidget {
     this.chatPreferences,
     this.studentApi,
     this.previewInstitutionId,
+    this.aiConsent,
   });
 
   final PlanningRepository repository;
   final ChatPreferences? chatPreferences;
   final StudentApi? studentApi;
   final String? previewInstitutionId;
+  final AiConsentPreferences? aiConsent;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -127,6 +131,8 @@ class _SettingsPageState extends State<SettingsPage> {
             body: [
               PlanningStorageState(repository: widget.repository),
               const AppearanceSettingsSection(),
+              if (widget.aiConsent != null)
+                AiConsentSection(preferences: widget.aiConsent!),
               const AccountSettingsSection(),
               if (widget.chatPreferences != null)
                 ChatSettingsSection(preferences: widget.chatPreferences!),
@@ -387,8 +393,9 @@ class _SettingsPageState extends State<SettingsPage> {
                                           if (GuestPreviewScope.isActive(
                                             context,
                                           )) {
-                                            GuestPreviewScope
-                                                .showBlockedMessage(context);
+                                            GuestPreviewScope.showBlockedMessage(
+                                              context,
+                                            );
                                             return;
                                           }
                                           setState(() => _personal = true);
@@ -436,6 +443,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const AppearanceSettingsSection(),
+                          if (widget.aiConsent != null)
+                            AiConsentSection(preferences: widget.aiConsent!),
                           const AccountSettingsSection(),
                           if (widget.chatPreferences != null)
                             ChatSettingsSection(
@@ -454,8 +463,9 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  int? _suggestedYear() => PlanningProfile(admissionYear: _admissionYear)
-      .academicYearFor(DateTime.now());
+  int? _suggestedYear() =>
+      PlanningProfile(admissionYear: _admissionYear)
+          .academicYearFor(DateTime.now());
 
   void _captureCatalogSelection() {
     final form = _schoolForm.currentState;

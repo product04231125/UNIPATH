@@ -33,14 +33,15 @@ final _schoolProfileChanges =
 Map<String, dynamic> Function()? _readSchoolProfile;
 Future<void> Function(Map<String, dynamic>)? _saveSchoolProfile;
 Map<String, dynamic> Function()? _readConversation;
-Map<String, dynamic> Function(Map<String, dynamic>)? _conversationCommand;
+FutureOr<Map<String, dynamic>> Function(Map<String, dynamic>)?
+_conversationCommand;
 final _conversationChanges = StreamController<Map<String, dynamic>>.broadcast();
 Future<bool> Function()? _prepareConversationClose;
 final _conversationReady = StreamController<void>.broadcast();
 
 void bindConversation(
   Map<String, dynamic> Function()? read,
-  Map<String, dynamic> Function(Map<String, dynamic>)? command,
+  FutureOr<Map<String, dynamic>> Function(Map<String, dynamic>)? command,
 ) {
   _readConversation = read;
   _conversationCommand = command;
