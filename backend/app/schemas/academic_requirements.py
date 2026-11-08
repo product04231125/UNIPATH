@@ -79,6 +79,28 @@ class CreditHeader(StrictModel):
     aggregate_members: list[UUID] = Field(default_factory=list, max_length=300)
 
 
+class CreditRecordBindingInput(StrictModel):
+    client_id: UUID
+    expected_version: int = Field(ge=0, strict=True)
+    bindings: dict[UUID, list[Label]] = Field(default_factory=dict, max_length=300)
+
+    @model_validator(mode="after")
+    def unique_categories(self):
+        if any(
+            not values or len(values) > 100 or len(set(values)) != len(values)
+            for values in self.bindings.values()
+        ):
+            raise ValueError("Each header needs 1-100 distinct transcript categories")
+        return self
+
+
+class CreditRecordBindingView(BaseModel):
+    requirement_revision_id: UUID
+    institution_id: UUID
+    version: int
+    bindings: dict[UUID, list[str]]
+
+
 class CreditRow(StrictModel):
     id: UUID = Field(default_factory=uuid4)
     label: ShortText

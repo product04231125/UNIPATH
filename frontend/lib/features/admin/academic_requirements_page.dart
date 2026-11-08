@@ -12,6 +12,7 @@ import '../auth/auth_api.dart';
 import '../records/personal_record_repository.dart';
 import 'academic_checklist_editor.dart';
 import 'academic_credit_preview.dart';
+import 'academic_credit_record_bindings.dart';
 import 'academic_explanation_tables.dart';
 import 'academic_requirement_content.dart';
 import 'academic_scope_form.dart';
@@ -769,6 +770,19 @@ class AcademicRequirementsPageState extends State<AcademicRequirementsPage> {
               Wrap(
                 spacing: 8,
                 children: [
+                  if (widget.kind == 'credit_table' &&
+                      _revision!['status'] != 'withdrawn')
+                    OutlinedButton(
+                      onPressed: disabled || dirty
+                          ? null
+                          : () => editCreditRecordBindings(
+                              context,
+                              widget.api,
+                              widget.schoolId,
+                              _revision!,
+                            ),
+                      child: const Text('성적표 이수구분 연결'),
+                    ),
                   if (_editable) ...[
                     FilledButton(
                       onPressed: disabled ? null : _save,

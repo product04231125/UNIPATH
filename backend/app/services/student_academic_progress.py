@@ -1,9 +1,13 @@
-"""Exact-decimal progress from explicitly linked, student-confirmed records."""
+"""Exact-decimal progress from student records and administrator source mappings."""
 
 from collections import defaultdict
 from decimal import Decimal
 
-from app.models.academic_workspace import AcademicCurriculumCourse, ClassificationNode
+from app.models.academic_workspace import (
+    AcademicCreditRecordBinding,
+    AcademicCurriculumCourse,
+    ClassificationNode,
+)
 from app.models.personal import CourseRecord
 from app.schemas import student_academic as dto
 from app.services import student_academic as academic
@@ -49,6 +53,8 @@ def progress(db, owner):
         if document.kind != "credit_table":
             continue
         headers = {h.id: h for h in document.content.headers}
+        wiring = db.get(AcademicCreditRecordBinding, document.id)
+        bindings = wiring.bindings_json if wiring else {}
         cells = {(c.row_id, c.header_id): c for c in document.content.cells}
         group_ids = {h.parent_id for h in document.content.headers if h.parent_id}
         results = []
@@ -56,6 +62,77 @@ def progress(db, owner):
             context_ids = set(document.node_contexts[str(row.id)])
             local_links = [link for link in active_links if link.context_id in context_ids]
             cache = {}
+            planned_cache = {}
+
+            def record_mode(header, bindings=bindings, headers=headers):
+                return str(header.id) in bindings or any(
+                    record_mode(headers[key]) for key in header.aggregate_members
+                )
+
+            def from_records(
+                header,
+                bindings=bindings,
+                document=document,
+                context_ids=context_ids,
+                planned_cache=planned_cache,
+            ):
+                categories = bindings[str(header.id)]
+                evidence, included, planned = [], {}, {}
+                planned_unknown = False
+                uncertain = bool(current.issues) or document.status != "published"
+                primary_applies = any(ctxs[key].primary for key in context_ids if key in ctxs)
+                duplicate_codes = {
+                    r.course_code
+                    for r in records
+                    if r.course_code
+                    and r.completion == "recorded"
+                    and sum(
+                        x.course_code == r.course_code and x.completion == "recorded"
+                        for x in records
+                    )
+                    > 1
+                }
+                for record in records:
+                    state, reason, amount = "excluded", "outside_column", None
+                    if record.category not in categories:
+                        pass
+                    elif record.completion == "not_completed":
+                        reason = "not_completed"
+                    elif current.issues:
+                        state, reason = "needs_review", "academic_context_changed"
+                    elif not primary_applies:
+                        state, reason = "needs_review", "major_assignment_required"
+                    elif record.completion in ("planned", "in_progress"):
+                        reason = (
+                            "planned_record" if record.completion == "planned" else "not_recorded"
+                        )
+                        amount = record.credits
+                        if reason == "planned_record" and amount is not None:
+                            planned[record.id] = amount
+                        elif reason == "planned_record":
+                            planned_unknown = True
+                    elif record.credits is None:
+                        state, reason = "needs_review", "earned_credits_required"
+                    elif record.course_code in duplicate_codes:
+                        state, reason = "needs_review", "retake_selection_required"
+                    else:
+                        state, reason, amount = "included", "transcript_category", record.credits
+                        included[record.id] = amount
+                    uncertain |= state == "needs_review"
+                    evidence.append(
+                        dto.StudentAcademicCreditEvidence(
+                            record_id=record.id,
+                            context_id=None,
+                            title=record.title,
+                            state=state,
+                            reason=reason,
+                            credits=amount,
+                        )
+                    )
+                planned_cache[header.id] = (
+                    None if planned_unknown else sum(planned.values(), Decimal(0))
+                )
+                return (sum(included.values(), Decimal(0)), uncertain, evidence)
 
             def matches(header, entry, seen=None, headers=headers):
                 seen = set() if seen is None else seen
@@ -74,8 +151,57 @@ def progress(db, owner):
                     return False
                 return classified
 
-            def evaluate(header, cache=cache, document=document, local_links=local_links):
+            def evaluate(
+                header,
+                cache=cache,
+                document=document,
+                local_links=local_links,
+                bindings=bindings,
+                headers=headers,
+                planned_cache=planned_cache,
+                from_records=from_records,
+                record_mode=record_mode,
+            ):
                 if header.id in cache:
+                    return cache[header.id]
+                if str(header.id) in bindings:
+                    cache[header.id] = from_records(header)
+                    return cache[header.id]
+                if header.aggregate_members and record_mode(header):
+                    values = [evaluate(headers[key]) for key in header.aggregate_members]
+                    evidence_by_id = {}
+                    rank = {"included": 3, "needs_review": 2, "excluded": 0}
+                    for _, _, items in values:
+                        for item in items:
+                            old = evidence_by_id.get(item.record_id)
+                            score = rank[item.state] + (item.reason == "planned_record")
+                            if old is None or score > rank[old.state] + (
+                                old.reason == "planned_record"
+                            ):
+                                evidence_by_id[item.record_id] = item
+                    items = list(evidence_by_id.values())
+                    earned = sum(
+                        (
+                            item.credits
+                            for item in items
+                            if item.state == "included" and item.credits is not None
+                        ),
+                        Decimal(0),
+                    )
+                    planned_cache[header.id] = sum(
+                        (
+                            item.credits
+                            for item in items
+                            if item.reason == "planned_record" and item.credits is not None
+                        ),
+                        Decimal(0),
+                    )
+                    if any(
+                        record_mode(headers[key]) and planned_cache.get(key) is None
+                        for key in header.aggregate_members
+                    ):
+                        planned_cache[header.id] = None
+                    cache[header.id] = (earned, any(v[1] for v in values), items)
                     return cache[header.id]
                 evidence, included = [], {}
                 uncertain = bool(current.issues) or document.status != "published"
@@ -177,7 +303,9 @@ def progress(db, owner):
                 cache[header.id] = result
                 return result
 
-            def mapping_known(header, headers=headers):
+            def mapping_known(header, headers=headers, bindings=bindings):
+                if str(header.id) in bindings:
+                    return True
                 if header.aggregate_members:
                     return all(mapping_known(headers[key]) for key in header.aggregate_members)
                 return header.classification_node_id is not None and header.role == "value"
@@ -202,6 +330,11 @@ def progress(db, owner):
                     continue
                 earned, uncertain, evidence = evaluate(header)
                 issues = [] if mapping_known(header) else ["column_mapping_required"]
+                if issues:
+                    earned = None
+                    if wiring:
+                        issues = ["transcript_subcategory_required"]
+                        evidence = []
                 uncertain |= bool(issues)
                 status = (
                     "no_target"
@@ -209,7 +342,7 @@ def progress(db, owner):
                     else "needs_review"
                     if uncertain
                     else "satisfied"
-                    if earned >= target
+                    if earned is not None and earned >= target
                     else "not_satisfied"
                 )
                 results.append(
@@ -218,7 +351,13 @@ def progress(db, owner):
                         header_id=header.id,
                         target=target,
                         earned=earned,
-                        remaining=max(Decimal(0), target - earned) if target is not None else None,
+                        planned=planned_cache.get(header.id),
+                        projected=earned + planned_cache[header.id]
+                        if earned is not None and planned_cache.get(header.id) is not None
+                        else None,
+                        remaining=max(Decimal(0), target - earned)
+                        if target is not None and earned is not None
+                        else None,
                         status=status,
                         evidence=evidence,
                         issues=issues,

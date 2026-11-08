@@ -374,6 +374,26 @@ class AcademicRequirementRevision(Base):
     )
 
 
+class AcademicCreditRecordBinding(Base):
+    """Mutable data wiring; published requirement targets and snapshots stay immutable."""
+
+    __tablename__ = "academic_credit_record_bindings"
+    requirement_revision_id: Mapped[UUID] = mapped_column(primary_key=True)
+    institution_id: Mapped[UUID] = mapped_column(ForeignKey("institutions.id"))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    bindings_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    updated_by: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["requirement_revision_id", "institution_id"],
+            ["academic_requirement_revisions.id", "academic_requirement_revisions.institution_id"],
+        ),
+        CheckConstraint("version >= 1", name="version"),
+        CheckConstraint("jsonb_typeof(bindings_json) = 'object'", name="bindings"),
+    )
+
+
 class AcademicRequirementNodeRef(Base):
     __tablename__ = "academic_requirement_node_refs"
     requirement_revision_id: Mapped[UUID] = mapped_column(primary_key=True)

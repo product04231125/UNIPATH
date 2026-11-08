@@ -169,6 +169,11 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
     ),
   );
   Widget _credit(AcademicStudentDocument d) {
+    String number(String value) => value.contains('.')
+        ? value
+              .replaceFirst(RegExp(r'0+$'), '')
+              .replaceFirst(RegExp(r'\.$'), '')
+        : value;
     final grid = creditGridFromAcademic(d.content),
         cells = c.progress?.tables[d.id] ?? [];
     return Column(
@@ -184,7 +189,7 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
               return original;
             }
             final shortage = cell.status == 'needs_review' ? '확정분 기준 부족' : '부족';
-            return '${cell.target == null ? '목표 미지정' : '목표 ${cell.target}'}\n취득 ${cell.earned ?? "확인 필요"}\n${cell.remaining == null ? '' : '$shortage ${cell.remaining}\n'}${academicStatus(cell.status)}';
+            return '${cell.target == null ? '목표 미지정' : '목표 ${number(cell.target!)}'}\n취득 ${cell.earned == null ? "분류 확인 필요" : number(cell.earned!)}\n${cell.planned == null ? '' : '예정 ${number(cell.planned!)}\n총 ${cell.projected == null ? "확인 필요" : number(cell.projected!)}\n'}${cell.remaining == null ? '' : '$shortage ${number(cell.remaining!)}\n'}${academicStatus(cell.status)}';
           },
         ),
         for (final cell in cells)
@@ -196,7 +201,8 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
             children: [
               for (final issue in cell.issues)
                 Text(academicEvidenceReason(issue)),
-              if (cell.evidence.isEmpty) const Text('연결한 수강 기록이 없습니다.'),
+              if (cell.evidence.isEmpty && cell.issues.isEmpty)
+                const Text('산입할 수강 기록이 없습니다.'),
               for (final e in cell.evidence)
                 ListTile(
                   dense: true,

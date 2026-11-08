@@ -8,6 +8,7 @@ from app.models.academic import (
     RuleSet,
 )
 from app.models.academic_workspace import (
+    AcademicCreditRecordBinding,
     AcademicCurriculumCourse,
     AcademicCurriculumDepartmentRef,
     AcademicCurriculumRevision,
@@ -83,6 +84,7 @@ from app.models.student_academic import (
 )
 
 __all__ = [
+    "AcademicCreditRecordBinding",
     "StudentAcademicActivation",
     "StudentAcademicContext",
     "StudentAcademicCourseLink",

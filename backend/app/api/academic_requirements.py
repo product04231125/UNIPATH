@@ -22,6 +22,26 @@ router = APIRouter(
 )
 
 
+@router.get("/{record_id}/record-bindings", response_model=dto.CreditRecordBindingView)
+def record_bindings(record_id: UUID, db: Database, identity: CurrentIdentity):
+    from app.services import academic_credit_bindings as binding
+
+    return binding.view(db, binding.requirement(db, identity, record_id))
+
+
+@router.put("/{record_id}/record-bindings", response_model=dto.CreditRecordBindingView)
+def replace_record_bindings(
+    record_id: UUID,
+    payload: dto.CreditRecordBindingInput,
+    request: Request,
+    db: Database,
+    identity: CurrentIdentity,
+):
+    from app.services import academic_credit_bindings as binding
+
+    return binding.replace(db, request, identity, record_id, payload)
+
+
 @router.get("", response_model=dto.RequirementList)
 def listing(
     db: Database,

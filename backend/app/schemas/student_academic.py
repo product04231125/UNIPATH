@@ -229,6 +229,8 @@ class StudentAcademicCreditCell(StrictModel):
     header_id: UUID
     target: Decimal | None
     earned: Decimal | None
+    planned: Decimal | None = None
+    projected: Decimal | None = None
     remaining: Decimal | None
     status: Literal["satisfied", "not_satisfied", "needs_review", "not_applicable", "no_target"]
     evidence: list[StudentAcademicCreditEvidence]

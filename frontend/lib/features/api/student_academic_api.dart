@@ -338,6 +338,8 @@ class AcademicStudentCreditCell {
       headerId = j['header_id'] as String,
       target = j['target']?.toString(),
       earned = j['earned']?.toString(),
+      planned = j['planned']?.toString(),
+      projected = j['projected']?.toString(),
       remaining = j['remaining']?.toString(),
       status = j['status'] as String,
       issues = List<String>.from(j['issues'] as List? ?? []),
@@ -345,7 +347,7 @@ class AcademicStudentCreditCell {
           .map(AcademicStudentEvidence.new)
           .toList();
   final String rowId, headerId, status;
-  final String? target, earned, remaining;
+  final String? target, earned, remaining, planned, projected;
   final List<AcademicStudentEvidence> evidence;
   final List<String> issues;
 }

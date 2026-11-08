@@ -417,6 +417,9 @@ def copy_revision(db, request, identity, record_id, payload):
                         **extra,
                     )
                 )
+        from app.services.academic_credit_bindings import copy_data
+
+        copy_data(db, source, revision, actor)
         return view(db, revision)
 
     return mutate(
