@@ -251,7 +251,9 @@ void main() {
       expect(find.text('분석 완료'), findsOneWidget);
       expect(find.text('근거 있음'), findsOneWidget);
       expect(find.text('공고 근거: 합성'), findsOneWidget);
-      expect(find.textContaining('내 기록 근거 (버전 2)'), findsOneWidget);
+      expect(find.text('선택한 기록에서 개발 경험을 확인했습니다.'), findsOneWidget);
+      expect(find.text('근거: 받은 근거 없음'), findsNothing);
+      expect(find.text('내 기록 근거 (버전 2): 프로젝트 경험'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       p.dispose();
     },

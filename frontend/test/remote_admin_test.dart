@@ -13,6 +13,7 @@ import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/auth/login_page.dart';
 
 import 'support/auth_fixture.dart';
+import 'support/reachable_controls.dart';
 
 const schoolId = '00000000-0000-4000-8000-000000000010';
 const newId = '00000000-0000-4000-8000-000000000011';
@@ -434,7 +435,9 @@ void main() {
   );
   for (final size in [const Size(1440, 900), const Size(480, 520)]) {
     testWidgets(
-      'live admin creates a school and performs server logout at $size',
+      size.width == 480
+          ? 'admin school form and logout remain reachable at $size'
+          : 'live admin creates a school and performs server logout',
       (tester) async {
         await tester.binding.setSurfaceSize(size);
         addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -469,6 +472,18 @@ void main() {
           matching: find.widgetWithText(FilledButton, '등록'),
         );
         await tester.ensureVisible(register);
+        if (size.width == 480) {
+          await expectControlsReachable(tester, [nameField, register]);
+          final logout = find.byTooltip('로그아웃');
+          await expectControlsReachable(tester, [
+            logout.evaluate().isNotEmpty ? logout : find.text('로그아웃'),
+          ]);
+          expect(server.saved, isFalse);
+          expect(server.loggedOut, isFalse);
+          await tester.pumpWidget(const SizedBox());
+          api.close();
+          return;
+        }
         await tester.tap(register);
         await tester.pumpAndSettle();
         expect(

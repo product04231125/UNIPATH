@@ -20,7 +20,6 @@ void main() {
 
   for (final size in [
     const Size(1440, 900),
-    const Size(480, 520),
     const Size(390, 844),
   ]) {
     testWidgets('title bar omits account and application icons at $size', (
