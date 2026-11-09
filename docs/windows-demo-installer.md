@@ -7,6 +7,19 @@
 
 ## 받는 사람
 
+사용자 승인으로 현재 시연 EXE와 체크섬·사용방법은 이 브랜치의
+`output/windows-demo/`에 포함돼 있다. EXE는 Git LFS로 저장한다. 다른 PC의 Git Bash:
+
+```bash
+git lfs install
+git pull --ff-only
+git lfs pull
+./output/windows-demo/UniversityPath-Demo-Setup.exe
+```
+
+Git LFS가 없는 환경에서는 먼저 Git LFS를 설치해야 한다. 소스 ZIP 다운로드는 LFS
+실제 파일을 포함한다고 가정하지 않는다. EXE 크기는 약354MiB이며 체크섬으로 확인한다.
+
 1. `UniversityPath-Demo-Setup.exe`와 별도 SHA-256 체크섬을 전달받아 확인한다.
 2. EXE의 **설치 / 실행**을 누른다. Windows x64·가상화·RAM을 확인하고 Docker/WSL이
    없으면 공식 Docker 설치 프로그램과 Windows WSL 기능을 준비한다.
@@ -45,7 +58,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-WindowsDemo.ps
 
 EXE는 자체 서명하지 않는다. 코드 서명이 없으므로 Windows 경고가 나올 수 있다.
 체크섬은 파일 손상 확인용이며 발행자 인증을 대체하지 않는다. 이 묶음에는 선택한
-학생 기록이 포함되므로 공개 저장소·공개 릴리스에 올리지 않는다.
+학생 기록이 포함된다. 2026-11-09 사용자가 현재 EXE 그대로 공개 푸시를 명시적으로
+승인했다. 원 계정 암호·세션·AI 인증 정보는 포함하지 않는다. 이후 다른 학생 데이터나
+새 묶음의 공개 범위를 이 승인에서 자동 확대하지 않는다.
 
 ## 검증 범위
 

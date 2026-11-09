@@ -25,6 +25,12 @@ dist/
 backups/
 *.dump
 /output/windows-demo*/
+# Only the user-approved public demo delivery files are versioned.
+!/output/windows-demo/
+/output/windows-demo/*
+!/output/windows-demo/UniversityPath-Demo-Setup.exe
+!/output/windows-demo/UniversityPath-Demo-Setup.sha256
+!/output/windows-demo/사용방법.txt
 
 # Agent instructions, skills and personal tool settings stay local.
 [Aa][Gg][Ee][Nn][Tt].[Mm][Dd]
