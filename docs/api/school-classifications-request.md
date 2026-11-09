@@ -7,7 +7,8 @@
 ## 현재 상태 (2026-11-09, 백엔드)
 
 이 요청의 1단계 구현(#57: `/admin/classifications`, `/catalog/classifications`, 과목·연결의
-`classification_id`·`track_id`)은 `0027_unify_classification`에서 없앴다. 학교별 분류와 이수 경로는
+`classification_id`·`track_id`)과 수강 기록 원본 참조는 `0027_unify_classification`에서, 과목·연결 통합 저장
+(`/admin/course-placements`)은 `0028_drop_course_placements`에서 없앴다. 학교별 분류와 이수 경로는
 [관리자 학사 작업 공간](admin-academic-workspace.md)의 분류 개정본·이수 경로가 제공한다.
 아래 2026-11-08 기록은 이력으로 남긴다.
 

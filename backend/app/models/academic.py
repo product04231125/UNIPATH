@@ -89,22 +89,6 @@ class CurriculumCourse(CatalogRecord, Base):
     required: Mapped[bool] = mapped_column(Boolean)
 
 
-class CoursePlacementReceipt(Base):
-    """Replays one atomic course-and-link creation per administrator client ID."""
-
-    __tablename__ = "course_placement_receipts"
-    actor_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
-    client_id: Mapped[UUID] = mapped_column(primary_key=True)
-    institution_id: Mapped[UUID] = mapped_column(ForeignKey("institutions.id"))
-    digest: Mapped[str] = mapped_column(String(64))
-    # Later deletion keeps the receipt so a retry still answers instead of recreating.
-    course_id: Mapped[UUID | None] = mapped_column(ForeignKey("courses.id", ondelete="SET NULL"))
-    curriculum_course_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("curriculum_courses.id", ondelete="SET NULL")
-    )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-
 class ReviewedRecord(CatalogRecord):
     department_id: Mapped[UUID | None] = mapped_column(index=True)
     curriculum_id: Mapped[UUID | None] = mapped_column(index=True)
