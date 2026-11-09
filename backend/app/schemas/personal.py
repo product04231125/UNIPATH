@@ -140,13 +140,6 @@ class CourseRecordCreate(PersonalCreate):
     # Selection from the student's activated academic workspace (both or neither).
     academic_context_id: UUID | None = None
     academic_entry_id: UUID | None = None
-    # Optional catalog provenance from the registered school: the course and curriculum link
-    # the student picked, with the version each had then. The fields above stay the
-    # student's own values; provenance never makes the record official.
-    catalog_course_id: UUID | None = None
-    catalog_course_version: int | None = Field(default=None, ge=1, strict=True)
-    curriculum_course_id: UUID | None = None
-    curriculum_course_version: int | None = Field(default=None, ge=1, strict=True)
 
     @model_validator(mode="after")
     def valid_course_credits(self):
@@ -154,12 +147,6 @@ class CourseRecordCreate(PersonalCreate):
             raise ValueError("Select a curriculum course and its academic context together")
         if self.grading_basis != "pass_fail" and (self.credits is None or self.credits <= 0):
             raise ValueError("Only P/F records may have zero or unconfirmed credits")
-        if (self.catalog_course_id is None) != (self.catalog_course_version is None):
-            raise ValueError("catalog_course_id and catalog_course_version go together")
-        if (self.curriculum_course_id is None) != (self.curriculum_course_version is None):
-            raise ValueError("curriculum_course_id and curriculum_course_version go together")
-        if self.curriculum_course_id and not self.catalog_course_id:
-            raise ValueError("A curriculum link needs its catalog course")
         return self
 
 

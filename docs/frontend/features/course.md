@@ -87,4 +87,4 @@
 
 프로필의 학교·학과·교육과정으로 조회한 curriculum-course 연결의 category/required를 과목 선택 시 함께 읽어 이수구분·필수 여부를 자동 표시한다. 학생에게 같은 분류를 다시 고르게 하지 않는다. 교육과정이 여러 개라 연결을 확정하지 못하면 임의로 한 값을 선택하지 않고 프로필/관리자 연결 확인을 안내한다. 이름·설명은 표시용이다.
 
-2026-11-08(#60)부터 수강 기록 DTO에 원본 참조 `catalog_course_id`·`catalog_course_version`·`curriculum_course_id`·`curriculum_course_version`이 있다([개인 API](../../api/personal.md)). 학교 카탈로그에서 고른 과목·연결의 ID와 그때 본 `version`을 함께 보내면 서버가 원본으로 적용 분류를 다시 찾는다. 등록 학교 과목만 받고, 버전이 지금 카탈로그와 다르면 409이므로 과목 목록을 다시 조회해 고르게 한다. **화면은 아직 이 필드를 보내지 않는다.** 새 기록은 네 필드가 `null`로 전송되고, 수정(PATCH)은 화면이 관리하는 필드만 보내 서버의 원본 참조를 지우지 않는다(#60). 세부분류·이수 경로 표시는 원본 참조로 읽을 수 있게 되었고 화면 연결은 후속이다. 관리자가 준비하는 분류 초안은 학생의 확정 기준으로 사용하지 않는다.
+수강 기록과 학교 교육과정 과목의 연결은 `academic_context_id`·`academic_entry_id` 하나로 나타낸다([개인 API](../../api/personal.md), [학생 학사 기준](../../api/student-academic.md)). #60의 원본 참조 `catalog_course_id`·`catalog_course_version`·`curriculum_course_id`·`curriculum_course_version`은 화면이 보내지 않던 필드로, `0027_unify_classification`에서 없앴다. 수정(PATCH)은 화면이 관리하는 필드만 보낸다. 관리자가 준비하는 분류 초안은 학생의 확정 기준으로 사용하지 않는다.

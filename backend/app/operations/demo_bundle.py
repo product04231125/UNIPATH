@@ -31,7 +31,6 @@ CATALOG = {
     "graduation_rules",
     "official_documents",
     # School classifications and the guidance bundle link, so the demo school reads as staged.
-    "school_classifications",
     "academic_guidance_bindings",
     "academic_classification_revisions",
     "academic_classification_nodes",

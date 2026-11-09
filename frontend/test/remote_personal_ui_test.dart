@@ -152,21 +152,8 @@ void main() {
           'grading_basis',
           'academic_context_id',
           'academic_entry_id',
-          'catalog_course_id',
-          'catalog_course_version',
-          'curriculum_course_id',
-          'curriculum_course_version',
         ]),
       );
-      // This form does not pick catalog courses yet, so a new record has no provenance.
-      for (final key in [
-        'catalog_course_id',
-        'catalog_course_version',
-        'curriculum_course_id',
-        'curriculum_course_version',
-      ]) {
-        expect(creates[1].$3![key], isNull);
-      }
       expect(find.textContaining('수강 기간: 2024년 겨울 계절학기'), findsOneWidget);
       await tester.tap(find.widgetWithText(TextButton, '수정'));
       await tester.pumpAndSettle();
@@ -177,8 +164,6 @@ void main() {
       expect(patch.$3!['term'], '2025년 겨울 계절학기');
       expect(patch.$3!.containsKey('year'), isFalse);
       expect(patch.$3!.containsKey('client_id'), isFalse);
-      // An edit never sends, and so never clears, provenance it does not manage.
-      expect(patch.$3!.containsKey('catalog_course_id'), isFalse);
       expect(find.textContaining('수강 기간: 2025년 겨울 계절학기'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },

@@ -102,7 +102,6 @@ def main():
         "Curriculum",
         "Course",
         "CurriculumCourse",
-        "Classification",
         "RuleSet",
         "Rule",
         "Document",

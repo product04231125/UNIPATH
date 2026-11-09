@@ -7,7 +7,6 @@ from app.models.academic import (
     GraduationRule,
     OfficialDocument,
     RuleSet,
-    SchoolClassification,
 )
 from app.models.academic_workspace import (
     AcademicCreditRecordBinding,
@@ -101,7 +100,6 @@ __all__ = [
     "ClassificationNode",
     "ClassificationRevision",
     "CoursePlacementReceipt",
-    "SchoolClassification",
     "StudentAcademicActivation",
     "StudentAcademicContext",
     "StudentAcademicCourseLink",

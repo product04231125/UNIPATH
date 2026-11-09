@@ -84,10 +84,6 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
     this.completion = "planned",
     this.academicContextId,
     this.academicEntryId,
-    this.catalogCourseId,
-    this.catalogCourseVersion,
-    this.curriculumCourseId,
-    this.curriculumCourseVersion,
   });
   final String title;
   final String detail;
@@ -102,10 +98,6 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
   final String completion;
   final String? academicContextId;
   final String? academicEntryId;
-  final String? catalogCourseId;
-  final int? catalogCourseVersion;
-  final String? curriculumCourseId;
-  final int? curriculumCourseVersion;
   factory PersonalImportCourseRecord.fromJson(Map<String, dynamic> value) =>
       PersonalImportCourseRecord(
         title: value['title'] as String,
@@ -140,18 +132,6 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
         academicEntryId: value['academic_entry_id'] == null
             ? null
             : value['academic_entry_id'] as String,
-        catalogCourseId: value['catalog_course_id'] == null
-            ? null
-            : value['catalog_course_id'] as String,
-        catalogCourseVersion: value['catalog_course_version'] == null
-            ? null
-            : value['catalog_course_version'] as int,
-        curriculumCourseId: value['curriculum_course_id'] == null
-            ? null
-            : value['curriculum_course_id'] as String,
-        curriculumCourseVersion: value['curriculum_course_version'] == null
-            ? null
-            : value['curriculum_course_version'] as int,
       );
   @override
   Map<String, Object?> toJson() => {
@@ -168,10 +148,6 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
     'completion': completion,
     'academic_context_id': academicContextId,
     'academic_entry_id': academicEntryId,
-    'catalog_course_id': catalogCourseId,
-    'catalog_course_version': catalogCourseVersion,
-    'curriculum_course_id': curriculumCourseId,
-    'curriculum_course_version': curriculumCourseVersion,
   };
 }
 
