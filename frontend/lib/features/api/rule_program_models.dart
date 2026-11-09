@@ -241,7 +241,7 @@ class OfficialProgramRuleInput implements OfficialPayload {
     required this.ruleId,
     required this.expectedVersion,
     required this.condition,
-    required this.evidenceChunkIds,
+    this.evidenceChunkIds = const [],
   });
   final String ruleId;
   final int expectedVersion;
@@ -254,9 +254,11 @@ class OfficialProgramRuleInput implements OfficialPayload {
         condition: OfficialCondition.fromJson(
           Map<String, dynamic>.from(value['condition'] as Map),
         ),
-        evidenceChunkIds: List.unmodifiable(
-          (value['evidence_chunk_ids'] as List).map((v) => v as String),
-        ),
+        evidenceChunkIds: value['evidence_chunk_ids'] == null
+            ? const []
+            : List.unmodifiable(
+                (value['evidence_chunk_ids'] as List).map((v) => v as String),
+              ),
       );
   @override
   Map<String, Object?> toJson() => {

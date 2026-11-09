@@ -538,7 +538,12 @@ void main() {
         await repo.save(
           PersonalRecord(
             id: 'layout',
-            values: {'title': '내 과목', 'term': '2026-2', 'credits': '2'},
+            values: {
+              'title': '내 과목',
+              'term': '2026-2',
+              'credits': '2',
+              'completion': '이수 기록',
+            },
           ),
         );
         await tester.pumpWidget(
@@ -556,7 +561,7 @@ void main() {
         expect(find.text('내 과목'), findsOneWidget);
         expect(find.text('자료구조'), findsNothing);
         expect(find.text('개인 기록'), findsNothing);
-        expect(find.textContaining('개인 입력 합계 2.0학점'), findsOneWidget);
+        expect(find.textContaining('취득학점 합계 2학점'), findsOneWidget);
         expect(
           find.textContaining('학기별 수강 계획과 개인 이수 기록을 정리합니다.'),
           findsOneWidget,
@@ -646,6 +651,7 @@ void main() {
           id: PersonalRecord.newId(),
           values: {
             'title': '다른 학기 합성 과목',
+            'completion': '이수 완료',
             'term': '2025-1',
             'category': '교양',
             'credits': '2',
@@ -685,15 +691,20 @@ void main() {
       await tester.pumpAndSettle();
       await period.enter(tester, 'course-year', '2026');
       await period.enter(tester, 'term', '2학기');
+      await period.chooseForm(
+        tester,
+        const ValueKey('record-select-completion'),
+        '이수 완료',
+      );
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('개인 입력 합계 5.0학점'), findsOneWidget);
+      expect(find.textContaining('취득학점 합계 5학점'), findsOneWidget);
       await tester.tap(find.text('전체 학기'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('2학기').last);
       await tester.pumpAndSettle();
       expect(find.text('다른 학기 합성 과목'), findsNothing);
-      expect(find.textContaining('개인 입력 합계 3.0학점'), findsOneWidget);
+      expect(find.textContaining('취득학점 합계 3학점'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -767,6 +778,11 @@ void main() {
       await tester.tap(find.textContaining('합성 과목').last);
       await tester.pumpAndSettle();
       await period.enter(tester, 'term', '2학기');
+      await period.chooseForm(
+        tester,
+        const ValueKey('record-select-completion'),
+        '이수 완료',
+      );
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('홈').first);

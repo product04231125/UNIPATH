@@ -19,6 +19,11 @@ import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/field_label.dart';
 import 'admin_models.dart';
 import 'admin_repository.dart';
+import 'academic_workspace_api.dart';
+import 'academic_curricula_page.dart';
+import 'academic_requirements_page.dart';
+import 'remote_admin_repository.dart';
+import 'school_classification_server_page.dart';
 import 'admin_editor.dart';
 import 'admin_school_chrome.dart';
 import 'admin_shell.dart';
@@ -99,7 +104,23 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   var _ruleView = 'line';
   final _creditGrid = GlobalKey<GraduationCreditGridPageState>();
   final _certification = GlobalKey<GraduationCertificationPageState>();
+  final _serverClassifications =
+      GlobalKey<SchoolClassificationServerPageState>();
+  final _serverCurricula = GlobalKey<AcademicCurriculaPageState>();
+  final _serverRequirements = GlobalKey<AcademicRequirementsPageState>();
   Future<bool> _allowLeave() async {
+    if (_serverRequirements.currentState != null &&
+        !await _serverRequirements.currentState!.allowLeave()) {
+      return false;
+    }
+    if (_serverCurricula.currentState != null &&
+        !await _serverCurricula.currentState!.allowLeave()) {
+      return false;
+    }
+    if (_serverClassifications.currentState != null &&
+        !await _serverClassifications.currentState!.allowLeave()) {
+      return false;
+    }
     for (final key in _editorKeys.values) {
       if (key.currentState != null && !await key.currentState!.allowLeave()) {
         return false;
@@ -199,7 +220,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   void initState() {
     super.initState();
     _repo = widget.repository ?? FakeAdminRepository();
-    _classificationDrafts = widget.classificationDrafts ?? SchoolClassificationDrafts();
+    _classificationDrafts =
+        widget.classificationDrafts ?? SchoolClassificationDrafts();
     _repo.addListener(_refresh);
     _load();
   }
@@ -312,14 +334,24 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     if (mounted) setState(() => _curriculumView = kind);
   }
 
-  Widget _curriculumSwitcher() => Wrap(spacing: 8, runSpacing: 8, children: [
-    for (final kind in [AdminKind.course, AdminKind.curriculum, AdminKind.curriculumCourse])
-      OutlinedButton(
-        key: ValueKey('admin-curriculum-view-${kind.name}'),
-        onPressed: _busy ? null : () => _selectCurriculumView(kind),
-        child: Text(kind == AdminKind.curriculumCourse ? '교육과정 연결 관리' : kind.label),
-      ),
-  ]);
+  Widget _curriculumSwitcher() => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (final kind in [
+        AdminKind.course,
+        AdminKind.curriculum,
+        AdminKind.curriculumCourse,
+      ])
+        OutlinedButton(
+          key: ValueKey('admin-curriculum-view-${kind.name}'),
+          onPressed: _busy ? null : () => _selectCurriculumView(kind),
+          child: Text(
+            kind == AdminKind.curriculumCourse ? '교육과정 연결 관리' : kind.label,
+          ),
+        ),
+    ],
+  );
 
   Future<void> _edit(
     AdminKind kind, [
@@ -359,7 +391,12 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       setState(() => _accountEditId = record.id);
       return;
     }
-    if ([AdminKind.course, AdminKind.curriculum, AdminKind.curriculumCourse].contains(kind) && _curriculumView != kind) {
+    if ([
+          AdminKind.course,
+          AdminKind.curriculum,
+          AdminKind.curriculumCourse,
+        ].contains(kind) &&
+        _curriculumView != kind) {
       await _selectCurriculumView(kind);
       if (!mounted || _curriculumView != kind) return;
     }
@@ -618,6 +655,8 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
               kind: kind,
               schoolId: _schoolId,
               inline: true,
+              sourceCourseOnly:
+                  kind == AdminKind.course && _repo is RemoteAdminRepository,
               list: _recordList(kind, framed: false),
               onRevokeRequested: () {
                 final current = _editorKeys[kind]?.currentState?.activeRecord;
@@ -1088,7 +1127,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     onTap: () => _navigate('/admin/history'),
                     child: FeatureLine.two(
                       primary:
-                          '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
+                          '${entry.kindLabel} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
                       secondary:
                           _find(entry.targetId) != null &&
                               _repo.canRead(_actor, _find(entry.targetId)!)
@@ -1117,7 +1156,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
   Iterable<AdminAuditEntry> _filteredHistory(Iterable<AdminAuditEntry> scoped) {
     final query = _historyQuery.text.trim().toLowerCase();
     return scoped.where((entry) {
-      if (_historyKind.isNotEmpty && entry.kind.name != _historyKind) {
+      if (_historyKind.isNotEmpty && entry.kindName != _historyKind) {
         return false;
       }
       if (_historyAction.isNotEmpty && entry.action != _historyAction) {
@@ -1128,7 +1167,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
       final actor = _actorName(entry.actorId);
       final action = _actionLabel(entry.action);
       final haystack =
-          '${entry.kind.label} $target $actor $action ${entry.action}'
+          '${entry.kindLabel} $target $actor $action ${entry.action}'
               .toLowerCase();
       return haystack.contains(query);
     });
@@ -1138,7 +1177,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
     final allScoped = _repo.history.reversed.where(_historyInScope).toList();
     final entries = _filteredHistory(allScoped).toList();
     final kindOptions = {
-      for (final entry in allScoped) entry.kind.name: entry.kind.label,
+      for (final entry in allScoped) entry.kindName: entry.kindLabel,
     };
     final actionOptions = {
       for (final entry in allScoped) entry.action: _actionLabel(entry.action),
@@ -1201,7 +1240,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
             for (final entry in entries) ...[
               FeatureLine.two(
                 primary:
-                    '${entry.kind.label} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
+                    '${entry.kindLabel} · ${_actionLabel(entry.action)} · ${entry.result == 'success' ? '완료' : '실패'}',
                 secondary:
                     '${_timeLabel(entry.at)} · ${_actorName(entry.actorId)} · ${_relationName(entry.targetId).isEmpty ? '삭제되었거나 볼 수 없는 항목' : _relationName(entry.targetId)}',
               ),
@@ -1441,16 +1480,23 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                     ),
                   ),
                 if (_section == '/admin/overview') _overview(),
-                if (_section == '/admin/curricula') ...[
-                  _schoolScopedTable(
-                    empty: '학교별 교육과정 분류를 관리하려면 학교를 하나 선택하세요.',
-                    child: SchoolClassificationSection(drafts: _classificationDrafts, schoolId: _schoolId, schoolName: _relationName(_schoolId)),
-                  ),
+                if (_section == '/admin/curricula' &&
+                    _repo is! RemoteAdminRepository) ...[
+                  if (_repo is! RemoteAdminRepository)
+                    _schoolScopedTable(
+                      empty: '학교별 교육과정 분류를 관리하려면 학교를 하나 선택하세요.',
+                      child: SchoolClassificationSection(
+                        drafts: _classificationDrafts,
+                        schoolId: _schoolId,
+                        schoolName: _relationName(_schoolId),
+                      ),
+                    ),
                   const SizedBox(height: 16),
                   _curriculumSwitcher(),
                   const SizedBox(height: 16),
                 ],
-                if (_section == '/admin/documents') const SchoolWorkflowActions(),
+                if (_section == '/admin/documents')
+                  const SchoolWorkflowActions(),
                 if (_section == '/admin/rules') ...[
                   _ruleViewSwitcher(),
                   const SizedBox(height: 16),
@@ -1458,12 +1504,17 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                 if (_section != '/admin/rules' || _ruleView == 'line')
                   for (final kind
                       in sectionKinds[_section] ?? <AdminKind>[]) ...[
-                    if (_section != '/admin/curricula' || kind == _curriculumView) ...[
+                    if ((_section != '/admin/curricula' ||
+                            kind == _curriculumView) &&
+                        !(_section == '/admin/curricula' &&
+                            _repo is RemoteAdminRepository) &&
+                        !(_section == '/admin/rules' &&
+                            _repo is RemoteAdminRepository)) ...[
                       _records(kind),
                       SizedBox(height: FeatureLine.slotGap(context)),
                     ],
                   ]
-                else if (_ruleView == 'grid')
+                else if (_ruleView == 'grid' && _repo is! RemoteAdminRepository)
                   _schoolScopedTable(
                     empty: '학점표를 보려면 학교를 하나 선택하세요.',
                     child: GraduationCreditGridPage(
@@ -1484,7 +1535,7 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                       ],
                     ),
                   )
-                else
+                else if (_repo is! RemoteAdminRepository)
                   _schoolScopedTable(
                     empty: '인증 요건을 보려면 학교를 하나 선택하세요.',
                     child: GraduationCertificationPage(
@@ -1501,6 +1552,54 @@ class _AdminWorkspaceState extends State<AdminWorkspace> {
                         ))
                           department,
                       ],
+                    ),
+                  ),
+                if (_section == '/admin/schools' &&
+                    _repo is RemoteAdminRepository)
+                  _schoolScopedTable(
+                    empty: '학교 분류를 관리하려면 학교를 하나 선택하세요.',
+                    child: SchoolClassificationServerPage(
+                      key: _serverClassifications,
+                      api: AcademicWorkspaceApi.forOwner((_repo).api, _actor),
+                      ownerId: _actor,
+                      schoolId: _schoolId,
+                      schoolName: _relationName(_schoolId),
+                    ),
+                  ),
+                if (_section == '/admin/curricula' &&
+                    _repo is RemoteAdminRepository)
+                  _schoolScopedTable(
+                    empty: '교육과정을 관리하려면 학교를 하나 선택하세요.',
+                    child: AcademicCurriculaPage(
+                      key: _serverCurricula,
+                      api: AcademicWorkspaceApi.forOwner((_repo).api, _actor),
+                      ownerId: _actor,
+                      schoolId: _schoolId,
+                      records: _repo.records,
+                      refreshCatalog: _repo.load,
+                    ),
+                  ),
+                if (_section == '/admin/curricula' &&
+                    _repo is RemoteAdminRepository) ...[
+                  const SizedBox(height: 16),
+                  _records(AdminKind.course),
+                ],
+                if (_section == '/admin/rules' &&
+                    _repo is RemoteAdminRepository)
+                  _schoolScopedTable(
+                    empty: '졸업요건을 관리하려면 학교를 하나 선택하세요.',
+                    child: AcademicRequirementsPage(
+                      key: _serverRequirements,
+                      api: AcademicWorkspaceApi.forOwner((_repo).api, _actor),
+                      ownerId: _actor,
+                      schoolId: _schoolId,
+                      schoolName: _relationName(_schoolId),
+                      kind: _ruleView == 'grid'
+                          ? 'credit_table'
+                          : _ruleView == 'cert'
+                          ? 'certification'
+                          : 'checklist',
+                      records: _repo.records,
                     ),
                   ),
                 if (_section == '/admin/history') _history(),

@@ -1,5 +1,16 @@
 # 백엔드 개발환경
 
+학생 학사 연결은 migration `0021_student_academic`의 별도 학생 소유 테이블과
+`/api/v1/catalog/academic/options`, `/api/v1/me/academic-*`를 사용한다.
+기존 개인 기록·감사 이력을 유지하며 새 기준 적용·O/X·기록 연결·학점 진행 상황을
+지원한다. [학생 학사 API](../docs/api/student-academic.md)를 따른다.
+
+관리자 학사 재설계는 migration `0018_admin_academic_foundation`부터
+`0020_admin_academic_requirements`까지의 additive 테이블과
+`/api/v1/admin/academic`을 사용한다. 기존 학생·학사 API는 유지한다.
+학교 분류·교육과정별 과목·한 줄 요건/학점표/인증 요건의 실제 계약과 이전 제한은
+[관리자 학사 API](../docs/api/admin-academic-workspace.md)를 참고한다.
+
 Python 3.12, FastAPI, SQLAlchemy, Psycopg, Alembic, PostgreSQL 17과 pgvector를
 사용한다. Docker 기반 이미지는 Python 3.12.14와 pgvector 0.8.6을 포함하며 digest로
 잠근다. Python 의존성은 `uv.lock`에 잠그며 Docker와 호스트가 같은 잠금 파일을

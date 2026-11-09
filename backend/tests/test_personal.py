@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -32,6 +33,57 @@ def test_personal_contracts_reject_spoofed_ownership_and_untrusted_school_flags(
 def test_course_credits_are_finite_positive_decimal(value):
     with pytest.raises(ValidationError):
         dto.CourseRecordCreate(title="합성", term="2026", category="전공", credits=value)
+
+
+@pytest.mark.parametrize("amount", [None, "0", "1.125"])
+def test_personal_pf_credits_preserve_unknown_zero_and_positive(amount):
+    value = dto.CourseRecordCreate(
+        title="합성 P/F",
+        term="2026",
+        category="교양",
+        credits=amount,
+        grading_basis="pass_fail",
+        completion="recorded",
+    )
+    assert value.credits is None if amount is None else str(value.credits) == amount
+    assert value.grade == ""
+    assert value.completion == "recorded"
+
+
+@pytest.mark.integration
+def test_personal_pf_roundtrip_keeps_unknown_credits_and_existing_records(auth_client, auth_db):
+    headers = authorization(register(auth_client))
+    original = post(
+        auth_client,
+        headers,
+        "course-records",
+        {"title": "기존 수강", "term": "2026", "category": "전공", "credits": "3"},
+    )
+    for amount in [None, "0", "1.125"]:
+        saved = post(
+            auth_client,
+            headers,
+            "course-records",
+            {
+                "title": "합성 P/F",
+                "term": "2026",
+                "category": "교양",
+                "credits": amount,
+                "grading_basis": "pass_fail",
+                "completion": "recorded",
+            },
+        )
+        reread = auth_client.get("/api/v1/me/course-records/" + saved["id"], headers=headers)
+        assert reread.status_code == 200, reread.text
+        assert (
+            reread.json()["credits"] is None
+            if amount is None
+            else Decimal(reread.json()["credits"]) == Decimal(amount)
+        )
+        assert reread.json()["grading_basis"] == "pass_fail"
+        assert reread.json()["grade"] == ""
+    reread = auth_client.get("/api/v1/me/course-records/" + original["id"], headers=headers)
+    assert reread.json()["credits"] == "3.000"
 
 
 @pytest.mark.parametrize(

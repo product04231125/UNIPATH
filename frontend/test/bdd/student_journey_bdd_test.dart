@@ -728,7 +728,6 @@ Future<void> _saveCatalogProfile(
   final repository = await world.pumpSettings(tester);
   await settings.choose(tester, '학교 선택', '검증 대학');
   await settings.choose(tester, '학과 선택', '검증 학과');
-  await settings.choose(tester, '교육과정 선택', '검증 과정 (2026)');
   await _chooseSettingsAdmissionYear(tester, 2026);
   await settings.saveSettings(tester);
   await repository.saveProfile(
@@ -740,7 +739,9 @@ Future<void> _saveCatalogProfile(
       weekStartsOn: repository.profile.weekStartsOn,
       institutionId: repository.profile.institutionId,
       departmentId: repository.profile.departmentId,
-      curriculumId: repository.profile.curriculumId,
+      // These scenarios exercise the retained legacy audit contract. New
+      // academic revisions are selected through the separate context editor.
+      curriculumId: otherId,
       version: repository.profile.version,
     ),
   );

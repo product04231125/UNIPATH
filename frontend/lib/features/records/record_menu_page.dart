@@ -1,4 +1,5 @@
 import '../../shared/app_style.dart';
+import '../../shared/credits_format.dart';
 
 import 'package:flutter/material.dart';
 
@@ -17,6 +18,7 @@ import 'personal_repository_scope.dart';
 import '../auth/auth_api.dart';
 import '../auth/guest_preview_scope.dart';
 import '../api/student_api.dart';
+import 'course/course_status.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/external_link_button.dart';
 import '../planning/planning_profile_cta.dart';
@@ -76,7 +78,6 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
   Listenable? _importChanges;
   int _loadRevision = 0;
   bool _formOpen = false;
-
   @override
   void initState() {
     super.initState();
@@ -176,8 +177,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     );
     if (!mounted || entry == null) return;
     final values = {
-      for (final item in entry.payload.entries)
-        item.key: '${item.value ?? ''}',
+      for (final item in entry.payload.entries) item.key: '${item.value ?? ''}',
     };
     await _showForm(draftValues: values, appliedDraftId: entry.id);
   }
@@ -234,20 +234,29 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     final isCourse = widget.kind == PersonalRecordKind.course;
     final entry = RecordMockEntry(
       title: record.value('title'),
-      detail: _fields
-          .where(
-            (f) =>
-                f.key != 'title' &&
-                record.value(f.key).isNotEmpty &&
-                (widget.kind != PersonalRecordKind.activity ||
-                    activityVisibleKeys.contains(f.key)),
-          )
-          .map(
-            (f) => f.key == 'term' && isCourse
-                ? '수강 기간: ${CourseTerm.parse(record.value('term')).label}'
-                : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
-          )
-          .join(' · '),
+      detail: isCourse
+          ? [
+              '수강 기간: ${CourseTerm.parse(record.value('term')).label}',
+              record.value('category'),
+              if (record.value('credits').isNotEmpty)
+                '${record.value('credits')}학점',
+              if (record.value('gradingBasis') == 'pass_fail') 'P/F',
+              courseStatusLabel(record.value('completion')),
+            ].where((v) => v.isNotEmpty).join(' · ')
+          : _fields
+                .where(
+                  (f) =>
+                      f.key != 'title' &&
+                      record.value(f.key).isNotEmpty &&
+                      (widget.kind != PersonalRecordKind.activity ||
+                          activityVisibleKeys.contains(f.key)),
+                )
+                .map(
+                  (f) => f.key == 'term' && isCourse
+                      ? '수강 기간: ${CourseTerm.parse(record.value('term')).label}'
+                      : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
+                )
+                .join(' · '),
       status: '개인 기록',
     );
     return FeatureLine.two(
@@ -266,6 +275,41 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           // Course ownership is settings/profile context; keep the badge on
           // activity/credential/experience menus only.
           if (!isCourse) StatusBadge(status: entry.status),
+          if (isCourse)
+            TextButton(
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: Text(record.value('title')),
+                  content: SingleChildScrollView(
+                    child: SelectableText(
+                      _fields
+                          .where(
+                            (f) =>
+                                !{
+                                  'title',
+                                  'academicContextId',
+                                  'academicEntryId',
+                                }.contains(f.key) &&
+                                record.value(f.key).isNotEmpty,
+                          )
+                          .map(
+                            (f) =>
+                                '${f.label}: ${f.key == 'completion' ? courseStatusLabel(record.value(f.key)) : f.optionLabels[record.value(f.key)] ?? record.value(f.key)}',
+                          )
+                          .join('\n'),
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('닫기'),
+                    ),
+                  ],
+                ),
+              ),
+              child: const Text('상세 보기'),
+            ),
           for (final field in _fields.where(
             (f) =>
                 f.type == PersonalFieldType.url &&
@@ -323,6 +367,17 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     }).toList();
     final isCourse = widget.kind == PersonalRecordKind.course;
     final profile = widget.planning?.profile;
+    int creditUnits(String status) => personal
+        .where((r) => courseStatusLabel(r.value('completion')) == status)
+        .fold(
+          0,
+          (sum, r) =>
+              sum + ((num.tryParse(r.value('credits')) ?? 0) * 1000).round(),
+        );
+    final earned = creditUnits('이수 완료');
+    final ongoing = creditUnits('수강 중');
+    String creditLabel(int units) =>
+        formatCreditsLabel((units / 1000).toString());
     final canAdd =
         !isCourse ||
         widget.planning == null ||
@@ -353,6 +408,8 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                 ),
               ],
               if (widget.kind == PersonalRecordKind.course) ...[
+                const SizedBox(height: 12),
+                const Text('이수 완료 과목의 학점이 자동 반영됩니다. 변경은 각 과목의 수정에서 관리하세요.'),
                 const SizedBox(height: 24),
                 Wrap(
                   spacing: 16,
@@ -406,7 +463,7 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                 ),
                 FeatureLine.one(
                   text:
-                      '개인 입력 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('credits')) ?? 0))}학점',
+                      '취득학점 합계 ${creditLabel(earned)} · 수강 중 ${creditLabel(ongoing)} · 총 ${creditLabel(earned + ongoing)}',
                 ),
               ],
               if (widget.kind == PersonalRecordKind.activity)

@@ -12,6 +12,7 @@ import '../../shared/widgets/surface_card.dart';
 import 'admin_models.dart';
 import 'graduation_certification.dart';
 import 'graduation_template_preview.dart';
+import 'academic_scope_dialog.dart';
 
 class GraduationCertificationPage extends StatefulWidget {
   const GraduationCertificationPage({
@@ -20,12 +21,18 @@ class GraduationCertificationPage extends StatefulWidget {
     required this.departments,
     this.initial,
     this.scrollable = false,
+    this.embedded = false,
+    this.onDirtyChanged,
+    this.tracks = const [],
   });
 
   final String schoolName;
   final List<AdminRecord> departments;
   final GraduationCertificationDraft? initial;
   final bool scrollable;
+  final bool embedded;
+  final ValueChanged<bool>? onDirtyChanged;
+  final List<Map<String, dynamic>> tracks;
 
   @override
   State<GraduationCertificationPage> createState() =>
@@ -35,6 +42,8 @@ class GraduationCertificationPage extends StatefulWidget {
 class GraduationCertificationPageState
     extends State<GraduationCertificationPage> {
   late GraduationCertificationDraft _draft;
+  GraduationCertificationDraft get draft => _draft;
+  String? _reported;
   final _groupLabels = <String, TextEditingController>{};
   final _itemLabels = <String, TextEditingController>{};
   final _exemptionLabels = <String, TextEditingController>{};
@@ -75,8 +84,9 @@ class GraduationCertificationPageState
           g.label,
           g.choice.name,
           g.pickCount,
+          g.scope,
           [
-            for (final i in g.items) [i.id, i.label, i.kind.name],
+            for (final i in g.items) [i.id, i.label, i.kind.name, i.scope],
           ],
           g.exemptions,
           [for (final child in g.groups) child.id],
@@ -244,39 +254,49 @@ class GraduationCertificationPageState
 
   @override
   Widget build(BuildContext context) {
+    if (_reported != _fingerprint) {
+      _reported = _fingerprint;
+      final changed = dirty;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onDirtyChanged?.call(changed);
+      });
+    }
     final body = SurfaceCard(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const FeatureLine.section(
-            text: '인증 요건',
-            padTop: false,
-            padBottom: false,
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            '묶음마다 모두·택 1·택 N을 고르고 기준 한 줄을 적습니다. 창의영역 같은 이름은 학교에 고정하지 않습니다.',
-          ),
-          Text('학교: ${widget.schoolName}'),
-          const SizedBox(height: 12),
-          FieldLabel(
-            label: '학과',
-            child: widget.departments.isEmpty
-                ? const Text('현재 학교에 등록된 학과가 없습니다. 학교·학과 메뉴에서 학과를 먼저 등록하세요.')
-                : AnchoredSelectField<String>(
-                    key: const ValueKey('certification-department'),
-                    externalLabel: true,
-                    value: _draft.departmentId,
-                    label: '학과',
-                    options: [
-                      for (final department in widget.departments)
-                        SelectOption(department.id, department.name),
-                    ],
-                    onChanged: (id) => setState(() => _draft.departmentId = id),
-                  ),
-          ),
-          const SizedBox(height: 12),
+          if (!widget.embedded) ...[
+            const FeatureLine.section(
+              text: '인증 요건',
+              padTop: false,
+              padBottom: false,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '묶음마다 모두·택 1·택 N을 고르고 기준 한 줄을 적습니다. 창의영역 같은 이름은 학교에 고정하지 않습니다.',
+            ),
+            Text('학교: ${widget.schoolName}'),
+            const SizedBox(height: 12),
+            FieldLabel(
+              label: '학과',
+              child: widget.departments.isEmpty
+                  ? const Text('현재 학교에 등록된 학과가 없습니다. 학교·학과 메뉴에서 학과를 먼저 등록하세요.')
+                  : AnchoredSelectField<String>(
+                      key: const ValueKey('certification-department'),
+                      externalLabel: true,
+                      value: _draft.departmentId,
+                      label: '학과',
+                      options: [
+                        for (final department in widget.departments)
+                          SelectOption(department.id, department.name),
+                      ],
+                      onChanged: (id) =>
+                          setState(() => _draft.departmentId = id),
+                    ),
+            ),
+            const SizedBox(height: 12),
+          ],
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -307,19 +327,22 @@ class GraduationCertificationPageState
           else
             for (final group in _draft.groups) _groupCard(group, depth: 0),
           const SizedBox(height: 12),
-          const Text(
-            '저장은 연결되지 않았습니다. 인증 묶음은 현재 실행 규칙 API의 자격·봉사 조건 하나에 넣을 수 없습니다.',
-          ),
-          const SizedBox(height: 8),
-          const FilledButton(
-            onPressed: null,
-            child: Text('인증 요건 저장 불가 · 연결 전'),
-          ),
+          if (!widget.embedded) ...[
+            const Text(
+              '저장은 연결되지 않았습니다. 인증 묶음은 현재 실행 규칙 API의 자격·봉사 조건 하나에 넣을 수 없습니다.',
+            ),
+            const SizedBox(height: 8),
+            const FilledButton(
+              onPressed: null,
+              child: Text('인증 요건 저장 불가 · 연결 전'),
+            ),
+          ],
         ],
       ),
     );
-    if (!widget.scrollable) return body;
-    return SingleChildScrollView(child: body);
+    final result = widget.embedded ? body.child : body;
+    if (!widget.scrollable) return result;
+    return SingleChildScrollView(child: result);
   }
 
   Widget _groupCard(
@@ -333,6 +356,25 @@ class GraduationCertificationPageState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (widget.embedded)
+              TextButton(
+                onPressed: () async {
+                  final selected = await editAcademicScope(
+                    context: context,
+                    title: '인증 영역 적용 대상',
+                    initial: group.scope,
+                    departments: [
+                      for (final d in widget.departments)
+                        SelectOption(d.id, d.name),
+                    ],
+                    tracks: widget.tracks,
+                  );
+                  if (selected != null && mounted) {
+                    setState(() => group.scope = selected.scope);
+                  }
+                },
+                child: Text(group.scope == null ? '적용 대상: 공통 사용' : '별도 적용 대상'),
+              ),
             Align(
               alignment: Alignment.centerRight,
               child: _removeButton(
@@ -381,7 +423,7 @@ class GraduationCertificationPageState
                       hintText: '2',
                       errorText: certificationPickCountError(
                         _pickCounts[group.id]?.text ?? '',
-                        group.items.length,
+                        group.items.length + group.groups.length,
                       ),
                     ),
                   ),
@@ -401,6 +443,27 @@ class GraduationCertificationPageState
                 key: ValueKey('certification-remove-item-${item.id}'),
                 onPressed: () => _removeItem(group, item),
               ),
+              if (widget.embedded)
+                TextButton(
+                  onPressed: () async {
+                    final selected = await editAcademicScope(
+                      context: context,
+                      title: '인증 기준 적용 대상',
+                      initial: item.scope,
+                      departments: [
+                        for (final d in widget.departments)
+                          SelectOption(d.id, d.name),
+                      ],
+                      tracks: widget.tracks,
+                    );
+                    if (selected != null && mounted) {
+                      setState(() => item.scope = selected.scope);
+                    }
+                  },
+                  child: Text(
+                    item.scope == null ? '적용 대상: 영역과 동일' : '별도 적용 대상',
+                  ),
+                ),
               const SizedBox(height: 8),
               AnchoredSelectField<GraduationCertificationKind>(
                 key: ValueKey('certification-kind-${item.id}'),
@@ -447,7 +510,7 @@ class GraduationCertificationPageState
               alignment: Alignment.centerLeft,
               child: TextButton(
                 key: ValueKey('certification-add-child-${group.id}'),
-                onPressed: () => _addGroup(group),
+                onPressed: depth >= 7 ? null : () => _addGroup(group),
                 child: const Text('안쪽 묶음 추가'),
               ),
             ),

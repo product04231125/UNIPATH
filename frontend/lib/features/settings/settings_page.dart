@@ -11,6 +11,8 @@ import '../records/personal_repository_scope.dart';
 import '../records/personal_workspace_import_section.dart';
 
 import '../api/student_api.dart';
+import '../api/student_academic_api.dart';
+import '../graduation/student_academic_contexts.dart';
 import '../graduation/personal_graduation_workspace.dart';
 import '../graduation/school_context_form.dart';
 import '../planning/planning_repository.dart';
@@ -113,6 +115,56 @@ class _SettingsPageState extends State<SettingsPage> {
     super.dispose();
   }
 
+  Widget _schoolTrackField(BuildContext context) {
+    final registered =
+        widget.studentApi != null && widget.repository.profile.hasCatalogSchool;
+    final canOpen =
+        registered && !_saving && !GuestPreviewScope.isActive(context);
+    final legacy = switch (_track) {
+      'single_major' => '단일전공',
+      'double_major' => '복수전공',
+      null => '저장된 이수 경로 없음',
+      _ => _track!,
+    };
+    final field = InputDecorator(
+      key: const Key('settings-school-track'),
+      decoration: InputDecoration(
+        labelText: '교육과정·이수 경로',
+        enabled: canOpen,
+        suffixIcon: canOpen ? const Icon(Icons.open_in_new) : null,
+        helperText: registered
+            ? '학교의 이수 경로·주전공·추가 전공을 연결합니다. 기존 개인 값: $legacy'
+            : '등록 학교·학과를 저장하면 학교의 이수 경로를 연결할 수 있습니다. 기존 값은 유지됩니다.',
+        helperMaxLines: 3,
+      ),
+      child: Text(registered ? '학업 기준 설정' : legacy),
+    );
+    return Semantics(
+      button: canOpen,
+      readOnly: !canOpen,
+      child: InkWell(
+        onTap: canOpen
+            ? () async {
+                if (_dirty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('변경한 설정을 먼저 저장한 뒤 학업 기준을 연결하세요.'),
+                    ),
+                  );
+                  return;
+                }
+                await editStudentAcademicContexts(
+                  context,
+                  StudentAcademicApi.fromStudent(widget.studentApi!),
+                  widget.repository.profile,
+                );
+              }
+            : null,
+        child: field,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_personal) {
@@ -187,16 +239,32 @@ class _SettingsPageState extends State<SettingsPage> {
                                 PlanningImportSection(
                                   repository: widget.repository,
                                 )
-                              else if (!GuestPreviewScope.isActive(context)) ...[
-                                const Text('기기 학업 정보·일정 이전은 계정 서버 연결 후 사용할 수 있습니다.'),
-                                const OutlinedButton(onPressed: null, child: Text('기기 학업 정보·일정 이전')),
+                              else if (!GuestPreviewScope.isActive(
+                                context,
+                              )) ...[
+                                const Text(
+                                  '기기 학업 정보·일정 이전은 계정 서버 연결 후 사용할 수 있습니다.',
+                                ),
+                                const OutlinedButton(
+                                  onPressed: null,
+                                  child: Text('기기 학업 정보·일정 이전'),
+                                ),
                               ],
                               if (!GuestPreviewScope.isActive(context)) ...[
-                                if (PersonalRepositoryScope.read(context)?.importer case final importer?)
-                                  PersonalWorkspaceImportSection(importer: importer)
+                                if (PersonalRepositoryScope.read(context)
+                                        ?.importer
+                                    case final importer?)
+                                  PersonalWorkspaceImportSection(
+                                    importer: importer,
+                                  )
                                 else ...[
-                                  const Text('수강·활동·포트폴리오 자료 이전은 계정 서버 연결 후 사용할 수 있습니다.'),
-                                  const OutlinedButton(onPressed: null, child: Text('기기 개인 기록 이전')),
+                                  const Text(
+                                    '수강·활동·포트폴리오 자료 이전은 계정 서버 연결 후 사용할 수 있습니다.',
+                                  ),
+                                  const OutlinedButton(
+                                    onPressed: null,
+                                    child: Text('기기 개인 기록 이전'),
+                                  ),
                                 ],
                               ],
                               ExcludeFocus(
@@ -226,6 +294,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                             disabled: _saving,
                                             showStudy: false,
                                             showDate: false,
+                                            showCurriculum: false,
                                             initialInstitutionId:
                                                 _pendingInstitutionId,
                                             initialDepartmentId:
@@ -235,8 +304,13 @@ class _SettingsPageState extends State<SettingsPage> {
                                             onChanged: _captureCatalogSelection,
                                           )
                                         else ...[
-                                          const Text('등록된 학교·학과·교육과정 목록은 서버 연결 전입니다. 아래 입력은 개인 설정입니다.'),
-                                          const OutlinedButton(onPressed: null, child: Text('등록된 학교·학과·교육과정 선택')),
+                                          const Text(
+                                            '등록된 학교·학과·교육과정 목록은 서버 연결 전입니다. 아래 입력은 개인 설정입니다.',
+                                          ),
+                                          const OutlinedButton(
+                                            onPressed: null,
+                                            child: Text('등록된 학교·학과·교육과정 선택'),
+                                          ),
                                           TextFormField(
                                             controller: _school,
                                             maxLength: 128,
@@ -297,26 +371,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                           }),
                                         ),
                                         const SizedBox(height: 14),
-                                        Semantics(
-                                          readOnly: true,
-                                          child: InputDecorator(
-                                            key: const Key(
-                                              'settings-school-track',
-                                            ),
-                                            decoration: const InputDecoration(
-                                              labelText: '이수 경로',
-                                              enabled: false,
-                                              helperText: '학교별 이수 경로 조회 연결 전입니다. 기존 저장값을 유지합니다.',
-                                              helperMaxLines: 3,
-                                            ),
-                                            child: Text(switch (_track) {
-                                              'single_major' => '단일전공',
-                                              'double_major' => '복수전공',
-                                              null => '저장된 이수 경로 없음',
-                                              _ => _track!,
-                                            }),
-                                          ),
-                                        ),
+                                        _schoolTrackField(context),
                                       ],
                                     ),
                                     second: Column(

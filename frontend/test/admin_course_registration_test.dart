@@ -51,6 +51,15 @@ class CourseContractGateway implements ApiGateway {
     String path, [
     Map<String, Object?>? body,
   ]) async {
+    if (path == 'me/academic-contexts') {
+      return {
+        'owner_id': userId,
+        'version': 0,
+        'institution_id': 'school',
+        'contexts': [],
+        'issues': [],
+      };
+    }
     final uri = Uri.parse(path);
     final resource = uri.pathSegments[1];
     if (method == 'GET') {

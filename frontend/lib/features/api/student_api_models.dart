@@ -219,10 +219,13 @@ class StudentCourseRecordCreate implements StudentPayload {
     required this.term,
     required this.category,
     required this.credits,
+    this.gradingBasis = "unspecified",
     this.section = "",
     this.courseCode = "",
     this.grade = "",
     this.completion = "planned",
+    this.academicContextId,
+    this.academicEntryId,
     this.catalogCourseId,
     this.catalogCourseVersion,
     this.curriculumCourseId,
@@ -234,10 +237,13 @@ class StudentCourseRecordCreate implements StudentPayload {
   final String term;
   final String category;
   final String credits;
+  final String gradingBasis;
   final String section;
   final String courseCode;
   final String grade;
   final String completion;
+  final String? academicContextId;
+  final String? academicEntryId;
   final String? catalogCourseId;
   final int? catalogCourseVersion;
   final String? curriculumCourseId;
@@ -251,7 +257,10 @@ class StudentCourseRecordCreate implements StudentPayload {
             : value['client_id'] as String,
         term: value['term'] as String,
         category: value['category'] as String,
-        credits: _decimal(value['credits']),
+        credits: value['credits'] == null ? "" : _decimal(value['credits']),
+        gradingBasis: value['grading_basis'] == null
+            ? "unspecified"
+            : value['grading_basis'] as String,
         section: value['section'] == null ? "" : value['section'] as String,
         courseCode: value['course_code'] == null
             ? ""
@@ -260,6 +269,12 @@ class StudentCourseRecordCreate implements StudentPayload {
         completion: value['completion'] == null
             ? "planned"
             : value['completion'] as String,
+        academicContextId: value['academic_context_id'] == null
+            ? null
+            : value['academic_context_id'] as String,
+        academicEntryId: value['academic_entry_id'] == null
+            ? null
+            : value['academic_entry_id'] as String,
         catalogCourseId: value['catalog_course_id'] == null
             ? null
             : value['catalog_course_id'] as String,
@@ -280,11 +295,14 @@ class StudentCourseRecordCreate implements StudentPayload {
     'client_id': clientId,
     'term': term,
     'category': category,
-    'credits': credits,
+    'credits': credits.isEmpty ? null : credits,
+    'grading_basis': gradingBasis,
     'section': section,
     'course_code': courseCode,
     'grade': grade,
     'completion': completion,
+    'academic_context_id': academicContextId,
+    'academic_entry_id': academicEntryId,
     'catalog_course_id': catalogCourseId,
     'catalog_course_version': catalogCourseVersion,
     'curriculum_course_id': curriculumCourseId,
@@ -953,8 +971,9 @@ class StudentCoursePublicView implements StudentPayload {
     this.trackId,
     required this.name,
     required this.institutionId,
-    required this.code,
-    required this.credits,
+    this.code = "",
+    this.credits = "",
+    this.gradingBasis = "unspecified",
     this.departmentId,
   });
   final String id;
@@ -965,6 +984,7 @@ class StudentCoursePublicView implements StudentPayload {
   final String institutionId;
   final String code;
   final String credits;
+  final String gradingBasis;
   final String? departmentId;
   factory StudentCoursePublicView.fromJson(Map<String, dynamic> value) =>
       StudentCoursePublicView(
@@ -976,8 +996,11 @@ class StudentCoursePublicView implements StudentPayload {
         trackId: value['track_id'] == null ? null : value['track_id'] as String,
         name: value['name'] as String,
         institutionId: value['institution_id'] as String,
-        code: value['code'] as String,
-        credits: _decimal(value['credits']),
+        code: value['code'] == null ? "" : value['code'] as String,
+        credits: value['credits'] == null ? "" : _decimal(value['credits']),
+        gradingBasis: value['grading_basis'] == null
+            ? "unspecified"
+            : value['grading_basis'] as String,
         departmentId: value['department_id'] == null
             ? null
             : value['department_id'] as String,
@@ -991,7 +1014,8 @@ class StudentCoursePublicView implements StudentPayload {
     'name': name,
     'institution_id': institutionId,
     'code': code,
-    'credits': credits,
+    'credits': credits.isEmpty ? null : credits,
+    'grading_basis': gradingBasis,
     'department_id': departmentId,
   };
 }

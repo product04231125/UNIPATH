@@ -8,9 +8,77 @@ import '../auth/school_workflow_session.dart';
 import '../records/personal_repository_scope.dart';
 import 'official_graduation_page.dart';
 import 'personal_calculation_page.dart';
+import '../api/student_academic_api.dart';
+import '../auth/guest_preview_scope.dart';
+import 'student_academic_page.dart';
 
 class GraduationPage extends StatelessWidget {
   const GraduationPage({super.key, this.planning, this.onOpenSettings});
+  final PlanningRepository? planning;
+  final VoidCallback? onOpenSettings;
+  @override
+  Widget build(BuildContext context) {
+    final session = SchoolWorkflowSession.maybeOf(context), repo = planning;
+    if (session == null ||
+        repo == null ||
+        GuestPreviewScope.isActive(context)) {
+      return LegacyGraduationPage(
+        planning: planning,
+        onOpenSettings: onOpenSettings,
+      );
+    }
+    return AnimatedBuilder(
+      animation: repo,
+      builder: (context, _) {
+        if (repo.isLoading ||
+            repo.loadFailed ||
+            !repo.profile.hasCatalogSchool) {
+          return LegacyGraduationPage(
+            planning: planning,
+            onOpenSettings: onOpenSettings,
+          );
+        }
+        final calculations = PersonalRepositoryScope.read(context)
+            ?.calculations;
+        return StudentAcademicPage(
+          key: ValueKey((session.identity.id, 'student-academic')),
+          api: StudentAcademicApi.forOwner(session.auth, session.identity.id),
+          profile: repo.profile,
+          onOpenSettings: onOpenSettings,
+          onLegacy: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => Scaffold(
+                appBar: AppBar(title: const Text('기존 졸업 감사·이력')),
+                body: OfficialGraduationPage(
+                  auth: session.auth,
+                  ownerId: session.identity.id,
+                  profile: repo.profile,
+                  onOpenSettings: onOpenSettings,
+                ),
+              ),
+            ),
+          ),
+          onPersonal: calculations == null
+              ? null
+              : () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => Scaffold(
+                      appBar: AppBar(title: const Text('개인 기준 계산·이력')),
+                      body: PersonalCalculationPage(
+                        controller: calculations,
+                        onOpenSettings: onOpenSettings,
+                      ),
+                    ),
+                  ),
+                ),
+        );
+      },
+    );
+  }
+}
+
+class LegacyGraduationPage extends StatelessWidget {
+  const LegacyGraduationPage({super.key, this.planning, this.onOpenSettings});
   final PlanningRepository? planning;
   final VoidCallback? onOpenSettings;
 
@@ -29,14 +97,21 @@ class GraduationPage extends StatelessWidget {
               profile: planning?.profile,
             ),
           const SurfaceCard(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('학교 기준을 가져오는 API가 아직 연결되지 않았습니다.'),
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                OutlinedButton(onPressed: null, child: Text('학교 기준 졸업 감사')),
-                OutlinedButton(onPressed: null, child: Text('감사 이력 조회')),
-                OutlinedButton(onPressed: null, child: Text('개인 기준 계산·이력')),
-              ]),
-            ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('학교 기준을 가져오는 API가 아직 연결되지 않았습니다.'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton(onPressed: null, child: Text('학교 기준 졸업 감사')),
+                    OutlinedButton(onPressed: null, child: Text('감사 이력 조회')),
+                    OutlinedButton(onPressed: null, child: Text('개인 기준 계산·이력')),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       );
@@ -94,16 +169,14 @@ class GraduationPage extends StatelessWidget {
           );
         }
         if (profile.isConfigured) {
-          final calculations =
-              PersonalRepositoryScope.read(context)?.calculations;
+          final calculations = PersonalRepositoryScope.read(context)
+              ?.calculations;
           if (calculations == null) {
             return FeaturePage(
               title: '졸업 요건',
               description: '설정한 개인 기준으로 계산합니다.',
               body: [
-                const Text(
-                  '개인 기준 계산을 열려면 로그인된 학생 작업 공간이 필요합니다.',
-                ),
+                const Text('개인 기준 계산을 열려면 로그인된 학생 작업 공간이 필요합니다.'),
                 if (onOpenSettings != null) ...[
                   const SizedBox(height: 12),
                   PlanningProfileSettingsCta(

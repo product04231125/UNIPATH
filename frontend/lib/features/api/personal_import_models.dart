@@ -77,10 +77,13 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
     required this.term,
     required this.category,
     required this.credits,
+    this.gradingBasis = "unspecified",
     this.section = "",
     this.courseCode = "",
     this.grade = "",
     this.completion = "planned",
+    this.academicContextId,
+    this.academicEntryId,
     this.catalogCourseId,
     this.catalogCourseVersion,
     this.curriculumCourseId,
@@ -91,11 +94,14 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
   final String clientId;
   final String term;
   final String category;
-  final String credits;
+  final String? credits;
+  final String gradingBasis;
   final String section;
   final String courseCode;
   final String grade;
   final String completion;
+  final String? academicContextId;
+  final String? academicEntryId;
   final String? catalogCourseId;
   final int? catalogCourseVersion;
   final String? curriculumCourseId;
@@ -107,7 +113,14 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
         clientId: value['client_id'] as String,
         term: value['term'] as String,
         category: value['category'] as String,
-        credits: _decimal(value['credits']),
+        credits: value['credits'] == null ? null : _decimal(value['credits']),
+        gradingBasis: value['grading_basis'] == null
+            ? "unspecified"
+            : _choice(value['grading_basis'], [
+                "unspecified",
+                "graded",
+                "pass_fail",
+              ]),
         section: value['section'] == null ? "" : value['section'] as String,
         courseCode: value['course_code'] == null
             ? ""
@@ -119,7 +132,14 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
                 "planned",
                 "in_progress",
                 "recorded",
+                "not_completed",
               ]),
+        academicContextId: value['academic_context_id'] == null
+            ? null
+            : value['academic_context_id'] as String,
+        academicEntryId: value['academic_entry_id'] == null
+            ? null
+            : value['academic_entry_id'] as String,
         catalogCourseId: value['catalog_course_id'] == null
             ? null
             : value['catalog_course_id'] as String,
@@ -141,10 +161,13 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
     'term': term,
     'category': category,
     'credits': credits,
+    'grading_basis': gradingBasis,
     'section': section,
     'course_code': courseCode,
     'grade': grade,
     'completion': completion,
+    'academic_context_id': academicContextId,
+    'academic_entry_id': academicEntryId,
     'catalog_course_id': catalogCourseId,
     'catalog_course_version': catalogCourseVersion,
     'curriculum_course_id': curriculumCourseId,

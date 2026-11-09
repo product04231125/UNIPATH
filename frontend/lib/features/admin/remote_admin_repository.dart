@@ -53,6 +53,7 @@ class RemoteAdminRepository extends AdminRepository {
     'departmentId': 'department_id',
     'curriculumId': 'curriculum_id',
     'courseId': 'course_id',
+    'gradingBasis': 'grading_basis',
     'ruleSetId': 'rule_set_id',
     'ruleId': 'rule_id',
     'countryCode': 'country_code',
@@ -243,11 +244,6 @@ class RemoteAdminRepository extends AdminRepository {
       final history = <AdminAuditEntry>[];
       for (final e in events) {
         final action = e['action'] as String;
-        // A newer server can report kinds this build cannot show yet (e.g. classification).
-        final kind = AdminKind.values
-            .where((k) => k.name == e['kind'])
-            .firstOrNull;
-        if (kind == null) continue;
         history.add(
           AdminAuditEntry(
             actorId: e['actor_id'] as String? ?? '',
@@ -256,7 +252,10 @@ class RemoteAdminRepository extends AdminRepository {
             action: action.startsWith('academic:')
                 ? action.split(':').last
                 : action,
-            kind: kind,
+            kind: AdminKind.values
+                .where((k) => k.name == e['kind'])
+                .firstOrNull,
+            rawKind: e['kind'] as String? ?? '',
             result: 'success',
             requestId: e['request_id'] as String? ?? '',
             at: DateTime.parse(e['occurred_at'] as String),
@@ -350,7 +349,13 @@ class RemoteAdminRepository extends AdminRepository {
     for (final f in fields(record.kind)) {
       final value = record.value(f.key);
       final key = keys[f.key] ?? f.key;
-      if (['year', 'credits'].contains(f.key)) {
+      if (f.key == 'gradingBasis') {
+        if (value.isNotEmpty) result[key] = value;
+      } else if (f.key == 'credits' &&
+          value.isEmpty &&
+          record.value('gradingBasis') == 'pass_fail') {
+        result[key] = null;
+      } else if (['year', 'credits'].contains(f.key)) {
         final number = num.tryParse(value);
         if (number == null ||
             !number.isFinite ||

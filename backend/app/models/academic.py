@@ -78,11 +78,24 @@ class SchoolClassification(CatalogRecord, Base):
 class Course(CatalogRecord, Base):
     __tablename__ = "courses"
     __table_args__ = (
-        UniqueConstraint("institution_id", "code"),
+        Index(
+            "uq_courses_school_code",
+            "institution_id",
+            "code",
+            unique=True,
+            postgresql_where=text("code <> ''"),
+        ),
         CheckConstraint("credits >= 0 AND credits <= 100", name="credits"),
+        CheckConstraint(
+            "grading_basis IN ('unspecified','graded','pass_fail')", name="grading_basis"
+        ),
+        CheckConstraint("credits IS NOT NULL OR grading_basis = 'pass_fail'", name="known_credits"),
     )
-    code: Mapped[str] = mapped_column(String(64))
-    credits: Mapped[Decimal] = mapped_column(Numeric(8, 3))
+    code: Mapped[str] = mapped_column(String(64), default="", server_default="")
+    credits: Mapped[Decimal | None] = mapped_column(Numeric(8, 3))
+    grading_basis: Mapped[str] = mapped_column(
+        String(16), default="unspecified", server_default="unspecified"
+    )
     # Owning department; None is a course shared across the school.
     department_id: Mapped[UUID | None] = mapped_column(index=True)
     # School defaults; a curriculum link may override each one.
@@ -102,12 +115,19 @@ class CurriculumCourse(CatalogRecord, Base):
     required: Mapped[bool] = mapped_column(Boolean)
     classification_id: Mapped[UUID | None] = mapped_column(index=True)
     track_id: Mapped[UUID | None] = mapped_column(index=True)
-    # Loaded in the same query, so lists do not issue one lookup per link.
+    # Loaded in the same query, so lists do not issue one lookup per link. correlate_except
+    # keeps the lookup on its own courses row even when a query also selects Course.
     course_classification_id = column_property(
-        select(Course.classification_id).where(Course.id == course_id).scalar_subquery()
+        select(Course.classification_id)
+        .where(Course.id == course_id)
+        .correlate_except(Course)
+        .scalar_subquery()
     )
     course_track_id = column_property(
-        select(Course.track_id).where(Course.id == course_id).scalar_subquery()
+        select(Course.track_id)
+        .where(Course.id == course_id)
+        .correlate_except(Course)
+        .scalar_subquery()
     )
 
     @property
