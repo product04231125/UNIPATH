@@ -5,7 +5,15 @@ from app.schemas.personalization import PersonalEvidence, PersonalizationContext
 from app.services import personal
 
 FIELDS = {
-    "course": ("term", "category", "credits", "course_code", "grade", "completion"),
+    "course": (
+        "term",
+        "category",
+        "credits",
+        "course_code",
+        "grade",
+        "completion",
+        "grading_basis",
+    ),
     "activity": ("role", "reported_hours", "started_on", "ended_on"),
     "experience": ("experience_type", "role", "result", "started_on", "ended_on"),
     "credential": ("provider", "level", "earned_on", "expires_on", "status_label"),

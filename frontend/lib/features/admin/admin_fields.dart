@@ -84,13 +84,22 @@ List<AdminField> adminFields(AdminKind kind) => [
     const AdminField('countryCode', '국가 코드', required: false),
     const AdminField('officialUrl', '공식 사이트 HTTP(S)', required: false),
   ],
-  if (kind == AdminKind.department || kind == AdminKind.course)
-    const AdminField('code', '코드'),
+  if (kind == AdminKind.department) const AdminField('code', '코드'),
+  if (kind == AdminKind.course)
+    const AdminField('code', '학교 과목번호 (선택)', required: false),
   if (kind == AdminKind.curriculum) ...[
     const AdminField('departmentId', '학과', relation: AdminKind.department),
     const AdminField('year', '적용 연도'),
   ],
-  if (kind == AdminKind.course) const AdminField('credits', '학점'),
+  if (kind == AdminKind.course) ...[
+    const AdminField(
+      'gradingBasis',
+      '평가 방식',
+      required: false,
+      options: {'unspecified': '미지정', 'graded': '등급 평가', 'pass_fail': 'P/F'},
+    ),
+    const AdminField('credits', '학점 (P/F 미확인 시 비움)', required: false),
+  ],
   if (kind == AdminKind.curriculumCourse) ...[
     const AdminField('curriculumId', '교육과정', relation: AdminKind.curriculum),
     const AdminField('courseId', '과목', relation: AdminKind.course),

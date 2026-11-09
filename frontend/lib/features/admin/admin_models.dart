@@ -91,9 +91,24 @@ class AdminAuditEntry {
     required this.result,
     required this.requestId,
     required this.at,
+    this.rawKind = '',
   });
   final String actorId, action, targetId, institutionId, result, requestId;
-  final AdminKind kind;
+  final AdminKind? kind;
+  final String rawKind;
+  String get kindName => kind?.name ?? rawKind;
+  String get kindLabel =>
+      kind?.label ??
+      switch (rawKind) {
+        'classification' ||
+        'classification_create' ||
+        'classification_replace' ||
+        'classification_publish' => '학교 분류',
+        'studyTrack' || 'track_create' || 'track_update' => '이수 경로',
+        _ when rawKind.startsWith('curriculum_') => '교육과정',
+        _ when rawKind.startsWith('requirement_') => '졸업요건',
+        _ => '기타 관리 작업',
+      };
   final DateTime at;
 }
 

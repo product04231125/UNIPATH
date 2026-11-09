@@ -8,6 +8,7 @@ import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/auth/guest_preview_scope.dart';
 import 'package:university_path_frontend/features/auth/school_workflow_session.dart';
 import 'package:university_path_frontend/features/graduation/graduation_page.dart';
+import 'package:university_path_frontend/features/graduation/student_academic_page.dart';
 import 'package:university_path_frontend/features/graduation/official_graduation_page.dart';
 import 'package:university_path_frontend/features/graduation/personal_calculation_controller.dart';
 import 'package:university_path_frontend/features/graduation/personal_calculation_draft.dart';
@@ -27,6 +28,44 @@ Future<AuthApi> loginAuth() async {
       final path = request.url.path;
       if (path.endsWith('/login')) {
         return fixture.json({...identityJson(), 'access_token': token});
+      }
+      if (path.endsWith('/academic-contexts')) {
+        return fixture.json({
+          'owner_id': userId,
+          'version': 0,
+          'institution_id': otherId,
+          'contexts': <Object>[],
+          'issues': ['contexts_required'],
+        });
+      }
+      if (path.endsWith('/academic-requirements')) {
+        return fixture.json({
+          'owner_id': userId,
+          'workspace_version': 0,
+          'activation_id': null,
+          'documents': <Object>[],
+          'issues': ['contexts_required'],
+        });
+      }
+      if (path.endsWith('/academic-requirements/preview')) {
+        return fixture.json({
+          'owner_id': userId,
+          'workspace_version': 0,
+          'active_activation_id': null,
+          'digest': 'a' * 64,
+          'documents': <Object>[],
+          'changes': <Object>[],
+          'issues': ['contexts_required'],
+        });
+      }
+      if (path.endsWith('/academic-credit-progress')) {
+        return fixture.json({
+          'owner_id': userId,
+          'activation_id': null,
+          'tables': <Object>[],
+          'links': <Object>[],
+          'issues': ['contexts_required'],
+        });
       }
       return fixture.json({'items': <Object?>[], 'next_cursor': null});
     }),
@@ -123,29 +162,37 @@ class ReviewCurriculumData extends Fake
 }
 
 void main() {
-  testWidgets('catalog profile opens official graduation body', (tester) async {
-    final auth = await loginAuth();
-    addTearDown(auth.close);
-    final planning = await seededPlanning(
-      const PlanningProfile(
-        school: '검증 대학',
-        department: '검증 학과',
-        admissionYear: 2026,
-        track: 'single_major',
-        institutionId: otherId,
-        departmentId: otherId,
-        curriculumId: otherId,
-      ),
-    );
-    addTearDown(planning.dispose);
-    await tester.pumpWidget(host(auth: auth, planning: planning));
-    await tester.pumpAndSettle();
-    expect(find.byType(OfficialGraduationPage), findsOneWidget);
-    expect(find.byType(PersonalCalculationPage), findsNothing);
-    expect(find.text('졸업요건 감사 실행'), findsOneWidget);
-    expect(find.byType(FeaturePage), findsOneWidget);
-    expect(find.text('졸업 요건'), findsOneWidget);
-  });
+  testWidgets(
+    'catalog profile opens new requirements and retains official history entry',
+    (tester) async {
+      final auth = await loginAuth();
+      addTearDown(auth.close);
+      final planning = await seededPlanning(
+        const PlanningProfile(
+          school: '검증 대학',
+          department: '검증 학과',
+          admissionYear: 2026,
+          track: 'single_major',
+          institutionId: otherId,
+          departmentId: otherId,
+          curriculumId: otherId,
+        ),
+      );
+      addTearDown(planning.dispose);
+      await tester.pumpWidget(host(auth: auth, planning: planning));
+      await tester.pumpAndSettle();
+      expect(find.byType(StudentAcademicPage), findsOneWidget);
+      expect(find.byType(OfficialGraduationPage), findsNothing);
+      expect(find.byType(PersonalCalculationPage), findsNothing);
+      expect(find.text('학업 기준 설정'), findsOneWidget);
+      expect(find.byType(FeaturePage), findsOneWidget);
+      expect(find.text('졸업 요건'), findsOneWidget);
+      await tester.tap(find.text('기존 졸업 감사·이력'));
+      await tester.pumpAndSettle();
+      expect(find.byType(OfficialGraduationPage), findsOneWidget);
+      expect(find.text('졸업요건 감사 실행'), findsOneWidget);
+    },
+  );
 
   testWidgets('personal configured profile opens personal calculation body', (
     tester,
@@ -276,7 +323,7 @@ void main() {
   });
 
   testWidgets(
-    'incomplete catalog context keeps official gate and settings action',
+    'incomplete registered profile shows the new requirements setup action',
     (tester) async {
       final auth = await loginAuth();
       addTearDown(auth.close);
@@ -293,23 +340,9 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.byType(OfficialGraduationPage), findsOneWidget);
-      expect(
-        tester
-            .widget<FilledButton>(
-              find.widgetWithText(FilledButton, '졸업요건 감사 실행'),
-            )
-            .onPressed,
-        isNull,
-      );
-      await tester.tap(
-        find.descendant(
-          of: find.byType(PlanningProfileSettingsCta),
-          matching: find.byWidgetPredicate(
-            (widget) => widget is ButtonStyleButton,
-          ),
-        ),
-      );
+      expect(find.byType(StudentAcademicPage), findsOneWidget);
+      expect(find.byType(OfficialGraduationPage), findsNothing);
+      await tester.tap(find.text('프로필 설정으로'));
       expect(settingsOpened, isTrue);
     },
   );

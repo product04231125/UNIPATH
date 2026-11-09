@@ -9,6 +9,21 @@ from app.models.academic import (
     RuleSet,
     SchoolClassification,
 )
+from app.models.academic_workspace import (
+    AcademicCreditRecordBinding,
+    AcademicCurriculumCourse,
+    AcademicCurriculumDepartmentRef,
+    AcademicCurriculumRevision,
+    AcademicCurriculumTrackRef,
+    AcademicMutationReceipt,
+    AcademicRequirementDepartmentRef,
+    AcademicRequirementNodeRef,
+    AcademicRequirementRevision,
+    AcademicRequirementTrackRef,
+    ClassificationNode,
+    ClassificationRevision,
+    StudyTrack,
+)
 from app.models.admin_applications import SchoolAdminApplication
 from app.models.admin_signups import SchoolAdminSignup
 from app.models.base import Base
@@ -61,11 +76,40 @@ from app.models.rule_programs import (
     ProgramRule,
     RuleProgram,
 )
+from app.models.student_academic import (
+    StudentAcademicActivation,
+    StudentAcademicContext,
+    StudentAcademicCourseLink,
+    StudentAcademicDocument,
+    StudentAcademicReceipt,
+    StudentAcademicResponse,
+    StudentAcademicWorkspace,
+)
 
 __all__ = [
+    "AcademicCreditRecordBinding",
+    "AcademicCurriculumCourse",
+    "AcademicCurriculumDepartmentRef",
+    "AcademicCurriculumRevision",
+    "AcademicCurriculumTrackRef",
     "AcademicGuidanceBinding",
+    "AcademicMutationReceipt",
+    "AcademicRequirementDepartmentRef",
+    "AcademicRequirementNodeRef",
+    "AcademicRequirementRevision",
+    "AcademicRequirementTrackRef",
+    "ClassificationNode",
+    "ClassificationRevision",
     "CoursePlacementReceipt",
     "SchoolClassification",
+    "StudentAcademicActivation",
+    "StudentAcademicContext",
+    "StudentAcademicCourseLink",
+    "StudentAcademicDocument",
+    "StudentAcademicReceipt",
+    "StudentAcademicResponse",
+    "StudentAcademicWorkspace",
+    "StudyTrack",
     "SchoolAdminSignup",
     "SchoolAdminApplication",
     "Base",

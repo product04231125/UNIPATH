@@ -70,8 +70,12 @@ def contents(db, item, schema):
     result = {
         key: getattr(item, key)
         for key in schema.model_fields
-        if key not in ("related_record", "sources")
+        if key not in ("related_record", "sources", "academic_context_id", "academic_entry_id")
     }
+    if isinstance(item, CourseRecord):
+        from app.services.student_course_records import reference
+
+        result.update(reference(db, item))
     if isinstance(item, PersonalGraduationRule):
         result["related_record"] = None
         for kind in RECORD_MODELS:
@@ -291,7 +295,11 @@ def check_relations(db, owner_id, model, data, current=None):
 
 
 def set_values(db, item, data):
-    values = {key: value for key, value in data.items() if key not in ("sources", "related_record")}
+    values = {
+        key: value
+        for key, value in data.items()
+        if key not in ("sources", "related_record", "academic_context_id", "academic_entry_id")
+    }
     if isinstance(item, PersonalGraduationRule):
         for kind in RECORD_MODELS:
             values[f"related_{kind}_id"] = None
@@ -406,6 +414,18 @@ def save_record(db, owner_id, resource, payload, record_id=None):
         item.updated_at = datetime.now(UTC)
         set_values(db, item, data)
         db.flush()
+        if model == CourseRecord:
+            from app.services.student_course_records import sync
+
+            clear = (
+                record_id is not None
+                and data["academic_context_id"] is None
+                and (
+                    previous["academic_context_id"] is not None
+                    or any(previous[key] != data[key] for key in ("title", "course_code"))
+                )
+            )
+            sync(db, item, data["academic_context_id"], data["academic_entry_id"], clear=clear)
         if record_id is None and payload.client_id:
             db.add(
                 PersonalCreationReceipt(

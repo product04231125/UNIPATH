@@ -96,7 +96,10 @@ class CourseRecord(OwnedRecord, Base):
     __tablename__ = "personal_course_records"
     term: Mapped[str] = mapped_column(String(128))
     category: Mapped[str] = mapped_column(String(128))
-    credits: Mapped[Decimal] = mapped_column(Numeric(8, 3))
+    credits: Mapped[Decimal | None] = mapped_column(Numeric(8, 3))
+    grading_basis: Mapped[str] = mapped_column(
+        String(16), default="unspecified", server_default="unspecified"
+    )
     section: Mapped[str] = mapped_column(String(128), default="")
     course_code: Mapped[str] = mapped_column(String(128), default="")
     grade: Mapped[str] = mapped_column(String(128), default="")
@@ -108,8 +111,17 @@ class CourseRecord(OwnedRecord, Base):
     curriculum_course_id: Mapped[UUID | None] = mapped_column(index=True)
     curriculum_course_version: Mapped[int | None] = mapped_column(Integer)
     __table_args__ = (
-        CheckConstraint("credits > 0 AND credits <= 100", name="credits"),
-        CheckConstraint("completion IN ('planned','in_progress','recorded')", name="completion"),
+        CheckConstraint(
+            "(credits >= 0 AND credits <= 100) AND (credits > 0 OR grading_basis = 'pass_fail')",
+            name="credits",
+        ),
+        CheckConstraint("credits IS NOT NULL OR grading_basis = 'pass_fail'", name="known_credits"),
+        CheckConstraint(
+            "grading_basis IN ('unspecified','graded','pass_fail')", name="grading_basis"
+        ),
+        CheckConstraint(
+            "completion IN ('planned','in_progress','recorded','not_completed')", name="completion"
+        ),
         CheckConstraint(
             "(catalog_course_id IS NULL) = (catalog_course_version IS NULL) AND "
             "(curriculum_course_id IS NULL) = (curriculum_course_version IS NULL) AND "

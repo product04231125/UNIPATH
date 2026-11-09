@@ -128,6 +128,79 @@ Future<(AuthApi, RemoteAdminRepository)> connected(AdminServer server) async {
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  testWidgets('overview renders when audit contains new and future kinds', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final server = AdminServer();
+    server.data['audit-logs'] = [
+      for (final kind in ['classification', 'studyTrack', 'future_kind'])
+        {
+          'actor_id': userId,
+          'target_id': schoolId,
+          'institution_id': schoolId,
+          'action': 'academic:$kind',
+          'kind': kind,
+          'occurred_at': '2026-11-08T00:00:00Z',
+        },
+    ];
+    final api = AuthApi(
+      client: MockClient((request) async => server.respond(request)),
+      cookieMode: false,
+    );
+    await api.authenticate(
+      email: 'operator@example.test',
+      password: 'synthetic long password',
+    );
+    await tester.pumpWidget(UniversityPathApp(authGateway: api));
+    await tester.pumpAndSettle();
+    expect(find.text('No element'), findsNothing);
+    expect(find.textContaining('학교 분류 ·'), findsOneWidget);
+    expect(find.textContaining('이수 경로 ·'), findsOneWidget);
+    expect(find.textContaining('기타 관리 작업 ·'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    api.close();
+  });
+  test('new and unknown audit kinds preserve history without blocking catalog load', () async {
+    final server = AdminServer();
+    final kinds = [
+      'classification_create',
+      'classification_replace',
+      'track_create',
+      'curriculum_create',
+      'requirement_replace',
+      'future_kind',
+    ];
+    server.data['audit-logs'] = [
+      for (final kind in kinds)
+        {
+          'actor_id': userId,
+          'target_id': schoolId,
+          'institution_id': schoolId,
+          'action': 'academic:$kind',
+          'kind': kind,
+          'occurred_at': '2026-11-08T00:00:00Z',
+        },
+    ];
+    final (api, repo) = await connected(server);
+    expect(repo.records.any((r) => r.kind == AdminKind.institution), isTrue);
+    expect(repo.history.map((e) => e.kindName), kinds);
+    expect(repo.history.map((e) => e.kindLabel), [
+      '학교 분류',
+      '학교 분류',
+      '이수 경로',
+      '교육과정',
+      '졸업요건',
+      '기타 관리 작업',
+    ]);
+    expect(repo.history.last.rawKind, 'future_kind');
+    await repo.load();
+    expect(repo.history.length, kinds.length);
+    repo.dispose();
+    api.close();
+  });
   test('remote catalog shares native session and sends typed payloads without owner fields', () async {
     final server = AdminServer();
     final (api, repo) = await connected(server);
@@ -274,7 +347,7 @@ void main() {
   );
 
   test(
-    'history from a newer server skips kinds this build does not know',
+    'history from a newer server keeps kinds this build does not know',
     () async {
       final server = AdminServer();
       Map<String, dynamic> event(String kind, String action) => {
@@ -290,9 +363,16 @@ void main() {
       server.data['audit-logs'] = [
         event('course', 'academic:course:create'),
         event('classification', 'academic:classification:create'),
+        event('futureKind', 'academic:future:create'),
       ];
       final (api, repo) = await connected(server);
-      expect(repo.history.map((e) => e.kind), [AdminKind.course]);
+      // Loading never fails on a kind this build lacks; the raw label is kept.
+      expect(repo.history.map((e) => e.kindName), [
+        'course',
+        'classification',
+        'futureKind',
+      ]);
+      expect(repo.history.last.kind, isNull);
       repo.dispose();
       api.close();
     },

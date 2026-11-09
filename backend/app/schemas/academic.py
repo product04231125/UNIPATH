@@ -17,6 +17,8 @@ from pydantic import (
 from app.schemas.auth import Name, StrictModel
 
 Code = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+SchoolCourseCode = Annotated[str, StringConstraints(strip_whitespace=True, max_length=64)]
+GradingBasis = Literal["unspecified", "graded", "pass_fail"]
 
 
 def safe_url(value: str) -> str:
@@ -74,10 +76,20 @@ class ClassificationRefs(StrictModel):
 
 
 class CourseCreate(CatalogCreate, ClassificationRefs):
-    code: Code
-    credits: Decimal = Field(ge=0, le=100, max_digits=8, decimal_places=3, allow_inf_nan=False)
+    # Empty when the school publishes no course code; non-empty codes stay unique per school.
+    code: SchoolCourseCode = ""
+    credits: Decimal | None = Field(
+        default=None, ge=0, le=100, max_digits=8, decimal_places=3, allow_inf_nan=False
+    )
+    grading_basis: GradingBasis = "unspecified"
     # Owning department of the same school. None is a course shared across the school.
     department_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def credit_state(self):
+        if self.credits is None and self.grading_basis != "pass_fail":
+            raise ValueError("Only P/F courses can have unconfirmed credits")
+        return self
 
 
 class CurriculumCourseCreate(CatalogCreate, ClassificationRefs):
@@ -268,8 +280,10 @@ AuditKind = Literal[
     "ruleSet",
     "rule",
     "document",
-    # School classifications (feature/backend-school-classifications); empty until it lands.
     "classification",
+    # Academic workspace study tracks and local PDF imports.
+    "studyTrack",
+    "other",
     "scope",
     "account",
 ]

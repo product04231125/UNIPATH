@@ -1,5 +1,39 @@
 # 확장 데이터베이스 ERD 및 MVP 단계
 
+## 마이그레이션 순서 (2026-11-09 통합)
+
+`0015_school_classifications`·`0016_guidance_bindings`·`0017_course_catalog_links` 다음에
+관리자 학사 재설계와 학생 학사 연결 `0018_admin_academic_foundation`~`0026_credit_record_bindings`가
+이어진다(총 73개 도메인 테이블). 두 작업은 별도 브랜치에서 각각 0015부터 번호를 매겼고, 통합하면서
+뒤쪽을 0018부터 다시 매겼다. 이전 번호(0015~0023)를 적용한 로컬 DB는 새로 만들어야 한다.
+
+## 학생 학사 연결의 실제 추가 테이블 (2026-11-08)
+
+`0021_student_academic`은 student_academic_workspaces / contexts / activations /
+documents / responses / course_links / receipts 7개 테이블을 추가한다.
+학생 소유 FK·적용본 스냅샷·항목별 O/X와 기록 버전·교육과정 과목 연결을 저장한다.
+기존 planning_profiles·개인 기록·공식 감사·개인 계산 테이블은 변경하지 않는다.
+실제 소유권·계약·개정 규칙은 [학생 학사 API](api/student-academic.md)를 따른다.
+
+## 관리자 학사 재설계의 실제 추가 테이블 (2026-11-08)
+
+기존 학교·학과·과목·교육과정·규칙과 학생 테이블은 유지한다. 0015~0017은
+기존 schema에 아래 12개 테이블만 추가한다. 상세 키·제약은 모델/migration과
+[현재 관리자 계약](api/admin-academic-workspace.md)을 따른다.
+
+| migration | 테이블 | 관계 |
+| --- | --- | --- |
+| 0015 | academic_classification_revisions, academic_classification_nodes | 학교별 분류 개정·부모/자식·안정 논리 ID |
+| 0015 | academic_study_tracks, academic_mutation_receipts | 학교 경로·동일 요청 재시도 결과 |
+| 0016 | academic_curriculum_revisions, academic_curriculum_courses | 기존 교육과정 대응·분류 버전·기존 과목 재사용·과정별 인정 기준 |
+| 0016 | academic_curriculum_department_refs, academic_curriculum_track_refs | 적용 범위의 실제 학과/경로 FK |
+| 0017 | academic_requirement_revisions | 종류별 검증 JSONB·공통 범위·개정·게시·철회 |
+| 0017 | academic_requirement_department_refs, academic_requirement_track_refs, academic_requirement_node_refs | 요건 범위·학점표 분류의 FK |
+
+JSONB 범위·본문은 엄격한 종류별 DTO로 검증하고 외부 ID는 동일 학교·고정 분류 버전의
+복합 FK로 보강한다. 게시본은 직접 수정하지 않는다. 학생 프로필·개인 기록·졸업 평가의
+새 테이블은 이번에 추가하지 않는다. 아래 ERD의 계획 모델과 실제 추가분을 구분한다.
+
 이 문서는 UniversityPath AI의 **전체 논리 데이터 모델**과 단계별 실제 도입
 범위를 정의한다. README에 제시된 대표 핵심 엔터티를 바탕으로, 아래 모델은
 자격증·역량·진로·채용·개인화를 확장하기 위한 기준이다.
@@ -923,7 +957,7 @@ erDiagram
 
 ## 단계별 도입 계획과 현재 구현
 
-현재 물리 구현은 `0017_course_catalog_links`까지 총 53개 도메인 테이블이다.
+현재 물리 구현은 `0026_credit_record_bindings`까지 총 73개 도메인 테이블이다.
 선택 자료의 [개인화·채용 분석 최소 계약](api/job-analysis.md)은 기존 개인 테이블을 본인
 범위에서 읽으며 공고·개인 문맥·결과의 새 저장소를 만들지 않는다. `JobPosting`,
 `JobRequirement`, `JobMatch` 등은 전체 2차 MVP의 후속 영속 모델이다.

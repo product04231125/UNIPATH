@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.academic import router as academic_router
 from app.api.academic_guidance import admin as academic_guidance_admin_router
 from app.api.academic_guidance import router as academic_guidance_router
+from app.api.academic_requirements import router as academic_requirements_router
+from app.api.academic_workspace import router as academic_workspace_router
 from app.api.access import router as access_router
 from app.api.admin_applications import admin_router as admin_applications_router
 from app.api.admin_applications import router as admin_applications_owner_router
@@ -35,6 +37,7 @@ from app.api.record_sources import admin_router as record_sources_admin_router
 from app.api.record_sources import router as record_sources_router
 from app.api.rule_programs import public_router as program_catalog_router
 from app.api.rule_programs import router as program_router
+from app.api.student_academic import router as student_academic_router
 from app.core.config import Settings, get_settings
 from app.core.database import create_session_factory
 from app.core.errors import register_error_handlers
@@ -105,7 +108,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(admin_applications_router, prefix="/api/v1")
     application.include_router(access_router, prefix="/api/v1")
     application.include_router(academic_router, prefix="/api/v1")
+    application.include_router(academic_workspace_router, prefix="/api/v1")
+    application.include_router(academic_requirements_router, prefix="/api/v1")
     application.include_router(personal_router, prefix="/api/v1")
+    application.include_router(student_academic_router, prefix="/api/v1")
     application.include_router(personal_imports_router, prefix="/api/v1")
     application.include_router(personalization_router, prefix="/api/v1")
     application.include_router(academic_guidance_router, prefix="/api/v1")

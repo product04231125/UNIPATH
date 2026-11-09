@@ -10,7 +10,7 @@ from test_auth import auth_client as auth_client
 from test_auth import auth_db as auth_db
 from test_auth import register
 
-from app.models.identity import User
+from app.models.identity import IdentityAudit, User
 
 pytestmark = pytest.mark.integration
 LOGS = "/api/v1/admin/audit-logs"
@@ -122,3 +122,44 @@ def test_filters_keep_school_scope_and_pagination(events):
     second = history(c, h, kind="course", limit=1, cursor=first["next_cursor"])
     assert len(second["items"]) == 1 and second["next_cursor"] is None
     assert first["items"][0]["id"] != second["items"][0]["id"]
+
+
+def test_kind_filter_matches_the_kind_label_for_every_action_shape(auth_client, auth_db):
+    """Catalog, workspace ("academic:<entity>_<verb>") and import actions filter by their label."""
+    c = auth_client
+    h = operator(c, auth_db)
+    a = school(c, h)
+    shapes = [
+        "academic:course:create",
+        "academic:curriculumCourse:update",
+        "academic:classification:create",
+        "academic:classification_create",
+        "academic:track_create",
+        "academic:curriculum_create",
+        "academic:curriculum:delete",
+        "academic:requirement_create",
+        "academic:rule:update",
+        "academic:institution:guidance_bind",
+        "local_pdf_import:track",
+        "local_pdf_import:requirement",
+        "local_pdf_import:notes",
+        "scope_granted",
+    ]
+    with auth_db() as session:
+        for action in shapes:
+            session.add(IdentityAudit(action=action, target_id=uuid4(), institution_id=a["id"]))
+        session.commit()
+    rows = history(c, h, institution_id=a["id"], limit=100)["items"]
+    labels = {row["action"]: row["kind"] for row in rows if row["action"] in shapes}
+    assert labels["academic:classification_create"] == "classification"
+    assert labels["academic:track_create"] == "studyTrack"
+    assert labels["academic:requirement_create"] == "rule"
+    assert labels["local_pdf_import:notes"] == "other"
+    for kind in sorted(set(labels.values())):
+        found = {
+            row["action"]
+            for row in history(c, h, institution_id=a["id"], kind=kind, limit=100)["items"]
+        }
+        expected = {action for action, label in labels.items() if label == kind}
+        assert expected <= found, kind
+        assert not {action for action in found & set(shapes) if labels[action] != kind}, kind

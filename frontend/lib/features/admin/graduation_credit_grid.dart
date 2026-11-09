@@ -1,24 +1,56 @@
-/// Local credit-table draft. Not a rule-programs DTO.
+import 'dart:convert';
+
+import '../records/personal_record_repository.dart';
+
+/// Editor model; the academic workspace adapter owns its wire representation.
 enum GraduationCreditCellKind { empty, number, notApplicable }
 
 class GraduationCreditColumnGroup {
-  GraduationCreditColumnGroup({required this.id, required this.label});
+  GraduationCreditColumnGroup({
+    required this.id,
+    required this.label,
+    this.parentId,
+    this.position = 0,
+  });
   final String id;
   String label;
+  String? parentId;
+  int position;
 }
 
 class GraduationCreditColumn {
-  GraduationCreditColumn({required this.id, required this.label, this.groupId});
+  GraduationCreditColumn({
+    required this.id,
+    required this.label,
+    this.groupId,
+    this.role = 'value',
+    this.classificationNodeId,
+    this.requirement,
+    this.aggregateMembers = const [],
+    this.position = 0,
+    this.matchMode = 'subtree',
+  });
   final String id;
   String label;
   String? groupId;
+  String role;
+  String? classificationNodeId, requirement;
+  List<String> aggregateMembers;
+  int position;
+  String matchMode;
 }
 
 class GraduationCreditRow {
-  GraduationCreditRow({required this.id, required this.label, this.note = ''});
+  GraduationCreditRow({
+    required this.id,
+    required this.label,
+    this.note = '',
+    this.scope,
+  });
   final String id;
   String label;
   String note;
+  Map<String, dynamic>? scope;
 }
 
 class GraduationCreditCell {
@@ -55,9 +87,7 @@ class GraduationCreditGrid {
   GraduationCreditCell cellFor(String rowId, String columnId) =>
       cells.putIfAbsent(cellKey(rowId, columnId), GraduationCreditCell.new);
 
-  static int _nextId = 0;
-  static String newId([String prefix = 'grid']) =>
-      '$prefix-${DateTime.now().microsecondsSinceEpoch}-${_nextId++}';
+  static String newId([String prefix = 'grid']) => PersonalRecord.newId();
 }
 
 BigInt? _creditThousandths(String text) {
@@ -80,6 +110,30 @@ num? parseCreditNumber(String text) {
   final value = _creditValue(scaled);
   if (!value.isFinite) return null;
   return value == value.roundToDouble() ? value.toInt() : value;
+}
+
+List<GraduationCreditColumn> orderedCreditColumns(GraduationCreditGrid grid) {
+  final result = <GraduationCreditColumn>[], visited = <String>{};
+  void walk(String? parent) {
+    final items = <({String id, int position, bool group})>[
+      for (final g in grid.groups)
+        if (g.parentId == parent) (id: g.id, position: g.position, group: true),
+      for (final c in grid.columns)
+        if (c.groupId == parent) (id: c.id, position: c.position, group: false),
+    ]..sort((a, b) => a.position.compareTo(b.position));
+    for (final item in items) {
+      if (!visited.add(item.id)) continue;
+      if (item.group) {
+        walk(item.id);
+      } else {
+        result.add(grid.columns.firstWhere((c) => c.id == item.id));
+      }
+    }
+  }
+
+  walk(null);
+  result.addAll(grid.columns.where((c) => !visited.contains(c.id)));
+  return result;
 }
 
 num summedLeafCredits(
@@ -124,6 +178,8 @@ GraduationCreditGrid copyCreditGrid(
         GraduationCreditColumnGroup(
           id: groupIds[group.id]!,
           label: group.label,
+          parentId: group.parentId == null ? null : groupIds[group.parentId],
+          position: group.position,
         ),
     ],
     columns: [
@@ -132,6 +188,15 @@ GraduationCreditGrid copyCreditGrid(
           id: columnIds[column.id]!,
           label: column.label,
           groupId: column.groupId == null ? null : groupIds[column.groupId],
+          role: column.role,
+          classificationNodeId: column.classificationNodeId,
+          position: column.position,
+          matchMode: column.matchMode,
+          requirement: column.requirement,
+          aggregateMembers: [
+            for (final id in column.aggregateMembers)
+              if (columnIds[id] != null) columnIds[id]!,
+          ],
         ),
     ],
     rows: [
@@ -140,6 +205,11 @@ GraduationCreditGrid copyCreditGrid(
           id: rowIds[row.id]!,
           label: row.label,
           note: row.note,
+          scope: row.scope == null
+              ? null
+              : Map<String, dynamic>.from(
+                  jsonDecode(jsonEncode(row.scope)) as Map,
+                ),
         ),
     ],
   );

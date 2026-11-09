@@ -506,10 +506,42 @@ def update_institution(db, request, record_id, payload):
 
 
 SCOPE_ACTIONS = ("scope_granted", "scope_revoked")
+# Workspace mutations audit as "academic:<entity>_<verb>" with the school as target.
+WORKSPACE_PREFIXES = {
+    "classification": "classification_",
+    "studyTrack": "track_",
+    "curriculum": "curriculum_",
+    "rule": "requirement_",
+}
+LOCAL_IMPORT_KINDS = {"track": "studyTrack", "requirement": "rule"}
+
+
+def audit_kind(action):
+    if action.startswith("academic:"):
+        operation = action.split(":")[1]
+        for kind, prefix in WORKSPACE_PREFIXES.items():
+            if operation.startswith(prefix):
+                return kind
+        return operation
+    if action.startswith("local_pdf_import:"):
+        return LOCAL_IMPORT_KINDS.get(action.split(":")[1], "other")
+    if action in SCOPE_ACTIONS:
+        return "scope"
+    if action == "institution_created":
+        return "institution"
+    return "account"
+
+
+def imported(name):
+    action = IdentityAudit.action
+    return or_(
+        action == f"local_pdf_import:{name}",
+        action.startswith(f"local_pdf_import:{name}:", autoescape=True),
+    )
 
 
 def kind_condition(kind):
-    """The inverse of the kind labels assigned in history()."""
+    """The inverse of audit_kind(), so a kind filter finds exactly the labelled rows."""
     action = IdentityAudit.action
     if kind == "scope":
         return action.in_(SCOPE_ACTIONS)
@@ -521,9 +553,19 @@ def kind_condition(kind):
     if kind == "account":
         return and_(
             ~action.startswith("academic:", autoescape=True),
+            ~action.startswith("local_pdf_import:", autoescape=True),
             action.not_in((*SCOPE_ACTIONS, "institution_created")),
         )
-    return action.startswith(f"academic:{kind}:", autoescape=True)
+    if kind == "other":
+        return and_(
+            action.startswith("local_pdf_import:", autoescape=True),
+            *[~imported(name) for name in LOCAL_IMPORT_KINDS],
+        )
+    imports = [imported(name) for name, label in LOCAL_IMPORT_KINDS.items() if label == kind]
+    options = [action.startswith(f"academic:{kind}:", autoescape=True), *imports]
+    if kind in WORKSPACE_PREFIXES:
+        options.append(action.startswith(f"academic:{WORKSPACE_PREFIXES[kind]}", autoescape=True))
+    return or_(*options)
 
 
 def history(db, identity, institution_id, cursor, limit, filters=None):
@@ -555,17 +597,7 @@ def history(db, identity, institution_id, cursor, limit, filters=None):
         statement = statement.where(IdentityAudit.id > cursor)
     result = []
     for row in db.scalars(statement.order_by(IdentityAudit.id).limit(limit + 1)):
-        kind = (
-            row.action.split(":")[1]
-            if row.action.startswith("academic:")
-            else (
-                "scope"
-                if row.action in ("scope_granted", "scope_revoked")
-                else "institution"
-                if row.action == "institution_created"
-                else "account"
-            )
-        )
+        kind = audit_kind(row.action)
         result.append(
             {
                 "id": row.id,
