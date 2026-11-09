@@ -1,4 +1,4 @@
-"""Course department ownership and atomic course placement."""
+"""Course department ownership and the removed duplicate classification and placement APIs."""
 
 from uuid import uuid4
 
@@ -9,8 +9,7 @@ from test_auth import auth_client as auth_client
 from test_auth import auth_db as auth_db
 from test_auth import authorization, register
 
-from app.models.academic import Course, CoursePlacementReceipt
-from app.models.identity import IdentityAudit
+from app.models.academic import Course
 
 pytestmark = pytest.mark.integration
 ADMIN = "/api/v1/admin/"
@@ -108,87 +107,9 @@ def test_course_department_is_validated_kept_and_filtered(auth_client, auth_db):
     assert {"id": owned["id"], "kind": "course", "name": "합성 이름 변경"} in refs.json()["items"]
 
 
-def placement(c, h, institution, curriculum, client_id, expected=201, **course_changes):
-    body = {
-        "client_id": client_id,
-        "course": {
-            "name": "합성 운영체제",
-            "institution_id": institution["id"],
-            "code": "OS201",
-            "credits": "3",
-            **course_changes,
-        },
-        "link": {"curriculum_id": curriculum["id"], "category": "major", "required": True},
-    }
-    response = c.post(ADMIN + "course-placements", headers=h, json=body)
-    assert response.status_code == expected, response.text
-    return response.json()
-
-
-def test_course_placement_is_atomic_and_replayable(auth_client, auth_db):
-    c = auth_client
-    root = operator(c, auth_db)
-    a, b = school(c, root), school(c, root, "다른 합성대")
-    curriculum, other_curriculum = curriculum_of(c, root, a), curriculum_of(c, root, b)
-    client_id = str(uuid4())
-    assert c.get(ADMIN + "course-placements/" + client_id, headers=root).status_code == 404
-    created = placement(c, root, a, curriculum, client_id)
-    assert created["replayed"] is False
-    assert created["course"]["code"] == "OS201"
-    link = created["curriculum_course"]
-    assert (link["course_id"], link["name"]) == (created["course"]["id"], "합성 운영체제")
-    # A retry of the same submission returns the committed result, never a second course.
-    again = placement(c, root, a, curriculum, client_id, 200)
-    assert again["replayed"] is True and again["course"]["id"] == created["course"]["id"]
-    lost = c.get(ADMIN + "course-placements/" + client_id, headers=root).json()
-    assert lost["curriculum_course"]["id"] == link["id"]
-    placement(c, root, a, curriculum, client_id, 409, code="OS999")
-    assert len(rows(auth_db, select(Course).where(Course.code == "OS201"))) == 1
-    actions = rows(
-        auth_db,
-        select(IdentityAudit.action).where(
-            IdentityAudit.target_id.in_([created["course"]["id"], link["id"]])
-        ),
-    )
-    assert sorted(actions) == ["academic:course:create", "academic:curriculumCourse:create"]
-    # A failing link leaves no course behind: a curriculum from another school.
-    body = {
-        "client_id": str(uuid4()),
-        "course": {"name": "합성 실패", "institution_id": a["id"], "code": "FAIL1", "credits": "3"},
-        "link": {"curriculum_id": other_curriculum["id"], "category": "major", "required": False},
-    }
-    response = c.post(ADMIN + "course-placements", headers=root, json=body)
-    assert response.status_code == 409, response.text
-    assert c.get(ADMIN + "course-placements/" + body["client_id"], headers=root).status_code == 404
-    assert rows(auth_db, select(Course).where(Course.code == "FAIL1")) == []
-    # A duplicate course code also saves nothing.
-    duplicate = placement(c, root, a, curriculum, str(uuid4()), 409)
-    assert duplicate["error"]["code"] == "CONFLICT"
-    # Receipts belong to the submitting administrator.
-    account = register(c, "placement-admin@example.test").json()
-    scoped = {"Authorization": "Bearer " + account["access_token"]}
-    post(
-        c,
-        root,
-        "scopes",
-        {"user_id": account["user"]["id"], "institution_id": a["id"], "reason": "합성 범위"},
-    )
-    assert c.get(ADMIN + "course-placements/" + client_id, headers=scoped).status_code == 404
-    placement(c, scoped, b, other_curriculum, str(uuid4()), 403)
-    # Deleting what the submission created keeps the receipt; a retry reports it gone.
-    c.delete(
-        ADMIN + "curriculum-courses/" + link["id"], headers=root, params={"expected_version": 1}
-    ).raise_for_status()
-    gone = c.get(ADMIN + "course-placements/" + client_id, headers=root).json()
-    assert gone["curriculum_course"] is None and gone["course"]["id"] == created["course"]["id"]
-    assert rows(
-        auth_db,
-        select(CoursePlacementReceipt).where(CoursePlacementReceipt.client_id == client_id),
-    )
-
-
-def test_removed_classification_and_catalog_source_fields_are_refused(auth_client, auth_db):
-    """The academic workspace owns classification and course record links (0027)."""
+def test_removed_duplicate_academic_apis_are_refused(auth_client, auth_db):
+    """The academic workspace owns classification, course record links (0027) and
+    curriculum placement (0028)."""
     c = auth_client
     root = operator(c, auth_db)
     a = school(c, root)
@@ -196,8 +117,18 @@ def test_removed_classification_and_catalog_source_fields_are_refused(auth_clien
     assert c.get(ADMIN + "classifications", headers=root).status_code == 404
     course(c, root, a, "OLD1", 422, classification_id=str(uuid4()))
     course(c, root, a, "OLD2", 422, track_id=str(uuid4()))
-    stale = placement(c, root, a, curriculum, str(uuid4()), 422, classification_id=str(uuid4()))
-    assert stale["error"]["code"] == "VALIDATION_ERROR"
+    link = {
+        "name": "합성 연결",
+        "institution_id": a["id"],
+        "curriculum_id": curriculum["id"],
+        "course_id": course(c, root, a, "LINK1")["id"],
+        "category": "major",
+        "required": True,
+    }
+    post(c, root, "curriculum-courses", {**link, "track_id": str(uuid4())}, 422)
+    for path in ("course-placements", "course-placements/" + str(uuid4())):
+        assert c.get(ADMIN + path, headers=root).status_code in (404, 405)
+    assert c.post(ADMIN + "course-placements", headers=root, json={}).status_code in (404, 405)
     student = authorization(register(c, "removed-fields@example.test"))
     response = c.post(
         "/api/v1/me/course-records",

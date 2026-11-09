@@ -1,7 +1,5 @@
 """Scoped catalog mutations, immutable reviewed revisions and safe reference checks."""
 
-import hashlib
-import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -11,7 +9,6 @@ from sqlalchemy.exc import IntegrityError
 from app.core.auth_errors import AuthError, conflict, forbidden
 from app.models.academic import (
     Course,
-    CoursePlacementReceipt,
     Curriculum,
     CurriculumCourse,
     Department,
@@ -25,7 +22,6 @@ from app.models.official_records import OfficialRecordBatch, OfficialRecordCours
 from app.models.personal import PlanningProfile
 from app.models.record_sources import OfficialRecordSource
 from app.models.rule_programs import ProgramCourseRef, ProgramRule, RuleProgram
-from app.schemas import academic as dto
 from app.schemas.common import ErrorCode
 from app.services import access, auth
 
@@ -222,73 +218,6 @@ def stage(db, request, identity, model, kind, payload, record_id=None):
         raise failure("동일 범위에 중복된 코드·이름·관계가 있습니다.") from None
     audit(db, identity, kind, action, item, request)
     return item
-
-
-def placement_digest(payload):
-    body = payload.model_dump(mode="json", exclude={"client_id"})
-    return hashlib.sha256(json.dumps(body, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
-
-
-def placement_view(db, identity, receipt, *, replayed):
-    auth.require_institution(db, identity, receipt.institution_id)
-    course = db.get(Course, receipt.course_id) if receipt.course_id else None
-    link = (
-        db.get(CurriculumCourse, receipt.curriculum_course_id)
-        if receipt.curriculum_course_id
-        else None
-    )
-    return dto.CoursePlacementView(
-        client_id=receipt.client_id,
-        institution_id=receipt.institution_id,
-        course=dto.CourseView.model_validate(course) if course else None,
-        curriculum_course=dto.CurriculumCourseView.model_validate(link) if link else None,
-        created_at=receipt.created_at,
-        replayed=replayed,
-    )
-
-
-def place_course(db, request, payload):
-    """Create a course and its curriculum link together, at most once per client ID."""
-    identity = lock_actor(db, request)
-    digest = placement_digest(payload)
-    receipt = db.get(CoursePlacementReceipt, (identity.user.id, payload.client_id))
-    if receipt is not None:
-        if receipt.digest != digest:
-            raise failure("같은 제출 ID로 다른 내용을 저장할 수 없습니다. 새로 제출하세요.")
-        return placement_view(db, identity, receipt, replayed=True)
-    course = stage(db, request, identity, Course, "course", payload.course)
-    link = payload.link
-    link_payload = dto.CurriculumCourseCreate(
-        name=link.name or course.name,
-        institution_id=course.institution_id,
-        curriculum_id=link.curriculum_id,
-        course_id=course.id,
-        category=link.category,
-        required=link.required,
-    )
-    curriculum_course = stage(
-        db, request, identity, CurriculumCourse, "curriculumCourse", link_payload
-    )
-    receipt = CoursePlacementReceipt(
-        actor_id=identity.user.id,
-        client_id=payload.client_id,
-        institution_id=course.institution_id,
-        digest=digest,
-        course_id=course.id,
-        curriculum_course_id=curriculum_course.id,
-    )
-    db.add(receipt)
-    commit(db)
-    db.refresh(receipt)
-    return placement_view(db, identity, receipt, replayed=False)
-
-
-def read_placement(db, request, client_id):
-    identity = auth.current_identity(request, db)
-    receipt = db.get(CoursePlacementReceipt, (identity.user.id, client_id))
-    if receipt is None:
-        raise failure("저장된 제출을 찾을 수 없습니다. 저장되지 않았다면 다시 제출하세요.", 404)
-    return placement_view(db, identity, receipt, replayed=True)
 
 
 def references(db, identity, model, record_id):

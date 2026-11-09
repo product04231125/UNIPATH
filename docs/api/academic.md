@@ -65,30 +65,27 @@ transaction advisory lock 안에서 세션과 역할을 다시 읽는다. 코드
   연결된 과목**을 함께 준다. 공통 과목은 연결돼 있을 때만 나온다. `curriculum_id`를 주면 지금처럼
   그 교육과정에 연결된 과목만 준다.
 
-## 과목·연결 통합 저장
+## 과목 등록과 교육과정 배치
 
-`POST /admin/course-placements`는 새 과목과 그 교육과정 연결을 **한 트랜잭션**으로 만든다.
-어느 한쪽이라도 실패하면 아무것도 저장하지 않는다.
+과목을 등록하는 길과 교육과정에 넣는 길은 하나씩이다.
 
-```json
-{
-  "client_id": "<제출마다 새로 만든 UUID>",
-  "course": {"institution_id": "…", "name": "…", "code": "…", "credits": "3",
-             "department_id": null},
-  "link": {"curriculum_id": "…", "category": "major", "required": true, "name": null}
-}
-```
+1. **과목 원부**는 `POST/PATCH /admin/courses`로 등록한다. 이름·코드·학점·평가 방식·소속 학과를 가진다.
+2. **교육과정에 넣기**는 교육과정 개정본(`/admin/academic/curriculum-revisions`)에서 등록된 과목을 골라
+   분류 노드·필수/선택·인정 학점과 함께 저장한다([관리자 학사 작업 공간](admin-academic-workspace.md)).
+   개정본은 고른 과목의 `course_id`와 그때의 `course_version`을 남긴다.
 
-- 연결 `name`을 비우면 과목 이름을 쓴다. 검증은 각각 `POST /admin/courses`, `/admin/curriculum-courses`와
-  같다(학교 범위, 코드 중복 409).
-- 성공은 201이고 `course`, `curriculum_course`, `replayed=false`를 준다.
-- **같은 `client_id`와 같은 본문으로 다시 보내면** 새로 만들지 않고 처음 결과를 200, `replayed=true`로
-  준다. 본문이 다르면 409다. `client_id`는 관리자 계정마다 따로 관리한다.
-- 응답을 받지 못했으면 `GET /admin/course-placements/{client_id}`로 확인한다. 200이면 저장된 것이고,
-  404면 저장되지 않았으니 같은 `client_id`로 다시 보내면 된다.
-- 만든 과목이나 연결을 나중에 삭제하면 해당 필드가 `null`로 돌아온다. 같은 `client_id`로 다시 만들지 않는다.
-- 감사 기록은 따로 저장할 때와 같이 `academic:course:create`, `academic:curriculumCourse:create` 두 건이다.
-- 이미 있는 과목을 다른 교육과정에 연결하거나 수정하는 것은 기존 API를 쓴다.
+`curricula`·`curriculum-courses`는 **이전 교육과정**이다. 서버에 연결된 관리자 화면은 이 표를 편집하지 않는다.
+대신 다음 두 곳이 읽는다.
+
+- 교육과정 개정본의 "이전 교육과정 가져오기"(`legacy_curriculum_id`)
+- 학업 기준을 아직 적용하지 않은 학생의 과목 선택 대체 경로(`/catalog/courses`, `/catalog/curriculum-courses`)
+
+`curricula`는 규칙 묶음·공식 기록·졸업 감사·학교 문서·학생 프로필의 교육과정 범위로도 계속 쓴다.
+API는 호환을 위해 남아 있지만 새 배치에는 쓰지 않는다.
+
+2026-11-08(#60)의 과목·연결 통합 저장 `POST /admin/course-placements`와 `GET /admin/course-placements/{client_id}`는
+화면이 쓰지 않던 중복 경로라 `0028_drop_course_placements`에서 영수증 테이블과 함께 없앴다(404).
+그 API로 만든 과목과 연결은 그대로 남는다.
 
 ## 검토·새 버전
 

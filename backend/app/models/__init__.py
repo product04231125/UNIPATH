@@ -1,6 +1,5 @@
 from app.models.academic import (
     Course,
-    CoursePlacementReceipt,
     Curriculum,
     CurriculumCourse,
     Department,
@@ -99,7 +98,6 @@ __all__ = [
     "AcademicRequirementTrackRef",
     "ClassificationNode",
     "ClassificationRevision",
-    "CoursePlacementReceipt",
     "StudentAcademicActivation",
     "StudentAcademicContext",
     "StudentAcademicCourseLink",
