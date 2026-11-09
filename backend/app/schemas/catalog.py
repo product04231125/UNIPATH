@@ -36,12 +36,5 @@ for prefix in (
     )
 
 
-class CurriculumCoursePublicView(
-    academic.CurriculumCourseCreate, academic.EffectiveClassification, PublicRecord
-):
+class CurriculumCoursePublicView(academic.CurriculumCourseCreate, PublicRecord):
     pass
-
-
-class ClassificationPublicView(academic.ClassificationCreate, PublicRecord):
-    # Students only see active classifications here; links keep showing inactive IDs.
-    status: Literal["active"]

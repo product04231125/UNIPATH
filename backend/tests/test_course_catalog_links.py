@@ -1,22 +1,19 @@
-"""Course department, atomic course placement, and student course record provenance."""
+"""Course department ownership and atomic course placement."""
 
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
 from test_academic import department, operator, post, school
-from test_academic_guidance import enroll
 from test_auth import auth_client as auth_client
 from test_auth import auth_db as auth_db
 from test_auth import authorization, register
-from test_classifications import catalog, course
 
-from app.models.academic import Course, CoursePlacementReceipt, CurriculumCourse
+from app.models.academic import Course, CoursePlacementReceipt
 from app.models.identity import IdentityAudit
 
 pytestmark = pytest.mark.integration
 ADMIN = "/api/v1/admin/"
-RECORDS = "/api/v1/me/course-records"
 
 
 def rows(factory, statement):
@@ -30,11 +27,33 @@ def patch(c, h, path, body, expected=200):
     return response.json()
 
 
+def curriculum_of(c, h, institution):
+    dep = department(c, h, institution)
+    body = {
+        "name": "합성 교육과정",
+        "institution_id": institution["id"],
+        "department_id": dep["id"],
+        "year": 2026,
+    }
+    return post(c, h, "curricula", body)
+
+
+def course(c, h, institution, code="CS101", expected=201, **extra):
+    body = {
+        "name": "합성 자료구조",
+        "institution_id": institution["id"],
+        "code": code,
+        "credits": "3",
+        **extra,
+    }
+    return post(c, h, "courses", body, expected)
+
+
 def test_course_department_is_validated_kept_and_filtered(auth_client, auth_db):
     c = auth_client
     root = operator(c, auth_db)
     a, b = school(c, root), school(c, root, "다른 합성대")
-    _, _, _, curriculum = catalog(c, root, a)
+    curriculum = curriculum_of(c, root, a)
     own = department(c, root, a, "OWN")
     other = department(c, root, b, "OTHER")
     shared = course(c, root, a, "SHARED")
@@ -110,21 +129,16 @@ def test_course_placement_is_atomic_and_replayable(auth_client, auth_db):
     c = auth_client
     root = operator(c, auth_db)
     a, b = school(c, root), school(c, root, "다른 합성대")
-    category, _, track, curriculum = catalog(c, root, a)
-    _, _, other_track, other_curriculum = catalog(c, root, b)
+    curriculum, other_curriculum = curriculum_of(c, root, a), curriculum_of(c, root, b)
     client_id = str(uuid4())
     assert c.get(ADMIN + "course-placements/" + client_id, headers=root).status_code == 404
-    created = placement(c, root, a, curriculum, client_id, classification_id=category["id"])
+    created = placement(c, root, a, curriculum, client_id)
     assert created["replayed"] is False
     assert created["course"]["code"] == "OS201"
     link = created["curriculum_course"]
     assert (link["course_id"], link["name"]) == (created["course"]["id"], "합성 운영체제")
-    assert (link["effective_classification_id"], link["classification_source"]) == (
-        category["id"],
-        "course",
-    )
     # A retry of the same submission returns the committed result, never a second course.
-    again = placement(c, root, a, curriculum, client_id, 200, classification_id=category["id"])
+    again = placement(c, root, a, curriculum, client_id, 200)
     assert again["replayed"] is True and again["course"]["id"] == created["course"]["id"]
     lost = c.get(ADMIN + "course-placements/" + client_id, headers=root).json()
     assert lost["curriculum_course"]["id"] == link["id"]
@@ -137,32 +151,15 @@ def test_course_placement_is_atomic_and_replayable(auth_client, auth_db):
         ),
     )
     assert sorted(actions) == ["academic:course:create", "academic:curriculumCourse:create"]
-    # A failing link leaves no course behind: wrong-school curriculum, wrong-kind track.
-    for bad in (
-        {"curriculum": other_curriculum},
-        {"curriculum": curriculum, "link_track": other_track["id"]},
-        {"curriculum": curriculum, "link_track": category["id"]},
-    ):
-        body = {
-            "client_id": str(uuid4()),
-            "course": {
-                "name": "합성 실패",
-                "institution_id": a["id"],
-                "code": "FAIL1",
-                "credits": "3",
-            },
-            "link": {
-                "curriculum_id": bad["curriculum"]["id"],
-                "category": "major",
-                "required": False,
-                "track_id": bad.get("link_track"),
-            },
-        }
-        response = c.post(ADMIN + "course-placements", headers=root, json=body)
-        assert response.status_code == 409, response.text
-        assert (
-            c.get(ADMIN + "course-placements/" + body["client_id"], headers=root).status_code == 404
-        )
+    # A failing link leaves no course behind: a curriculum from another school.
+    body = {
+        "client_id": str(uuid4()),
+        "course": {"name": "합성 실패", "institution_id": a["id"], "code": "FAIL1", "credits": "3"},
+        "link": {"curriculum_id": other_curriculum["id"], "category": "major", "required": False},
+    }
+    response = c.post(ADMIN + "course-placements", headers=root, json=body)
+    assert response.status_code == 409, response.text
+    assert c.get(ADMIN + "course-placements/" + body["client_id"], headers=root).status_code == 404
     assert rows(auth_db, select(Course).where(Course.code == "FAIL1")) == []
     # A duplicate course code also saves nothing.
     duplicate = placement(c, root, a, curriculum, str(uuid4()), 409)
@@ -190,121 +187,29 @@ def test_course_placement_is_atomic_and_replayable(auth_client, auth_db):
     )
 
 
-def record(c, h, expected=201, **source):
-    body = {"title": "합성 수강", "term": "2026-1", "category": "전공", "credits": "3", **source}
-    response = c.post(RECORDS, headers=h, json=body)
-    assert response.status_code == expected, response.text
-    return response.json()
-
-
-def test_course_records_keep_catalog_provenance(auth_client, auth_db):
+def test_removed_classification_and_catalog_source_fields_are_refused(auth_client, auth_db):
+    """The academic workspace owns classification and course record links (0027)."""
     c = auth_client
     root = operator(c, auth_db)
-    a, b = school(c, root), school(c, root, "다른 합성대")
-    _, _, _, curriculum = catalog(c, root, a)
-    _, _, _, other_curriculum = catalog(c, root, b)
-    picked = placement(c, root, a, curriculum, str(uuid4()))
-    elsewhere = placement(c, root, b, other_curriculum, str(uuid4()))
-    unlinked = course(c, root, a, "SOLO")
-    source = {
-        "catalog_course_id": picked["course"]["id"],
-        "catalog_course_version": 1,
-        "curriculum_course_id": picked["curriculum_course"]["id"],
-        "curriculum_course_version": 1,
-    }
-    owner = authorization(register(c, "provenance@example.test"))
-    # Without a registered school nothing from the catalog can be attached.
-    record(c, owner, 409, **source)
-    enroll(c, owner, a["id"])
-    saved = record(c, owner, **source)
-    assert {key: saved[key] for key in source} == source
-    assert saved["official"] is False and saved["credits"] == "3"
-    plain = record(c, owner)
-    assert plain["catalog_course_id"] is None
-    # Pairs and link ownership are checked.
-    record(c, owner, 422, catalog_course_id=picked["course"]["id"])
-    record(
-        c,
-        owner,
-        422,
-        curriculum_course_id=source["curriculum_course_id"],
-        curriculum_course_version=1,
-    )
-    record(
-        c,
-        owner,
-        409,
-        catalog_course_id=unlinked["id"],
-        catalog_course_version=1,
-        curriculum_course_id=source["curriculum_course_id"],
-        curriculum_course_version=1,
-    )
-    record(c, owner, 409, catalog_course_id=elsewhere["course"]["id"], catalog_course_version=1)
-    # A stale pick is refused; the catalog moved to version 2.
-    patch(
-        c,
-        root,
-        "courses/" + picked["course"]["id"],
-        {
-            "name": "합성 운영체제 개정",
-            "institution_id": a["id"],
-            "code": "OS201",
-            "credits": "3",
-            "expected_version": 1,
-        },
-    )
-    stale = record(c, owner, 409, **source)
-    assert "다시 조회" in stale["error"]["message"]
-    # An existing pick survives unrelated edits after the catalog changed.
-    edited = c.patch(
-        RECORDS + "/" + saved["id"], headers=owner, json={"grade": "A", "expected_version": 1}
-    )
-    assert edited.status_code == 200, edited.text
-    assert edited.json()["catalog_course_version"] == 1
-    # Repointing to the current version works; clearing the provenance works.
-    current = c.patch(
-        RECORDS + "/" + saved["id"],
-        headers=owner,
-        json={"catalog_course_version": 2, "expected_version": 2},
-    )
-    assert current.status_code == 200, current.text
-    cleared = c.patch(
-        RECORDS + "/" + saved["id"],
-        headers=owner,
+    a = school(c, root)
+    curriculum = curriculum_of(c, root, a)
+    assert c.get(ADMIN + "classifications", headers=root).status_code == 404
+    course(c, root, a, "OLD1", 422, classification_id=str(uuid4()))
+    course(c, root, a, "OLD2", 422, track_id=str(uuid4()))
+    stale = placement(c, root, a, curriculum, str(uuid4()), 422, classification_id=str(uuid4()))
+    assert stale["error"]["code"] == "VALIDATION_ERROR"
+    student = authorization(register(c, "removed-fields@example.test"))
+    response = c.post(
+        "/api/v1/me/course-records",
+        headers=student,
         json={
-            "catalog_course_id": None,
-            "catalog_course_version": None,
-            "curriculum_course_id": None,
-            "curriculum_course_version": None,
-            "expected_version": 3,
+            "title": "합성 수강",
+            "term": "2026-1",
+            "category": "전공",
+            "credits": "3",
+            "catalog_course_id": str(uuid4()),
+            "catalog_course_version": 1,
         },
     )
-    assert cleared.status_code == 200 and cleared.json()["catalog_course_id"] is None
-    # A record naming a catalog entry protects it without revealing whose record it is.
-    kept = record(
-        c,
-        owner,
-        catalog_course_id=picked["course"]["id"],
-        catalog_course_version=2,
-        curriculum_course_id=source["curriculum_course_id"],
-        curriculum_course_version=1,
-    )
-    for path in (
-        "courses/" + picked["course"]["id"],
-        "curriculum-courses/" + source["curriculum_course_id"],
-    ):
-        refs = c.get(ADMIN + path + "/references", headers=root).json()["items"]
-        assert {"kind": "protected_reference", "name": "보호된 연결 참조"}.items() <= refs[
-            -1
-        ].items()
-        assert kept["owner_id"] not in str(refs)
-    blocked = c.delete(
-        ADMIN + "curriculum-courses/" + source["curriculum_course_id"],
-        headers=root,
-        params={"expected_version": 1},
-    )
-    assert blocked.status_code == 409
-    assert rows(
-        auth_db,
-        select(CurriculumCourse).where(CurriculumCourse.id == source["curriculum_course_id"]),
-    )
+    assert response.status_code == 422, response.text
+    assert rows(auth_db, select(Course).where(Course.code.in_(["OLD1", "OLD2"]))) == []

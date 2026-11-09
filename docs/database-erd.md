@@ -4,8 +4,15 @@
 
 `0015_school_classifications`·`0016_guidance_bindings`·`0017_course_catalog_links` 다음에
 관리자 학사 재설계와 학생 학사 연결 `0018_admin_academic_foundation`~`0026_credit_record_bindings`가
-이어진다(총 73개 도메인 테이블). 두 작업은 별도 브랜치에서 각각 0015부터 번호를 매겼고, 통합하면서
+이어진다. 두 작업은 별도 브랜치에서 각각 0015부터 번호를 매겼고, 통합하면서
 뒤쪽을 0018부터 다시 매겼다. 이전 번호(0015~0023)를 적용한 로컬 DB는 새로 만들어야 한다.
+
+`0027_unify_classification`은 두 갈래가 된 분류와 수강 기록 연결을 작업 공간 쪽 하나로 합친다.
+0015의 `school_classifications`와 과목·교육과정 연결의 `classification_id`·`track_id`, 0017의 수강 기록
+원본 참조 4열과 `curriculum_courses (id, course_id)` UNIQUE를 없앤다(총 72개 도메인 테이블).
+분류는 `academic_classification_revisions`·`academic_classification_nodes`·`academic_study_tracks`,
+수강 기록 연결은 `student_academic_course_links`가 맡는다. 과목 소속 학과와 통합 저장 영수증은 유지한다.
+없앨 표나 열에 데이터가 남아 있으면 업그레이드는 아무것도 지우지 않고 멈춘다.
 
 ## 학생 학사 연결의 실제 추가 테이블 (2026-11-08)
 
@@ -957,7 +964,7 @@ erDiagram
 
 ## 단계별 도입 계획과 현재 구현
 
-현재 물리 구현은 `0026_credit_record_bindings`까지 총 73개 도메인 테이블이다.
+현재 물리 구현은 `0027_unify_classification`까지 총 72개 도메인 테이블이다.
 선택 자료의 [개인화·채용 분석 최소 계약](api/job-analysis.md)은 기존 개인 테이블을 본인
 범위에서 읽으며 공고·개인 문맥·결과의 새 저장소를 만들지 않는다. `JobPosting`,
 `JobRequirement`, `JobMatch` 등은 전체 2차 MVP의 후속 영속 모델이다.

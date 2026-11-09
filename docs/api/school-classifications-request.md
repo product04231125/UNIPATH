@@ -4,6 +4,13 @@
 프런트의 SchoolClassificationDrafts 직렬화를 서버 계약으로 사용하지 않는다.
 서버 구현·API 이름·마이그레이션은 백엔드 담당자가 확정한다.
 
+## 현재 상태 (2026-11-09, 백엔드)
+
+이 요청의 1단계 구현(#57: `/admin/classifications`, `/catalog/classifications`, 과목·연결의
+`classification_id`·`track_id`)은 `0027_unify_classification`에서 없앴다. 학교별 분류와 이수 경로는
+[관리자 학사 작업 공간](admin-academic-workspace.md)의 분류 개정본·이수 경로가 제공한다.
+아래 2026-11-08 기록은 이력으로 남긴다.
+
 ## 구현 상태 (2026-11-08, 백엔드)
 
 1단계를 구현했다. 계약은 [학사 API의 학교별 분류](academic.md#학교별-분류)와 [OpenAPI](openapi.json)를 따른다.

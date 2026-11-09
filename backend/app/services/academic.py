@@ -18,12 +18,11 @@ from app.models.academic import (
     GraduationRule,
     OfficialDocument,
     RuleSet,
-    SchoolClassification,
 )
 from app.models.graduation import GraduationAudit, GraduationCatalogReview
 from app.models.identity import AdminScope, IdentityAudit, Institution, Role
 from app.models.official_records import OfficialRecordBatch, OfficialRecordCourseRef
-from app.models.personal import CourseRecord, PlanningProfile
+from app.models.personal import PlanningProfile
 from app.models.record_sources import OfficialRecordSource
 from app.models.rule_programs import ProgramCourseRef, ProgramRule, RuleProgram
 from app.schemas import academic as dto
@@ -35,7 +34,6 @@ RESOURCES = {
     "curricula": (Curriculum, "curriculum"),
     "courses": (Course, "course"),
     "curriculum-courses": (CurriculumCourse, "curriculumCourse"),
-    "classifications": (SchoolClassification, "classification"),
     "rule-sets": (RuleSet, "ruleSet"),
     "rules": (GraduationRule, "rule"),
     "documents": (OfficialDocument, "document"),
@@ -47,15 +45,6 @@ RELATIONS = {
     "course_id": Course,
     "rule_set_id": RuleSet,
     "rule_id": GraduationRule,
-    "parent_id": SchoolClassification,
-    "classification_id": SchoolClassification,
-    "track_id": SchoolClassification,
-}
-# Which classification kinds each reference may point to.
-CLASSIFICATION_KINDS = {
-    "parent_id": ("category",),
-    "classification_id": ("category", "subcategory"),
-    "track_id": ("track",),
 }
 
 
@@ -108,11 +97,7 @@ def list_records(db, identity, model, institution_id, query, status, cursor, lim
     if query:
         statement = statement.where(model.name.icontains(query, autoescape=True))
     if status:
-        if model == SchoolClassification:
-            if status not in ("active", "inactive"):
-                return []
-            statement = statement.where(model.status == status)
-        elif model not in VERSIONED:
+        if model not in VERSIONED:
             if status != "active":
                 return []
         else:
@@ -122,7 +107,7 @@ def list_records(db, identity, model, institution_id, query, status, cursor, lim
     return list(db.scalars(statement.order_by(model.id).limit(limit + 1)))
 
 
-def validate_relations(db, identity, model, values, current=None):
+def validate_relations(db, identity, model, values):
     school(db, identity, values["institution_id"])
     targets = {}
     for key, target_model in RELATIONS.items():
@@ -133,8 +118,6 @@ def validate_relations(db, identity, model, values, current=None):
         if target is None or target.institution_id != values["institution_id"]:
             raise failure("연결 대상과 학교 소속을 확인해 주세요.")
         targets[key] = target
-        if key in CLASSIFICATION_KINDS:
-            validate_classification(db, key, target, current)
     curriculum = targets.get("curriculum_id")
     if (
         curriculum
@@ -160,17 +143,6 @@ def validate_relations(db, identity, model, values, current=None):
     return group
 
 
-def validate_classification(db, key, target, current):
-    if target.kind not in CLASSIFICATION_KINDS[key]:
-        raise failure("연결할 수 없는 분류 종류입니다.")
-    if current is not None and getattr(current, key) == target.id:
-        # Keeping an existing link is allowed after the classification is deactivated.
-        return
-    parent = db.get(SchoolClassification, target.parent_id) if target.parent_id else None
-    if target.status != "active" or (parent is not None and parent.status != "active"):
-        raise failure("사용 중지된 분류는 새로 연결할 수 없습니다.")
-
-
 def audit(db, identity, kind, action, item, request):
     access.audit(
         db,
@@ -191,10 +163,7 @@ def commit(db):
 
 
 # Older clients omit these fields; on update, omission keeps the stored value.
-KEPT_WHEN_OMITTED = {
-    Course: ("classification_id", "track_id", "department_id"),
-    CurriculumCourse: ("classification_id", "track_id"),
-}
+KEPT_WHEN_OMITTED = {Course: ("department_id",)}
 
 
 def save(db, request, model, kind, payload, record_id=None):
@@ -212,7 +181,7 @@ def stage(db, request, identity, model, kind, payload, record_id=None):
         for key in KEPT_WHEN_OMITTED.get(model, ()):
             if key in values and key not in payload.model_fields_set:
                 values[key] = getattr(current, key)
-    group = validate_relations(db, identity, model, values, current)
+    group = validate_relations(db, identity, model, values)
     if record_id is None:
         item = model(**values, created_by=identity.user.id, updated_by=identity.user.id)
         db.add(item)
@@ -221,8 +190,6 @@ def stage(db, request, identity, model, kind, payload, record_id=None):
         item = current
         if item.version != payload.expected_version:
             raise conflict()
-        if model == SchoolClassification and item.kind != values["kind"]:
-            raise failure("분류 종류는 바꿀 수 없습니다. 새 분류를 등록하세요.")
         if model in VERSIONED and item.status != "draft":
             raise failure("적용본은 변경할 수 없습니다. 새 버전 초안을 만드세요.")
         for key in ("institution_id", "department_id", "curriculum_id", "rule_set_id"):
@@ -298,8 +265,6 @@ def place_course(db, request, payload):
         course_id=course.id,
         category=link.category,
         required=link.required,
-        classification_id=link.classification_id,
-        track_id=link.track_id,
     )
     curriculum_course = stage(
         db, request, identity, CurriculumCourse, "curriculumCourse", link_payload
@@ -359,14 +324,6 @@ def references(db, identity, model, record_id):
     ):
         # A profile FK must prevent catalog deletion without exposing a student's
         # identity, profile/source values, or the number of private references.
-        result.append({"id": record_id, "kind": "protected_reference", "name": "보호된 연결 참조"})
-    personal_key = {Course: "catalog_course_id", CurriculumCourse: "curriculum_course_id"}.get(
-        model
-    )
-    if personal_key and db.scalar(
-        select(exists().where(getattr(CourseRecord, personal_key) == record_id))
-    ):
-        # A student's course record names this catalog entry; keep it resolvable.
         result.append({"id": record_id, "kind": "protected_reference", "name": "보호된 연결 참조"})
     if model is Course:
         if db.scalar(select(exists().where(OfficialRecordCourseRef.course_id == record_id))):

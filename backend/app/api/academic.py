@@ -159,7 +159,6 @@ for path, prefix in [
     ("curricula", "Curriculum"),
     ("courses", "Course"),
     ("curriculum-courses", "CurriculumCourse"),
-    ("classifications", "Classification"),
     ("rule-sets", "RuleSet"),
     ("rules", "Rule"),
     ("documents", "Document"),

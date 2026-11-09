@@ -10,7 +10,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
 from app.core.auth_errors import AuthError, conflict
-from app.models.academic import Course, Curriculum, CurriculumCourse, Department
+from app.models.academic import Curriculum, Department
 from app.models.identity import Institution
 from app.models.personal import (
     AchievementRecord,
@@ -235,49 +235,7 @@ def listing(
     return list(db.scalars(statement.order_by(model.id).limit(limit + 1)))
 
 
-CATALOG_SOURCE = (
-    "catalog_course_id",
-    "catalog_course_version",
-    "curriculum_course_id",
-    "curriculum_course_version",
-)
-
-
-def source_conflict(message):
-    return AuthError(409, ErrorCode.CONFLICT, message)
-
-
-def check_catalog_source(db, owner_id, data, current):
-    if current is not None and all(getattr(current, key) == data[key] for key in CATALOG_SOURCE):
-        # An unchanged pick stays valid after the catalog moves on or the school changes.
-        return
-    if data["catalog_course_id"] is None:
-        return
-    profile = db.get(PlanningProfile, owner_id)
-    course = db.get(Course, data["catalog_course_id"])
-    school = db.get(Institution, course.institution_id) if course else None
-    if (
-        course is None
-        or school is None
-        or school.deleted_at is not None
-        or profile is None
-        or profile.institution_id != course.institution_id
-    ):
-        raise source_conflict("등록 학교의 과목만 연결할 수 있습니다. 과목을 다시 선택해 주세요.")
-    link = None
-    if data["curriculum_course_id"]:
-        link = db.get(CurriculumCourse, data["curriculum_course_id"])
-        if link is None or link.course_id != course.id:
-            raise source_conflict("선택한 교육과정 연결이 이 과목의 연결이 아닙니다.")
-    if course.version != data["catalog_course_version"] or (
-        link is not None and link.version != data["curriculum_course_version"]
-    ):
-        raise source_conflict("과목 정보가 바뀌었습니다. 과목 목록을 다시 조회해 선택해 주세요.")
-
-
-def check_relations(db, owner_id, model, data, current=None):
-    if model == CourseRecord:
-        check_catalog_source(db, owner_id, data, current)
+def check_relations(db, owner_id, model, data):
     if model in (PersonalCurriculumCourse, PersonalGraduationRule):
         get(db, owner_id, PersonalCurriculum, data["curriculum_id"])
     if model == PersonalCurriculumCourse and data["course_record_id"]:
@@ -402,7 +360,7 @@ def save_record(db, owner_id, resource, payload, record_id=None):
                 if existing is None:
                     raise conflict()
                 return view(db, existing, prefix)
-    check_relations(db, owner_id, model, data, item)
+    check_relations(db, owner_id, model, data)
     try:
         if item is None:
             item = model(owner_id=owner_id)
