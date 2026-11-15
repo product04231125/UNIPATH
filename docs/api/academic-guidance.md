@@ -77,8 +77,25 @@ label로 분기하지 않는다. `availability=content_pending`은 준비 중 �
 
 - `credits`, `courses`, `volunteer`, `certificate`, `thesis`, `review`는 **일반 기준** 항목이다.
   `audit_id` 없이 조회하면 `state=ready`, `reason=general_criteria`이고, `criteria_kind`(예:
-  `minimum_credits`)로 보여 줄 규칙 종류를 알려 준다. 기준 자체는 학교가 승인한
+  `minimum_credits`)로 보여 줄 규칙 종류를 알려 준다. 공식 실행 규칙은 학교가 승인한
   `GET /catalog/rule-programs`에서 읽는다. 승인된 기준이 없으면 학점이나 과목을 추측하지 않는다.
+- 같은 일반 기준 항목의 `cards`에는 학생이 적용한 **학교 게시 기준**을 붙인다.
+  `GET /me/academic-requirements`와 같은 적용본(학과·입학연도·이수 경로·교육과정으로 거른 행)을
+  읽으므로 관리자 기준, 학업 기준 화면, 졸업 안내가 같은 자료를 쓴다. 카드는 판정이 아니다.
+
+  | 항목 | 카드 |
+  |---|---|
+  | `credits` | 학점표 `reference_table`. 첫 행은 적용 이수 경로, 이후 행은 머리글 트리 순서(형제 간 `position`)의 각 열이며 이름은 상위 머리글을 ` · `로 잇는다. `not_applicable`은 `해당 없음`, 빈 칸은 `-` |
+  | `courses` | 선택한 교육과정 개정본의 필수 과목 표 |
+  | `certificate` | 졸업인증 영역·선택 조건·면제 `reference_text`와 설명 표 |
+  | `review` | 졸업 요건 체크리스트 전체 |
+  | `thesis`, `volunteer` | 체크리스트 줄과 졸업인증 항목 중 졸업작품·졸업시험·논문 / 봉사를 언급한 것. 졸업인증 항목은 상위 영역 경로와 선택 조건(예: `1개 선택`)을 함께 보여 준다 |
+
+  출처는 `title=학교 게시 기준 · {개정본 이름}`, `document_id`=개정본 UUID,
+  `document_version`=개정 번호다. 학업 기준을 적용하지 않았으면 카드 없이
+  `missing_fields=["academic_requirements"]`다. 적용본에 해당 항목이 없으면 카드 없이
+  그 사실을 안내한다. 프로필·학업 기준이 적용 후 바뀌었거나 적용본이 회수·만료되면 `message`에
+  다시 적용하라는 안내를 덧붙인다. 관리자 미리보기는 학생 적용본을 보지 않는다.
   첫 버튼은 `summary`("내 충족 여부 보기")다.
 - `summary`("내 졸업요건 요약")는 **개인 결과**다. `audit_id`가 없으면 `needs_input`,
   `verified_audit_required`이고 충족이나 미충족으로 표시하지 않는다.

@@ -187,7 +187,8 @@ class AcademicGuidance(StrictModel):
     integration_state: Literal["connected", "adapter_not_connected"] | None = None
     missing_fields: list[str] = Field(default_factory=list)
     audit: GuidanceAudit | None = None
-    # With reason=general_criteria: the rule kind to show from /catalog/rule-programs.
+    # With reason=general_criteria: the rule kind to show from /catalog/rule-programs. The
+    # cards then hold the school's published requirements the student applied, never a verdict.
     criteria_kind: (
         Literal[
             "minimum_credits",
