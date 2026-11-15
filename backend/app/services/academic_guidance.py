@@ -2,10 +2,11 @@
 
 from pathlib import Path
 
+from app.models.personal import PlanningProfile
 from app.rag.guidance import respond
 from app.rag.guidance.assets import resolve_asset
 from app.schemas.academic_guidance import AcademicGuidance
-from app.services import academic, auth, graduation_audits, guidance_bindings
+from app.services import academic, auth, graduation_audits, guidance_bindings, guidance_criteria
 
 CONNECTED_WORKFLOW = "career:posting"
 NODE_LIMIT = 600
@@ -29,6 +30,41 @@ UNBOUND = {
         "등록 학교에 연결된 학사 안내 자료를 지금 제공할 수 없습니다.",
     ),
 }
+
+
+CRITERIA_MESSAGES = {
+    "shown": (
+        "학교 관리자가 게시한 기준입니다. 내 학업 기준에 맞는 부분만 보여 드립니다. "
+        "충족 여부는 '내 졸업요건 요약'과 학업 기준 화면에서 확인해 주세요."
+    ),
+    "not_in_standard": (
+        "학교가 게시한 졸업 기준에 이 항목은 따로 정해져 있지 않습니다. "
+        "전체 졸업 요건은 '추가 확인 항목'에서 확인해 주세요."
+    ),
+    "not_applied": (
+        "설정에서 학업 기준(학과·입학연도·이수 경로·교육과정)을 적용하면 학교가 게시한 기준을 "
+        "여기에서 볼 수 있습니다."
+    ),
+}
+STALE_REQUIREMENTS = (
+    " 학업 기준이 바뀌었거나 학교가 기준을 고쳐 다시 적용해야 합니다."
+    " 학업 기준 화면에서 확인해 주세요."
+)
+
+
+def add_published_criteria(db, identity, binding, value):
+    """Same published requirements as the student's academic requirements screen."""
+    profile = db.get(PlanningProfile, identity.user.id)
+    if profile is None or profile.institution_id != binding.institution_id:
+        return
+    cards, state, stale = guidance_criteria.published_criteria(
+        db, identity.user.id, value["node_id"]
+    )
+    published = [card.model_dump(mode="json", exclude_none=True) for card in cards]
+    value["cards"] = published + value["cards"]
+    value["message"] = CRITERIA_MESSAGES[state] + (STALE_REQUIREMENTS if stale else "")
+    if state == "not_applied":
+        value["missing_fields"] = ["academic_requirements"]
 
 
 def unbound(node_id, state):
@@ -63,6 +99,8 @@ def read_node(db, request, node_id, audit_id, institution_id=None) -> AcademicGu
         row = graduation_audits.read(db, identity, audit_id)
         audit = graduation_audits.view(db, identity, row).model_dump(mode="json")
     value = respond(node_id, audit=audit)
+    if value.get("reason") == "general_criteria":
+        add_published_criteria(db, identity, binding, value)
     for card in value["cards"]:
         if "template_id" in card:
             card["type"] = "audit_requirement"

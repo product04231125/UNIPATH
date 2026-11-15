@@ -305,7 +305,7 @@ def respond(node_id="home", *, audit=None):
         )
     elif mode == "criteria" and audit is None:
         # General criteria live in the school's approved rule programs (GET
-        # /catalog/rule-programs). Nothing personal is required to read them.
+        # /catalog/rule-programs) and published requirements; the API adds the latter.
         response.update(
             reason="general_criteria",
             message=(
