@@ -119,3 +119,45 @@ def test_padded_quote_matches_but_an_absent_quote_is_rejected():
         [comparison("required", "Vue 개발 경험", "supported", [evidence])],
     )
     assert absent["valid"] is False and absent["problems"] == ["output rejected"]
+
+
+def test_representative_fixtures_are_synthetic_and_consistent():
+    from scripts.evaluate_job_analysis import REPRESENTATIVE
+
+    items = json.loads(REPRESENTATIVE.read_text(encoding="utf-8"))
+    assert len({item["id"] for item in items}) == len(items) >= 12
+    for item in items:
+        text = json.dumps(item, ensure_ascii=False)
+        assert "@" not in text and "010-" not in text, item["id"]
+        assert len({r["record_id"] for r in item["records"]}) == len(item["records"])
+        # Every expected requirement is quoted from the posting itself.
+        for word in item["expect"].get("requirement_keywords", []):
+            assert word in item["posting_text"], (item["id"], word)
+        for word in item["expect"].get("not_requirement_keywords", []):
+            assert word in item["posting_text"], (item["id"], word)
+
+
+def test_summary_counts_rejections_recall_and_unstable_statuses():
+    from scripts.evaluate_job_analysis import summarize
+
+    scenarios = [{"id": "a", "expect": {"requirement_keywords": ["x", "y"]}}]
+
+    def result(valid, problems=(), status="supported", seconds=1.0):
+        item = {"id": "a", "valid": valid, "problems": list(problems), "seconds": seconds}
+        if valid:
+            item["comparisons"] = [{"priority": "required", "status": status}]
+        else:
+            item["cause"] = "posting_quote"
+        return item
+
+    runs = [
+        [result(True)],
+        [result(True, ["missing requirement: y"], status="partially_supported", seconds=3.0)],
+        [result(False, seconds=2.0)],
+    ]
+    summary = summarize(scenarios, runs)
+    assert summary["calls"] == 3 and summary["passed"] == 1 and summary["rejected"] == 1
+    assert summary["rejection_causes"] == {"posting_quote": 1}
+    assert summary["requirement_recall"] == round(3 / 6, 3)
+    assert summary["scenarios_with_stable_statuses"] == 0
+    assert summary["seconds"]["p50"] == 2.0 and summary["seconds"]["max"] == 3.0

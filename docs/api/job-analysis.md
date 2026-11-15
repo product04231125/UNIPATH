@@ -104,3 +104,38 @@ Gemini 설정 후 `backend/`에서 다음을 실행한다. 합성 자료만 전�
 ```bash
 uv run --frozen python -m scripts.evaluate_job_analysis --live
 ```
+
+`job_analysis_representative.json`은 대표 공고 12건이다. 백엔드·프론트·데이터·클라우드·보안·
+임베디드·QA·공공기관(NCS)·모바일 직무와 상투 문구, 관련 기록 없음, 기록 속 지시문을 다룬다.
+각 시나리오는 추출해야 할 요구사항(`requirement_keywords`), 근거 있음으로 판단하면 안 되는
+요구사항(`not_supported_keywords`), 요구사항으로 뽑으면 안 되는 문구(`not_requirement_keywords`)를
+가진다. 모든 결과는 합격·채용 가능성 단정 문구가 없어야 한다.
+
+```bash
+uv run --frozen python -m scripts.evaluate_job_analysis --live --representative --repeat 3 \
+  --output /tmp/job-analysis-eval.json
+```
+
+요약에는 통과 수, 거절 수와 원인(`posting_quote`, `personal_citation`, `classification`,
+`output_shape`), 요구사항 재현율, 반복 실행 간 상태가 같은 시나리오 수, 응답 시간 p50/p95/max가
+나온다. `--output`에는 시나리오별 비교와 설명문이 저장되므로 합성 자료로만 실행한다.
+
+### 2026-11-15 측정
+
+스테이징 설정(`asia-northeast1`, `gemini-3.5-flash`)과 같은 API 이미지로 측정했다. 공고와 기록은
+모두 합성이다. 개발자가 만든 기대값 기준이며 독립 평가가 아니다.
+
+| 세트 | 호출 | 통과 | 검증 거절 | 요구사항 재현율 | 상태 안정 | p50 | p95 | 최대 |
+|---|---|---|---|---|---|---|---|---|
+| 대표 12건 × 3회 | 36 | 36 | 0 | 100% | 11/12 | 5.5초 | 8.4초 | 9.9초 |
+| 기존 5건 × 3회 | 15 | 15 | 0 | 해당 없음 | 5/5 | 5.3초 | 10.6초 | 11.3초 |
+| 대표 12건 × 1회(설명문 검토) | 12 | 12 | 0 | 100% | - | 4.7초 | 6.4초 | - |
+
+- 흔들린 1건은 `mobile_kotlin_mixed`다. "Kotlin 안드로이드 개발" 요건을 Java 안드로이드 기록에 대해
+  2회는 일부 근거, 1회는 근거 부족으로 판단했다. 두 판단 모두 근거 있음은 아니다.
+- 설명문은 기록에 있는 사실만 들었고 없는 경험은 "확인할 수 없다"고 썼다. 필기만 합격한
+  자격은 일부 근거로 구분했다. 기록 속 지시문은 따르지 않았다.
+- "필수 지원 자격을 충족합니다"처럼 지원 자격 충족을 단정하는 문장이 1건 있었다. 금지 문구는
+  아니지만 화면에서는 "기록상 확인됨"으로 읽히도록 안내 문구를 함께 보여 주는 것이 안전하다.
+- 실패 경로는 격리 API에서 확인했다. 모델 오류는 1.8초 안에 `failed`/`analysis_failed`,
+  미설정은 `not_configured`, 호출 상한 초과는 429 `RATE_LIMITED`다. 로그에는 예외 종류만 남았다.
