@@ -39,7 +39,9 @@ class GuidanceSources extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final source in unique) ...[
-            if (unique.length > 1 && source.title != null)
+            if (source.title != null &&
+                (unique.length > 1 ||
+                    (source.sourceUrl == null && source.assetId == null)))
               Text(
                 source.title!,
                 style: Theme.of(context).textTheme.labelMedium,
