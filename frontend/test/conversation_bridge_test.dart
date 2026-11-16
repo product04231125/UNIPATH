@@ -31,6 +31,31 @@ AssistantResult result() => AssistantResult.fromJson({
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test(
+    'detached recommendation navigation reaches main without sending records',
+    () async {
+      var opened = 0;
+      final gateway = PendingGateway();
+      final owner = AssistantConversation(
+        api: gateway,
+        onOpenRecommendations: () => opened++,
+      );
+      final bridge = ConversationBridge(owner, (_) async {});
+      final child = RemoteConversation(
+        request: (command) async =>
+            command == null ? bridge.read() : bridge.command(command),
+        changes: const Stream.empty(),
+      );
+      await child.load();
+      child.openRecommendations();
+      await child.flush();
+      expect(opened, 1);
+      expect(gateway.calls, 0);
+      child.dispose();
+      bridge.dispose();
+      owner.dispose();
+    },
+  );
+  test(
     'detach during request keeps history, draft and owner request alive',
     () async {
       final api = PendingGateway();

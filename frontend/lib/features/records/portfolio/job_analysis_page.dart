@@ -14,6 +14,7 @@ import '../../auth/auth_api.dart';
 import '../../auth/guest_preview_scope.dart';
 import '../../settings/ai_consent_preferences.dart';
 import '../../settings/ai_consent_section.dart';
+import 'job_recommendation_page.dart';
 
 const jobPostingFileMaxBytes = 10 * 1024 * 1024;
 
@@ -93,6 +94,11 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
   int _revision = 0;
   String? _error, _recordMessage, _requestId;
   JobAnalysisResponse? _result;
+  bool _recommendations = false;
+  void showRecommendations() {
+    if (!_sending) setState(() => _recommendations = true);
+  }
+
   bool get _connected => widget.api != null && widget.consent != null;
   bool get _canAnalyze =>
       _connected &&
@@ -273,10 +279,33 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
     _ => '분석을 완료하지 못했습니다. 입력을 유지하고 다시 시도할 수 있습니다.',
   };
   @override
-  Widget build(BuildContext context) => FeaturePage(
+  Widget build(BuildContext context) {
+    if (_recommendations) {
+      return JobRecommendationPage(
+        api: widget.api,
+        consent: widget.consent,
+        loadRecords: widget.loadRecords,
+        onBack: () => setState(() => _recommendations = false),
+      );
+    }
+    return _buildAnalysis(context);
+  }
+
+  Widget _buildAnalysis(BuildContext context) => FeaturePage(
     title: '채용공고 분석',
     description: '공고 본문과 고른 기록을 비교합니다.',
     body: [
+      Align(
+        alignment: Alignment.centerLeft,
+        child: OutlinedButton.icon(
+          onPressed: _sending
+              ? null
+              : () => setState(() => _recommendations = true),
+          icon: const Icon(Icons.manage_search),
+          label: const Text('내 자료로 공고 찾기'),
+        ),
+      ),
+      const SizedBox(height: 16),
       SurfaceCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

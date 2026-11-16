@@ -53,6 +53,7 @@ class AssistantConversation extends ChangeNotifier {
     this.registeredOnly = false,
     this.onOpenSettings,
     this.onOpenCareer,
+    this.onOpenRecommendations,
   }) : _api = api ?? AssistantApi() {
     consent?.addListener(_consentChanged);
   }
@@ -63,6 +64,7 @@ class AssistantConversation extends ChangeNotifier {
   final bool registeredOnly;
   final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenCareer;
+  final VoidCallback? onOpenRecommendations;
   static const criteriaKinds = <String, String>{
     'credits': 'minimum_credits',
     'courses': 'required_courses',
@@ -87,6 +89,7 @@ class AssistantConversation extends ChangeNotifier {
   }
 
   void openCareer() => onOpenCareer?.call();
+  void openRecommendations() => (onOpenRecommendations ?? onOpenCareer)?.call();
   Future<void> showGuidance() async {
     guidanceOpen = true;
     notifyListeners();

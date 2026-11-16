@@ -371,12 +371,13 @@ class AuthApi implements AuthGateway, ApiGateway {
           .then(http.Response.fromStream)
           .timeout(
             Duration(
-              seconds:
-                  const {
-                    'me/school-queries',
-                    'me/personalized-guidance',
-                    'me/job-analyses',
-                  }.contains(path)
+              seconds: path == 'me/job-recommendations'
+                  ? 180
+                  : const {
+                      'me/school-queries',
+                      'me/personalized-guidance',
+                      'me/job-analyses',
+                    }.contains(path)
                   ? 55
                   : 20,
             ),
