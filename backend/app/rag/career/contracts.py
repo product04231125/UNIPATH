@@ -61,7 +61,7 @@ class Posting:
     text_scope: str = "metadata_only"
 
     def __post_init__(self):
-        if self.source not in {"saramin", "work24", "jobkorea", "manual"}:
+        if self.source not in {"saramin", "work24", "jobkorea", "greenhouse", "manual"}:
             raise ValueError("Unknown posting source")
         if (
             not self.source_id
@@ -78,11 +78,14 @@ class Posting:
             "work24": "work24.go.kr",
             "jobkorea": "jobkorea.co.kr",
         }
+        # Greenhouse may return a company-owned application URL; we never fetch it.
+        if self.source == "greenhouse" and url.scheme != "https":
+            raise ValueError("Greenhouse posting links must use HTTPS")
         if self.source in allowed:
             hosts = [allowed[self.source]] + (["work.go.kr"] if self.source == "work24" else [])
             if not any(url.hostname == host or url.hostname.endswith("." + host) for host in hosts):
                 raise ValueError("Unexpected posting link host")
-        if self.text_scope not in {"metadata_only", "full_text"}:
+        if self.text_scope not in {"metadata_only", "full_text", "excerpt"}:
             raise ValueError("Invalid text scope")
         for value in (self.fetched_at, self.expires_at):
             if value is not None and datetime.fromisoformat(value).tzinfo is None:

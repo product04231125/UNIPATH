@@ -30,6 +30,7 @@ class VertexJSON:
             else f"{location}-aiplatform.googleapis.com"
         )
         self.url = f"https://{host}/v1/projects/{project}/locations/{location}/publishers/google/models/{model}:generateContent"
+        self.model = model
         self.tokens = token_provider
         self.transport = transport or Transport()
 
@@ -48,6 +49,8 @@ class VertexJSON:
                 "responseMimeType": "application/json",
             },
         }
+        if self.model == "gemini-3.8-flash":
+            del body["generationConfig"]["temperature"]
         try:
             raw = self.transport.request(
                 self.url,
