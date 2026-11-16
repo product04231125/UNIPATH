@@ -83,6 +83,21 @@ Future<void> execute(WidgetTester tester) async {
 
 void main() {
   testWidgets(
+    'existing analysis opens recommendation form and returns with text preserved',
+    (tester) async {
+      final api = AnalysisGateway(), p = await consent();
+      await mount(tester, api, p);
+      await tester.ensureVisible(find.text('내 자료로 공고 찾기'));
+      await tester.tap(find.text('내 자료로 공고 찾기'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('recommend-keyword')), findsOneWidget);
+      expect(api.calls, isEmpty);
+      await tester.tap(find.text('공고 본문 분석으로 돌아가기'));
+      await tester.pumpAndSettle();
+      expect(find.text('합성 공고 본문'), findsOneWidget);
+    },
+  );
+  testWidgets(
     'text analysis works without school and preserves explicit selected version',
     (tester) async {
       final api = AnalysisGateway(), p = await consent();

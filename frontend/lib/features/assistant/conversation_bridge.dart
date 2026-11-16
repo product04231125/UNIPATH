@@ -130,6 +130,7 @@ class ConversationBridge {
       'guidance_audits',
       'guidance_audit',
       'career',
+      'career_recommend',
     ].contains(action)) {
       throw const FormatException('Unknown conversation command');
     }
@@ -175,6 +176,7 @@ class ConversationBridge {
       unawaited(conversation.selectAudit(command['audit_id'] as String));
     }
     if (action == 'career') conversation.openCareer();
+    if (action == 'career_recommend') conversation.openRecommendations();
     if (action == 'permit') {
       unawaited(
         conversation
@@ -476,6 +478,11 @@ class RemoteConversation extends AssistantConversation {
   @override
   void openCareer() {
     if (_ready) _enqueue('career');
+  }
+
+  @override
+  void openRecommendations() {
+    if (_ready) _enqueue('career_recommend');
   }
 
   @override

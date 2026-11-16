@@ -93,6 +93,44 @@ AssistantConversation conversation(AcademicGateway api) =>
     );
 
 void main() {
+  testWidgets(
+    'career recommend workflow opens frontend without a model request',
+    (tester) async {
+      var opened = 0;
+      final gateway = AcademicGateway()
+        ..response = {
+          ...node('career:recommend'),
+          'workflow': {
+            'id': 'recommend',
+            'requires_authenticated_user': true,
+            'record_kinds': ['experience'],
+            'job_selection': 'user_selected',
+            'region_selection': 'user_selected',
+            'steps': ['자료 선택'],
+          },
+        };
+      final conversation = AssistantConversation(
+        guidanceApi: GuidanceApi(gateway),
+        onOpenRecommendations: () => opened++,
+      );
+      await conversation.navigateGuidance('career:recommend');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: AcademicGuidanceView(conversation: conversation),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('내 자료로 공고 찾기 화면으로 이동'));
+      expect(opened, 1);
+      expect(gateway.paths, hasLength(1));
+      await tester.pumpWidget(const SizedBox());
+      conversation.dispose();
+    },
+  );
   TestWidgetsFlutterBinding.ensureInitialized();
   testWidgets(
     'school mode opens tree directly and switching preserves personal draft',

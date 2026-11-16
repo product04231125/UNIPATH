@@ -1,0 +1,157 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import '../auth/auth_api.dart';
+import 'job_analysis_models.dart';
+
+class RecommendationDocument {
+  const RecommendationDocument(this.filename, this.bytes);
+  final String filename;
+  final Uint8List bytes;
+  Map<String, Object?> toJson() => {
+    'filename': filename,
+    'content_base64': base64Encode(bytes),
+  };
+}
+
+class JobRecommendationRequest {
+  const JobRecommendationRequest({
+    required this.keyword,
+    required this.region,
+    this.documents = const [],
+    this.records = const [],
+    required this.consent,
+  });
+  final String keyword, region;
+  final List<RecommendationDocument> documents;
+  final List<PersonalEvidenceSelection> records;
+  final bool consent;
+  Map<String, Object?> toJson() => {
+    'keyword': keyword,
+    'region': region,
+    'documents': documents.map((d) => d.toJson()).toList(),
+    'records': records.map((r) => r.toJson()).toList(),
+    'external_processing_consent': consent,
+    'limit': 3,
+  };
+}
+
+Map<String, dynamic> _map(Object? value) =>
+    Map<String, dynamic>.from(value as Map);
+List<T> _rows<T>(Object? value, T Function(Map<String, dynamic>) parse) =>
+    List.unmodifiable(((value ?? const []) as List).map((v) => parse(_map(v))));
+List<String> _strings(Object? value) =>
+    List<String>.from((value ?? const []) as List);
+
+class RecommendationCitation {
+  RecommendationCitation.fromJson(Map<String, dynamic> json)
+    : kind = json['kind'] as String,
+      id = json['record_id'] as String,
+      version = json['version'] as int,
+      excerpt = json['excerpt'] as String;
+  final String kind, id, excerpt;
+  final int version;
+}
+
+class RecommendationComparison {
+  RecommendationComparison.fromJson(Map<String, dynamic> json)
+    : requirement = json['requirement'] as String,
+      priority = json['priority'] as String,
+      status = json['status'] as String,
+      postingExcerpt = _map(json['posting_evidence'])['excerpt'] as String,
+      explanation = json['explanation'] as String,
+      evidence = _rows(
+        json['personal_evidence'],
+        RecommendationCitation.fromJson,
+      );
+  final String requirement, priority, status, postingExcerpt, explanation;
+  final List<RecommendationCitation> evidence;
+}
+
+class RecommendationPosting {
+  RecommendationPosting.fromJson(Map<String, dynamic> json)
+    : source = json['source'] as String,
+      id = json['source_id'] as String,
+      title = json['title'] as String,
+      company = json['company'] as String,
+      url = json['url'] as String,
+      location = json['location'] as String,
+      closing =
+          (json['expires_at'] ?? json['closing_label'] ?? '확인 필요') as String;
+  final String source, id, title, company, url, location, closing;
+  String get key => '$source/$id';
+}
+
+class RecommendationItem {
+  RecommendationItem.fromJson(Map<String, dynamic> json)
+    : posting = RecommendationPosting.fromJson(_map(json['posting'])),
+      status = json['analysis_status'] as String,
+      scope = json['analysis_scope'] as String,
+      comparisons = _rows(
+        json['comparisons'],
+        RecommendationComparison.fromJson,
+      ),
+      warnings = _strings(json['warnings']);
+  final RecommendationPosting posting;
+  final String status, scope;
+  final List<RecommendationComparison> comparisons;
+  final List<String> warnings;
+}
+
+class RecommendedJob {
+  RecommendedJob.fromJson(Map<String, dynamic> json)
+    : key = '${json['source']}/${json['source_id']}',
+      requiredToCheck = json['required_to_check'] as int,
+      matched = _rows(
+        json['matched_requirements'],
+        RecommendationComparison.fromJson,
+      );
+  final String key;
+  final int requiredToCheck;
+  final List<RecommendationComparison> matched;
+}
+
+class DocumentCitationLocation {
+  DocumentCitationLocation.fromJson(Map<String, dynamic> json)
+    : filename = json['filename'] as String,
+      location = json['location'] as String,
+      method = json['method'] as String;
+  final String filename, location, method;
+}
+
+class RecommendationSource {
+  RecommendationSource.fromJson(Map<String, dynamic> json)
+    : source = json['source'] as String,
+      status = json['status'] as String;
+  final String source, status;
+}
+
+class JobRecommendationResponse {
+  JobRecommendationResponse.fromJson(Map<String, dynamic> json)
+    : status = json['status'] as String,
+      notice = json['notice'] as String? ?? '',
+      missingFields = _strings(json['missing_fields']),
+      sources = _rows(json['sources'], RecommendationSource.fromJson),
+      items = _rows(json['items'], RecommendationItem.fromJson),
+      recommendations = _rows(json['recommendations'], RecommendedJob.fromJson),
+      warnings = _strings(json['document_warnings']),
+      locations = _map(
+        json['document_locations'] ?? {},
+      ).map((k, v) => MapEntry(k, DocumentCitationLocation.fromJson(_map(v))));
+  final String status, notice;
+  final List<String> missingFields, warnings;
+  final List<RecommendationSource> sources;
+  final List<RecommendationItem> items;
+  final List<RecommendedJob> recommendations;
+  final Map<String, DocumentCitationLocation> locations;
+}
+
+class JobRecommendationApi {
+  const JobRecommendationApi(this.api);
+  final ApiGateway api;
+  Future<JobRecommendationResponse> recommend(
+    JobRecommendationRequest request,
+  ) async => JobRecommendationResponse.fromJson(
+    (await api.request('POST', 'me/job-recommendations', request.toJson()))!,
+  );
+}

@@ -95,6 +95,7 @@ class _WorkspaceState extends State<Workspace> {
   var _page = 0;
   final _visitedPages = <int>{};
   final _materials = GlobalKey<MaterialsPageState>();
+  final _jobAnalysis = GlobalKey<JobAnalysisPageState>();
   var _chatOpen = false;
   var _chatManuallyOpened = false;
   var _detachedChatActive = false;
@@ -130,6 +131,13 @@ class _WorkspaceState extends State<Workspace> {
         : () => loadAiRecords(widget.studentApi!),
     onOpenSettings: () => _selectPage(_labels.length),
     onOpenCareer: () => _selectPage(7),
+    onOpenRecommendations: () async {
+      await _selectPageGuarded(7);
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _jobAnalysis.currentState?.showRecommendations();
+      });
+    },
   );
   late final PlanningRepository _planningRepository = () {
     final base = widget.studentApi == null
@@ -428,7 +436,11 @@ class _WorkspaceState extends State<Workspace> {
         4 => const ActivityPage(),
         5 => const CredentialPage(),
         6 => MaterialsPage(key: _materials),
-        7 => JobAnalysisPage(api: _personalApi, consent: _aiConsent),
+        7 => JobAnalysisPage(
+          key: _jobAnalysis,
+          api: _personalApi,
+          consent: _aiConsent,
+        ),
         _ when index == settingsPage - 1 => SettingsPage(
           repository: _planningRepository,
           chatPreferences: widget.windowHost.supportsDetached
