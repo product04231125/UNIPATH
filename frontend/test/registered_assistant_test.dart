@@ -465,6 +465,12 @@ void main() {
         tester.widget<TextField>(find.byType(TextField)).decoration!.labelText,
         '내 자료로 질문',
       );
+      await tester.scrollUntilVisible(
+        find.text('학교 문서'),
+        150,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
       expect(find.text('학교 문서'), findsOneWidget);
       expect(find.text('내 기록'), findsOneWidget);
       expect(

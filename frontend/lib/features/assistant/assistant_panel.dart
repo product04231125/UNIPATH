@@ -319,6 +319,32 @@ class AssistantPanelState extends State<AssistantPanel> {
                         ],
                       ],
                       if (conversation.mode == AssistantMode.personalized) ...[
+                        const Text('등록한 내 자료'),
+                        const Text('자료 질문 API가 없어 등록 자료로 질문할 수 없습니다.'),
+                        TextButton(
+                          onPressed: conversation.materialsLoading
+                              ? null
+                              : conversation.refreshMaterials,
+                          child: const Text('등록 자료 다시 읽기'),
+                        ),
+                        if (conversation.materialsLoading)
+                          const LinearProgressIndicator(),
+                        if (conversation.materialsError != null)
+                          Text(conversation.materialsError!),
+                        if (!conversation.materialsLoading &&
+                            conversation.materialsError == null &&
+                            conversation.materials.isEmpty)
+                          const Text('이 기기에 등록한 자료가 없습니다. 자료 메뉴에서 등록해 주세요.'),
+                        for (final material in conversation.materials)
+                          CheckboxListTile(
+                            key: ValueKey('assistant-material-${material.id}'),
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(material.title),
+                            subtitle: Text('${material.type} · 질문 연결 준비 중'),
+                            value: false,
+                            onChanged: null,
+                          ),
+                        const Divider(),
                         Text(
                           '질문에 사용할 내 기록 (${conversation.selectedRecords.length}/20)',
                         ),
