@@ -31,6 +31,8 @@ import 'features/records/course/course_page.dart';
 import 'features/records/credential/credential_page.dart';
 import 'features/records/portfolio/job_analysis_page.dart';
 import 'features/records/portfolio/materials_page.dart';
+import 'features/records/portfolio/material_repository.dart';
+import 'features/auth/local_data_owner.dart';
 import 'features/settings/settings_page.dart';
 import 'features/schedule/schedule_page.dart';
 import 'features/auth/guest_preview_scope.dart';
@@ -95,6 +97,11 @@ class _WorkspaceState extends State<Workspace> {
   var _page = 0;
   final _visitedPages = <int>{};
   final _materials = GlobalKey<MaterialsPageState>();
+  late final _materialRepository = MaterialRepository(
+    owner: widget.studentApi == null
+        ? LocalDataOwner.current()
+        : LocalDataOwner(widget.studentApi!.ownerId),
+  );
   var _chatOpen = false;
   var _chatManuallyOpened = false;
   var _detachedChatActive = false;
@@ -127,7 +134,8 @@ class _WorkspaceState extends State<Workspace> {
     consent: _aiConsent,
     loadRecords: widget.studentApi == null
         ? null
-        : () => loadAiRecords(widget.studentApi!),
+        : () => loadAiRecords(widget.studentApi!, includeCourses: false),
+    loadMaterials: () => loadAssistantMaterials(_materialRepository),
     onOpenSettings: () => _selectPage(_labels.length),
     onOpenCareer: () => _selectPage(7),
   );
@@ -427,7 +435,11 @@ class _WorkspaceState extends State<Workspace> {
         ),
         4 => const ActivityPage(),
         5 => const CredentialPage(),
-        6 => MaterialsPage(key: _materials),
+        6 => MaterialsPage(
+          key: _materials,
+          repository: _materialRepository,
+          onChanged: () => unawaited(_assistantConversation.refreshMaterials()),
+        ),
         7 => JobAnalysisPage(api: _personalApi, consent: _aiConsent),
         _ when index == settingsPage - 1 => SettingsPage(
           repository: _planningRepository,

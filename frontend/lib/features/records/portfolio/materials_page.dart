@@ -23,10 +23,12 @@ class MaterialsPage extends StatefulWidget {
     this.repository,
     this.pickPdf,
     this.exportPdf,
+    this.onChanged,
   });
   final MaterialRepository? repository;
   final Future<XFile?> Function()? pickPdf;
   final Future<void> Function(PersonalMaterial)? exportPdf;
+  final VoidCallback? onChanged;
   @override
   State<MaterialsPage> createState() => MaterialsPageState();
 }
@@ -154,6 +156,7 @@ class MaterialsPageState extends State<MaterialsPage> {
       );
       if (!mounted) return;
       _reset();
+      widget.onChanged?.call();
       // A refresh failure must not pretend that a successful save failed.
       try {
         _records = await _repo.load();
@@ -206,6 +209,7 @@ class MaterialsPageState extends State<MaterialsPage> {
       await _repo.delete(record.id);
       if (!mounted) return;
       _reset();
+      widget.onChanged?.call();
       try {
         _records = await _repo.load();
       } catch (_) {

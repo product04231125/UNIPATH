@@ -49,6 +49,7 @@ class AssistantConversation extends ChangeNotifier {
     this.guidanceApi,
     this.consent,
     this.loadRecords,
+    this.loadMaterials,
     this.registeredOnly = false,
     this.onOpenSettings,
     this.onOpenCareer,
@@ -58,6 +59,7 @@ class AssistantConversation extends ChangeNotifier {
   final GuidanceApi? guidanceApi;
   final AiConsentPreferences? consent;
   final Future<List<AiRecordOption>> Function()? loadRecords;
+  final Future<List<AssistantMaterial>> Function()? loadMaterials;
   final bool registeredOnly;
   final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenCareer;
@@ -283,6 +285,36 @@ class AssistantConversation extends ChangeNotifier {
   }
 
   AssistantMode mode = AssistantMode.school;
+  List<AssistantMaterial> materials = const [];
+  bool materialsLoading = false;
+  bool _materialsReload = false;
+  String? materialsError;
+
+  Future<void> refreshMaterials() async {
+    if (_disposed || loadMaterials == null) return;
+    _materialsReload = true;
+    if (materialsLoading) return;
+    materialsLoading = true;
+    materialsError = null;
+    notifyListeners();
+    try {
+      do {
+        _materialsReload = false;
+        final next = await loadMaterials!();
+        if (_disposed) return;
+        materials = List.unmodifiable(next);
+      } while (_materialsReload);
+    } catch (_) {
+      if (!_disposed) {
+        materials = const [];
+        materialsError = '등록 자료를 읽지 못했습니다. 자료를 다시 읽어 주세요.';
+      }
+    } finally {
+      materialsLoading = false;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
   List<AiRecordOption> recordOptions = const [];
   final List<AiRecordOption> selectedRecords = [];
   bool recordsLoading = false;
@@ -322,6 +354,7 @@ class AssistantConversation extends ChangeNotifier {
   }
 
   Future<void> refreshRecords() async {
+    unawaited(refreshMaterials());
     if (_disposed || recordsLoading || loadRecords == null) return;
     recordsLoading = true;
     recordsError = null;
