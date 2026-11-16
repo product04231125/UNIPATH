@@ -16,7 +16,7 @@ class CareerService:
         self.analysis_limit = analysis_limit
         self.budget = budget_seconds
 
-    def recommend(self, query, context, *, allow_personal_analysis=False):
+    def recommend(self, query, context, *, allow_personal_analysis=False, before_analysis=None):
         records = selected_records(context)
         start = monotonic()
         postings, sources, seen = [], [], set()
@@ -73,6 +73,8 @@ class CareerService:
                 if attempted >= self.analysis_limit or monotonic() - start >= self.budget:
                     item["analysis_status"] = "budget_exhausted"
                 else:
+                    if before_analysis is not None:
+                        before_analysis()
                     attempted += 1
                     try:
                         values = self.analyzer.analyze(posting.text, {"records": records})
