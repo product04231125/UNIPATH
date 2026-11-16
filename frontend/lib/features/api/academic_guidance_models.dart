@@ -626,6 +626,7 @@ class AcademicGuidance implements AcademicGuidancePayload {
           "unknown_node",
           "approved_content_not_configured",
           "verified_audit_required",
+          "general_criteria",
           "audit_rendered",
           "invalid_audit_projection",
           "calendar_snapshot",
