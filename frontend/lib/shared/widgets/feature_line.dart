@@ -16,6 +16,7 @@ class FeatureLine extends StatelessWidget {
   }) : variant = FeatureLineVariant.one,
        primary = text,
        secondary = null,
+       maxLines = null,
        padTop = false,
        padBottom = false;
 
@@ -26,6 +27,7 @@ class FeatureLine extends StatelessWidget {
     this.leading,
     this.trailing,
     this.divided = true,
+    this.maxLines,
   }) : variant = FeatureLineVariant.two,
        padTop = false,
        padBottom = false;
@@ -42,11 +44,15 @@ class FeatureLine extends StatelessWidget {
   }) : variant = FeatureLineVariant.section,
        primary = text,
        secondary = null,
+       maxLines = null,
        leading = null;
 
   final FeatureLineVariant variant;
   final String primary;
   final String? secondary;
+
+  /// Optional limit for both text rows; unrestricted by default.
+  final int? maxLines;
   final Widget? leading;
   final Widget? trailing;
   final bool divided;
@@ -93,6 +99,8 @@ class FeatureLine extends StatelessWidget {
       ),
       FeatureLineVariant.two => Text(
         primary,
+        maxLines: maxLines,
+        overflow: maxLines == null ? null : TextOverflow.ellipsis,
         style: theme.textTheme.titleSmall,
       ),
       FeatureLineVariant.one => Text(
@@ -108,6 +116,8 @@ class FeatureLine extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 secondary!,
+                maxLines: maxLines,
+                overflow: maxLines == null ? null : TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colors.onSurfaceVariant,
                 ),
