@@ -5,14 +5,134 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
+import 'package:university_path_frontend/features/api/academic_guidance_models.dart';
+import 'package:university_path_frontend/features/assistant/assistant_panel.dart';
+import 'package:university_path_frontend/features/assistant/assistant_conversation.dart';
 import 'package:university_path_frontend/features/assistant/academic_guidance_view.dart';
+import 'package:university_path_frontend/features/home/home_page.dart';
 import 'package:university_path_frontend/shared/app_style.dart';
 
 import 'guidance_criteria_test.dart' as criteria;
 
 // Synthetic responses only; these are not a school's actual requirements.
 void main() {
+  testWidgets('published cards preserve the surrounding full workspace', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.binding.setSurfaceSize(const Size(1440, 1000));
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await (FontLoader('Pretendard')..addFont(
+          rootBundle.load('assets/fonts/pretendard/Pretendard-Regular.otf'),
+        ))
+        .load();
+    await (FontLoader(
+      'MaterialIcons',
+    )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+    final boundary = GlobalKey();
+    await tester.pumpWidget(
+      RepaintBoundary(
+        key: boundary,
+        child: const UniversityPathApp(startAuthenticated: true),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final home = find.byType(HomePage);
+    final homeElement = tester.element(home);
+    final closedBounds = tester.getRect(home);
+    Future<void> capture(String name) async {
+      if (!const bool.fromEnvironment('GUIDANCE_CAPTURE')) return;
+      await tester.runAsync(() async {
+        final output = Directory('../output/guidance-published-cards');
+        await output.create(recursive: true);
+        final frame =
+            await (boundary.currentContext!.findRenderObject()!
+                    as RenderRepaintBoundary)
+                .toImage(pixelRatio: 1);
+        final bytes = await frame.toByteData(format: ui.ImageByteFormat.png);
+        await File('${output.path}/workspace_$name.png')
+            .writeAsBytes(bytes!.buffer.asUint8List());
+        frame.dispose();
+      });
+    }
+
+    await capture('closed');
+    await tester.tap(find.byIcon(Icons.chat_bubble_outline));
+    await tester.pumpAndSettle();
+    final c = tester
+        .widget<AssistantPanel>(find.byType(AssistantPanel))
+        .conversation;
+    final base = <String, dynamic>{
+      'schema_version': 'academic-click-v3',
+      'node_id': 'credits',
+      'title': '이수학점',
+      'state': 'ready',
+      'reason': 'general_criteria',
+      'message': '학교 게시 기준 안내 · 합성 응답',
+      'warnings': [],
+      'buttons': [
+        {
+          'id': 'home',
+          'label': '처음으로',
+          'action': 'select_node',
+          'node_id': 'home',
+          'availability': 'available',
+        },
+      ],
+      'cards': [],
+    };
+    c.guidance = AcademicGuidance.fromJson(base);
+    c.guidanceOpen = true;
+    c.guidanceError = null;
+    c.setMode(AssistantMode.school);
+    await tester.pumpAndSettle();
+    final dockedBounds = tester.getRect(home);
+    expect(identical(tester.element(home), homeElement), isTrue);
+    await capture('empty');
+    c.guidance = AcademicGuidance.fromJson({
+      ...base,
+      'cards': [
+        {
+          'type': 'reference_table',
+          'title': '합성 졸업 학점표',
+          'body': '합성학과 · 2026학년도 입학 · 단일전공',
+          'table': {
+            'rows': [],
+            'grid': [
+              ['구분', '단일전공'],
+              ['졸업 학점', '120'],
+              ['전공 필수', '30'],
+            ],
+          },
+          'sources': [
+            {'title': '학교 게시 기준 · 합성 개정본'},
+          ],
+        },
+      ],
+    });
+    c.setMode(AssistantMode.school);
+    await tester.pumpAndSettle();
+    expect(find.text('합성 졸업 학점표'), findsOneWidget);
+    expect(find.text('120'), findsOneWidget);
+    expect(tester.getRect(home), dockedBounds);
+    expect(identical(tester.element(home), homeElement), isTrue);
+    final panelRect = tester.getRect(find.byType(AssistantPanel));
+    expect(dockedBounds.right, lessThanOrEqualTo(panelRect.left));
+    expect(tester.takeException(), isNull);
+    await capture('cards');
+    await tester.tap(find.byTooltip('AI 도우미 닫기'));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(home), closedBounds);
+    expect(identical(tester.element(home), homeElement), isTrue);
+    expect(tester.takeException(), isNull);
+    await capture('restored');
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('published criteria desktop render matrix', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 1000));
     tester.view.devicePixelRatio = 1;
