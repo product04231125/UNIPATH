@@ -417,9 +417,17 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  for (final populated in [false, true]) {
+  // Fixed future dates keep all three events upcoming on every CI run and
+  // exercise both date widths and times without depending on today's day.
+  for (final start in <DateTime?>[
+    null,
+    DateTime(2099, 12, 1, 10),
+    DateTime(2099, 12, 15, 10),
+    DateTime(2099, 12, 15, 22),
+  ]) {
+    final populated = start != null;
     testWidgets(
-      'Windows initial client area has no home scroll, populated=$populated',
+      'Windows initial client area has no home scroll, populated=$populated, start=$start',
       (tester) async {
         // 1440x900 native outer window, excluding its title bar and borders.
         await tester.binding.setSurfaceSize(const Size(1424, 861));
@@ -427,14 +435,13 @@ void main() {
         if (populated) {
           final repository = PlanningRepository();
           await repository.load();
-          final now = DateTime.now();
           for (var i = 0; i < 3; i++) {
             await repository.saveEvent(
               PlanningEvent(
                 id: 'initial-$i',
                 title: '개인 프로젝트와 수강 계획을 점검하는 긴 일정 제목 $i',
-                start: now.add(Duration(hours: i + 1)),
-                end: now.add(Duration(hours: i + 2)),
+                start: start.add(Duration(minutes: i * 10)),
+                end: start.add(Duration(minutes: i * 10 + 5)),
                 category: PlanningEventCategory.personal,
               ),
             );
