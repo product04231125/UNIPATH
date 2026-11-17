@@ -10,6 +10,8 @@ def test_gateway_fixture_keeps_staging_limits_for_both_templates(template):
     assert fixture.count("server {") == 1
     assert "server_name staging-unipath.duckdns.org;" in fixture
     assert "client_max_body_size 2m;" in fixture
+    assert "client_max_body_size 12m;" in fixture
+    assert "^/api/v1/me/(job-recommendations|personalized-guidance)$" in fixture
     assert "error_page 413 = @staging_payload_too_large;" in fixture
     assert '"code":"HTTP_ERROR"' in fixture
     assert "ssl_certificate" not in fixture
@@ -22,7 +24,8 @@ def test_product_gateway_matches_staging_limits_with_its_own_upstream():
     product = server_block(source, "unipath.duckdns.org")
     assert "client_max_body_size 2m;" in product
     assert "error_page 413 = @product_payload_too_large;" in product
-    assert product.count("access_log off;") == 3
+    assert product.count("access_log off;") == 4
+    assert "client_max_body_size 12m;" in product
     assert "set $unipath_upstream unipath-product-web;" in product
     assert "staging" not in product
     with pytest.raises(ValueError):

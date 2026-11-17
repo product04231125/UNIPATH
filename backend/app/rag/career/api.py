@@ -124,7 +124,7 @@ def configured_sources():
 
 
 def portfolio_analyzer(config):
-    # Same project, region and model as the other Gemini features (team decision D2).
+    """Command-line runs; the API uses the job-analysis model created at startup."""
     model = None
     if config.vertex_configured:
         model = gemini.create_model(config, timeout=config.vertex_timeout_seconds)
@@ -132,12 +132,7 @@ def portfolio_analyzer(config):
 
 
 def create_app(settings=None):
-    """ASGI factory, also supports the project's standard frontend and existing routes."""
-    from app.core.config import get_settings
+    """Kept for existing commands: the main API now serves this router itself."""
     from app.main import create_app as base_app
 
-    config = settings or get_settings()
-    app = base_app(config)
-    app.state.portfolio_analyzer = portfolio_analyzer(config)
-    app.include_router(router, prefix="/api/v1")
-    return app
+    return base_app(settings)

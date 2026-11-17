@@ -133,6 +133,13 @@ def verify_chain(base):
     )
     assert status == 413 and "X-Synthetic-Body-Bytes" not in headers
     common_size_error(headers, body)
+    # Selected files travel as base64 (8 MiB raw is about 10.7 MiB) on two routes only.
+    for path in ["/api/v1/me/job-recommendations", "/api/v1/me/personalized-guidance"]:
+        status, headers, _, expected_size = request(base, path, 11 * 1024 * 1024)
+        assert status == 401 and int(headers["X-Synthetic-Body-Bytes"]) == expected_size
+        status, headers, body, _ = request(base, path, 13 * 1024 * 1024, headers_only=True)
+        assert status == 413 and "X-Synthetic-Body-Bytes" not in headers
+        common_size_error(headers, body)
 
 
 def verify_source_files(base):
@@ -267,7 +274,7 @@ def main():
                 print(
                     "PASS: two real proxy layers:",
                     template,
-                    "large imports/knowledge/rules, unchanged login/event limits, common 413",
+                    "large imports/knowledge/rules/files, unchanged login/event limits, common 413",
                     flush=True,
                 )
             verify_rate_limit(base)

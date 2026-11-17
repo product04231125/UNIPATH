@@ -41,6 +41,7 @@ from app.api.student_academic import router as student_academic_router
 from app.core.config import Settings, get_settings
 from app.core.database import create_session_factory
 from app.core.errors import register_error_handlers
+from app.rag.career.api import router as career_recommendation_router
 from app.schemas.common import ErrorResponse
 from app.schemas.health import HealthResponse
 from app.services import gemini
@@ -62,6 +63,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         guidance_model = gemini.create_model(config, timeout=config.vertex_timeout_seconds)
         application.state.guidance_model = guidance_model
         application.state.job_analyzer = gemini.create_job_analyzer(guidance_model)
+        # Posting recommendations share the job-analysis model and settings (D2).
+        application.state.portfolio_analyzer = application.state.job_analyzer
         try:
             yield
         finally:
@@ -114,6 +117,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(student_academic_router, prefix="/api/v1")
     application.include_router(personal_imports_router, prefix="/api/v1")
     application.include_router(personalization_router, prefix="/api/v1")
+    application.include_router(career_recommendation_router, prefix="/api/v1")
     application.include_router(academic_guidance_router, prefix="/api/v1")
     application.include_router(academic_guidance_admin_router, prefix="/api/v1")
     application.include_router(official_records_router, prefix="/api/v1")
