@@ -30,11 +30,18 @@ class AcademicGuidanceView extends StatelessWidget {
         node?.cards.isEmpty == true;
     final navigation =
         node?.buttons
+            .where((b) => AssistantConversation.isSchoolGuidanceNode(b.nodeId))
             .where((b) => b.nodeId == 'home' || b.label == '이전 메뉴')
             .toList() ??
         <GuidanceButton>[];
     final options =
-        node?.buttons.where((b) => !navigation.contains(b)).toList() ??
+        node?.buttons
+            .where(
+              (b) =>
+                  AssistantConversation.isSchoolGuidanceNode(b.nodeId) &&
+                  !navigation.contains(b),
+            )
+            .toList() ??
         <GuidanceButton>[];
     return Material(
       color: theme.colorScheme.surface,
@@ -176,21 +183,6 @@ class AcademicGuidanceView extends StatelessWidget {
                     conversation: conversation,
                     rulesOnly: true,
                   ),
-              ],
-              if (node.workflow != null) ...[
-                for (final step in node.workflow!.steps) Text(step),
-                if (node.workflow!.id == 'posting')
-                  TextButton(
-                    onPressed: conversation.openCareer,
-                    child: const Text('채용공고 분석으로 이동'),
-                  )
-                else if (node.workflow!.id == 'recommend')
-                  TextButton(
-                    onPressed: conversation.openRecommendations,
-                    child: const Text('내 자료로 공고 찾기 화면으로 이동'),
-                  )
-                else
-                  const Text('이 분석 기능은 준비 중입니다.'),
               ],
               if (options.isNotEmpty) ...[
                 const SizedBox(height: 12),

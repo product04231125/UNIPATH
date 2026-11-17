@@ -97,7 +97,6 @@ class _WorkspaceState extends State<Workspace> {
   var _page = 0;
   final _visitedPages = <int>{};
   final _materials = GlobalKey<MaterialsPageState>();
-  final _jobAnalysis = GlobalKey<JobAnalysisPageState>();
   late final _materialRepository = MaterialRepository(
     owner: widget.studentApi == null
         ? LocalDataOwner.current()
@@ -135,17 +134,10 @@ class _WorkspaceState extends State<Workspace> {
     consent: _aiConsent,
     loadRecords: widget.studentApi == null
         ? null
-        : () => loadAiRecords(widget.studentApi!, includeCourses: false),
+        : () => loadAiRecords(widget.studentApi!),
     loadMaterials: () => loadAssistantMaterials(_materialRepository),
+    loadDocuments: (ids) => loadGuidanceDocuments(_materialRepository, ids),
     onOpenSettings: () => _selectPage(_labels.length),
-    onOpenCareer: () => _selectPage(7),
-    onOpenRecommendations: () async {
-      await _selectPageGuarded(7);
-      if (!mounted) return;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _jobAnalysis.currentState?.showRecommendations();
-      });
-    },
   );
   late final PlanningRepository _planningRepository = () {
     final base = widget.studentApi == null
@@ -448,11 +440,7 @@ class _WorkspaceState extends State<Workspace> {
           repository: _materialRepository,
           onChanged: () => unawaited(_assistantConversation.refreshMaterials()),
         ),
-        7 => JobAnalysisPage(
-          key: _jobAnalysis,
-          api: _personalApi,
-          consent: _aiConsent,
-        ),
+        7 => JobAnalysisPage(api: _personalApi, consent: _aiConsent),
         _ when index == settingsPage - 1 => SettingsPage(
           repository: _planningRepository,
           chatPreferences: widget.windowHost.supportsDetached

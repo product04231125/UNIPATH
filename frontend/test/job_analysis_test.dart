@@ -92,9 +92,52 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('recommend-keyword')), findsOneWidget);
       expect(api.calls, isEmpty);
-      await tester.tap(find.text('공고 본문 분석으로 돌아가기'));
+      final recommendationElement = tester.element(
+        find.byKey(const ValueKey('recommend-keyword')),
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('recommend-keyword')),
+        '초안 개발 직무',
+      );
+      final selected = find.widgetWithText(CheckboxListTile, record.title);
+      await tester.ensureVisible(selected);
+      await tester.tap(selected);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('공고 1개 비교'));
+      await tester.tap(find.text('공고 1개 비교'));
       await tester.pumpAndSettle();
       expect(find.text('합성 공고 본문'), findsOneWidget);
+      expect(
+        tester
+            .widget<CheckboxListTile>(
+              find.byKey(const ValueKey('job-record-experience/record-id')),
+            )
+            .value,
+        true,
+      );
+      await tester.ensureVisible(
+        find.widgetWithText(ChoiceChip, '내 자료로 공고 찾기'),
+      );
+      await tester.tap(find.widgetWithText(ChoiceChip, '내 자료로 공고 찾기'));
+      await tester.pumpAndSettle();
+      expect(
+        identical(
+          tester.element(find.byKey(const ValueKey('recommend-keyword'))),
+          recommendationElement,
+        ),
+        true,
+      );
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('recommend-keyword')),
+            )
+            .controller!
+            .text,
+        '초안 개발 직무',
+      );
+      expect(tester.widget<CheckboxListTile>(selected).value, true);
+      expect(api.calls, isEmpty);
     },
   );
   testWidgets(
@@ -127,9 +170,11 @@ void main() {
       );
       expect(
         tester
-            .widget<TextField>(find.byKey(const ValueKey('job-posting-url')))
-            .enabled,
-        false,
+            .widget<OutlinedButton>(
+              find.byKey(const ValueKey('job-posting-url')),
+            )
+            .onPressed,
+        isNull,
       );
       expect(
         tester

@@ -93,13 +93,16 @@ class AiConsentSection extends StatelessWidget {
               '외부 AI 전송 허용을 이 계정·현재 기기에 저장합니다. '
               '해제는 다음 요청부터 적용되며 이미 전송한 내용을 회수하지 않습니다.',
             ),
+            const Text('학교 안내는 버튼으로 조회하며 외부 AI에 전송하지 않습니다.'),
             if (preferences.loading) const LinearProgressIndicator(),
             if (preferences.loadFailed)
               TextButton(
                 onPressed: preferences.retry,
                 child: const Text('전송 설정 다시 읽기'),
               ),
-            for (final feature in AiConsentFeature.values)
+            for (final feature in AiConsentFeature.values.where(
+              (f) => f != AiConsentFeature.schoolQuestion,
+            ))
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(feature.label),

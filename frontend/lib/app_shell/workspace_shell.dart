@@ -128,7 +128,7 @@ class WorkspaceShell extends StatelessWidget {
         MediaQuery.textScalerOf(context).scale(14) > 18 ||
         maxWidth -
                 220 -
-                56 -
+                (!showDockedAssistant && maxWidth >= 1100 ? 116 : 56) -
                 dockWidth -
                 (showAssistantOverlay ? overlayWidth : 0) <
             minimumContentWidth;
@@ -265,8 +265,12 @@ class WorkspaceShell extends StatelessWidget {
                 : EdgeInsets.fromLTRB(
                     compact ? 16 : 28,
                     26,
-                    compact ? 16 : 28,
-                    30,
+                    !layout.showDockedAssistant && layout.maxWidth >= 1100
+                        ? 88
+                        : (compact ? 16 : 28),
+                    !layout.showDockedAssistant && layout.maxWidth < 1100
+                        ? 88
+                        : 30,
                   ),
             child: pageBuilder(context, layout),
           ),

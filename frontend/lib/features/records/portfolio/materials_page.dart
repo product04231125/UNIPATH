@@ -280,7 +280,16 @@ class MaterialsPageState extends State<MaterialsPage> {
     return base.copyWith(
       visualDensity: VisualDensity.compact,
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      minimumSize: const WidgetStatePropertyAll(Size(0, _actionHeight)),
+      minimumSize: WidgetStatePropertyAll(
+        Size(
+          0,
+          _actionHeight +
+              (MediaQuery.textScalerOf(context).scale(14) - 14).clamp(
+                0,
+                double.infinity,
+              ),
+        ),
+      ),
       padding: const WidgetStatePropertyAll(
         EdgeInsets.symmetric(horizontal: 12, vertical: 0),
       ),
@@ -485,41 +494,41 @@ class MaterialsPageState extends State<MaterialsPage> {
                       validator: (_) => MaterialKinds.isAllowed(_type.text)
                           ? null
                           : '자료 종류를 선택하세요.',
-                      builder: (state) => FieldLabel(
-                        label: fieldRequirementLabel('자료 종류', required: true),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            AnchoredSelectField<String>(
-                              key: const ValueKey('material-type'),
-                              value: _type.text,
-                              label: '자료 종류',
-                              externalLabel: true,
-                              options: [
-                                const SelectOption('', '미선택'),
-                                for (final kind in MaterialKinds.all)
-                                  SelectOption(kind, kind),
-                                if (_type.text.isNotEmpty &&
-                                    !MaterialKinds.isAllowed(_type.text))
-                                  SelectOption(
-                                    _type.text,
-                                    '기존 종류 · 네 종류 중 하나를 다시 선택하세요',
-                                  ),
-                              ],
-                              onChanged: (value) {
-                                setState(() => _type.text = value);
-                                state.didChange(value);
-                              },
+                      builder: (state) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AnchoredSelectField<String>(
+                            key: const ValueKey('material-type'),
+                            value: _type.text,
+                            label: fieldRequirementLabel(
+                              '자료 종류',
+                              required: true,
                             ),
-                            if (state.hasError)
-                              Text(
-                                state.errorText!,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
+                            externalLabel: true,
+                            options: [
+                              const SelectOption('', '미선택'),
+                              for (final kind in MaterialKinds.all)
+                                SelectOption(kind, kind),
+                              if (_type.text.isNotEmpty &&
+                                  !MaterialKinds.isAllowed(_type.text))
+                                SelectOption(
+                                  _type.text,
+                                  '기존 종류 · 네 종류 중 하나를 다시 선택하세요',
                                 ),
+                            ],
+                            onChanged: (value) {
+                              setState(() => _type.text = value);
+                              state.didChange(value);
+                            },
+                          ),
+                          if (state.hasError)
+                            Text(
+                              state.errorText!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
                               ),
-                          ],
-                        ),
+                            ),
+                        ],
                       ),
                     ),
                   ),

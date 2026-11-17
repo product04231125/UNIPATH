@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../api/academic_guidance_models.dart';
 import '../api/student_api.dart';
 import '../api/student_api_models.dart';
@@ -109,4 +111,41 @@ Future<List<AiRecordOption>> loadAiRecords(
     } while (cursor != null);
   }
   return List.unmodifiable(records);
+}
+
+Future<List<GuidanceDocument>> loadGuidanceDocuments(
+  MaterialRepository repository,
+  List<String> ids,
+) async {
+  final materials = await repository.load();
+  final documents = <GuidanceDocument>[];
+  var bytes = 0;
+  for (final id in ids) {
+    final matches = materials.where((m) => m.id == id);
+    if (matches.length != 1) throw StateError('선택한 자료가 변경되었습니다. 다시 선택해 주세요.');
+    final m = matches.single;
+    if (m.description.trim().isNotEmpty) {
+      final raw = utf8.encode(m.description);
+      bytes += raw.length;
+      documents.add(
+        GuidanceDocument(
+          filename: '${m.title.substring(0, m.title.length.clamp(0, 160))}.txt',
+          contentBase64: base64Encode(raw),
+        ),
+      );
+    }
+    if (m.pdf != null) {
+      bytes += m.pdf!.length;
+      documents.add(
+        GuidanceDocument(
+          filename: m.fileName.isEmpty ? '자료.pdf' : m.fileName,
+          contentBase64: base64Encode(m.pdf!),
+        ),
+      );
+    }
+  }
+  if (documents.isEmpty || documents.length > 5 || bytes > 8 * 1024 * 1024) {
+    throw StateError('설명과 PDF는 합계 5개·8MiB 이내로 선택해 주세요.');
+  }
+  return List.unmodifiable(documents);
 }

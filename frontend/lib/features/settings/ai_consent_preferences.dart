@@ -5,7 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 enum AiConsentFeature {
   schoolQuestion('학교 질문', '질문과 학교 문서의 관련 내용'),
-  personalizedQuestion('내 자료로 질문', '질문, 학교 문서의 관련 내용과 직접 선택한 개인 기록'),
+  personalizedQuestion(
+    '내 자료로 질문',
+    '질문, 학교 문서의 관련 내용, 직접 선택한 개인 기록과 등록 자료 설명·PDF에서 추출한 텍스트(OCR 포함)',
+  ),
   jobAnalysis('채용 분석', '공고 본문과 직접 선택한 개인 기록'),
   jobRecommendation('내 자료로 공고 찾기', '직접 선택한 파일에서 추출한 텍스트와 개인 기록');
 

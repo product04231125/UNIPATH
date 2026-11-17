@@ -131,16 +131,18 @@ void main() {
         home: Scaffold(body: AiConsentSection(preferences: p)),
       ),
     );
+    expect(find.byType(Switch), findsNWidgets(3));
+    expect(find.text('학교 안내는 버튼으로 조회하며 외부 AI에 전송하지 않습니다.'), findsOneWidget);
     await tester.tap(find.byType(Switch).first);
     await tester.pumpAndSettle();
     expect(find.text('허용하고 저장'), findsOneWidget);
     expect(find.text('이번만 허용'), findsNothing);
     await tester.tap(find.text('허용하고 저장'));
     await tester.pumpAndSettle();
-    expect(p.allows(AiConsentFeature.schoolQuestion), true);
+    expect(p.allows(AiConsentFeature.personalizedQuestion), true);
     await tester.tap(find.byType(Switch).first);
     await tester.pumpAndSettle();
-    expect(p.allows(AiConsentFeature.schoolQuestion), false);
+    expect(p.allows(AiConsentFeature.personalizedQuestion), false);
     p.dispose();
   });
 }

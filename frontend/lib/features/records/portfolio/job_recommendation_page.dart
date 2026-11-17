@@ -43,12 +43,16 @@ class JobRecommendationPage extends StatefulWidget {
     this.loadRecords,
     this.pickFiles,
     this.onBack,
+    this.onBusyChanged,
+    this.purposeSelector,
   });
   final StudentApi? api;
   final AiConsentPreferences? consent;
   final Future<List<AiRecordOption>> Function()? loadRecords;
   final Future<List<XFile>> Function()? pickFiles;
   final VoidCallback? onBack;
+  final Widget? purposeSelector;
+  final ValueChanged<bool>? onBusyChanged;
   @override
   State<JobRecommendationPage> createState() => _JobRecommendationPageState();
 }
@@ -145,6 +149,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
       _busy = true;
       _error = null;
     });
+    widget.onBusyChanged?.call(true);
     try {
       final files = await (widget.pickFiles ?? pickRecommendationFiles)();
       if (!mounted || revision != _revision) return;
@@ -182,7 +187,10 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
         setState(() => _error = '파일을 읽지 못했습니다. 기존 선택은 유지했습니다.');
       }
     } finally {
-      if (mounted && revision == _revision) setState(() => _busy = false);
+      if (mounted && revision == _revision) {
+        setState(() => _busy = false);
+        widget.onBusyChanged?.call(false);
+      }
     }
   }
 
@@ -227,6 +235,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
       _busy = true;
       _result = null;
     });
+    widget.onBusyChanged?.call(true);
     try {
       if (!await requestAiConsent(
             context,
@@ -268,7 +277,10 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
         setState(() => _error = '추천 응답을 확인하지 못했습니다. 입력과 선택은 유지했습니다.');
       }
     } finally {
-      if (mounted && revision == _revision) setState(() => _busy = false);
+      if (mounted && revision == _revision) {
+        setState(() => _busy = false);
+        widget.onBusyChanged?.call(false);
+      }
     }
   }
 
@@ -279,6 +291,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
     title: '내 자료로 공고 찾기',
     description: '직무와 지역을 고르고, 내 자료에서 확인된 근거로 공고를 비교합니다.',
     body: [
+      if (widget.purposeSelector != null) widget.purposeSelector!,
       if (widget.onBack != null)
         Align(
           alignment: Alignment.centerLeft,

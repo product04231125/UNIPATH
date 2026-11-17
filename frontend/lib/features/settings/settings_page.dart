@@ -19,7 +19,6 @@ import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../../shared/year_options.dart';
 import '../../shared/widgets/anchored_select_field.dart';
-import '../../shared/widgets/feature_actions.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/surface_card.dart';
@@ -230,43 +229,40 @@ class _SettingsPageState extends State<SettingsPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const FeatureLine.section(
+                              FeatureLine.section(
                                 text: '학업과 계획',
                                 padTop: false,
+                                trailing: FilledButton(
+                                  onPressed:
+                                      _saving ||
+                                          GuestPreviewScope.isActive(context)
+                                      ? null
+                                      : _save,
+                                  child: Text(_saving ? '저장 중…' : '저장'),
+                                ),
                               ),
-                              if (widget.repository.isServerBacked &&
-                                  !GuestPreviewScope.isActive(context))
-                                PlanningImportSection(
-                                  repository: widget.repository,
-                                )
-                              else if (!GuestPreviewScope.isActive(
-                                context,
-                              )) ...[
-                                const Text(
-                                  '기기 학업 정보·일정 이전은 계정 서버 연결 후 사용할 수 있습니다.',
-                                ),
-                                const OutlinedButton(
-                                  onPressed: null,
-                                  child: Text('기기 학업 정보·일정 이전'),
-                                ),
-                              ],
-                              if (!GuestPreviewScope.isActive(context)) ...[
-                                if (PersonalRepositoryScope.read(context)
-                                        ?.importer
-                                    case final importer?)
-                                  PersonalWorkspaceImportSection(
-                                    importer: importer,
-                                  )
-                                else ...[
-                                  const Text(
-                                    '수강·활동·포트폴리오 자료 이전은 계정 서버 연결 후 사용할 수 있습니다.',
+                              if (_saved)
+                                FeatureLine.two(
+                                  primary: '저장되었습니다.',
+                                  secondary: '학업 프로필과 개인 계획을 이어서 사용합니다.',
+                                  leading: Icon(
+                                    Icons.check_circle_outline,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary,
                                   ),
-                                  const OutlinedButton(
-                                    onPressed: null,
-                                    child: Text('기기 개인 기록 이전'),
+                                ),
+                              if (_error != null)
+                                Text(
+                                  _error!,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
                                   ),
-                                ],
-                              ],
+                                ),
+                              const FeatureLine.section(
+                                text: '학업 프로필',
+                                padTop: false,
+                              ),
                               ExcludeFocus(
                                 excluding: _saving,
                                 child: IgnorePointer(
@@ -378,7 +374,9 @@ class _SettingsPageState extends State<SettingsPage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.stretch,
                                       children: [
-                                        const FeatureLine.one(text: '개인 계획'),
+                                        const FeatureLine.section(
+                                          text: '개인 계획',
+                                        ),
                                         AnchoredSelectField<int?>(
                                           value: _academicYearOverride,
                                           label: '개인 계획 학년',
@@ -461,37 +459,43 @@ class _SettingsPageState extends State<SettingsPage> {
                                   child: const Text('개인 교육과정 작업'),
                                 ),
                               ),
-                              FeatureActions(
-                                children: [
-                                  FilledButton(
-                                    onPressed:
-                                        _saving ||
-                                            GuestPreviewScope.isActive(context)
-                                        ? null
-                                        : _save,
-                                    child: Text(_saving ? '저장 중…' : '저장'),
+                              const FeatureLine.section(text: '기기 자료 이전'),
+                              if (widget.repository.isServerBacked &&
+                                  !GuestPreviewScope.isActive(context))
+                                PlanningImportSection(
+                                  repository: widget.repository,
+                                )
+                              else if (!GuestPreviewScope.isActive(
+                                context,
+                              )) ...[
+                                const Text(
+                                  '기기 학업 정보·일정 이전은 계정 서버 연결 후 사용할 수 있습니다.',
+                                ),
+                                const OutlinedButton(
+                                  onPressed: null,
+                                  child: Text('기기 학업 정보·일정 이전'),
+                                ),
+                              ],
+                              if (!GuestPreviewScope.isActive(context)) ...[
+                                if (PersonalRepositoryScope.read(context)
+                                        ?.importer
+                                    case final importer?)
+                                  PersonalWorkspaceImportSection(
+                                    importer: importer,
+                                  )
+                                else ...[
+                                  const Text(
+                                    '수강·활동·포트폴리오 자료 이전은 계정 서버 연결 후 사용할 수 있습니다.',
+                                  ),
+                                  const OutlinedButton(
+                                    onPressed: null,
+                                    child: Text('기기 개인 기록 이전'),
                                   ),
                                 ],
-                              ),
+                              ],
                             ],
                           ),
                         ),
-                        if (_saved)
-                          FeatureLine.two(
-                            primary: '저장되었습니다.',
-                            secondary: '학업 프로필과 개인 계획을 이어서 사용합니다.',
-                            leading: Icon(
-                              Icons.check_circle_outline,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                        if (_error != null)
-                          Text(
-                            _error!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                          ),
                       ],
                     ),
                     second: SizedBox(

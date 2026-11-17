@@ -1,3 +1,4 @@
+import '../../shared/widgets/record_card_header.dart';
 import '../../shared/app_style.dart';
 import '../../shared/credits_format.dart';
 
@@ -230,11 +231,36 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     }
   }
 
+  String _credentialDetails(PersonalRecord record) {
+    String group(List<String> keys) => _fields
+        .where((f) => keys.contains(f.key) && record.value(f.key).isNotEmpty)
+        .map(
+          (f) =>
+              '${f.label}: ${f.optionLabels[record.value(f.key)] ?? record.value(f.key)}',
+        )
+        .join(' · ');
+    final grouped = {'provider', 'level', 'status', 'earnedOn', 'expiresOn'};
+    return [
+      group(['provider', 'level', 'status']),
+      group(['earnedOn', 'expiresOn']),
+      for (final f in _fields.where(
+        (f) =>
+            f.key != 'title' &&
+            !grouped.contains(f.key) &&
+            f.type != PersonalFieldType.url &&
+            record.value(f.key).isNotEmpty,
+      ))
+        '${f.label}: ${f.optionLabels[record.value(f.key)] ?? record.value(f.key)}',
+    ].where((line) => line.isNotEmpty).join('\n');
+  }
+
   Widget _personalEntry(PersonalRecord record) {
     final isCourse = widget.kind == PersonalRecordKind.course;
     final entry = RecordMockEntry(
       title: record.value('title'),
-      detail: isCourse
+      detail: widget.kind == PersonalRecordKind.credential
+          ? _credentialDetails(record)
+          : isCourse
           ? [
               '수강 기간: ${CourseTerm.parse(record.value('term')).label}',
               record.value('category'),
@@ -391,13 +417,25 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FeatureLine.section(
-                text: widget.listTitle,
-                padTop: false,
-                padBottom: false,
-                trailing: _repository.isServerBacked
+              RecordCardHeader(
+                title: widget.listTitle,
+                reload: _repository.isServerBacked
                     ? FeatureLine.reload(onPressed: _loading ? null : _load)
                     : null,
+                actions: [
+                  if (canAdd) ...[
+                    FilledButton.icon(
+                      onPressed: _showForm,
+                      icon: const Icon(Icons.add),
+                      label: Text(widget.addLabel),
+                    ),
+                    OutlinedButton(
+                      key: const Key('record-menu-load-draft'),
+                      onPressed: _loadDraft,
+                      child: const Text('임시저장 불러오기'),
+                    ),
+                  ],
+                ],
               ),
               if (isCourse && !canAdd && widget.onOpenSettings != null) ...[
                 const SizedBox(height: 16),
@@ -481,20 +519,6 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
             ],
           ),
         ),
-      ],
-      actions: [
-        if (canAdd) ...[
-          FilledButton.icon(
-            onPressed: _showForm,
-            icon: const Icon(Icons.add),
-            label: Text(widget.addLabel),
-          ),
-          OutlinedButton(
-            key: const Key('record-menu-load-draft'),
-            onPressed: _loadDraft,
-            child: const Text('불러오기'),
-          ),
-        ],
       ],
       below: [
         ExpansionTile(

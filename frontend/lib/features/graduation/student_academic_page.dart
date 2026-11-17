@@ -500,27 +500,6 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
       title: '졸업 요건',
       description: '내 학업 기준의 요건과 진행 상황을 확인합니다.',
       body: [
-        Wrap(
-          spacing: 8,
-          children: [
-            if (widget.onLegacy != null)
-              OutlinedButton(
-                onPressed: c.saving || c.uncertain ? null : widget.onLegacy,
-                child: const Text('기존 졸업 감사·이력'),
-              ),
-            if (widget.onPersonal != null)
-              OutlinedButton(
-                onPressed: c.saving || c.uncertain ? null : widget.onPersonal,
-                child: const Text('개인 기준 계산·이력'),
-              ),
-            OutlinedButton(
-              onPressed: c.disabled
-                  ? null
-                  : () => showStudentAcademicHistory(context, widget.api),
-              child: const Text('적용 기준·내 확인 이력'),
-            ),
-          ],
-        ),
         SurfaceCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -582,7 +561,13 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
             ],
           ),
         ),
-        if (c.loaded && preview != null)
+        if (c.loaded &&
+            preview != null &&
+            (requirements?.activationId == null ||
+                preview.changes.isNotEmpty ||
+                preview.curriculumUpdates.isNotEmpty ||
+                preview.issues.isNotEmpty ||
+                requirements!.issues.isNotEmpty))
           SurfaceCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -652,6 +637,41 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
         ),
         const SizedBox(height: 12),
         _requirementsWorkspace(docs),
+        if (c.loaded &&
+            preview != null &&
+            requirements?.activationId != null &&
+            preview.changes.isEmpty &&
+            preview.curriculumUpdates.isEmpty &&
+            preview.issues.isEmpty &&
+            requirements!.issues.isEmpty)
+          ExpansionTile(
+            title: const Text('기준 변경 확인'),
+            subtitle: const Text('새로 적용할 요건 변경이 없습니다.'),
+            children: preview.documents.map(_previewDocument).toList(),
+          ),
+
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          children: [
+            if (widget.onLegacy != null)
+              OutlinedButton(
+                onPressed: c.saving || c.uncertain ? null : widget.onLegacy,
+                child: const Text('기존 졸업 감사·이력'),
+              ),
+            if (widget.onPersonal != null)
+              OutlinedButton(
+                onPressed: c.saving || c.uncertain ? null : widget.onPersonal,
+                child: const Text('개인 기준 계산·이력'),
+              ),
+            OutlinedButton(
+              onPressed: c.disabled
+                  ? null
+                  : () => showStudentAcademicHistory(context, widget.api),
+              child: const Text('적용 기준·내 확인 이력'),
+            ),
+          ],
+        ),
       ],
     );
   }

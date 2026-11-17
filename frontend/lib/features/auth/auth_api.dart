@@ -371,7 +371,10 @@ class AuthApi implements AuthGateway, ApiGateway {
           .then(http.Response.fromStream)
           .timeout(
             Duration(
-              seconds: path == 'me/job-recommendations'
+              seconds:
+                  (path == 'me/job-recommendations' ||
+                      (path == 'me/personalized-guidance' &&
+                          (body?['documents'] as List? ?? []).isNotEmpty))
                   ? 180
                   : const {
                       'me/school-queries',

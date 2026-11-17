@@ -97,6 +97,9 @@ void main() {
       final response = await GuidanceApi(gateway).personalized(
         const PersonalizedGuidanceRequest(
           question: '질문',
+          documents: [
+            GuidanceDocument(filename: '증빙.txt', contentBase64: 'Ym9uZ2E='),
+          ],
           context: GuidanceSchoolContext(
             institutionId: 'school',
             departmentId: 'department',
@@ -110,6 +113,9 @@ void main() {
         'school',
       );
       expect(gateway.calls.single.$3!['external_processing_consent'], true);
+      expect(gateway.calls.single.$3!['documents'], [
+        {'filename': '증빙.txt', 'content_base64': 'Ym9uZ2E='},
+      ]);
       expect(response.answer, isNull);
       expect(response.personal.records, isEmpty);
     },
