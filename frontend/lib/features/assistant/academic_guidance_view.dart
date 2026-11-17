@@ -169,6 +169,13 @@ class AcademicGuidanceView extends StatelessWidget {
                   ],
                   conversation: conversation,
                 ),
+                // Schools may approve rule programs instead of publishing
+                // requirement revisions; keep those rules reachable.
+                if (conversation.showingCriteria && node.cards.isEmpty)
+                  GuidanceCriteriaView(
+                    conversation: conversation,
+                    rulesOnly: true,
+                  ),
               ],
               if (node.workflow != null) ...[
                 for (final step in node.workflow!.steps) Text(step),
