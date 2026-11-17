@@ -57,6 +57,9 @@ def add_published_criteria(db, identity, binding, value):
     profile = db.get(PlanningProfile, identity.user.id)
     if profile is None or profile.institution_id != binding.institution_id:
         return
+    # Schools that only approved rule programs keep the original pointer to those rules.
+    if not guidance_criteria.school_publishes(db, binding.institution_id):
+        return
     cards, state, stale = guidance_criteria.published_criteria(
         db, identity.user.id, value["node_id"]
     )

@@ -139,6 +139,34 @@ void main() {
   }
 
   testWidgets(
+    'rule-program schools keep approved rules under the server message',
+    (tester) async {
+      final api = CriteriaGateway()
+        ..nodeOverrides = {
+          'state': 'ready',
+          'reason': 'general_criteria',
+          'message': '이 항목의 기준은 학교가 승인한 졸업 기준에서 안내합니다.',
+          'cards': [],
+        };
+      api.selection['programs'][0]['rules'][0]['condition']['minimum'] = '130';
+      final c = conversation(api);
+      await c.navigateGuidance('credits');
+      await show(tester, c);
+      expect(find.text(api.nodeOverrides['message'] as String), findsOneWidget);
+      expect(find.text('필요 학점: 130학점'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+
+      // Published cards replace the rules; an empty rule kind adds nothing.
+      api.selection = {...contracts.selection(), 'programs': []};
+      await c.navigateGuidance('volunteer');
+      await show(tester, c);
+      expect(find.textContaining('학교 관리자의 기준 등록·검토'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      c.dispose();
+    },
+  );
+  testWidgets(
     'published criteria preserve server empty messages despite rule errors',
     (tester) async {
       final api = CriteriaGateway()

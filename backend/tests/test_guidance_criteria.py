@@ -3,7 +3,7 @@
 from uuid import uuid4
 
 import pytest
-from test_academic_guidance import bind
+from test_academic_guidance import bind, bound_student
 from test_admin_academic_workspace import ROOT, command
 from test_auth import auth_client as auth_client
 from test_auth import auth_db as auth_db
@@ -143,6 +143,17 @@ def test_graduation_criteria_use_the_applied_published_requirements(academic_stu
     # An administrator previewing the school never sees a student's requirements.
     preview = node(e, "credits", headers=admin, institution_id=e["inst"]["id"])
     assert preview["cards"] == []
+
+
+def test_rule_program_schools_keep_the_original_criteria_pointer(auth_client, auth_db):
+    """Without published revisions the school's rules live in rule programs only."""
+    student = bound_student(auth_client, auth_db, "rule-only@example.test")
+    response = auth_client.get(NODES + "credits", headers=student)
+    assert response.status_code == 200, response.text
+    value = response.json()
+    assert value["reason"] == "general_criteria" and value["cards"] == []
+    assert value["missing_fields"] == []
+    assert "학업 기준" not in value["message"]
 
 
 def test_criteria_without_matching_lines_say_so():
