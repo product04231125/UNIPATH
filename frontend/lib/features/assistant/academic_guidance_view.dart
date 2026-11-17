@@ -177,6 +177,11 @@ class AcademicGuidanceView extends StatelessWidget {
                     onPressed: conversation.openCareer,
                     child: const Text('채용공고 분석으로 이동'),
                   )
+                else if (node.workflow!.id == 'recommend')
+                  TextButton(
+                    onPressed: conversation.openRecommendations,
+                    child: const Text('내 자료로 공고 찾기 화면으로 이동'),
+                  )
                 else
                   const Text('이 분석 기능은 준비 중입니다.'),
               ],

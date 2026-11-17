@@ -1,5 +1,7 @@
 # 취업 공고 검색·개인 근거 비교 모듈
 
+[서버 적용 가이드](SERVER_HANDOFF.md) · [프론트 연동 가이드](FRONTEND_HANDOFF.md)
+
 2026-11-06. AI/RAG 내부 라이브러리이며 HTTP API나 실제 서비스 연결은 아니다.
 학사 안내에는 LLM을 쓰지 않고, 이 모듈에서 취업 공고와 선택한 개인 자료를 비교한다.
 
@@ -102,3 +104,6 @@ Vertex는 선택 의존성 `requirements-vertex.txt`, ADC 인증, API 사용 권
 - [Vertex 모델 추론 문서](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/model-reference/inference)
 
 프론트·백엔드 전달 사항은 `../guidance/CAREER_HANDOFF.md` 참고.
+
+2026-11-16 개인 PDF·DOCX·TXT·Markdown을 선택해 설정된 Gemini 모델로 채용공고를 비교하는
+인증 API와 별도 실행 프로필을 추가했다. [실행 및 프론트 연결 방법](DOCUMENT_RECOMMENDATIONS.md).

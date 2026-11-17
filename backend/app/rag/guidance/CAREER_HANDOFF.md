@@ -1,5 +1,7 @@
 # 취업 분석 메뉴 전달서
 
+아래는 11월 6일의 메뉴 설계 기록이다. 11월 16일 구현된 문서 추천 API는 [서버 적용 가이드](../career/SERVER_HANDOFF.md)와 [프론트 연동 가이드](../career/FRONTEND_HANDOFF.md)를 따른다.
+
 2026-11-06. 프론트·백엔드 코드와 기존 HTTP API는 변경하지 않았다.
 AI 모듈은 `../career/`, 메뉴 예시는 `examples/career-responses.json`에 있다.
 
