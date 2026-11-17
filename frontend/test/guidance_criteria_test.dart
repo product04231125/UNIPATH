@@ -16,6 +16,7 @@ class CriteriaGateway extends ApiGateway {
   final paths = <String>[];
   Map<String, dynamic> selection = contracts.selection();
   Completer<Map<String, dynamic>>? pending;
+  Map<String, dynamic> nodeOverrides = {};
   @override
   Future<Map<String, dynamic>?> request(
     String method,
@@ -45,6 +46,7 @@ class CriteriaGateway extends ApiGateway {
           'availability': 'available',
         },
       ],
+      ...nodeOverrides,
     };
   }
 }
@@ -80,6 +82,86 @@ Future<void> show(WidgetTester tester, AssistantConversation c) async {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  for (final node in AssistantConversation.criteriaKinds.keys) {
+    testWidgets('$node renders published cards without executable rules', (
+      tester,
+    ) async {
+      final api = CriteriaGateway()
+        ..selection = {...contracts.selection(), 'programs': []}
+        ..nodeOverrides = {
+          'state': 'ready',
+          'reason': 'general_criteria',
+          'message': '학교 게시 기준 안내',
+          'warnings': ['학업 기준 재적용 필요'],
+          'cards': [
+            {
+              'type': 'reference_text',
+              'title': '게시 기준',
+              'body': '선택 조건 중 1개 충족',
+              'sources': [
+                {'title': '학교 게시 기준 · 합성 개정본'},
+              ],
+            },
+            {
+              'type': 'reference_table',
+              'title': '적용 학점표',
+              'body': '합성 이수 경로',
+              'table': {
+                'rows': [],
+                'grid': [
+                  ['구분', '단일전공'],
+                  ['필요 학점', '120'],
+                  ['미지정', null],
+                ],
+              },
+            },
+          ],
+        };
+      final c = conversation(api);
+      await c.navigateGuidance(node);
+      await show(tester, c);
+      expect(find.text('학교 게시 기준 안내'), findsOneWidget);
+      expect(find.text('학업 기준 재적용 필요'), findsOneWidget);
+      expect(find.text('선택 조건 중 1개 충족'), findsOneWidget);
+      expect(find.text('120'), findsOneWidget);
+      expect(find.textContaining('학교 관리자의 기준 등록·검토'), findsNothing);
+      expect(find.textContaining('학교 게시 기준 · 합성 개정본'), findsOneWidget);
+      expect(find.text('처음으로'), findsOneWidget);
+      await tester.ensureVisible(find.text('넓게 자세히 보기'));
+      await tester.tap(find.text('넓게 자세히 보기'));
+      await tester.pumpAndSettle();
+      expect(find.byType(Dialog), findsOneWidget);
+      expect(find.text('120'), findsNWidgets(2));
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      c.dispose();
+    });
+  }
+
+  testWidgets(
+    'published criteria preserve server empty messages despite rule errors',
+    (tester) async {
+      final api = CriteriaGateway()
+        ..nodeOverrides = {
+          'state': 'ready',
+          'reason': 'general_criteria',
+          'message': '학업 기준을 적용하면 학교 게시 기준을 볼 수 있습니다.',
+          'cards': [],
+        };
+      final c = AssistantConversation(
+        guidanceApi: GuidanceApi(api),
+        registeredOnly: true,
+      );
+      await c.navigateGuidance('credits');
+      expect(c.criteriaError, isNotNull);
+      await show(tester, c);
+      expect(find.text(api.nodeOverrides['message'] as String), findsOneWidget);
+      expect(find.textContaining('학교·학과·교육과정'), findsNothing);
+      expect(find.text('처음으로'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      c.dispose();
+    },
+  );
   testWidgets(
     'saving academic profile refreshes the selected criterion instead of leaving a blank tree',
     (tester) async {

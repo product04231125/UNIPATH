@@ -23,6 +23,11 @@ class AcademicGuidanceView extends StatelessWidget {
     final node = conversation.guidance;
     final theme = Theme.of(context);
     final personal = node?.nodeId == 'summary';
+    // Published criteria include server-owned empty and reapplication messages.
+    final showLegacyCriteria =
+        conversation.showingCriteria &&
+        node?.reason != 'general_criteria' &&
+        node?.cards.isEmpty == true;
     final navigation =
         node?.buttons
             .where((b) => b.nodeId == 'home' || b.label == '이전 메뉴')
@@ -86,7 +91,7 @@ class AcademicGuidanceView extends StatelessWidget {
               ),
             ],
             if (node != null) ...[
-              if (conversation.showingCriteria)
+              if (showLegacyCriteria)
                 GuidanceCriteriaView(conversation: conversation)
               else ...[
                 for (final warning in node.warnings.where(
@@ -211,7 +216,7 @@ class AcademicGuidanceView extends StatelessWidget {
                   ],
                 ),
               ],
-              if (!conversation.showingCriteria &&
+              if (!showLegacyCriteria &&
                   (conversation.registeredOnly ||
                       node.notice != null ||
                       node.snapshotStale == true ||
