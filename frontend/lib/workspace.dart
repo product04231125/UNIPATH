@@ -136,6 +136,7 @@ class _WorkspaceState extends State<Workspace> {
         ? null
         : () => loadAiRecords(widget.studentApi!),
     loadMaterials: () => loadAssistantMaterials(_materialRepository),
+    loadDocuments: (ids) => loadGuidanceDocuments(_materialRepository, ids),
     onOpenSettings: () => _selectPage(_labels.length),
   );
   late final PlanningRepository _planningRepository = () {

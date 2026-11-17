@@ -31,6 +31,7 @@ MODELS = [
     knowledge.KnowledgeSearchResponse,
     personal.PersonalEvidenceSelection,
     knowledge.KnowledgeContext,
+    personalized.GuidanceDocument,
     personalized.PersonalizedGuidanceRequest,
     personal.PersonalEvidence,
     personal.PersonalizationContext,

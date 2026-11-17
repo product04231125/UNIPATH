@@ -29,12 +29,15 @@ class AssistantTurn {
     this.mode = AssistantMode.school,
     this.requestContext,
     this.records = const [],
+    this.materialIds = const [],
   });
   final String id;
   final String question;
   final AssistantMode mode;
   final SchoolQueryContext? requestContext;
   final List<GuidanceRecordSelection> records;
+  final List<String> materialIds;
+  List<GuidanceDocument>? documents;
   PersonalizedGuidanceResponse? personalized;
   AssistantResult? result;
   AssistantApiException? error;
@@ -50,6 +53,7 @@ class AssistantConversation extends ChangeNotifier {
     this.consent,
     this.loadRecords,
     this.loadMaterials,
+    this.loadDocuments,
     this.registeredOnly = false,
     this.onOpenSettings,
   }) : _api = api ?? AssistantApi() {
@@ -59,6 +63,7 @@ class AssistantConversation extends ChangeNotifier {
   final AiConsentPreferences? consent;
   final Future<List<AiRecordOption>> Function()? loadRecords;
   final Future<List<AssistantMaterial>> Function()? loadMaterials;
+  final Future<List<GuidanceDocument>> Function(List<String>)? loadDocuments;
   final bool registeredOnly;
   final VoidCallback? onOpenSettings;
   static const criteriaKinds = <String, String>{
@@ -287,6 +292,17 @@ class AssistantConversation extends ChangeNotifier {
 
   AssistantMode mode = AssistantMode.school;
   List<AssistantMaterial> materials = const [];
+  final Set<String> selectedMaterialIds = {};
+  void selectMaterial(String id, bool selected) {
+    if (sending || _disposed || !materials.any((m) => m.id == id)) return;
+    if (selected) {
+      selectedMaterialIds.add(id);
+    } else {
+      selectedMaterialIds.remove(id);
+    }
+    notifyListeners();
+  }
+
   bool materialsLoading = false;
   bool _materialsReload = false;
   String? materialsError;
@@ -304,6 +320,7 @@ class AssistantConversation extends ChangeNotifier {
         final next = await loadMaterials!();
         if (_disposed) return;
         materials = List.unmodifiable(next);
+        selectedMaterialIds.removeWhere((id) => !next.any((m) => m.id == id));
       } while (_materialsReload);
     } catch (_) {
       if (!_disposed) {
@@ -345,7 +362,9 @@ class AssistantConversation extends ChangeNotifier {
     if (_disposed || consent == null) return false;
     await consent!.load();
     if (_disposed || consent!.loadFailed) return false;
-    if (remember) return consent!.setAllowed(value.feature, true);
+    if (remember && !await consent!.setAllowed(value.feature, true)) {
+      return false;
+    }
     _oncePermissions.add(value);
     return true;
   }
@@ -432,6 +451,7 @@ class AssistantConversation extends ChangeNotifier {
       mode: mode,
       requestContext: context,
       records: List.unmodifiable(selectedRecords.map((r) => r.selection)),
+      materialIds: List.unmodifiable(selectedMaterialIds),
     );
     if (!_validate(turn)) return;
     _turns.add(turn);
@@ -450,15 +470,15 @@ class AssistantConversation extends ChangeNotifier {
       submissionError = '학업 프로필을 읽는 중이거나 읽지 못했습니다. 설정에서 다시 확인해 주세요.';
     } else if (registeredOnly &&
         !(turn.requestContext ?? context).hasRegisteredSchool) {
-      submissionError =
-          '등록된 학교·학과가 필요합니다. 개인 기준·PDF 질문은 아직 지원하지 않습니다. 설정에서 확인해 주세요.';
+      submissionError = '등록된 학교·학과가 필요합니다. 설정에서 학업 정보를 확인해 주세요.';
     } else if (turn.question.runes.length > 4000) {
       submissionError = '질문은 4,000자 이내로 입력해 주세요.';
     } else if (turn.mode == AssistantMode.personalized &&
-        turn.records.isEmpty) {
+        turn.records.isEmpty &&
+        turn.materialIds.isEmpty) {
       submissionError = '질문에 사용할 내 기록을 선택해 주세요.';
     } else if (requiresConsent &&
-        !allowsMode(turn.mode) &&
+        (!allowsMode(turn.mode) || turn.materialIds.isNotEmpty) &&
         !_oncePermissions.contains(turn.mode)) {
       submissionError = 'Google 외부 전송 동의를 확인해 주세요.';
     }
@@ -487,6 +507,13 @@ class AssistantConversation extends ChangeNotifier {
             '맞춤 안내에 연결할 수 없습니다. 로그인 상태를 확인해 주세요.',
           );
         }
+        if (turn.materialIds.isNotEmpty && turn.documents == null) {
+          if (loadDocuments == null) {
+            throw const AuthFailure('등록 자료 연결을 확인해 주세요.');
+          }
+          turn.documents = await loadDocuments!(turn.materialIds);
+          if (_disposed) return;
+        }
         final result = await api.personalized(
           PersonalizedGuidanceRequest(
             question: turn.question,
@@ -498,6 +525,7 @@ class AssistantConversation extends ChangeNotifier {
               track: saved.track,
             ),
             records: turn.records,
+            documents: turn.documents ?? const [],
             externalProcessingConsent: true,
           ),
         );
@@ -518,6 +546,9 @@ class AssistantConversation extends ChangeNotifier {
           result.status == AssistantStatus.insufficientEvidence) {
         if (input.text.trim() == turn.question) input.clear();
       }
+    } on StateError catch (error) {
+      if (_disposed) return;
+      turn.error = AssistantApiException(error.message.toString());
     } on AssistantApiException catch (error) {
       if (_disposed) return;
       turn.error = error;

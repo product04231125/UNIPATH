@@ -991,16 +991,34 @@ class GuidanceSchoolContext implements AcademicGuidancePayload {
   };
 }
 
+class GuidanceDocument implements AcademicGuidancePayload {
+  const GuidanceDocument({required this.filename, required this.contentBase64});
+  final String filename;
+  final String contentBase64;
+  factory GuidanceDocument.fromJson(Map<String, dynamic> value) =>
+      GuidanceDocument(
+        filename: value['filename'] as String,
+        contentBase64: value['content_base64'] as String,
+      );
+  @override
+  Map<String, Object?> toJson() => {
+    'filename': filename,
+    'content_base64': contentBase64,
+  };
+}
+
 class PersonalizedGuidanceRequest implements AcademicGuidancePayload {
   const PersonalizedGuidanceRequest({
     this.records = const [],
     required this.question,
     required this.context,
+    this.documents = const [],
     this.externalProcessingConsent = false,
   });
   final List<GuidanceRecordSelection> records;
   final String question;
   final GuidanceSchoolContext context;
+  final List<GuidanceDocument> documents;
   final bool externalProcessingConsent;
   factory PersonalizedGuidanceRequest.fromJson(Map<String, dynamic> value) =>
       PersonalizedGuidanceRequest(
@@ -1017,6 +1035,15 @@ class PersonalizedGuidanceRequest implements AcademicGuidancePayload {
         context: GuidanceSchoolContext.fromJson(
           Map<String, dynamic>.from(value['context'] as Map),
         ),
+        documents: value['documents'] == null
+            ? const []
+            : List.unmodifiable(
+                (value['documents'] as List).map(
+                  (v) => GuidanceDocument.fromJson(
+                    Map<String, dynamic>.from(v as Map),
+                  ),
+                ),
+              ),
         externalProcessingConsent: value['external_processing_consent'] == null
             ? false
             : value['external_processing_consent'] as bool,
@@ -1026,6 +1053,7 @@ class PersonalizedGuidanceRequest implements AcademicGuidancePayload {
     'records': records.map((v) => v.toJson()).toList(),
     'question': question,
     'context': context.toJson(),
+    'documents': documents.map((v) => v.toJson()).toList(),
     'external_processing_consent': externalProcessingConsent,
   };
 }

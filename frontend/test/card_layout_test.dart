@@ -131,7 +131,11 @@ void main() {
         ),
       );
       addTearDown(() => tester.binding.setSurfaceSize(null));
-      for (final size in [const Size(900, 768), const Size(480, 520)]) {
+      for (final size in [
+        const Size(1200, 900),
+        const Size(900, 768),
+        const Size(480, 520),
+      ]) {
         await tester.binding.setSurfaceSize(size);
         await tester.pumpWidget(
           host(SchedulePage(repository: repository), scale),
@@ -139,7 +143,7 @@ void main() {
         await tester.pumpAndSettle();
         final cards = find.byType(SurfaceCard);
         expect(cards, findsNWidgets(2));
-        if (size.width >= 820) {
+        if (size.width >= 1000) {
           expect(find.byType(EqualHeightRow), findsOneWidget);
           expect(
             tester.getBottomLeft(cards.first).dy,

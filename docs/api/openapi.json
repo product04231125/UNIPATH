@@ -63143,6 +63143,14 @@
             "type": "boolean",
             "title": "External Processing Consent",
             "default": false
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/GuidanceDocument"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Documents"
           }
         },
         "additionalProperties": false,
@@ -67704,6 +67712,29 @@
           "nodes"
         ],
         "title": "ClassificationView"
+      },
+      "GuidanceDocument": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Filename"
+          },
+          "content_base64": {
+            "type": "string",
+            "maxLength": 11184812,
+            "minLength": 4,
+            "title": "Content Base64"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "filename",
+          "content_base64"
+        ],
+        "title": "GuidanceDocument"
       }
     },
     "securitySchemes": {

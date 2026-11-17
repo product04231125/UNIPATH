@@ -46,6 +46,7 @@ Map<String, dynamic> conversationSnapshot(
   'permission_error': conversation.permissionError,
   'records': conversation.recordOptions.map((r) => r.toJson()).toList(),
   'materials': conversation.materials.map((m) => m.toJson()).toList(),
+  'selected_materials': conversation.selectedMaterialIds.toList(),
   'materials_loading': conversation.materialsLoading,
   'materials_error': conversation.materialsError,
   'selected_records': conversation.selectedRecords
@@ -77,6 +78,7 @@ Map<String, dynamic> conversationSnapshot(
             ? null
             : _contextSnapshot(t.requestContext!),
         'records': t.records.map((r) => r.toJson()).toList(),
+        'material_ids': t.materialIds,
         'personalized': t.personalized?.toJson(),
         'result': t.result?.toJson(),
         'error': t.error == null
@@ -125,6 +127,7 @@ class ConversationBridge {
       'records',
       'materials',
       'select_record',
+      'select_material',
       'permit',
       'permission_reload',
       'settings',
@@ -159,6 +162,12 @@ class ConversationBridge {
     }
     if (action == 'records') unawaited(conversation.refreshRecords());
     if (action == 'materials') unawaited(conversation.refreshMaterials());
+    if (action == 'select_material') {
+      conversation.selectMaterial(
+        command['key'] as String,
+        command['selected'] as bool,
+      );
+    }
     if (action == 'select_record') {
       conversation.selectRecord(
         command['key'] as String,
@@ -324,6 +333,9 @@ class RemoteConversation extends AssistantConversation {
               AssistantMaterial.fromJson(Map<String, dynamic>.from(v as Map)),
         )
         .toList();
+    selectedMaterialIds
+      ..clear()
+      ..addAll((value['selected_materials'] as List? ?? []).cast<String>());
     materialsLoading = value['materials_loading'] == true;
     materialsError = value['materials_error'] as String?;
     recordOptions = (value['records'] as List? ?? [])
@@ -400,6 +412,7 @@ class RemoteConversation extends AssistantConversation {
     final turn = AssistantTurn(
       raw['question'] as String,
       id: raw['id'] as String,
+      materialIds: (raw['material_ids'] as List? ?? []).cast<String>(),
       mode: AssistantMode.values.byName(raw['mode'] as String? ?? 'school'),
       requestContext: raw['request_context'] == null
           ? null
@@ -477,6 +490,13 @@ class RemoteConversation extends AssistantConversation {
     if (_ready) {
       _enqueue('materials');
       await flush();
+    }
+  }
+
+  @override
+  void selectMaterial(String id, bool selected) {
+    if (_ready && !sending) {
+      _enqueue('select_material', null, {'key': id, 'selected': selected});
     }
   }
 

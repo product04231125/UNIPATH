@@ -12,7 +12,13 @@ from app.schemas.knowledge import KnowledgeQuery, KnowledgeSearchResponse
 from app.schemas.personalization import PersonalizationContext, PersonalizationRequest
 
 
+class GuidanceDocument(StrictModel):
+    filename: str = Field(min_length=1, max_length=200)
+    content_base64: str = Field(min_length=4, max_length=11_184_812)
+
+
 class PersonalizedGuidanceRequest(KnowledgeQuery, PersonalizationRequest):
+    documents: list[GuidanceDocument] = Field(default_factory=list, max_length=5)
     external_processing_consent: bool = Field(default=False, strict=True)
 
 

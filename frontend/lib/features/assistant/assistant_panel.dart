@@ -75,7 +75,10 @@ class AssistantPanelState extends State<AssistantPanel> {
       }
       return;
     }
-    if (conversation.requiresConsent && !conversation.allowsMode(mode)) {
+    if (conversation.requiresConsent &&
+        (!conversation.allowsMode(mode) ||
+            (turn?.materialIds.isNotEmpty ??
+                conversation.selectedMaterialIds.isNotEmpty))) {
       if (conversation.permissionLoading) return;
       setState(() => _authorizing = true);
       try {
@@ -321,7 +324,7 @@ class AssistantPanelState extends State<AssistantPanel> {
                       if (conversation.mode == AssistantMode.personalized) ...[
                         const Text('등록한 내 자료'),
                         const Text(
-                          '등록 자료로 학사 질문하는 연결은 아직 지원하지 않습니다. 파일 OCR은 채용공고 분석의 내 자료로 공고 찾기에서 지원합니다.',
+                          '선택한 자료의 설명·PDF를 서버에서 읽고, 추출한 내용을 Google 외부 AI로 전송합니다. 스캔 PDF는 OCR 처리하며 원본 대조가 필요합니다.',
                         ),
                         TextButton(
                           onPressed: conversation.materialsLoading
@@ -338,13 +341,25 @@ class AssistantPanelState extends State<AssistantPanel> {
                             conversation.materials.isEmpty)
                           const Text('이 기기에 등록한 자료가 없습니다. 자료 메뉴에서 등록해 주세요.'),
                         for (final material in conversation.materials)
-                          CheckboxListTile(
-                            key: ValueKey('assistant-material-${material.id}'),
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(material.title),
-                            subtitle: Text('${material.type} · 질문 연결 준비 중'),
-                            value: false,
-                            onChanged: null,
+                          Material(
+                            color: Colors.transparent,
+                            child: CheckboxListTile(
+                              key: ValueKey(
+                                'assistant-material-${material.id}',
+                              ),
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(material.title),
+                              subtitle: Text(material.type),
+                              value: conversation.selectedMaterialIds.contains(
+                                material.id,
+                              ),
+                              onChanged: conversation.sending
+                                  ? null
+                                  : (value) => conversation.selectMaterial(
+                                      material.id,
+                                      value ?? false,
+                                    ),
+                            ),
                           ),
                         const Divider(),
                         Text(
@@ -607,7 +622,9 @@ class AssistantPanelState extends State<AssistantPanel> {
             if (record.truncated) const Text('일부 내용만 포함되었습니다.'),
           ],
           for (final citation in result.personalCitations)
-            SelectableText('내 기록 인용: ${citation.excerpt}'),
+            SelectableText(
+              '내 자료 인용: ${result.personal.records.where((r) => r.recordId == citation.recordId).map((r) => r.title).join()}\n${citation.excerpt}',
+            ),
           TextButton(
             onPressed: _canSend ? () => _submit(turn) : null,
             child: const Text('다시 질문'),

@@ -242,3 +242,49 @@ def test_other_students_cannot_select_records_and_changes_invalidate_versions(au
     stale = body(scope, record)
     stale["records"][0]["expected_version"] += 1
     assert c.post(PATH, headers=owner, json=stale).status_code == 409
+
+
+@integration
+def test_uploaded_document_question_uses_ocr_source_and_requires_consent(
+    auth_client, auth_db, monkeypatch
+):
+    import base64
+
+    from app.rag.career.ocr import DocumentOCR
+
+    c = auth_client
+    owner, _, scope, _, record = world(c, auth_db)
+    model = SyntheticModel()
+    c.app.state.guidance_model = model
+    scans = []
+
+    def scan(self, load):
+        scans.append(True)
+        return "도서관 정리 봉사 12시간 contact@example.test"
+
+    monkeypatch.setattr(DocumentOCR, "scan", scan)
+    payload = body(
+        scope,
+        record,
+        records=[],
+        documents=[
+            {
+                "filename": "봉사.png",
+                "content_base64": base64.b64encode(b"synthetic").decode(),
+            }
+        ],
+    )
+    denied = c.post(PATH, headers=owner, json={**payload, "external_processing_consent": False})
+    assert denied.status_code == 200
+    assert denied.json()["reason"] == "external_processing_consent_required"
+    assert not scans and not model.calls
+    response = c.post(PATH, headers=owner, json=payload)
+    assert response.status_code == 200, response.text
+    value = response.json()
+    assert value["status"] == "grounded"
+    assert "OCR 원본 대조 필요" in value["personal"]["records"][0]["title"]
+    assert (
+        value["personal_citations"][0]["record_id"] == value["personal"]["records"][0]["record_id"]
+    )
+    assert "contact@example.test" not in str(model.calls)
+    assert "도서관" not in str(value["school"])

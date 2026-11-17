@@ -1,11 +1,14 @@
 """Combine school retrieval and selected records without blurring which is which."""
 
+import base64
 from uuid import UUID, uuid4
 
-from app.core.auth_errors import conflict
+from app.core.auth_errors import AuthError, conflict
 from app.rag.career.analyzer import bounded_text, validate_citations
 from app.rag.career.contracts import selected_records
+from app.schemas.common import ErrorCode
 from app.schemas.knowledge import KnowledgeSearch
+from app.schemas.personalization import PersonalEvidence, PersonalizationContext
 from app.schemas.personalized_guidance import (
     PersonalizedGuidanceReason,
     PersonalizedGuidanceResponse,
@@ -100,7 +103,15 @@ def execute(db, request, payload, cache, model):
             "insufficient_evidence": PersonalizedGuidanceStatus.INSUFFICIENT_EVIDENCE,
         }.get(school.status, PersonalizedGuidanceStatus.FAILED)
         return respond(status, PersonalizedGuidanceReason.SCHOOL_EVIDENCE_UNAVAILABLE)
-    if not context.records:
+    if payload.documents:
+        if not payload.external_processing_consent:
+            return respond(
+                PersonalizedGuidanceStatus.NEEDS_USER_INPUT,
+                PersonalizedGuidanceReason.EXTERNAL_PROCESSING_CONSENT_REQUIRED,
+                missing=["external_processing_consent"],
+            )
+        outbound = document_context(payload.documents, outbound, identity)
+    if not outbound.records:
         return respond(
             PersonalizedGuidanceStatus.NEEDS_USER_INPUT,
             PersonalizedGuidanceReason.PERSONAL_RECORDS_REQUIRED,
@@ -157,3 +168,39 @@ def execute(db, request, payload, cache, model):
         chunks=chunks,
         citations=citations,
     )
+
+
+def document_context(documents, outbound, identity):
+    # Imported only for explicit document requests; reuse #69 extraction and redaction.
+    from app.rag.career.documents import prepare_documents
+    from app.rag.career.ocr import OcrUnavailable
+
+    try:
+        if sum(len(doc.content_base64) for doc in documents) > 11_184_812:
+            raise ValueError("선택한 파일의 합계는 8MiB 이하여야 합니다.")
+        files = [(d.filename, base64.b64decode(d.content_base64, validate=True)) for d in documents]
+        if sum(len(raw) for _, raw in files) > 8 * 1024 * 1024:
+            raise ValueError("선택한 파일의 합계는 8MiB 이하여야 합니다.")
+        extracted, locations, _ = prepare_documents(files, names=(identity.user.display_name,))
+        records = list(outbound.records)
+        for item in extracted["records"]:
+            source = locations[item["record_id"]]
+            title = f"{source['filename'][:80]} · {source['location']}"
+            if source["method"] == "ocr":
+                title += " · OCR 원본 대조 필요"
+            records.append(
+                PersonalEvidence(
+                    **item, title=redact_text(title, names=(identity.user.display_name,))[:128]
+                )
+            )
+        if len(records) > 20:
+            raise ValueError("문서 범위와 선택 기록 수를 줄여 주세요.")
+        return PersonalizationContext(records=records)
+    except OcrUnavailable as error:
+        raise AuthError(503, ErrorCode.SERVICE_UNAVAILABLE, str(error)) from error
+    except Exception as error:
+        raise AuthError(
+            422,
+            ErrorCode.VALIDATION_ERROR,
+            "파일 형식·8MiB 합계·텍스트 추출 가능 여부를 확인해 주세요.",
+        ) from error
