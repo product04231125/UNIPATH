@@ -19,7 +19,7 @@ from .contracts import SearchQuery
 from .documents import prepare_documents
 from .greenhouse import Greenhouse
 from .ocr import OcrInputError, OcrUnavailable
-from .recommendations import MODEL, recommend
+from .recommendations import recommend
 from .sources import Saramin, Work24
 from .transport import Transport
 
@@ -50,8 +50,9 @@ def recommendations(
         return {"status": "needs_user_input", "missing_fields": ["external_processing_consent"]}
     if not payload.documents and not payload.records:
         return {"status": "needs_user_input", "missing_fields": ["documents_or_records"]}
+    model = request.app.state.settings.vertex_model
     if request.app.state.portfolio_analyzer is None:
-        return {"status": "not_configured", "model": MODEL}
+        return {"status": "not_configured", "model": model}
 
     auth.throttle(db, "job-recommendation:" + str(identity.user.id), limit=30)
     context = assemble(db, identity, payload.records)
@@ -104,7 +105,7 @@ def recommendations(
         raise conflict()
     return {
         **result,
-        "model": MODEL,
+        "model": model,
         "document_locations": locations,
         "document_warnings": warnings,
     }
@@ -123,11 +124,10 @@ def configured_sources():
 
 
 def portfolio_analyzer(config):
+    # Same project, region and model as the other Gemini features (team decision D2).
     model = None
     if config.vertex_configured:
-        model = gemini.create_model(
-            config.model_copy(update={"vertex_model": MODEL}), timeout=config.vertex_timeout_seconds
-        )
+        model = gemini.create_model(config, timeout=config.vertex_timeout_seconds)
     return gemini.create_job_analyzer(model)
 
 

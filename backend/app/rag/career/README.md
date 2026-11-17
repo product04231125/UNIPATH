@@ -105,5 +105,5 @@ Vertex는 선택 의존성 `requirements-vertex.txt`, ADC 인증, API 사용 권
 
 프론트·백엔드 전달 사항은 `../guidance/CAREER_HANDOFF.md` 참고.
 
-2026-11-16 개인 PDF·DOCX·TXT·Markdown을 선택해 Gemini 3.8 Flash로 채용공고를 비교하는
+2026-11-16 개인 PDF·DOCX·TXT·Markdown을 선택해 설정된 Gemini 모델로 채용공고를 비교하는
 인증 API와 별도 실행 프로필을 추가했다. [실행 및 프론트 연결 방법](DOCUMENT_RECOMMENDATIONS.md).
