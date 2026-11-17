@@ -176,6 +176,13 @@ class AcademicGuidanceView extends StatelessWidget {
                   ],
                   conversation: conversation,
                 ),
+                // Schools may approve rule programs instead of publishing
+                // requirement revisions; keep those rules reachable.
+                if (conversation.showingCriteria && node.cards.isEmpty)
+                  GuidanceCriteriaView(
+                    conversation: conversation,
+                    rulesOnly: true,
+                  ),
               ],
               if (options.isNotEmpty) ...[
                 const SizedBox(height: 12),

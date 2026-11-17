@@ -7,6 +7,9 @@ standard and never judge whether the student meets it; that stays with the Rule 
 and the student's own checks.
 """
 
+from sqlalchemy import exists, or_, select
+
+from app.models.academic_workspace import AcademicCurriculumRevision, AcademicRequirementRevision
 from app.schemas.academic_guidance import GuidanceCard, GuidanceSource, GuidanceTable
 from app.services import student_academic
 
@@ -213,6 +216,24 @@ def required_course_cards(contexts):
             )
         )
     return cards
+
+
+def school_publishes(db, institution_id):
+    """Whether the school keeps its criteria as published revisions, not only rule programs."""
+    return db.scalar(
+        select(
+            or_(
+                exists().where(
+                    AcademicRequirementRevision.institution_id == institution_id,
+                    AcademicRequirementRevision.status == "published",
+                ),
+                exists().where(
+                    AcademicCurriculumRevision.institution_id == institution_id,
+                    AcademicCurriculumRevision.status == "published",
+                ),
+            )
+        )
+    )
 
 
 def published_criteria(db, owner, node_id):

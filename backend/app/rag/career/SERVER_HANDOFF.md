@@ -18,7 +18,7 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 | 서버 환경 변수 | 적용 방법 |
 |---|---|
-| `VERTEX_PROJECT`, `VERTEX_LOCATION`, `VERTEX_MODEL` | 기존 앱 설정은 세 값을 함께 요구한다. 추천기는 모델 ID를 `gemini-3.8-flash`로 지정한다. 11월 16일 합성 자료 실측에서 해당 프로젝트는 `global`에서 성공했고 도쿄(`asia-northeast1`)에서 404였다. |
+| `VERTEX_PROJECT`, `VERTEX_LOCATION`, `VERTEX_MODEL` | 기존 앱 설정을 그대로 쓴다. 추천기도 다른 Gemini 기능과 같은 리전·모델을 사용한다(D2, 스테이징 `asia-northeast1`·`gemini-3.5-flash`). 11월 16일 실측의 `gemini-3.8-flash`는 도쿄에서 404였고 `global`에서만 성공했으므로, 이 모델을 쓰려면 학생 자료 처리 리전을 팀에서 다시 정해야 한다. |
 | `VERTEX_CREDENTIALS_FILE` | 호스트의 서비스 계정 JSON 경로. API 컨테이너의 `/run/secrets/vertex-credentials.json`에 읽기 전용으로 마운트하고 `GOOGLE_APPLICATION_CREDENTIALS`가 이를 가리키게 한다. UID 10001의 읽기 권한을 확인한다. |
 | `SARAMIN_ACCESS_KEY` | 현재 승인 대기. 승인 후 스테이징 비밀 설정에 추가하고 **api 컨테이너 환경에 전달**한 뒤 재생성한다. |
 | `WORK24_AUTH_KEY` | 고용24에서 발급받은 경우 같은 방식으로 전달한다. |

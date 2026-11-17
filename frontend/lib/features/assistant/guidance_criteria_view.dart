@@ -7,8 +7,16 @@ import 'assistant_conversation.dart';
 
 /// Displays approved definitions, never a student's evaluation or a computed total.
 class GuidanceCriteriaView extends StatelessWidget {
-  const GuidanceCriteriaView({super.key, required this.conversation});
+  const GuidanceCriteriaView({
+    super.key,
+    required this.conversation,
+    this.rulesOnly = false,
+  });
   final AssistantConversation conversation;
+
+  /// Below the server's general-criteria message: show approved rules only
+  /// when there are some, without this view's own empty or error states.
+  final bool rulesOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +28,9 @@ class GuidanceCriteriaView extends StatelessWidget {
         for (final rule in program.rules)
           if (rule.condition.kind == kind) (program: program, rule: rule),
     ];
+    if (rulesOnly && (conversation.criteriaError != null || rules.isEmpty)) {
+      return const SizedBox.shrink();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

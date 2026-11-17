@@ -9,7 +9,7 @@ from app.core.config import get_settings
 from .api import configured_sources, portfolio_analyzer
 from .contracts import SearchQuery
 from .documents import MAX_BYTES, prepare_documents
-from .recommendations import MODEL, recommend
+from .recommendations import recommend
 
 
 def main():
@@ -29,7 +29,8 @@ def main():
     args = parser.parse_args()
     if not args.consent:
         parser.error("--consent is required for external processing")
-    analyzer = portfolio_analyzer(get_settings())
+    settings = get_settings()
+    analyzer = portfolio_analyzer(settings)
     if analyzer is None:
         parser.exit(2, "Vertex 프로젝트·리전·모델 설정과 ADC를 확인해 주세요.\n")
     codes = {
@@ -46,7 +47,7 @@ def main():
         json.dumps(
             {
                 **result,
-                "model": MODEL,
+                "model": settings.vertex_model,
                 "document_locations": locations,
                 "document_warnings": warnings,
             },

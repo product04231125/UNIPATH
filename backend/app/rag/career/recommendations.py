@@ -2,8 +2,6 @@
 
 from .service import CareerService
 
-MODEL = "gemini-3.8-flash"
-
 
 def recommend(query, records, sources, analyzer, *, before_analysis=None):
     result = CareerService(sources, analyzer, analysis_limit=3).recommend(

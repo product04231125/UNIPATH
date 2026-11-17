@@ -67,7 +67,12 @@ class DocumentRecommendations(unittest.TestCase):
 
         model.generate.side_effect = generate
         request = SimpleNamespace(
-            app=SimpleNamespace(state=SimpleNamespace(portfolio_analyzer=EvidenceAnalyzer(model)))
+            app=SimpleNamespace(
+                state=SimpleNamespace(
+                    portfolio_analyzer=EvidenceAnalyzer(model),
+                    settings=SimpleNamespace(vertex_model="gemini-3.5-flash"),
+                )
+            )
         )
         payload = RecommendationRequest(
             keyword="engineer",
