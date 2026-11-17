@@ -82,10 +82,10 @@ class JobAnalysisPage extends StatefulWidget {
   final AiConsentPreferences? consent;
   final Future<List<AiRecordOption>> Function()? loadRecords;
   @override
-  State<JobAnalysisPage> createState() => JobAnalysisPageState();
+  State<JobAnalysisPage> createState() => _JobAnalysisPageState();
 }
 
-class JobAnalysisPageState extends State<JobAnalysisPage> {
+class _JobAnalysisPageState extends State<JobAnalysisPage> {
   final _posting = TextEditingController();
   List<AiRecordOption> _options = const [];
   final _selected = <String, AiRecordOption>{};
@@ -95,9 +95,6 @@ class JobAnalysisPageState extends State<JobAnalysisPage> {
   String? _error, _recordMessage, _requestId;
   JobAnalysisResponse? _result;
   bool _recommendations = false;
-  void showRecommendations() {
-    if (!_sending) setState(() => _recommendations = true);
-  }
 
   bool get _connected => widget.api != null && widget.consent != null;
   bool get _canAnalyze =>

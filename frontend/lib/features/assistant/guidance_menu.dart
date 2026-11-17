@@ -39,7 +39,6 @@ class _GuidanceMenuState extends State<GuidanceMenu> {
         'departments' => '수업·학사',
         'scholarship' || 'tuition' => '장학·등록',
         'notices' || 'dormitory' => '학교생활',
-        'career' => '진로·취업',
         _ => '기타 안내',
       };
     }

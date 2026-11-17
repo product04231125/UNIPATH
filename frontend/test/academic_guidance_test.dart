@@ -1,8 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:university_path_frontend/shared/app_style.dart';
+import 'package:university_path_frontend/app.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -94,12 +99,31 @@ AssistantConversation conversation(AcademicGateway api) =>
 
 void main() {
   testWidgets(
-    'career recommend workflow opens frontend without a model request',
+    'school guidance keeps school navigation and excludes career tasks',
     (tester) async {
-      var opened = 0;
       final gateway = AcademicGateway()
         ..response = {
-          ...node('career:recommend'),
+          ...node('home'),
+          'buttons': [
+            for (final button in node('home')['buttons'] as List)
+              {
+                ...button as Map<String, dynamic>,
+                if (button['id'] == 'calendar') 'node_id': 'calendar',
+              },
+            for (final id in [
+              'career',
+              'career:recommend',
+              'career:profile',
+              'career:posting',
+            ])
+              {
+                'id': id,
+                'label': id == 'career' ? '취업 분석' : '내 자료로 공고 찾기',
+                'action': 'select_node',
+                'node_id': id,
+                'availability': 'available',
+              },
+          ],
           'workflow': {
             'id': 'recommend',
             'requires_authenticated_user': true,
@@ -109,28 +133,103 @@ void main() {
             'steps': ['자료 선택'],
           },
         };
-      final conversation = AssistantConversation(
-        guidanceApi: GuidanceApi(gateway),
-        onOpenRecommendations: () => opened++,
-      );
-      await conversation.navigateGuidance('career:recommend');
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: AcademicGuidanceView(conversation: conversation),
+      final c = conversation(gateway);
+      await c.showGuidance();
+      expect(c.guidanceError, isNull);
+      await tester.binding.setSurfaceSize(const Size(1440, 1000));
+      tester.view.devicePixelRatio = 1;
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await (FontLoader('Pretendard')..addFont(
+            rootBundle.load('assets/fonts/pretendard/Pretendard-Regular.otf'),
+          ))
+          .load();
+      await (FontLoader(
+        'MaterialIcons',
+      )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+      final boundary = GlobalKey();
+      for (final palette in AppPalette.values) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: universityPathTheme(palette: palette),
+            home: MediaQuery(
+              data: MediaQueryData(
+                size: const Size(1440, 1000),
+                textScaler: TextScaler.linear(
+                  palette == AppPalette.orange ? 2 : 1,
+                ),
+              ),
+              child: RepaintBoundary(
+                key: boundary,
+                child: Scaffold(
+                  body: Align(
+                    alignment: Alignment.topRight,
+                    child: SizedBox(
+                      width: 480,
+                      child: SingleChildScrollView(
+                        child: AcademicGuidanceView(conversation: c),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-      );
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('수업·학사'), findsOneWidget);
+        expect(find.text('학교생활'), findsOneWidget);
+        expect(find.text('진로·취업'), findsNothing);
+        expect(tester.takeException(), isNull);
+        if (const bool.fromEnvironment('GUIDANCE_CAPTURE')) {
+          await tester.runAsync(() async {
+            final output = Directory('../output/chat-guidance-cleanup');
+            await output.create(recursive: true);
+            final frame =
+                await (boundary.currentContext!.findRenderObject()!
+                        as RenderRepaintBoundary)
+                    .toImage(pixelRatio: 1);
+            final bytes = await frame.toByteData(
+              format: ui.ImageByteFormat.png,
+            );
+            await File('${output.path}/school_${palette.name}.png')
+                .writeAsBytes(bytes!.buffer.asUint8List());
+            frame.dispose();
+          });
+        }
+      }
+      for (final label in ['취업 분석', '진로·취업', '내 자료로 공고 찾기', '자료 선택']) {
+        expect(find.text(label), findsNothing);
+      }
+      expect(find.textContaining('화면으로 이동'), findsNothing);
+      await tester.tap(find.text('수업·학사'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('내 자료로 공고 찾기 화면으로 이동'));
-      expect(opened, 1);
-      expect(gateway.paths, hasLength(1));
+      expect(find.text('학사일정'), findsOneWidget);
+      await tester.tap(find.text('학사일정'));
+      await tester.pumpAndSettle();
+      expect(gateway.paths.last, 'me/academic-guidance/nodes/calendar');
+      expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
-      conversation.dispose();
+      c.dispose();
     },
   );
+  test('stale career navigation keeps the current school node', () async {
+    final gateway = AcademicGateway();
+    final c = conversation(gateway);
+    await c.showGuidance();
+    for (final id in [
+      'career',
+      'career:recommend',
+      'career:profile',
+      'career:posting',
+      'career:sources',
+    ]) {
+      await c.navigateGuidance(id);
+    }
+    expect(gateway.paths, ['me/academic-guidance/nodes/home']);
+    expect(c.guidanceNodeId, 'home');
+    c.dispose();
+  });
   TestWidgetsFlutterBinding.ensureInitialized();
   testWidgets(
     'school mode opens tree directly and switching preserves personal draft',

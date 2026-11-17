@@ -52,8 +52,6 @@ class AssistantConversation extends ChangeNotifier {
     this.loadMaterials,
     this.registeredOnly = false,
     this.onOpenSettings,
-    this.onOpenCareer,
-    this.onOpenRecommendations,
   }) : _api = api ?? AssistantApi() {
     consent?.addListener(_consentChanged);
   }
@@ -63,8 +61,6 @@ class AssistantConversation extends ChangeNotifier {
   final Future<List<AssistantMaterial>> Function()? loadMaterials;
   final bool registeredOnly;
   final VoidCallback? onOpenSettings;
-  final VoidCallback? onOpenCareer;
-  final VoidCallback? onOpenRecommendations;
   static const criteriaKinds = <String, String>{
     'credits': 'minimum_credits',
     'courses': 'required_courses',
@@ -88,8 +84,6 @@ class AssistantConversation extends ChangeNotifier {
     return null;
   }
 
-  void openCareer() => onOpenCareer?.call();
-  void openRecommendations() => (onOpenRecommendations ?? onOpenCareer)?.call();
   Future<void> showGuidance() async {
     guidanceOpen = true;
     notifyListeners();
@@ -101,8 +95,12 @@ class AssistantConversation extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Career tasks live in the main job-analysis menu, outside school guidance.
+  static bool isSchoolGuidanceNode(String id) =>
+      id != 'career' && !id.startsWith('career:');
+
   Future<void> navigateGuidance(String id) async {
-    if (_disposed || guidanceLoading) return;
+    if (_disposed || guidanceLoading || !isSchoolGuidanceNode(id)) return;
     guidanceError = guidanceUnavailableReason;
     if (guidanceError != null) {
       notifyListeners();

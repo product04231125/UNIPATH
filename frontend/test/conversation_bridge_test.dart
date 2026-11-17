@@ -31,24 +31,30 @@ AssistantResult result() => AssistantResult.fromJson({
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test(
-    'detached recommendation navigation reaches main without sending records',
+    'detached chat rejects removed career commands without sending records',
     () async {
-      var opened = 0;
       final gateway = PendingGateway();
-      final owner = AssistantConversation(
-        api: gateway,
-        onOpenRecommendations: () => opened++,
-      );
+      final owner = AssistantConversation(api: gateway);
       final bridge = ConversationBridge(owner, (_) async {});
+      final requests = <Map<String, dynamic>>[];
       final child = RemoteConversation(
-        request: (command) async =>
-            command == null ? bridge.read() : bridge.command(command),
+        request: (command) async {
+          if (command == null) return bridge.read();
+          requests.add(command);
+          return bridge.command(command);
+        },
         changes: const Stream.empty(),
       );
       await child.load();
-      child.openRecommendations();
-      await child.flush();
-      expect(opened, 1);
+      await child.navigateGuidance('career');
+      await child.navigateGuidance('career:recommend');
+      expect(requests, isEmpty);
+      for (final action in ['career', 'career_recommend']) {
+        expect(
+          () => bridge.command({'command_id': action, 'action': action}),
+          throwsFormatException,
+        );
+      }
       expect(gateway.calls, 0);
       child.dispose();
       bridge.dispose();

@@ -133,8 +133,6 @@ class ConversationBridge {
       'guidance_node',
       'guidance_audits',
       'guidance_audit',
-      'career',
-      'career_recommend',
     ].contains(action)) {
       throw const FormatException('Unknown conversation command');
     }
@@ -180,8 +178,6 @@ class ConversationBridge {
     if (action == 'guidance_audit') {
       unawaited(conversation.selectAudit(command['audit_id'] as String));
     }
-    if (action == 'career') conversation.openCareer();
-    if (action == 'career_recommend') conversation.openRecommendations();
     if (action == 'permit') {
       unawaited(
         conversation
@@ -497,16 +493,6 @@ class RemoteConversation extends AssistantConversation {
   }
 
   @override
-  void openCareer() {
-    if (_ready) _enqueue('career');
-  }
-
-  @override
-  void openRecommendations() {
-    if (_ready) _enqueue('career_recommend');
-  }
-
-  @override
   Future<void> showGuidance() async {
     if (_ready) {
       _enqueue('guidance_open');
@@ -521,7 +507,7 @@ class RemoteConversation extends AssistantConversation {
 
   @override
   Future<void> navigateGuidance(String id) async {
-    if (_ready) {
+    if (_ready && AssistantConversation.isSchoolGuidanceNode(id)) {
       _enqueue('guidance_node', null, {'node_id': id});
       await flush();
     }
