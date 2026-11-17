@@ -19,6 +19,7 @@ from pathlib import Path
 
 from app.core.config import Settings
 from app.rag.career.analyzer import INSTRUCTION, EvidenceAnalyzer
+from app.rag.career.contracts import failure_reason
 from app.schemas.personalization import PersonalizationContext
 from app.services import gemini
 from app.services.job_analysis.service import validate_comparisons
@@ -86,17 +87,6 @@ def check(scenario, comparisons):
     return problems
 
 
-def rejection_cause(error):
-    text = str(error).lower()
-    if "posting" in text or "quote" in text:
-        return "posting_quote"
-    if any(word in text for word in ("evidence", "citation", "personal")):
-        return "personal_citation"
-    if "classification" in text:
-        return "classification"
-    return "output_shape" if isinstance(error, ValueError) else type(error).__name__
-
-
 def evaluate(scenario, model):
     context = context_of(scenario)
     started = time.perf_counter()
@@ -109,7 +99,7 @@ def evaluate(scenario, model):
             "seconds": time.perf_counter() - started,
             "valid": False,
             "error": type(error).__name__ + ": " + str(error)[:120],
-            "cause": rejection_cause(error),
+            "cause": failure_reason(error),
             "problems": ["output rejected"],
         }
     return {

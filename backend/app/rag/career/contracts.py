@@ -12,6 +12,32 @@ class NotConfigured(Exception):
     pass
 
 
+class ProviderFailure(RuntimeError):
+    """A failed provider call. reason is a fixed code: never a body, URL or credential."""
+
+    def __init__(self, message, reason):
+        super().__init__(message)
+        self.reason = reason
+
+
+class AnalysisRejected(ValueError):
+    """Model output that failed validation. reason is a fixed code, never the output."""
+
+    def __init__(self, message, reason):
+        super().__init__(message)
+        self.reason = reason
+
+
+def failure_reason(error):
+    """Safe code for logs and responses: which step failed, without any content."""
+    if isinstance(error, (ProviderFailure, AnalysisRejected)):
+        return error.reason
+    if isinstance(error, (KeyError, TypeError, IndexError, ValueError)):
+        # Missing keys or wrong types in model output, or other invalid data.
+        return "output_shape"
+    return "unexpected_" + type(error).__name__
+
+
 @dataclass(frozen=True)
 class SearchQuery:
     keyword: str

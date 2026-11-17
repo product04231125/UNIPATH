@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 from app.core.auth_errors import AuthError, conflict
 from app.rag.career.analyzer import bounded_text, validate_citations
-from app.rag.career.contracts import selected_records
+from app.rag.career.contracts import AnalysisRejected, selected_records
 from app.schemas.common import ErrorCode
 from app.schemas.knowledge import KnowledgeSearch
 from app.schemas.personalization import PersonalEvidence, PersonalizationContext
@@ -36,17 +36,17 @@ KEYS = {"answer", "school_chunk_ids", "personal_evidence", "insufficient_evidenc
 
 def parse_output(value, school, outbound):
     if not isinstance(value, dict) or set(value) != KEYS:
-        raise ValueError("Unexpected model output")
+        raise AnalysisRejected("Unexpected model output", "output_shape")
     if type(value["insufficient_evidence"]) is not bool:
-        raise ValueError("Unexpected model output")
+        raise AnalysisRejected("Unexpected model output", "output_shape")
     if value["insufficient_evidence"]:
         if value["answer"] or value["school_chunk_ids"] or value["personal_evidence"]:
-            raise ValueError("Insufficient output must be empty")
+            raise AnalysisRejected("Insufficient output must be empty", "output_shape")
         return None
     allowed = {source.chunk_id for source in school.sources}
     identifiers = [UUID(item) for item in value["school_chunk_ids"]]
     if not identifiers or len(set(identifiers)) != len(identifiers) or set(identifiers) - allowed:
-        raise ValueError("Citation outside the retrieved school evidence")
+        raise AnalysisRejected("Citation outside the retrieved school evidence", "school_citation")
     answer = bounded_text(value["answer"])
     citations = validate_citations(value["personal_evidence"], selected_records(outbound))
     return answer, identifiers, citations

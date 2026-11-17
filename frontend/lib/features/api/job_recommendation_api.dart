@@ -91,9 +91,13 @@ class RecommendationItem {
         json['comparisons'],
         RecommendationComparison.fromJson,
       ),
-      warnings = _strings(json['warnings']);
+      warnings = _strings(json['warnings']),
+      failureReason = json['failure_reason'] as String?;
   final RecommendationPosting posting;
   final String status, scope;
+
+  /// Fixed server code for a failed comparison, e.g. `posting_quote`.
+  final String? failureReason;
   final List<RecommendationComparison> comparisons;
   final List<String> warnings;
 }
@@ -122,8 +126,10 @@ class DocumentCitationLocation {
 class RecommendationSource {
   RecommendationSource.fromJson(Map<String, dynamic> json)
     : source = json['source'] as String,
-      status = json['status'] as String;
+      status = json['status'] as String,
+      failureReason = json['failure_reason'] as String?;
   final String source, status;
+  final String? failureReason;
 }
 
 class JobRecommendationResponse {

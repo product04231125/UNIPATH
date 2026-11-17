@@ -1,10 +1,13 @@
 """Bounded job discovery + comparison. No persistence of personal context/results."""
 
+import logging
 from dataclasses import asdict
 from datetime import UTC, datetime
 from time import monotonic
 
-from .contracts import NotConfigured, Posting, selected_records
+from .contracts import NotConfigured, Posting, failure_reason, selected_records
+
+logger = logging.getLogger(__name__)
 
 
 class CareerService:
@@ -50,14 +53,26 @@ class CareerService:
                 sources.append({"source": source.name, "status": "completed"})
             except NotConfigured:
                 sources.append({"source": source.name, "status": "not_configured"})
-            except ValueError:
+            except ValueError as error:
                 sources.append(
-                    {"source": source.name, "status": "failed", "reason": "invalid_query_or_data"}
+                    {
+                        "source": source.name,
+                        "status": "failed",
+                        "reason": "invalid_query_or_data",
+                        "failure_reason": failure_reason(error),
+                    }
                 )
-            except Exception:
+                logger.warning("posting source %s failed: %s", source.name, failure_reason(error))
+            except Exception as error:
                 sources.append(
-                    {"source": source.name, "status": "failed", "reason": "source_failed"}
+                    {
+                        "source": source.name,
+                        "status": "failed",
+                        "reason": "source_failed",
+                        "failure_reason": failure_reason(error),
+                    }
                 )
+                logger.warning("posting source %s failed: %s", source.name, failure_reason(error))
         # A source returns only public posting data; never sees selected personal records.
         items, attempted = [], 0
         for posting in postings[: query.limit]:
@@ -84,8 +99,15 @@ class CareerService:
                         )
                     except NotConfigured:
                         item["analysis_status"] = "not_configured"
-                    except Exception:
+                    except Exception as error:
+                        # The code tells which step failed; never the posting, records or output.
                         item["analysis_status"] = "failed"
+                        item["failure_reason"] = failure_reason(error)
+                        logger.warning(
+                            "posting analysis failed: %s reason=%s",
+                            type(error).__name__,
+                            item["failure_reason"],
+                        )
             item["warnings"] = []
             if posting.text_scope == "metadata_only":
                 item["warnings"].append(

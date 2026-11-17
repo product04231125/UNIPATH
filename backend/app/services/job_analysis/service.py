@@ -4,6 +4,7 @@ from typing import Protocol
 from uuid import uuid4
 
 from app.core.auth_errors import conflict
+from app.rag.career.contracts import AnalysisRejected
 from app.schemas import job_analysis as dto
 from app.schemas.personalization import PersonalizationContext
 from app.services import auth, gemini
@@ -21,17 +22,21 @@ class JobAnalyzer(Protocol):
 
 def validate_comparisons(posting, context, values):
     if not isinstance(values, list) or len(values) > 50:
-        raise ValueError("Analyzer must return a bounded comparison list")
+        raise AnalysisRejected("Analyzer must return a bounded comparison list", "output_shape")
     comparisons = [dto.JobRequirementComparison.model_validate(value) for value in values]
     selected = {(item.kind, item.record_id, item.version): item for item in context.records}
     for item in comparisons:
         evidence = item.posting_evidence
         if posting[evidence.start : evidence.end] != evidence.excerpt:
-            raise ValueError("Posting evidence must preserve exact input offsets")
+            raise AnalysisRejected(
+                "Posting evidence must preserve exact input offsets", "posting_quote"
+            )
         for citation in item.personal_evidence:
             record = selected.get((citation.kind, citation.record_id, citation.version))
             if record is None or citation.excerpt not in record.text:
-                raise ValueError("Personal citations must refer to selected record text")
+                raise AnalysisRejected(
+                    "Personal citations must refer to selected record text", "personal_citation"
+                )
     return comparisons
 
 

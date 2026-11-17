@@ -312,6 +312,13 @@ void main() {
       expect(find.text('자동 문자 인식 · 원본 확인'), findsOneWidget);
       json['recommendations'] = [];
       json['items'][0]['analysis_status'] = 'failed';
+      json['items'][0]['failure_reason'] = 'posting_quote';
+      (json['sources'] as List).add({
+        'source': 'greenhouse',
+        'status': 'failed',
+        'reason': 'source_failed',
+        'failure_reason': 'http_503',
+      });
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -326,6 +333,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('추천 공고가 없습니다'), findsOneWidget);
       expect(find.text('처리 실패'), findsOneWidget);
+      expect(
+        find.text(
+          'AI가 공고 문장을 정확히 인용하지 못했습니다. 잠시 후 다시 시도해 주세요. (코드: posting_quote)',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('(코드: http_503)'), findsOneWidget);
     },
   );
 
