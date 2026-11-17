@@ -320,7 +320,9 @@ class AssistantPanelState extends State<AssistantPanel> {
                       ],
                       if (conversation.mode == AssistantMode.personalized) ...[
                         const Text('등록한 내 자료'),
-                        const Text('자료 질문 API가 없어 등록 자료로 질문할 수 없습니다.'),
+                        const Text(
+                          '등록 자료로 학사 질문하는 연결은 아직 지원하지 않습니다. 파일 OCR은 채용공고 분석의 내 자료로 공고 찾기에서 지원합니다.',
+                        ),
                         TextButton(
                           onPressed: conversation.materialsLoading
                               ? null

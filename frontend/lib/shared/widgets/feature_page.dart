@@ -48,8 +48,11 @@ class FeaturePage extends StatelessWidget {
             title: title,
             contextLabel: contextLabel,
             description: description,
-            actions: headerActions,
           ),
+          if (headerActions.isNotEmpty) ...[
+            Wrap(spacing: 8, runSpacing: 8, children: headerActions),
+            const SizedBox(height: 16),
+          ],
           ...body,
           if (actions.isNotEmpty) FeatureActions(children: actions),
           if (below.isNotEmpty) SizedBox(height: FeatureLine.slotGap(context)),

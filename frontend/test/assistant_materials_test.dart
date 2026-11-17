@@ -30,7 +30,19 @@ class RecordsGateway extends ApiGateway {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('personalized catalog excludes course requests', () async {
+  test('personalized catalog includes course requests by default', () async {
+    final gateway = RecordsGateway();
+    await loadAiRecords(StudentApi(gateway, ownerId: 'owner'));
+    expect(gateway.paths.map((path) => Uri.parse(path).path), [
+      'me/course-records',
+      'me/activity-records',
+      'me/experience-records',
+      'me/credential-records',
+      'me/achievement-records',
+    ]);
+  });
+
+  test('career catalog can explicitly exclude course requests', () async {
     final gateway = RecordsGateway();
     expect(
       await loadAiRecords(
@@ -98,7 +110,12 @@ void main() {
       expect(tester.widget<CheckboxListTile>(row).onChanged, isNull);
       expect(c.selectedRecords, isEmpty);
       expect(find.text('다른 계정 자료'), findsNothing);
-      expect(find.text('자료 질문 API가 없어 등록 자료로 질문할 수 없습니다.'), findsOneWidget);
+      expect(
+        find.text(
+          '등록 자료로 학사 질문하는 연결은 아직 지원하지 않습니다. 파일 OCR은 채용공고 분석의 내 자료로 공고 찾기에서 지원합니다.',
+        ),
+        findsOneWidget,
+      );
 
       await tester.ensureVisible(find.widgetWithText(OutlinedButton, '수정'));
       await tester.tap(find.widgetWithText(OutlinedButton, '수정'));

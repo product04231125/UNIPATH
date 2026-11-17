@@ -93,13 +93,13 @@ class _SchedulePageState extends State<SchedulePage> {
             Align(
               alignment: Alignment.topLeft,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1100),
-                child: constraints.maxWidth >= 820
+                constraints: const BoxConstraints(maxWidth: 1400),
+                child: constraints.maxWidth >= 1000
                     ? EqualHeightRow(
                         children: [
-                          Expanded(flex: 3, child: _calendar()),
+                          Expanded(child: _calendar()),
                           const SizedBox(width: 16),
-                          Expanded(flex: 2, child: _dayList(selectedEvents)),
+                          Expanded(child: _dayList(selectedEvents)),
                         ],
                       )
                     : Column(
@@ -256,28 +256,30 @@ class _SchedulePageState extends State<SchedulePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          FeatureLine.section(
-            text: '${_selectedDay.month}월 ${_selectedDay.day}일 일정',
-            padTop: false,
-            padBottom: false,
-            trailing: canAdd
-                ? Wrap(
-                    spacing: 8,
-                    children: [
-                      FilledButton.icon(
-                        onPressed: () => _editEvent(),
-                        icon: const Icon(Icons.add),
-                        label: const Text('일정 추가'),
-                      ),
-                      OutlinedButton(
-                        key: const Key('schedule-load-draft'),
-                        onPressed: _loadDraft,
-                        child: const Text('임시저장 불러오기'),
-                      ),
-                    ],
-                  )
-                : null,
+          Wrap(
+            spacing: 16,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                '${_selectedDay.month}월 ${_selectedDay.day}일 일정',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              if (canAdd) ...[
+                FilledButton.icon(
+                  onPressed: () => _editEvent(),
+                  icon: const Icon(Icons.add),
+                  label: const Text('일정 추가'),
+                ),
+                OutlinedButton(
+                  key: const Key('schedule-load-draft'),
+                  onPressed: _loadDraft,
+                  child: const Text('임시저장 불러오기'),
+                ),
+              ],
+            ],
           ),
+          const SizedBox(height: 16),
           if (!canAdd && widget.onOpenSettings != null) ...[
             const SizedBox(height: 12),
             PlanningProfileSettingsCta(

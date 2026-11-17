@@ -1,3 +1,4 @@
+import '../../shared/widgets/record_card_header.dart';
 import '../../shared/app_style.dart';
 import '../../shared/credits_format.dart';
 
@@ -411,32 +412,30 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       title: widget.title,
       contextLabel: widget.contextLabel,
       description: widget.description,
-      headerActions: [
-        if (canAdd) ...[
-          FilledButton.icon(
-            onPressed: _showForm,
-            icon: const Icon(Icons.add),
-            label: Text(widget.addLabel),
-          ),
-          OutlinedButton(
-            key: const Key('record-menu-load-draft'),
-            onPressed: _loadDraft,
-            child: const Text('임시저장 불러오기'),
-          ),
-        ],
-      ],
       body: [
         SurfaceCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FeatureLine.section(
-                text: widget.listTitle,
-                padTop: false,
-                padBottom: false,
-                trailing: _repository.isServerBacked
+              RecordCardHeader(
+                title: widget.listTitle,
+                reload: _repository.isServerBacked
                     ? FeatureLine.reload(onPressed: _loading ? null : _load)
                     : null,
+                actions: [
+                  if (canAdd) ...[
+                    FilledButton.icon(
+                      onPressed: _showForm,
+                      icon: const Icon(Icons.add),
+                      label: Text(widget.addLabel),
+                    ),
+                    OutlinedButton(
+                      key: const Key('record-menu-load-draft'),
+                      onPressed: _loadDraft,
+                      child: const Text('임시저장 불러오기'),
+                    ),
+                  ],
+                ],
               ),
               if (isCourse && !canAdd && widget.onOpenSettings != null) ...[
                 const SizedBox(height: 16),

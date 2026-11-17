@@ -134,7 +134,7 @@ class _WorkspaceState extends State<Workspace> {
     consent: _aiConsent,
     loadRecords: widget.studentApi == null
         ? null
-        : () => loadAiRecords(widget.studentApi!, includeCourses: false),
+        : () => loadAiRecords(widget.studentApi!),
     loadMaterials: () => loadAssistantMaterials(_materialRepository),
     onOpenSettings: () => _selectPage(_labels.length),
   );

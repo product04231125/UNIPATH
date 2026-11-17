@@ -1,3 +1,5 @@
+import '../../../shared/widgets/record_card_header.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../../shared/app_style.dart';
@@ -386,30 +388,28 @@ class _ActivityPageState extends State<ActivityPage> {
     return FeaturePage(
       title: '활동',
       description: '봉사·교내외 활동과 프로젝트·인턴·동아리 경험을 한곳에서 기록합니다.',
-      headerActions: [
-        FilledButton.icon(
-          onPressed: _add,
-          icon: const Icon(Icons.add),
-          label: const Text('활동 직접 기록'),
-        ),
-        OutlinedButton(
-          key: const Key('activity-load-draft'),
-          onPressed: _loadDraft,
-          child: const Text('임시저장 불러오기'),
-        ),
-      ],
       body: [
         SurfaceCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FeatureLine.section(
-                text: '등록한 활동',
-                padTop: false,
-                padBottom: false,
-                trailing: serverBacked
+              RecordCardHeader(
+                title: '등록한 활동',
+                reload: serverBacked
                     ? FeatureLine.reload(onPressed: _loading ? null : _load)
                     : null,
+                actions: [
+                  FilledButton.icon(
+                    onPressed: _add,
+                    icon: const Icon(Icons.add),
+                    label: const Text('활동 직접 기록'),
+                  ),
+                  OutlinedButton(
+                    key: const Key('activity-load-draft'),
+                    onPressed: _loadDraft,
+                    child: const Text('임시저장 불러오기'),
+                  ),
+                ],
               ),
               FeatureLine.one(text: '기록한 시간 합계 $recordedHours시간'),
               if (personal.isEmpty)
