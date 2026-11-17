@@ -145,16 +145,7 @@ class HomePage extends StatelessWidget {
         : Column(
             children: [
               for (final event in events)
-                InkWell(
-                  onTap: () => onOpenSchedule(event.start),
-                  child: FeatureLine.two(
-                    primary: event.title,
-                    secondary:
-                        '${event.start.month}.${event.start.day} · ${planningTime(event.start)} · ${event.category.label}',
-                    leading: const Icon(Icons.event_outlined),
-                    trailing: const Icon(Icons.chevron_right),
-                  ),
-                ),
+                _upcomingEvent(event, compact: compact),
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton(
@@ -176,6 +167,24 @@ class HomePage extends StatelessWidget {
       label: const Text('일정 추가'),
     ),
   );
+
+  Widget _upcomingEvent(PlanningEvent event, {required bool compact}) {
+    final details =
+        '${event.start.month}.${event.start.day} · ${planningTime(event.start)} · ${event.category.label}';
+    return Tooltip(
+      message: '${event.title}\n$details',
+      child: InkWell(
+        onTap: () => onOpenSchedule(event.start),
+        child: FeatureLine.two(
+          primary: event.title,
+          secondary: details,
+          maxLines: compact ? 1 : null,
+          leading: const Icon(Icons.event_outlined),
+          trailing: const Icon(Icons.chevron_right),
+        ),
+      ),
+    );
+  }
 
   Widget _prepare(BuildContext context, PlanningProfile profile) {
     final configured = profile.isConfigured;
