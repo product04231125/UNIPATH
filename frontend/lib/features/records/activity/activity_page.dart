@@ -15,7 +15,7 @@ import '../personal_record_form.dart';
 import '../personal_record_repository.dart';
 import '../personal_repository_scope.dart';
 
-enum _ActivityAddChoice { volunteer, project, other }
+enum _ActivityAddChoice { volunteer, project, intern, club, other }
 
 /// Unified student menu for activity and experience personal records.
 class ActivityPage extends StatefulWidget {
@@ -124,15 +124,20 @@ class _ActivityPageState extends State<ActivityPage> {
               subtitle: Text('이름·시간·메모를 적습니다.'),
             ),
           ),
-          SimpleDialogOption(
-            key: const ValueKey('activity-add-project'),
-            onPressed: () => Navigator.pop(context, _ActivityAddChoice.project),
-            child: const ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('프로젝트·인턴·동아리'),
-              subtitle: Text('역할·결과 필드를 사용합니다.'),
+          for (final entry in const {
+            _ActivityAddChoice.project: '프로젝트',
+            _ActivityAddChoice.intern: '인턴',
+            _ActivityAddChoice.club: '동아리',
+          }.entries)
+            SimpleDialogOption(
+              key: ValueKey('activity-add-${entry.key.name}'),
+              onPressed: () => Navigator.pop(context, entry.key),
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(entry.value),
+                subtitle: const Text('참여 기간·역할과 결과를 기록합니다.'),
+              ),
             ),
-          ),
           SimpleDialogOption(
             key: const ValueKey('activity-add-other'),
             onPressed: () => Navigator.pop(context, _ActivityAddChoice.other),
@@ -146,10 +151,18 @@ class _ActivityPageState extends State<ActivityPage> {
       ),
     );
     if (!mounted || choice == null) return;
-    final kind = choice == _ActivityAddChoice.project
-        ? PersonalRecordKind.experience
-        : PersonalRecordKind.activity;
-    await _edit(kind);
+    final experienceType = switch (choice) {
+      _ActivityAddChoice.project => '프로젝트',
+      _ActivityAddChoice.intern => '인턴',
+      _ActivityAddChoice.club => '동아리',
+      _ => null,
+    };
+    await _edit(
+      experienceType == null
+          ? PersonalRecordKind.activity
+          : PersonalRecordKind.experience,
+      draftValues: experienceType == null ? null : {'type': experienceType},
+    );
   }
 
   Future<void> _edit(
@@ -206,14 +219,11 @@ class _ActivityPageState extends State<ActivityPage> {
     if (!mounted || kind == null) return;
     final entry = await showFormDraftPicker(
       context: context,
-      collectionKey: formDraftCollectionKey(
-        personalRecordDraftScreenId(kind),
-      ),
+      collectionKey: formDraftCollectionKey(personalRecordDraftScreenId(kind)),
     );
     if (!mounted || entry == null) return;
     final values = {
-      for (final item in entry.payload.entries)
-        item.key: '${item.value ?? ''}',
+      for (final item in entry.payload.entries) item.key: '${item.value ?? ''}',
     };
     await _edit(kind, draftValues: values, appliedDraftId: entry.id);
   }
@@ -273,16 +283,35 @@ class _ActivityPageState extends State<ActivityPage> {
     final fields = _fields[kind] ?? personalRecordFields(kind);
     return FeatureLine.two(
       primary: '${_kindLabel(kind)} · ${record.value('title')}',
-      secondary: fields
-          .where(
-            (f) =>
-                f.key != 'title' &&
-                record.value(f.key).isNotEmpty &&
-                (kind != PersonalRecordKind.activity ||
-                    activityVisibleKeys.contains(f.key)),
-          )
-          .map((f) => '${f.label}: ${_fieldDisplay(f, record.value(f.key))}')
-          .join(' · '),
+      secondary: [
+        if (kind == PersonalRecordKind.experience)
+          for (final keys in const [
+            ['type', 'organization', 'status'],
+            ['startedOn', 'endedOn'],
+            ['role'],
+            ['result'],
+            ['detail'],
+          ])
+            fields
+                .where(
+                  (f) => keys.contains(f.key) && record.value(f.key).isNotEmpty,
+                )
+                .map(
+                  (f) => '${f.label}: ${_fieldDisplay(f, record.value(f.key))}',
+                )
+                .join(' · ')
+        else
+          ...fields
+              .where(
+                (f) =>
+                    f.key != 'title' &&
+                    activityVisibleKeys.contains(f.key) &&
+                    record.value(f.key).isNotEmpty,
+              )
+              .map(
+                (f) => '${f.label}: ${_fieldDisplay(f, record.value(f.key))}',
+              ),
+      ].where((line) => line.isNotEmpty).join('\n'),
       leading: Icon(
         Icons.description_outlined,
         size: 19,
@@ -357,6 +386,18 @@ class _ActivityPageState extends State<ActivityPage> {
     return FeaturePage(
       title: '활동',
       description: '봉사·교내외 활동과 프로젝트·인턴·동아리 경험을 한곳에서 기록합니다.',
+      headerActions: [
+        FilledButton.icon(
+          onPressed: _add,
+          icon: const Icon(Icons.add),
+          label: const Text('활동 직접 기록'),
+        ),
+        OutlinedButton(
+          key: const Key('activity-load-draft'),
+          onPressed: _loadDraft,
+          child: const Text('임시저장 불러오기'),
+        ),
+      ],
       body: [
         SurfaceCard(
           child: Column(
@@ -376,18 +417,6 @@ class _ActivityPageState extends State<ActivityPage> {
               for (final item in personal) _personalEntry(item.$1, item.$2),
             ],
           ),
-        ),
-      ],
-      actions: [
-        FilledButton.icon(
-          onPressed: _add,
-          icon: const Icon(Icons.add),
-          label: const Text('활동 직접 기록'),
-        ),
-        OutlinedButton(
-          key: const Key('activity-load-draft'),
-          onPressed: _loadDraft,
-          child: const Text('불러오기'),
         ),
       ],
       below: [

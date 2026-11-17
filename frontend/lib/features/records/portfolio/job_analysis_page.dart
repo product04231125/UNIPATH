@@ -94,7 +94,8 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
   int _revision = 0;
   String? _error, _recordMessage, _requestId;
   JobAnalysisResponse? _result;
-  bool _recommendations = false;
+  bool _recommendations = false, _recommendationsVisited = false;
+  bool _recommendationBusy = false;
 
   bool get _connected => widget.api != null && widget.consent != null;
   bool get _canAnalyze =>
@@ -116,6 +117,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
         !identical(oldWidget.api?.api, widget.api?.api) ||
         !identical(oldWidget.consent, widget.consent)) {
       _revision++;
+      _recommendationBusy = false;
       _sending = false;
       _requesting = false;
       _selected.clear();
@@ -275,34 +277,55 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
     'no_requirements_found' => '공고에서 비교할 요건을 찾지 못했습니다.',
     _ => '분석을 완료하지 못했습니다. 입력을 유지하고 다시 시도할 수 있습니다.',
   };
+  Widget _purposeSelector() => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final entry in const {
+          false: '공고 1개 비교',
+          true: '내 자료로 공고 찾기',
+        }.entries)
+          ChoiceChip(
+            label: Text(entry.value),
+            selected: _recommendations == entry.key,
+            onSelected: _sending || _recommendationBusy
+                ? null
+                : (_) => setState(() {
+                    _recommendations = entry.key;
+                    if (entry.key) _recommendationsVisited = true;
+                  }),
+          ),
+      ],
+    ),
+  );
+
   @override
-  Widget build(BuildContext context) {
-    if (_recommendations) {
-      return JobRecommendationPage(
-        api: widget.api,
-        consent: widget.consent,
-        loadRecords: widget.loadRecords,
-        onBack: () => setState(() => _recommendations = false),
-      );
-    }
-    return _buildAnalysis(context);
-  }
+  Widget build(BuildContext context) => IndexedStack(
+    index: _recommendations ? 1 : 0,
+    children: [
+      _buildAnalysis(context),
+      if (_recommendationsVisited)
+        JobRecommendationPage(
+          api: widget.api,
+          consent: widget.consent,
+          loadRecords: widget.loadRecords,
+          purposeSelector: _purposeSelector(),
+          onBusyChanged: (busy) {
+            if (mounted) setState(() => _recommendationBusy = busy);
+          },
+        )
+      else
+        const SizedBox.shrink(),
+    ],
+  );
 
   Widget _buildAnalysis(BuildContext context) => FeaturePage(
     title: '채용공고 분석',
     description: '공고 본문과 고른 기록을 비교합니다.',
     body: [
-      Align(
-        alignment: Alignment.centerLeft,
-        child: OutlinedButton.icon(
-          onPressed: _sending
-              ? null
-              : () => setState(() => _recommendations = true),
-          icon: const Icon(Icons.manage_search),
-          label: const Text('내 자료로 공고 찾기'),
-        ),
-      ),
-      const SizedBox(height: 16),
+      _purposeSelector(),
       SurfaceCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -321,24 +344,26 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
               ),
             ),
             const SizedBox(height: 16),
-            const FieldLabel(
-              label: '채용공고 주소 · 준비 중',
-              child: TextField(
-                key: ValueKey('job-posting-url'),
-                enabled: false,
-                decoration: InputDecoration(hintText: '주소 분석은 준비 중입니다.'),
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: const [
+                Text('다른 입력 방식 · 준비 중'),
+                OutlinedButton(
+                  key: ValueKey('job-posting-url'),
+                  onPressed: null,
+                  child: Text('공고 주소 · 준비 중'),
+                ),
+                OutlinedButton(
+                  key: ValueKey('job-posting-file'),
+                  onPressed: null,
+                  child: Text('PDF·캡처 · 준비 중'),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            const Text('PDF·캡처 분석은 준비 중입니다. 현재는 공고 본문을 붙여 넣어 분석할 수 있습니다.'),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton(
-                key: ValueKey('job-posting-file'),
-                onPressed: null,
-                child: Text('PDF·캡처 선택 · 준비 중'),
-              ),
-            ),
+            const SizedBox(height: 8),
+            const Text('현재는 공고 본문을 붙여 넣어 비교할 수 있습니다.'),
           ],
         ),
       ),

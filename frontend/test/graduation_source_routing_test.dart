@@ -187,6 +187,7 @@ void main() {
       expect(find.text('학업 기준 설정'), findsOneWidget);
       expect(find.byType(FeaturePage), findsOneWidget);
       expect(find.text('졸업 요건'), findsOneWidget);
+      await tester.ensureVisible(find.text('기존 졸업 감사·이력'));
       await tester.tap(find.text('기존 졸업 감사·이력'));
       await tester.pumpAndSettle();
       expect(find.byType(OfficialGraduationPage), findsOneWidget);

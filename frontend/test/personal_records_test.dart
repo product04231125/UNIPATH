@@ -505,13 +505,18 @@ void main() {
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
 
-      await _chooseActivityAdd(tester, choice: '프로젝트·인턴·동아리');
+      await _chooseActivityAdd(tester, choice: '프로젝트');
       await tester.enterText(
         find.byKey(const ValueKey('record-field-title')),
         '통합 프로젝트',
       );
-      await tester.enterText(
-        find.byKey(const ValueKey('record-field-type')),
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('record-field-type')),
+            )
+            .controller!
+            .text,
         '프로젝트',
       );
       await tester.tap(find.text('내 기록에 저장'));

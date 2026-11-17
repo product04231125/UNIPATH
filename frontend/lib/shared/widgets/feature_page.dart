@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'content_scroll_view.dart';
 import 'feature_actions.dart';
+import 'feature_line.dart';
 import 'page_header.dart';
 
 /// Shared feature frame: title + one line, body rows, then primary actions.
@@ -14,6 +15,7 @@ class FeaturePage extends StatelessWidget {
     this.eyebrow,
     this.body = const [],
     this.actions = const [],
+    this.headerActions = const [],
     this.below = const [],
     this.padding = EdgeInsets.zero,
     this.scrollKey,
@@ -25,6 +27,7 @@ class FeaturePage extends StatelessWidget {
   final String? eyebrow;
   final List<Widget> body;
   final List<Widget> actions;
+  final List<Widget> headerActions;
   final List<Widget> below;
   final EdgeInsetsGeometry padding;
   final Key? scrollKey;
@@ -45,9 +48,11 @@ class FeaturePage extends StatelessWidget {
             title: title,
             contextLabel: contextLabel,
             description: description,
+            actions: headerActions,
           ),
           ...body,
           if (actions.isNotEmpty) FeatureActions(children: actions),
+          if (below.isNotEmpty) SizedBox(height: FeatureLine.slotGap(context)),
           ...below,
         ],
       ),

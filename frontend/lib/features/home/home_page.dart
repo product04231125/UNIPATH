@@ -84,13 +84,18 @@ class HomePage extends StatelessWidget {
                       ],
                     );
                   }
-                  return EqualHeightRow(
-                    children: [
-                      Expanded(flex: compact ? 1 : 3, child: upcomingCard),
-                      const SizedBox(width: 16),
-                      Expanded(flex: compact ? 1 : 2, child: prepare),
-                    ],
-                  );
+                  final children = <Widget>[
+                    Expanded(flex: compact ? 1 : 3, child: upcomingCard),
+                    const SizedBox(width: 16),
+                    Expanded(flex: compact ? 1 : 2, child: prepare),
+                  ];
+                  if (profile.isConfigured && repository.events.isNotEmpty) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: children,
+                    );
+                  }
+                  return EqualHeightRow(children: children);
                 },
               ),
               SizedBox(height: FeatureLine.slotGap(context)),
@@ -189,6 +194,32 @@ class HomePage extends StatelessWidget {
   Widget _prepare(BuildContext context, PlanningProfile profile) {
     final configured = profile.isConfigured;
     final hasEvents = repository.events.isNotEmpty;
+    if (configured && hasEvents) {
+      return _card(
+        context,
+        '준비 목록',
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('기본 준비 2/2 · 완료'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                TextButton(
+                  onPressed: onOpenSettings,
+                  child: const Text('학업과 계획 정보'),
+                ),
+                TextButton(
+                  onPressed: () => onOpenSchedule(DateTime.now()),
+                  child: Text('개인 일정 ${repository.events.length}개 저장됨'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
     return _card(
       context,
       '준비 목록',

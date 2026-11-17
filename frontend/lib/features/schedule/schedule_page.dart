@@ -59,7 +59,7 @@ class _SchedulePageState extends State<SchedulePage> {
       if (widget.repository.isLoading || widget.repository.loadFailed) {
         return FeaturePage(
           title: '일정',
-          description: '개인 일정을 주간으로 보고 추가합니다.',
+          description: '월간 달력에서 날짜별 개인 일정을 확인하고 추가합니다.',
           body: [PlanningStorageState(repository: widget.repository)],
         );
       }
@@ -75,8 +75,7 @@ class _SchedulePageState extends State<SchedulePage> {
               widget.repository.loadFailed) {
             return;
           }
-          if (request!.consume() &&
-              widget.repository.profile.isConfigured) {
+          if (request!.consume() && widget.repository.profile.isConfigured) {
             _editEvent();
           }
         });
@@ -89,7 +88,7 @@ class _SchedulePageState extends State<SchedulePage> {
                 : (constraints.maxHeight < 620 ? 28 : 8),
           ),
           title: '일정',
-          description: '개인 일정을 주간으로 보고 추가합니다.',
+          description: '월간 달력에서 날짜별 개인 일정을 확인하고 추가합니다.',
           body: [
             Align(
               alignment: Alignment.topLeft,
@@ -121,79 +120,78 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Widget _calendar() => SurfaceCard(
     child: Column(
-        children: [
-          Row(
-            children: [
-              IconButton.filledTonal(
-                tooltip: '이전 달',
-                onPressed: () => setState(
-                  () => _month = DateTime(_month.year, _month.month - 1),
-                ),
-                icon: const Icon(Icons.chevron_left),
+      children: [
+        Row(
+          children: [
+            IconButton.filledTonal(
+              tooltip: '이전 달',
+              onPressed: () => setState(
+                () => _month = DateTime(_month.year, _month.month - 1),
               ),
+              icon: const Icon(Icons.chevron_left),
+            ),
+            Expanded(
+              child: Text(
+                '${_month.year}년 ${_month.month}월',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            IconButton.filledTonal(
+              tooltip: '다음 달',
+              onPressed: () => setState(
+                () => _month = DateTime(_month.year, _month.month + 1),
+              ),
+              icon: const Icon(Icons.chevron_right),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (final day in planningWeek(
+              DateTime.now(),
+              widget.repository.profile.weekStartsOn,
+            ))
               Expanded(
-                child: Text(
-                  '${_month.year}년 ${_month.month}월',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              IconButton.filledTonal(
-                tooltip: '다음 달',
-                onPressed: () => setState(
-                  () => _month = DateTime(_month.year, _month.month + 1),
-                ),
-                icon: const Icon(Icons.chevron_right),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              for (final day in planningWeek(
-                DateTime.now(),
-                widget.repository.profile.weekStartsOn,
-              ))
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      weekdayLabel(day.weekday),
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                child: Center(
+                  child: Text(
+                    weekdayLabel(day.weekday),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
-            ],
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: 42,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            mainAxisExtent: MediaQuery.textScalerOf(context).scale(14) * 3 + 24,
           ),
-          const SizedBox(height: 4),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 42,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-              mainAxisExtent:
-                  MediaQuery.textScalerOf(context).scale(14) * 3 + 24,
-            ),
-            itemBuilder: (context, index) {
-              final first = DateTime(_month.year, _month.month);
-              final day = first.add(
-                Duration(
-                  days:
-                      index -
-                      (first.weekday -
-                              widget.repository.profile.weekStartsOn.weekday +
-                              7) %
-                          7,
-                ),
-              );
-              return _dayCell(day);
-            },
-          ),
-        ],
-      ),
-    );
+          itemBuilder: (context, index) {
+            final first = DateTime(_month.year, _month.month);
+            final day = first.add(
+              Duration(
+                days:
+                    index -
+                    (first.weekday -
+                            widget.repository.profile.weekStartsOn.weekday +
+                            7) %
+                        7,
+              ),
+            );
+            return _dayCell(day);
+          },
+        ),
+      ],
+    ),
+  );
 
   Widget _dayCell(DateTime day) {
     final events = _eventsForDay(day);
@@ -274,7 +272,7 @@ class _SchedulePageState extends State<SchedulePage> {
                       OutlinedButton(
                         key: const Key('schedule-load-draft'),
                         onPressed: _loadDraft,
-                        child: const Text('불러오기'),
+                        child: const Text('임시저장 불러오기'),
                       ),
                     ],
                   )
@@ -350,10 +348,7 @@ class _SchedulePageState extends State<SchedulePage> {
       collectionKey: formDraftCollectionKey(_scheduleDraftScreenId),
     );
     if (!mounted || entry == null) return;
-    await _editEvent(
-      draftValues: entry.payload,
-      appliedDraftId: entry.id,
-    );
+    await _editEvent(draftValues: entry.payload, appliedDraftId: entry.id);
   }
 
   bool _allowWrite() {
@@ -473,9 +468,8 @@ class _EventEditorState extends State<_EventEditor> {
       );
       _loadedDraftId = entry.id;
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('임시저장했습니다.')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('임시저장했습니다.')));
       }
       return true;
     } catch (_) {
