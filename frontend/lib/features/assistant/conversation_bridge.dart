@@ -45,6 +45,9 @@ Map<String, dynamic> conversationSnapshot(
   'permission_loading': conversation.permissionLoading,
   'permission_error': conversation.permissionError,
   'records': conversation.recordOptions.map((r) => r.toJson()).toList(),
+  'materials': conversation.materials.map((m) => m.toJson()).toList(),
+  'materials_loading': conversation.materialsLoading,
+  'materials_error': conversation.materialsError,
   'selected_records': conversation.selectedRecords
       .map((r) => r.toJson())
       .toList(),
@@ -120,6 +123,7 @@ class ConversationBridge {
       'retry',
       'mode',
       'records',
+      'materials',
       'select_record',
       'permit',
       'permission_reload',
@@ -155,6 +159,7 @@ class ConversationBridge {
       );
     }
     if (action == 'records') unawaited(conversation.refreshRecords());
+    if (action == 'materials') unawaited(conversation.refreshMaterials());
     if (action == 'select_record') {
       conversation.selectRecord(
         command['key'] as String,
@@ -315,6 +320,14 @@ class RemoteConversation extends AssistantConversation {
           (v) => AssistantMode.values.byName(v as String),
         ),
       );
+    materials = (value['materials'] as List? ?? [])
+        .map(
+          (v) =>
+              AssistantMaterial.fromJson(Map<String, dynamic>.from(v as Map)),
+        )
+        .toList();
+    materialsLoading = value['materials_loading'] == true;
+    materialsError = value['materials_error'] as String?;
     recordOptions = (value['records'] as List? ?? [])
         .map(
           (v) => AiRecordOption.fromJson(Map<String, dynamic>.from(v as Map)),
@@ -457,6 +470,14 @@ class RemoteConversation extends AssistantConversation {
   Future<void> refreshRecords() async {
     if (_ready) {
       _enqueue('records');
+      await flush();
+    }
+  }
+
+  @override
+  Future<void> refreshMaterials() async {
+    if (_ready) {
+      _enqueue('materials');
       await flush();
     }
   }

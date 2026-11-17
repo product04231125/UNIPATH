@@ -1,6 +1,35 @@
 import '../api/academic_guidance_models.dart';
 import '../api/student_api.dart';
 import '../api/student_api_models.dart';
+import '../records/portfolio/material_repository.dart';
+
+/// Display metadata only. Local files have no personalized-guidance contract.
+class AssistantMaterial {
+  const AssistantMaterial({
+    required this.id,
+    required this.title,
+    required this.type,
+  });
+  final String id, title, type;
+  Map<String, Object?> toJson() => {'id': id, 'title': title, 'type': type};
+  factory AssistantMaterial.fromJson(Map<String, dynamic> value) =>
+      AssistantMaterial(
+        id: value['id'] as String,
+        title: value['title'] as String,
+        type: value['type'] as String,
+      );
+}
+
+Future<List<AssistantMaterial>> loadAssistantMaterials(
+  MaterialRepository repository,
+) async => [
+  for (final material in await repository.load())
+    AssistantMaterial(
+      id: material.id,
+      title: material.title,
+      type: material.type,
+    ),
+];
 
 class AiRecordOption {
   const AiRecordOption({
