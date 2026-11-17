@@ -36,5 +36,5 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 
 - **인증된 요청**으로 [프론트 요청 예시](FRONTEND_HANDOFF.md)를 실행한다. 먼저 서울 / Engineer / 1건과 합성 PNG로 확인한다. `sources`에서 Greenhouse 상태, `items[].analysis_status`에서 모델 비교 결과, `document_locations`에서 OCR 출처를 각각 확인한다. 성공적으로 비교해도 추천은 0건일 수 있다.
 - **사람인 승인 후** 같은 API에 `region: "전국"`과 한국어 직무를 보내고 `sources` 중 `source: "saramin"`이 `completed`인지 확인한다. 사람인 실공고 표시까지 확인하려면 `items[].posting.source`도 확인한다. 지역 지정 검색에는 사람인 공식 지역 코드가 필요하다.
-- **장애 구분** — 413은 프록시/업로드 크기, 422는 요청·문서·OCR 판독, 503은 OCR 설치·언어·혼잡, 429는 호출 제한을 확인한다. HTTP 200의 `not_configured`는 분석기 설정, 개별 공고의 `analysis_status: "failed"`는 모델 호출 또는 인용 검증 실패다. 요청 ID로 추적한다.
+- **장애 구분** — 413은 프록시/업로드 크기, 422는 요청·문서·OCR 판독, 503은 OCR 설치·언어·혼잡, 429는 호출 제한을 확인한다. HTTP 200의 `not_configured`는 분석기 설정, 개별 공고의 `analysis_status: "failed"`는 모델 호출 또는 인용 검증 실패이며, `failure_reason`과 API 로그의 `reason=` 코드로 단계를 구분한다([코드 표](../../../../docs/api/job-analysis.md#실패-원인-코드)). 요청 ID로 추적한다.
 - **검증 범위** — Linux 이미지에서 한글·영문 사진과 스캔 PDF OCR을 확인했다. 실제 Vertex와 공개 공고의 비교도 확인했다. 추천 카드가 나온 테스트는 합성 모델 응답을 사용했다. 사람인 실호출과 학생 화면 전체 흐름은 승인·배포·화면 연결 후 검증할 항목이다.

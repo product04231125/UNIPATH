@@ -21,6 +21,25 @@ String recommendationStateLabel(String state) => switch (state) {
   _ => '상태 확인 필요',
 };
 
+/// Server failure codes in plain words; the code stays visible for support.
+String recommendationFailureLabel(String code) {
+  final text = switch (code) {
+    'posting_quote' => 'AI가 공고 문장을 정확히 인용하지 못했습니다.',
+    'personal_citation' => 'AI가 선택한 자료를 정확히 인용하지 못했습니다.',
+    'classification' || 'output_shape' => 'AI 응답 형식이 맞지 않았습니다.',
+    'model_timeout' || 'timeout' => '응답 시간이 초과되었습니다.',
+    'model_busy' => 'AI 요청이 몰려 있습니다.',
+    'model_http_429' => 'AI 호출 한도에 도달했습니다.',
+    'model_invalid_json' || 'model_no_candidate' => 'AI 응답을 읽지 못했습니다.',
+    'network' => '공고 수집처에 연결하지 못했습니다.',
+    _ when code.startsWith('model_incomplete_') => 'AI 응답이 중간에 끝났습니다.',
+    _ when code.startsWith('model_') => 'AI 서버 호출에 실패했습니다.',
+    _ when code.startsWith('http_') => '공고 수집처가 오류를 반환했습니다.',
+    _ => '처리 중 문제가 생겼습니다.',
+  };
+  return '$text 잠시 후 다시 시도해 주세요. (코드: $code)';
+}
+
 String _sourceName(String value) => switch (value) {
   'saramin' => '사람인',
   'work24' => '고용24',
@@ -110,6 +129,8 @@ class JobRecommendationResult extends StatelessWidget {
               }}',
             ),
             Text(recommendationStateLabel(item.status)),
+            if (item.status == 'failed' && item.failureReason != null)
+              Text(recommendationFailureLabel(item.failureReason!)),
             for (final warning in item.warnings) Text(warning),
             Align(
               alignment: Alignment.centerLeft,
@@ -164,10 +185,13 @@ class JobRecommendationResult extends StatelessWidget {
           }),
         ),
         if (result.notice.isNotEmpty) Text(result.notice),
-        for (final source in result.sources)
+        for (final source in result.sources) ...[
           Text(
             '${_sourceName(source.source)} · ${source.status == 'completed' ? '검색 완료' : recommendationStateLabel(source.status)}',
           ),
+          if (source.status == 'failed' && source.failureReason != null)
+            Text(recommendationFailureLabel(source.failureReason!)),
+        ],
         for (final warning in result.warnings) Text(warning),
         if (result.items.isNotEmpty && result.recommendations.isEmpty)
           const Text('추천 공고가 없습니다. 비교 대상의 분석 상태와 근거를 확인하세요.'),

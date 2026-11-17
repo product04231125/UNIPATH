@@ -6,6 +6,7 @@ from threading import BoundedSemaphore, Lock
 
 from app.core.config import Settings
 from app.rag.career.analyzer import EvidenceAnalyzer
+from app.rag.career.contracts import ProviderFailure, failure_reason
 from app.rag.career.transport import Transport
 from app.rag.career.vertex import VertexJSON
 from app.rag.school.contracts import GeneratedAnswer, GroundingRequest
@@ -52,7 +53,7 @@ class BoundedModel:
 
     def generate(self, instruction: str, payload: dict) -> dict:
         if not self._slots.acquire(timeout=self._wait):
-            raise RuntimeError("Model capacity is busy")
+            raise ProviderFailure("Model capacity is busy", "model_busy")
         try:
             return self._model.generate(instruction, payload)
         finally:
@@ -107,5 +108,7 @@ def reserve_call(db, request) -> None:
 
 
 def log_failure(operation: str, error: Exception) -> None:
-    # Only the type: provider errors could echo prompts, records or credentials.
-    logger.warning("%s failed: %s", operation, type(error).__name__)
+    # Only the type and a fixed reason code: messages could echo prompts, records or credentials.
+    logger.warning(
+        "%s failed: %s reason=%s", operation, type(error).__name__, failure_reason(error)
+    )

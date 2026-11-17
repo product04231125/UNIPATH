@@ -104,6 +104,33 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 서버 설정은 [`SERVER_HANDOFF.md`](../../backend/app/rag/career/SERVER_HANDOFF.md)를 따른다. 이 경로와
 `/me/personalized-guidance`만 프록시 본문 12m, 응답 대기 180초다.
 
+### 실패 원인 코드
+
+비교가 실패한 공고는 `items[].analysis_status="failed"`와 함께 `items[].failure_reason`을, 실패한 수집처는
+`sources[].failure_reason`을 돌려준다. 같은 코드가 API 로그(`posting analysis failed: <예외> reason=<코드>`,
+`job analysis failed: ...`, `personalized guidance failed: ...`)에 남는다. 코드는 고정 문자열이며 공고·기록·모델
+응답·URL·키는 남기지 않는다.
+
+| 코드 | 뜻 |
+|---|---|
+| `posting_quote` | 모델이 인용한 공고 문장이 원문에 그대로 없음 |
+| `personal_citation` | 모델이 인용한 개인 기록이 선택한 기록과 맞지 않음 |
+| `school_citation` | 맞춤 안내에서 검색되지 않은 학교 근거를 인용함 |
+| `classification` | 필수/우대, 근거 상태 값이 허용 범위 밖 |
+| `output_shape` | 모델 응답의 필드·형식이 계약과 다름 |
+| `invalid_posting` | 공고 본문이 비었거나 너무 김 |
+| `model_http_<상태>` | Vertex가 HTTP 오류를 돌려줌(예: `model_http_429` 호출 한도, `model_http_404` 모델·리전 없음) |
+| `model_timeout`, `model_network` | Vertex 응답 시간 초과, 연결 실패 |
+| `model_incomplete_<이유>` | 모델 응답이 끝나지 않음(예: `model_incomplete_max_tokens`, `model_incomplete_safety`) |
+| `model_invalid_json`, `model_no_candidate` | 모델 응답을 JSON으로 읽지 못함, 후보 없음 |
+| `model_busy` | 서버의 동시 호출 슬롯이 가득 참 |
+| `model_auth_or_request` | 인증 토큰 갱신 등 요청 준비 실패 |
+| `http_<상태>`, `timeout`, `network` | 공고 수집처 호출 실패 |
+| `unexpected_<예외>` | 분류되지 않은 예외 |
+
+화면은 코드를 쉬운 문장과 함께 보여 준다(`recommendationFailureLabel`). 모델 검증 실패는 다시 시도하면 대개
+통과한다.
+
 ## 품질 평가
 
 `backend/tests/fixtures/job_analysis_scenarios.json`은 대표 공고와 합성 기록 5건이다. 정상 비교,

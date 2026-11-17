@@ -3,7 +3,7 @@
 import json
 import re
 
-from .contracts import NotConfigured
+from .contracts import NotConfigured, ProviderFailure
 from .transport import Transport
 
 
@@ -15,6 +15,11 @@ def adc_token():
     credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
     credentials.refresh(Request())
     return credentials.token
+
+
+UNAVAILABLE = "Model response unavailable or invalid"
+# Vertex finishReason values are short upper-case enum names (MAX_TOKENS, SAFETY, ...).
+FINISH = re.compile(r"[A-Z_]{1,40}")
 
 
 class VertexJSON:
@@ -51,6 +56,7 @@ class VertexJSON:
         }
         if self.model == "gemini-3.8-flash":
             del body["generationConfig"]["temperature"]
+        # One generic message for callers; the reason code says which step failed.
         try:
             raw = self.transport.request(
                 self.url,
@@ -60,17 +66,29 @@ class VertexJSON:
                 },
                 body=json.dumps(body, ensure_ascii=False).encode(),
             )
+        except ProviderFailure as error:
+            raise ProviderFailure(UNAVAILABLE, "model_" + error.reason) from None
+        except Exception:
+            raise ProviderFailure(UNAVAILABLE, "model_auth_or_request") from None
+        try:
             candidate = json.loads(raw)["candidates"][0]
-            if candidate.get("finishReason") != "STOP":
-                raise ValueError("Incomplete model output")
+        except Exception:
+            raise ProviderFailure(UNAVAILABLE, "model_no_candidate") from None
+        finish = candidate.get("finishReason")
+        if finish != "STOP":
+            code = (
+                finish.lower() if isinstance(finish, str) and FINISH.fullmatch(finish) else "other"
+            )
+            raise ProviderFailure(UNAVAILABLE, "model_incomplete_" + code)
+        try:
             text = "".join(
                 part.get("text", "")
                 for part in candidate["content"]["parts"]
                 if not part.get("thought", False)
             )
             result = json.loads(text)
-            if not isinstance(result, dict):
-                raise ValueError("Expected JSON object")
-            return result
         except Exception:
-            raise RuntimeError("Model response unavailable or invalid") from None
+            raise ProviderFailure(UNAVAILABLE, "model_invalid_json") from None
+        if not isinstance(result, dict):
+            raise ProviderFailure(UNAVAILABLE, "model_invalid_json")
+        return result
