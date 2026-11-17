@@ -128,3 +128,7 @@ def test_document_only_answer_and_consent_gate(monkeypatch):
     assert len(calls) == 1 and response.personal_citations
     assert "contact@example.test" not in str(calls)
     assert "봉사.txt" in response.personal.records[0].title
+    # Without a configured generator no answer can follow, so files are not read at all.
+    extracted.clear()
+    response = guidance.execute(db, NS(), payload, None, None)
+    assert response.reason == "generator_not_configured" and not extracted

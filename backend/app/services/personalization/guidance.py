@@ -103,15 +103,13 @@ def execute(db, request, payload, cache, model):
             "insufficient_evidence": PersonalizedGuidanceStatus.INSUFFICIENT_EVIDENCE,
         }.get(school.status, PersonalizedGuidanceStatus.FAILED)
         return respond(status, PersonalizedGuidanceReason.SCHOOL_EVIDENCE_UNAVAILABLE)
-    if payload.documents:
-        if not payload.external_processing_consent:
-            return respond(
-                PersonalizedGuidanceStatus.NEEDS_USER_INPUT,
-                PersonalizedGuidanceReason.EXTERNAL_PROCESSING_CONSENT_REQUIRED,
-                missing=["external_processing_consent"],
-            )
-        outbound = document_context(payload.documents, outbound, identity)
-    if not outbound.records:
+    if payload.documents and not payload.external_processing_consent:
+        return respond(
+            PersonalizedGuidanceStatus.NEEDS_USER_INPUT,
+            PersonalizedGuidanceReason.EXTERNAL_PROCESSING_CONSENT_REQUIRED,
+            missing=["external_processing_consent"],
+        )
+    if not outbound.records and not payload.documents:
         return respond(
             PersonalizedGuidanceStatus.NEEDS_USER_INPUT,
             PersonalizedGuidanceReason.PERSONAL_RECORDS_REQUIRED,
@@ -128,6 +126,10 @@ def execute(db, request, payload, cache, model):
             PersonalizedGuidanceReason.EXTERNAL_PROCESSING_CONSENT_REQUIRED,
             missing=["external_processing_consent"],
         )
+    if payload.documents:
+        # OCR only when an answer can follow, and never inside an open transaction.
+        db.rollback()
+        outbound = document_context(payload.documents, outbound, identity)
     question = redact_text(payload.question, names=(identity.user.display_name,))
     selection = knowledge_queries.selection(db, payload.context)[0]
     gemini.reserve_call(db, request)
