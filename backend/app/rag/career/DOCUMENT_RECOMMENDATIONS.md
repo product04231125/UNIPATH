@@ -8,13 +8,13 @@
 
 ## 실행
 
-저장소 루트에서 기존 로컬 Compose에 아래 설정을 추가한다. API는 기존 세션·DB·인증 미들웨어를 사용한다. 취업 API 서버 이미지에는 PDF 렌더러와 한글·영문 Tesseract OCR을 포함한다.
+기본 API(`app.main`)가 이 라우터를 함께 제공한다. 기존 세션·DB·인증과 채용 분석의 Gemini 모델을 그대로 쓴다. 기본 API 이미지(`backend/Dockerfile`)에 PDF 렌더러와 한글·영문 Tesseract OCR이 들어 있어 별도 이미지나 실행 명령이 필요 없다.
 
 ```sh
-docker compose -f compose.yaml -f backend/app/rag/career/compose.documents.yaml up -d --build api
+docker compose up -d --build api
 ```
 
-Docker 없이 서버를 실행할 때는 서버에 Tesseract와 kor·eng 언어 데이터를 설치한다. 학생 기기에는 설치할 프로그램이 없다. Python으로 실행할 때는 backend 디렉터리에서 `uv run --frozen --group ingestion uvicorn app.rag.career.api:create_app --factory --port 8010`을 사용한다. API 명세는 `/api/v1/docs`에서 확인한다.
+Docker 없이 실행할 때는 서버에 Tesseract와 kor·eng 언어 데이터를 설치하고 `--group ingestion` 의존성으로 기본 API를 실행한다. 학생 기기에는 설치할 프로그램이 없다. API 명세는 `/api/v1/docs`에서 확인한다.
 
 기존 Vertex 설정(VERTEX_PROJECT, VERTEX_LOCATION, VERTEX_MODEL 3개)과 해당 프로젝트의 ADC가 필요하다. Compose에서는 VERTEX_CREDENTIALS_FILE로 서비스 계정 파일 경로를 지정한다. 추천 기능도 다른 Gemini 기능과 같은 `VERTEX_LOCATION`·`VERTEX_MODEL`을 쓴다(D2). 스테이징은 `asia-northeast1`, `gemini-3.5-flash`다. 모델·리전을 바꾸려면 팀 결정(D2)을 먼저 고친다.
 

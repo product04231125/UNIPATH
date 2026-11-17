@@ -95,6 +95,15 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 1개를 비교해 각각 근거 있음·근거 부족을 반환한다. 미연결, 소유권, 버전, 허위 인용과
 분석 중 변경을 함께 검사한다.
 
+## 공고 추천
+
+`POST /api/v1/me/job-recommendations`는 학생이 고른 파일(사진·PDF·DOCX·TXT, 최대 5개·8MiB)과 기록으로
+최대 3건의 공고를 비교한다. 기본 API가 함께 제공하며 채용 분석과 같은 Gemini 설정·호출 상한을 쓴다.
+파일은 동의가 있을 때만 서버에서 추출·OCR하고 원본을 보관하지 않는다. 계약·응답 예시는
+[`backend/app/rag/career/DOCUMENT_RECOMMENDATIONS.md`](../../backend/app/rag/career/DOCUMENT_RECOMMENDATIONS.md),
+서버 설정은 [`SERVER_HANDOFF.md`](../../backend/app/rag/career/SERVER_HANDOFF.md)를 따른다. 이 경로와
+`/me/personalized-guidance`만 프록시 본문 12m, 응답 대기 180초다.
+
 ## 품질 평가
 
 `backend/tests/fixtures/job_analysis_scenarios.json`은 대표 공고와 합성 기록 5건이다. 정상 비교,
