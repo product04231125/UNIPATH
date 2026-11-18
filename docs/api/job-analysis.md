@@ -119,7 +119,7 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 | `classification` | 필수/우대, 근거 상태 값이 허용 범위 밖 |
 | `output_shape` | 모델 응답의 필드·형식이 계약과 다름 |
 | `invalid_posting` | 공고 본문이 비었거나 너무 김 |
-| `model_http_<상태>` | Vertex가 HTTP 오류를 돌려줌(예: `model_http_429` 호출 한도, `model_http_404` 모델·리전 없음) |
+| `model_http_<상태>` | Vertex가 HTTP 오류를 돌려줌(예: `model_http_429` 호출 한도·용량 초과, `model_http_404` 모델·리전 없음) |
 | `model_timeout`, `model_network` | Vertex 응답 시간 초과, 연결 실패 |
 | `model_incomplete_<이유>` | 모델 응답이 끝나지 않음(예: `model_incomplete_max_tokens`, `model_incomplete_safety`) |
 | `model_invalid_json`, `model_no_candidate` | 모델 응답을 JSON으로 읽지 못함, 후보 없음 |
@@ -130,6 +130,11 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 
 화면은 코드를 쉬운 문장과 함께 보여 준다(`recommendationFailureLabel`). 모델 검증 실패는 다시 시도하면 대개
 통과한다.
+
+Vertex가 429를 5초 안에 돌려주면 어댑터(`VertexJSON`)가 1~2초 쉬고 한 번만 다시 호출한다. 다시 호출할 때는
+로그에 `Vertex call throttled (http_429); retrying once`가 남는다. 두 번째도 429이면
+`model_http_429`로 실패한다. 다른 오류(시간 초과, 5xx 등)는 다시 호출하지 않는다. 스테이징 격리 환경에서 공고 비교
+8건 중 1건이 429였다(2026-11-17).
 
 ## 품질 평가
 
