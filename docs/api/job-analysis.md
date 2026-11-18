@@ -117,7 +117,8 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 | `personal_citation` | 모델이 인용한 개인 기록이 선택한 기록과 맞지 않음 |
 | `school_citation` | 맞춤 안내에서 검색되지 않은 학교 근거를 인용함 |
 | `classification` | 필수/우대, 근거 상태 값이 허용 범위 밖 |
-| `output_shape` | 모델 응답의 필드·형식이 계약과 다름 |
+| `output_missing_<필드>` | 모델 응답에 코드가 읽는 필드가 없음(예: `output_missing_personal_evidence`). 필드 이름은 소문자 스키마 키일 때만 남긴다 |
+| `output_shape` | 그 밖에 모델 응답의 필드·형식이 계약과 다름 |
 | `invalid_posting` | 공고 본문이 비었거나 너무 김 |
 | `model_http_<상태>` | Vertex가 HTTP 오류를 돌려줌(예: `model_http_429` 호출 한도·용량 초과, `model_http_404` 모델·리전 없음) |
 | `model_timeout`, `model_network` | Vertex 응답 시간 초과, 연결 실패 |
@@ -134,7 +135,8 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 Vertex가 429를 5초 안에 돌려주면 어댑터(`VertexJSON`)가 1~2초 쉬고 한 번만 다시 호출한다. 다시 호출할 때는
 로그에 `Vertex call throttled (http_429); retrying once`가 남는다. 두 번째도 429이면
 `model_http_429`로 실패한다. 다른 오류(시간 초과, 5xx 등)는 다시 호출하지 않는다. 스테이징 격리 환경에서 공고 비교
-8건 중 1건이 429였다(2026-11-17).
+8건 중 1건이 429였다(2026-11-17). 재시도를 넣은 뒤에도 `asia-northeast1`에서 429가 이어져 2026-11-18 스테이징
+`VERTEX_LOCATION`을 `global`로 바꿨다(이전 설정 `backups/staging-vertex-global-20261118/`).
 
 ## 품질 평가
 

@@ -28,7 +28,12 @@ SECRET = "개인 기록 본문 secret@example.test"
 def test_reason_codes_never_depend_on_messages():
     assert failure_reason(ProviderFailure("x", "http_429")) == "http_429"
     assert failure_reason(AnalysisRejected(SECRET, "posting_quote")) == "posting_quote"
-    assert failure_reason(KeyError("posting_quote")) == "output_shape"
+    assert failure_reason(KeyError("posting_quote")) == "output_missing_posting_quote"
+    # Only lower-case schema keys are named; anything that could be content is not.
+    assert failure_reason(KeyError(SECRET)) == "output_shape"
+    assert failure_reason(KeyError("Posting Quote")) == "output_shape"
+    assert failure_reason(KeyError(("kind", "id"))) == "output_shape"
+    assert failure_reason(KeyError("x" * 41)) == "output_shape"
     assert failure_reason(ValueError(SECRET)) == "output_shape"
     assert failure_reason(OSError(SECRET)) == "unexpected_OSError"
     # Existing callers still catch the same base types.
@@ -192,3 +197,20 @@ def test_a_slow_429_is_not_retried(monkeypatch):
         vertex(replies, sleeps).generate("instruction", {})
     assert caught.value.reason == "model_http_429"
     assert replies.calls == 1 and sleeps == []
+
+
+def test_a_comparison_without_a_field_names_the_field():
+    model = Mock()
+    model.generate.return_value = {
+        "comparisons": [
+            {
+                "priority": "required",
+                "requirement": "요건",
+                "posting_quote": POSTING.text[:20],
+                "status": "insufficient_evidence",
+            }
+        ]
+    }
+    with pytest.raises(KeyError) as caught:
+        EvidenceAnalyzer(model).analyze(POSTING.text, CONTEXT)
+    assert failure_reason(caught.value) == "output_missing_personal_evidence"

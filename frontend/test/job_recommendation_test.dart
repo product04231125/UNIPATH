@@ -340,6 +340,10 @@ void main() {
         findsOneWidget,
       );
       expect(find.textContaining('(코드: http_503)'), findsOneWidget);
+      expect(
+        recommendationFailureLabel('output_missing_personal_evidence'),
+        startsWith('AI 응답 형식이 맞지 않았습니다.'),
+      );
     },
   );
 
