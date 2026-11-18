@@ -32,6 +32,7 @@ String recommendationFailureLabel(String code) {
     'model_http_429' => 'AI 호출 한도에 도달했습니다.',
     'model_invalid_json' || 'model_no_candidate' => 'AI 응답을 읽지 못했습니다.',
     'network' => '공고 수집처에 연결하지 못했습니다.',
+    _ when code.startsWith('output_missing_') => 'AI 응답 형식이 맞지 않았습니다.',
     _ when code.startsWith('model_incomplete_') => 'AI 응답이 중간에 끝났습니다.',
     _ when code.startsWith('model_') => 'AI 서버 호출에 실패했습니다.',
     _ when code.startsWith('http_') => '공고 수집처가 오류를 반환했습니다.',

@@ -1,5 +1,6 @@
 """Internal contracts; these do not replace backend API/ownership validation."""
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from urllib.parse import urlsplit
@@ -28,10 +29,22 @@ class AnalysisRejected(ValueError):
         self.reason = reason
 
 
+# Schema keys our code looks up in model output; anything else is never echoed.
+SCHEMA_KEY = re.compile(r"[a-z][a-z0-9_]{0,39}")
+
+
 def failure_reason(error):
     """Safe code for logs and responses: which step failed, without any content."""
     if isinstance(error, (ProviderFailure, AnalysisRejected)):
         return error.reason
+    if (
+        isinstance(error, KeyError)
+        and len(error.args) == 1
+        and isinstance(error.args[0], str)
+        and SCHEMA_KEY.fullmatch(error.args[0])
+    ):
+        # The model left out a field our code reads, e.g. output_missing_personal_evidence.
+        return "output_missing_" + error.args[0]
     if isinstance(error, (KeyError, TypeError, IndexError, ValueError)):
         # Missing keys or wrong types in model output, or other invalid data.
         return "output_shape"
