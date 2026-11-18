@@ -8,6 +8,7 @@ from urllib.error import HTTPError, URLError
 import pytest
 
 from app.rag.career import transport as transport_module
+from app.rag.career import vertex as vertex_module
 from app.rag.career.analyzer import EvidenceAnalyzer
 from app.rag.career.contracts import (
     AnalysisRejected,
@@ -65,9 +66,14 @@ class Reply:
         return json.dumps(self.value).encode()
 
 
-def vertex(reply):
+def vertex(reply, sleeps=None):
     return VertexJSON(
-        "project", "asia-northeast1", "model", token_provider=lambda: "t", transport=reply
+        "project",
+        "asia-northeast1",
+        "model",
+        token_provider=lambda: "t",
+        transport=reply,
+        sleep=(sleeps if sleeps is not None else []).append,
     )
 
 
@@ -131,3 +137,58 @@ def test_service_failure_log_names_the_reason(caplog):
         gemini.log_failure("job analysis", AnalysisRejected(SECRET, "personal_citation"))
     assert "job analysis failed: AnalysisRejected reason=personal_citation" in caplog.text
     assert SECRET not in caplog.text
+
+
+class Replies:
+    """Answers each request with the next outcome: an exception or a JSON reply."""
+
+    def __init__(self, *outcomes):
+        self.outcomes, self.calls = list(outcomes), 0
+
+    def request(self, url, *, headers=None, body=None):
+        self.calls += 1
+        outcome = self.outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return json.dumps(outcome).encode()
+
+
+def throttled():
+    return ProviderFailure("x", "http_429")
+
+
+def test_a_quick_429_is_retried_once_after_a_short_wait(caplog):
+    replies, sleeps = Replies(throttled(), candidate('{"comparisons": []}')), []
+    with caplog.at_level(logging.WARNING):
+        assert vertex(replies, sleeps).generate("instruction", {"records": [SECRET]}) == {
+            "comparisons": []
+        }
+    assert replies.calls == 2 and len(sleeps) == 1 and 1.0 <= sleeps[0] <= 2.0
+    assert "Vertex call throttled (http_429); retrying once" in caplog.text
+    assert SECRET not in caplog.text
+
+
+def test_a_second_429_is_reported_without_more_retries():
+    replies, sleeps = Replies(throttled(), throttled(), candidate("{}")), []
+    with pytest.raises(ProviderFailure) as caught:
+        vertex(replies, sleeps).generate("instruction", {})
+    assert caught.value.reason == "model_http_429"
+    assert replies.calls == 2 and len(sleeps) == 1
+
+
+def test_other_failures_are_not_retried():
+    for error in (ProviderFailure("x", "http_503"), ProviderFailure("x", "timeout")):
+        replies, sleeps = Replies(error, candidate("{}")), []
+        with pytest.raises(ProviderFailure):
+            vertex(replies, sleeps).generate("instruction", {})
+        assert replies.calls == 1 and sleeps == []
+
+
+def test_a_slow_429_is_not_retried(monkeypatch):
+    clock = iter([0.0, vertex_module.RETRY_WINDOW_SECONDS + 1])
+    monkeypatch.setattr(vertex_module.time, "monotonic", lambda: next(clock))
+    replies, sleeps = Replies(throttled(), candidate("{}")), []
+    with pytest.raises(ProviderFailure) as caught:
+        vertex(replies, sleeps).generate("instruction", {})
+    assert caught.value.reason == "model_http_429"
+    assert replies.calls == 1 and sleeps == []
