@@ -102,7 +102,7 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 파일은 동의가 있을 때만 서버에서 추출·OCR하고 원본을 보관하지 않는다. 계약·응답 예시는
 [`backend/app/rag/career/DOCUMENT_RECOMMENDATIONS.md`](../../backend/app/rag/career/DOCUMENT_RECOMMENDATIONS.md),
 서버 설정은 [`SERVER_HANDOFF.md`](../../backend/app/rag/career/SERVER_HANDOFF.md)를 따른다. 이 경로와
-`/me/personalized-guidance`만 프록시 본문 12m, 응답 대기 180초다.
+`/me/personalized-guidance`만 프록시 본문 12m, 응답 대기 180초다(스테이징·운영 게이트웨이, 앱 프록시, 윈도우 시연본 모두 같다).
 
 ### 실패 원인 코드
 

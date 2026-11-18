@@ -30,3 +30,14 @@ def test_product_gateway_matches_staging_limits_with_its_own_upstream():
     assert "staging" not in product
     with pytest.raises(ValueError):
         server_block(source, "missing.example.invalid")
+
+
+def test_windows_demo_raises_limits_only_for_the_two_file_routes():
+    config = (ROOT / "deploy/windows-demo/nginx.conf").read_text()
+    assert config.count("client_max_body_size 12m;") == 2
+    assert config.count("proxy_read_timeout 180s;") == 2
+    for path in ("job-recommendations", "personalized-guidance"):
+        assert f"location = /api/v1/me/{path} {{" in config
+    # Everything else keeps the demo-wide 3m limit and default timeouts.
+    assert config.count("client_max_body_size 3m;") == 1
+    assert config.index("/api/v1/me/personalized-guidance") < config.index("location /api/v1/ {")
