@@ -9,7 +9,7 @@ enum AiConsentFeature {
     '내 자료로 질문',
     '질문, 학교 문서의 관련 내용, 직접 선택한 개인 기록과 등록 자료 설명·PDF에서 추출한 텍스트(OCR 포함)',
   ),
-  jobAnalysis('채용 분석', '공고 본문과 직접 선택한 개인 기록'),
+  jobAnalysis('채용 분석', '공고 본문과 저장된 활동·경험·자격·성과 기록 전체'),
   jobRecommendation('내 자료로 공고 찾기', '직접 선택한 파일에서 추출한 텍스트와 개인 기록');
 
   const AiConsentFeature(this.label, this.transferredData);
@@ -52,7 +52,12 @@ class AiConsentPreferences extends ChangeNotifier {
         if (value['notice_version'] == noticeVersion) {
           final features = value['allowed'] as List;
           for (final name in features) {
-            next.add(AiConsentFeature.values.byName(name as String));
+            final feature = AiConsentFeature.values.byName(name as String);
+            if (feature == AiConsentFeature.jobAnalysis &&
+                value['job_analysis_all_records'] != true) {
+              continue;
+            }
+            next.add(feature);
           }
         }
       }
@@ -94,6 +99,8 @@ class AiConsentPreferences extends ChangeNotifier {
         'owner_id': ownerId,
         'notice_version': noticeVersion,
         'allowed': next.map((f) => f.name).toList(),
+        if (next.contains(AiConsentFeature.jobAnalysis))
+          'job_analysis_all_records': true,
       });
       final saved = writer != null
           ? await writer!(storageKey, value)

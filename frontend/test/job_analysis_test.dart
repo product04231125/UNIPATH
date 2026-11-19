@@ -80,107 +80,73 @@ Future<void> execute(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets(
-    'includes eligible records by default and sends only checked records',
-    (tester) async {
-      const second = AiRecordOption(
-        kind: 'activity',
-        id: 'second',
-        version: 4,
-        title: '동아리 활동',
-      );
-      final api = AnalysisGateway(), p = await consent();
-      await p.setAllowed(AiConsentFeature.jobAnalysis, true);
-      await mount(tester, api, p, loadRecords: () async => [record, second]);
-      expect(find.text('비교에 포함할 기록 2개'), findsOneWidget);
-      expect(api.calls, isEmpty);
-      final excluded = find.byKey(ValueKey('job-record-${second.key}'));
-      expect(tester.widget<CheckboxListTile>(excluded).value, isTrue);
-      await tester.ensureVisible(excluded);
-      await tester.tap(excluded);
-      await tester.pumpAndSettle();
-      expect(find.text('비교에 포함할 기록 1개'), findsOneWidget);
-      await execute(tester);
-      expect(api.calls.single['records'], [
-        {'kind': 'experience', 'record_id': 'record-id', 'expected_version': 2},
-      ]);
-      await tester.pumpWidget(const SizedBox());
-      p.dispose();
-    },
-  );
-
-  testWidgets('requires manual selection above the record limit', (
+  testWidgets('sends all current records from the single analysis action', (
     tester,
   ) async {
     final options = [
       for (var i = 0; i < 21; i++)
         AiRecordOption(kind: 'activity', id: 'r$i', version: 1, title: '활동 $i'),
     ];
-    final api = AnalysisGateway(), p = await consent();
+    var loads = 0;
+    final api = AnalysisGateway()
+      ..failure = const AuthFailure(
+        '길이 제한',
+        status: 422,
+        fields: ['body.records'],
+      );
+    final p = await consent();
     await p.setAllowed(AiConsentFeature.jobAnalysis, true);
-    await mount(tester, api, p, loadRecords: () async => options);
-    expect(find.text('비교에 포함할 기록 0개'), findsOneWidget);
-    expect(find.textContaining('저장 기록 21개 중'), findsOneWidget);
+    await mount(
+      tester,
+      api,
+      p,
+      loadRecords: () async {
+        loads++;
+        return options;
+      },
+    );
+    expect(loads, 0);
+    expect(find.byType(CheckboxListTile), findsNothing);
+    expect(find.text('기록 다시 읽기'), findsNothing);
     await execute(tester);
-    expect(api.calls, isEmpty);
-    final chosen = find.byKey(const ValueKey('job-record-activity/r20'));
-    await tester.ensureVisible(chosen);
-    await tester.tap(chosen);
-    await tester.pumpAndSettle();
-    await execute(tester);
+    expect(loads, 1);
     expect(api.calls.single['records'], [
-      {'kind': 'activity', 'record_id': 'r20', 'expected_version': 1},
+      for (final r in options)
+        {'kind': r.kind, 'record_id': r.id, 'expected_version': r.version},
     ]);
+    expect(find.textContaining('서버가 전체 기록 요청을 받아들이지 못했습니다'), findsOneWidget);
+    expect(find.text('합성 공고 본문'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     p.dispose();
   });
 
-  testWidgets(
-    'reloading keeps exclusions and requires reconfirming changed records',
-    (tester) async {
-      const excluded = AiRecordOption(
-        kind: 'credential',
-        id: 'excluded',
-        version: 1,
-        title: '제외할 자격',
-      );
-      const updated = AiRecordOption(
-        kind: 'experience',
-        id: 'record-id',
-        version: 3,
-        title: '변경된 경험',
-      );
-      const added = AiRecordOption(
-        kind: 'achievement',
-        id: 'added',
-        version: 1,
-        title: '새 성과',
-      );
-      var options = [record, excluded];
-      final api = AnalysisGateway(), p = await consent();
-      await p.setAllowed(AiConsentFeature.jobAnalysis, true);
-      await mount(tester, api, p, loadRecords: () async => options);
-      final excludedTile = find.byKey(ValueKey('job-record-${excluded.key}'));
-      await tester.ensureVisible(excludedTile);
-      await tester.tap(excludedTile);
-      await tester.pumpAndSettle();
-      options = [updated, excluded, added];
-      final reload = find.text('기록 다시 읽기');
-      await tester.ensureVisible(reload);
-      await tester.tap(reload);
-      await tester.pumpAndSettle();
-      final updatedTile = find.byKey(ValueKey('job-record-${updated.key}'));
-      expect(tester.widget<CheckboxListTile>(excludedTile).value, isFalse);
-      expect(tester.widget<CheckboxListTile>(updatedTile).value, isFalse);
-      expect(find.textContaining('변경되거나 삭제된 기록은 제외했습니다'), findsOneWidget);
-      await execute(tester);
-      expect(api.calls.single['records'], [
-        {'kind': 'achievement', 'record_id': 'added', 'expected_version': 1},
-      ]);
-      await tester.pumpWidget(const SizedBox());
-      p.dispose();
-    },
-  );
+  testWidgets('retries with the latest server records after a conflict', (
+    tester,
+  ) async {
+    const updated = AiRecordOption(
+      kind: 'experience',
+      id: 'record-id',
+      version: 3,
+      title: '변경된 경험',
+    );
+    var options = [record];
+    final api = AnalysisGateway()
+      ..failure = const AuthFailure('변경', status: 409);
+    final p = await consent();
+    await p.setAllowed(AiConsentFeature.jobAnalysis, true);
+    await mount(tester, api, p, loadRecords: () async => options);
+    await execute(tester);
+    expect(find.textContaining('최신 기록을 불러옵니다'), findsOneWidget);
+    options = [updated];
+    api.failure = null;
+    await execute(tester);
+    expect(api.calls.last['records'], [
+      {'kind': 'experience', 'record_id': 'record-id', 'expected_version': 3},
+    ]);
+    expect(find.text('합성 공고 본문'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    p.dispose();
+  });
 
   testWidgets(
     'existing analysis opens recommendation form and returns with text preserved',
@@ -207,14 +173,7 @@ void main() {
       await tester.tap(find.text('공고 1개 비교'));
       await tester.pumpAndSettle();
       expect(find.text('합성 공고 본문'), findsOneWidget);
-      expect(
-        tester
-            .widget<CheckboxListTile>(
-              find.byKey(const ValueKey('job-record-experience/record-id')),
-            )
-            .value,
-        true,
-      );
+      expect(find.byType(CheckboxListTile), findsNothing);
       await tester.ensureVisible(
         find.widgetWithText(ChoiceChip, '내 자료로 공고 찾기'),
       );
@@ -307,7 +266,7 @@ void main() {
       p.dispose();
     },
   );
-  testWidgets('version conflict retains text and selected record', (
+  testWidgets('version conflict retains text and diagnostic identifier', (
     tester,
   ) async {
     final api = AnalysisGateway()
@@ -316,16 +275,9 @@ void main() {
     await p.setAllowed(AiConsentFeature.jobAnalysis, true);
     await mount(tester, api, p);
     await execute(tester);
-    expect(find.textContaining('선택한 기록이 변경'), findsOneWidget);
+    expect(find.textContaining('저장 기록이 변경'), findsOneWidget);
     expect(find.text('문의 식별자: request-id'), findsOneWidget);
-    expect(
-      tester
-          .widget<CheckboxListTile>(
-            find.byKey(const ValueKey('job-record-experience/record-id')),
-          )
-          .value,
-      true,
-    );
+    expect(find.byType(CheckboxListTile), findsNothing);
     expect(
       tester
           .widget<TextFormField>(find.byKey(const ValueKey('job-posting-text')))
@@ -361,14 +313,7 @@ void main() {
             .text,
         '합성 공고 본문',
       );
-      expect(
-        tester
-            .widget<CheckboxListTile>(
-              find.byKey(const ValueKey('job-record-experience/record-id')),
-            )
-            .value,
-        true,
-      );
+      expect(find.byType(CheckboxListTile), findsNothing);
       expect(api.calls.single['external_processing_consent'], true);
       expect(find.text('문의 식별자: synthetic-request'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());

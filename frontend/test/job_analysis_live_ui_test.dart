@@ -72,16 +72,12 @@ Future<void> prepare(WidgetTester tester) async {
     find.byKey(const ValueKey('job-posting-text')),
     '공고 본문',
   );
-  final selected = find.byKey(const ValueKey('job-record-activity/$id'));
-  await tester.ensureVisible(selected);
-  expect(tester.widget<CheckboxListTile>(selected).value, isTrue);
 }
 
 Future<void> run(WidgetTester tester) async {
   final button = find.byKey(const ValueKey('job-analysis-run'));
   await tester.ensureVisible(button);
   await tester.pump();
-  expect(find.text('비교에 포함할 기록 1개'), findsOneWidget);
   expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
   await tester.tap(button);
   await tester.pump();
@@ -148,14 +144,7 @@ void main() {
     final old = Gateway();
     await tester.pumpWidget(host(StudentApi(old, ownerId: id)));
     await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<CheckboxListTile>(
-            find.byKey(const ValueKey('job-materials-unavailable')),
-          )
-          .onChanged,
-      isNull,
-    );
+    expect(find.byType(CheckboxListTile), findsNothing);
     await prepare(tester);
     await run(tester);
     await tester.pumpWidget(host(StudentApi(Gateway(), ownerId: id)));

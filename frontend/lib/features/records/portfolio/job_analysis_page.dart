@@ -17,7 +17,6 @@ import '../../settings/ai_consent_section.dart';
 import 'job_recommendation_page.dart';
 
 const jobPostingFileMaxBytes = 10 * 1024 * 1024;
-const _recordLimit = 20;
 
 Future<XFile?> pickJobPostingFile() => openFile(
   acceptedTypeGroups: const [
@@ -88,28 +87,17 @@ class JobAnalysisPage extends StatefulWidget {
 
 class _JobAnalysisPageState extends State<JobAnalysisPage> {
   final _posting = TextEditingController();
-  List<AiRecordOption> _options = const [];
-  final _selected = <String, AiRecordOption>{};
-  bool _loading = true, _failed = false, _sending = false;
+  bool _sending = false;
   bool _requesting = false;
   int _revision = 0;
-  String? _error, _recordMessage, _requestId;
+  String? _error, _requestId;
   JobAnalysisResponse? _result;
   bool _recommendations = false, _recommendationsVisited = false;
   bool _recommendationBusy = false;
 
   bool get _connected => widget.api != null && widget.consent != null;
   bool get _canAnalyze =>
-      _connected &&
-      !GuestPreviewScope.isActive(context) &&
-      !_loading &&
-      !_failed &&
-      !_sending;
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
+      _connected && !GuestPreviewScope.isActive(context) && !_sending;
 
   @override
   void didUpdateWidget(covariant JobAnalysisPage oldWidget) {
@@ -121,13 +109,10 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
       _recommendationBusy = false;
       _sending = false;
       _requesting = false;
-      _selected.clear();
-      _options = const [];
       _posting.clear();
       _result = null;
       _error = null;
       _requestId = null;
-      _load();
     }
   }
 
@@ -135,54 +120,6 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
   void dispose() {
     _posting.dispose();
     super.dispose();
-  }
-
-  Future<void> _load() async {
-    if (_sending) return;
-    final revision = _revision;
-    setState(() {
-      _loading = true;
-      _failed = false;
-      _recordMessage = null;
-    });
-    try {
-      final options = widget.loadRecords != null
-          ? await widget.loadRecords!()
-          : widget.api == null
-          ? <AiRecordOption>[]
-          : await loadAiRecords(widget.api!, includeCourses: false);
-      if (!mounted || revision != _revision) return;
-      setState(() {
-        final nextVersions = {
-          for (final option in options) option.key: option.version,
-        };
-        final previousKeys = _options.map((option) => option.key).toSet();
-        final previousCount = _selected.length;
-        _selected.removeWhere(
-          (key, record) => nextVersions[key] != record.version,
-        );
-        if (_selected.length < previousCount) {
-          _recordMessage = '변경되거나 삭제된 기록은 제외했습니다. 목록을 확인해 주세요.';
-        }
-        if (options.length <= _recordLimit) {
-          for (final option in options) {
-            if (!previousKeys.contains(option.key)) {
-              _selected[option.key] = option;
-            }
-          }
-        }
-        _options = options;
-        _loading = false;
-      });
-    } catch (_) {
-      if (mounted && revision == _revision) {
-        setState(() {
-          _loading = false;
-          _failed = true;
-          _recordMessage = '개인 기록을 읽지 못했습니다. 입력과 기존 선택을 유지했습니다.';
-        });
-      }
-    }
   }
 
   Future<void> _analyze() async {
@@ -195,24 +132,26 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
       _error = null;
       _requestId = null;
     });
-    if (posting.isEmpty ||
-        posting.runes.length > 20000 ||
-        _selected.isEmpty ||
-        _selected.length > _recordLimit) {
-      setState(() => _error = '공고 본문(1~20,000자)과 비교할 기록 1~20개를 선택해 주세요.');
+    if (posting.isEmpty || posting.runes.length > 20000) {
+      setState(() => _error = '공고 본문을 1~20,000자로 입력해 주세요.');
       return;
     }
-    final choices = _selected.values
-        .map(
-          (r) => PersonalEvidenceSelection(
-            kind: r.kind,
-            recordId: r.id,
-            expectedVersion: r.version,
-          ),
-        )
-        .toList(growable: false);
     setState(() => _sending = true);
+    var readingRecords = true;
     try {
+      final records =
+          await (widget.loadRecords?.call() ??
+              loadAiRecords(api, includeCourses: false));
+      if (!mounted ||
+          revision != _revision ||
+          GuestPreviewScope.isActive(context)) {
+        return;
+      }
+      if (records.isEmpty) {
+        setState(() => _error = '비교할 기록이 없습니다. 활동·경험·자격·성과 기록을 추가해 주세요.');
+        return;
+      }
+      readingRecords = false;
       if (!await requestAiConsent(
             context,
             consent,
@@ -230,7 +169,14 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
       final result = await GuidanceApi(api.api).analyze(
         JobAnalysisRequest(
           postingText: posting,
-          records: choices,
+          records: [
+            for (final record in records)
+              PersonalEvidenceSelection(
+                kind: record.kind,
+                recordId: record.id,
+                expectedVersion: record.version,
+              ),
+          ],
           externalProcessingConsent: true,
         ),
       );
@@ -242,22 +188,31 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
     } on AuthFailure catch (e) {
       if (mounted && revision == _revision) {
         setState(() {
-          _error = e.status == 409
-              ? '선택한 기록이 변경되었습니다. 입력을 유지했습니다. 기록을 다시 읽고 선택해 주세요.'
+          _error = readingRecords
+              ? '저장 기록을 읽지 못했습니다. 공고 본문을 유지했습니다. 다시 실행해 주세요.'
+              : e.status == 409
+              ? '저장 기록이 변경되었습니다. 다시 실행하면 최신 기록을 불러옵니다.'
               : e.status == 422 &&
                     e.fields.any(
                       (field) =>
                           field.split('.').last ==
                           'external_processing_consent',
                     )
-              ? '전송 동의 항목을 서버가 처리하지 못했습니다. 앱과 서버의 API 버전을 확인해 주세요. 입력과 기록 선택은 유지했습니다.'
+              ? '전송 동의 항목을 서버가 처리하지 못했습니다. 앱과 서버의 API 버전을 확인해 주세요. 입력은 유지했습니다.'
+              : e.status == 422 &&
+                    e.fields.any((field) => field.split('.').last == 'records')
+              ? '서버가 전체 기록 요청을 받아들이지 못했습니다. 공고 본문은 유지했습니다.'
               : e.message;
           _requestId = e.requestId;
         });
       }
     } catch (_) {
       if (mounted && revision == _revision) {
-        setState(() => _error = '분석 응답을 확인하지 못했습니다. 입력을 유지했습니다. 다시 시도해 주세요.');
+        setState(
+          () => _error = readingRecords
+              ? '저장 기록을 읽지 못했습니다. 공고 본문을 유지했습니다. 다시 실행해 주세요.'
+              : '분석 응답을 확인하지 못했습니다. 입력을 유지했습니다. 다시 시도해 주세요.',
+        );
       }
     } finally {
       if (mounted && revision == _revision) {
@@ -280,7 +235,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
     'analyzer_not_configured' => '분석 모델이 아직 설정되지 않았습니다. 입력을 유지했습니다.',
     'external_processing_consent_required' =>
       'Google 외부 전송 동의를 확인하고 다시 실행해 주세요.',
-    'personal_records_required' => '비교할 개인 기록을 선택해 주세요.',
+    'personal_records_required' => '비교할 활동·경험·자격·성과 기록을 추가해 주세요.',
     'no_requirements_found' => '공고에서 비교할 요건을 찾지 못했습니다.',
     _ => '분석을 완료하지 못했습니다. 입력을 유지하고 다시 시도할 수 있습니다.',
   };
@@ -330,7 +285,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
 
   Widget _buildAnalysis(BuildContext context) => FeaturePage(
     title: '채용공고 분석',
-    description: '공고 본문과 고른 기록을 비교합니다.',
+    description: '공고 본문과 저장된 활동·경험·자격·성과 기록 전체를 비교합니다.',
     body: [
       _purposeSelector(),
       SurfaceCard(
@@ -371,77 +326,6 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
             ),
             const SizedBox(height: 8),
             const Text('현재는 공고 본문을 붙여 넣어 비교할 수 있습니다.'),
-          ],
-        ),
-      ),
-      const SizedBox(height: 16),
-      SurfaceCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    '비교에 넣을 개인 기록',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                TextButton(
-                  onPressed: _loading || _sending ? null : _load,
-                  child: const Text('기록 다시 읽기'),
-                ),
-              ],
-            ),
-            const Text('서버 기록은 20개 이하일 때 기본으로 포함됩니다. 필요 없는 기록은 체크를 해제하세요.'),
-            const Material(
-              type: MaterialType.transparency,
-              child: CheckboxListTile(
-                key: ValueKey('job-materials-unavailable'),
-                contentPadding: EdgeInsets.zero,
-                value: false,
-                onChanged: null,
-                title: Text('자료 기록'),
-                subtitle: Text(
-                  '자료를 비교 근거로 보내는 API는 연결 전입니다. 현재 분석에는 포함되지 않습니다.',
-                ),
-              ),
-            ),
-            if (_loading) const LinearProgressIndicator(),
-            if (_recordMessage != null)
-              Semantics(liveRegion: true, child: Text(_recordMessage!)),
-            if (!_loading && !_failed && _options.isEmpty)
-              const Text('비교할 개인 기록이 없습니다. 활동·경험·자격·성과 기록을 추가한 뒤 다시 읽어 주세요.'),
-            if (!_loading && !_failed && _options.length > _recordLimit)
-              Text(
-                '저장 기록 ${_options.length}개 중 비교에 포함할 기록을 최대 $_recordLimit개까지 선택하세요.',
-              ),
-            for (final record in _options)
-              Material(
-                type: MaterialType.transparency,
-                child: CheckboxListTile(
-                  key: ValueKey('job-record-${record.key}'),
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(record.title),
-                  subtitle: Text('${record.kindLabel} · 버전 ${record.version}'),
-                  value: _selected.containsKey(record.key),
-                  onChanged: _loading || _sending
-                      ? null
-                      : (value) => setState(() {
-                          if (value == true) {
-                            if (_selected.length >= _recordLimit) {
-                              _recordMessage =
-                                  '최대 $_recordLimit개까지 선택할 수 있습니다.';
-                            } else {
-                              _selected[record.key] = record;
-                            }
-                          } else {
-                            _selected.remove(record.key);
-                          }
-                        }),
-                ),
-              ),
-            Text('비교에 포함할 기록 ${_selected.length}개'),
           ],
         ),
       ),
