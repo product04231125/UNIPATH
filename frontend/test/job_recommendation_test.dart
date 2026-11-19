@@ -171,7 +171,6 @@ void main() {
       final keyword = find.byKey(const ValueKey('recommend-keyword'));
       final stage = find.byKey(const ValueKey('recommend-academic-stage'));
       await tester.enterText(keyword, 'A, B, C, D, E, F');
-      await tester.tap(find.text('선택한 경험'));
       await run(tester);
       expect(api.calls, isEmpty);
       expect(find.text('직무를 쉼표로 구분해 1~5개 입력하세요.'), findsOneWidget);
@@ -260,14 +259,24 @@ void main() {
   );
 
   testWidgets(
-    'posts only chosen files and records with explicit consent; never replays a pending request',
+    'posts attached files and all current records with explicit consent; never replays a pending request',
     (tester) async {
       final api = RecommendationGateway()..pending = Completer();
       final consent = await permission();
+      final records = [
+        for (var i = 0; i < 21; i++)
+          AiRecordOption(
+            kind: 'experience',
+            id: 'id-$i',
+            version: 2,
+            title: '경험 $i',
+          ),
+      ];
       await mount(
         tester,
         api,
         consent,
+        loadRecords: () async => records,
         pickFiles: () async => [
           XFile.fromData(
             Uint8List.fromList(utf8.encode('Synthetic portfolio')),
@@ -278,8 +287,6 @@ void main() {
       await fill(tester);
       await tester.tap(find.text('기기 파일 선택'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('선택한 경험'));
-      await tester.tap(find.text('선택한 경험'));
       await tester.pump();
       await tester.ensureVisible(find.text('분석 실행'));
       await tester.tap(find.text('분석 실행'));
@@ -294,11 +301,12 @@ void main() {
           },
         ],
         'records': [
-          {
-            'kind': 'experience',
-            'record_id': 'record-id',
-            'expected_version': 2,
-          },
+          for (final record in records)
+            {
+              'kind': record.kind,
+              'record_id': record.id,
+              'expected_version': record.version,
+            },
         ],
         'external_processing_consent': true,
         'limit': 3,
@@ -314,24 +322,20 @@ void main() {
     },
   );
 
-  testWidgets('cancel consent sends nothing and preserves selection', (
+  testWidgets('cancel consent sends nothing and preserves search input', (
     tester,
   ) async {
     final api = RecommendationGateway();
     final consent = await permission(allowed: false);
     await mount(tester, api, consent);
     await fill(tester);
-    await tester.tap(find.text('선택한 경험'));
     await run(tester);
     expect(find.text('내 자료로 공고 찾기 외부 전송'), findsOneWidget);
     await tester.tap(find.text('취소'));
     await tester.pumpAndSettle();
     expect(api.calls, isEmpty);
     expect(find.text('Engineer'), findsOneWidget);
-    expect(
-      tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
-      isTrue,
-    );
+    expect(find.byType(CheckboxListTile), findsNothing);
   });
 
   testWidgets(
@@ -343,6 +347,7 @@ void main() {
         tester,
         api,
         consent,
+        loadRecords: () async => [],
         pickFiles: () async => [
           XFile.fromData(
             Uint8List(recommendationMaxBytes + 1),
@@ -355,7 +360,10 @@ void main() {
       expect(find.text('근무 지역을 선택하세요.'), findsOneWidget);
       await fill(tester);
       await run(tester);
-      expect(find.text('기기 파일 또는 저장 기록을 하나 이상 선택하세요.'), findsOneWidget);
+      expect(
+        find.text('기기 파일을 첨부하거나 활동·경험·자격·성과 기록을 등록해 주세요.'),
+        findsOneWidget,
+      );
       await tester.ensureVisible(find.text('기기 파일 선택'));
       await tester.tap(find.text('기기 파일 선택'));
       await tester.pumpAndSettle();
@@ -375,28 +383,28 @@ void main() {
         );
       await mount(tester, api, await permission());
       await fill(tester);
-      await tester.tap(find.text('선택한 경험'));
       await run(tester);
       expect(find.textContaining('공고 추천 API가 연결되지 않았거나'), findsOneWidget);
       expect(find.text('Engineer'), findsOneWidget);
       expect(find.text('문의 식별자: synthetic-id'), findsOneWidget);
-      expect(
-        tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
-        isTrue,
-      );
+      expect(find.byType(CheckboxListTile), findsNothing);
     },
   );
 
   testWidgets(
-    'files alone work when record loading fails and guest never sends',
+    'record read failures preserve attachments; files work without records; guest never sends',
     (tester) async {
       final api = RecommendationGateway();
       final consent = await permission();
+      var fail = true;
       await mount(
         tester,
         api,
         consent,
-        loadRecords: () async => throw Exception('record failure'),
+        loadRecords: () async {
+          if (fail) throw Exception('record failure');
+          return [];
+        },
         pickFiles: () async => [
           XFile.fromData(Uint8List.fromList([65]), path: 'a.txt'),
         ],
@@ -404,6 +412,11 @@ void main() {
       await fill(tester);
       await tester.tap(find.text('기기 파일 선택'));
       await tester.pumpAndSettle();
+      await run(tester);
+      expect(api.calls, isEmpty);
+      expect(find.textContaining('저장 기록을 읽지 못했습니다'), findsOneWidget);
+      expect(find.text('a.txt'), findsOneWidget);
+      fail = false;
       await run(tester);
       expect(api.calls.single['records'], isEmpty);
       await mount(tester, api, consent, guest: true);
@@ -423,7 +436,6 @@ void main() {
       final consent = await permission();
       await mount(tester, api, consent);
       await fill(tester);
-      await tester.tap(find.text('선택한 경험'));
       await tester.ensureVisible(find.text('분석 실행'));
       await tester.tap(find.text('분석 실행'));
       await tester.pump();
@@ -433,10 +445,7 @@ void main() {
       expect(find.text('Engineer'), findsNothing);
       expect(find.text('전국'), findsNothing);
       expect(find.text('공고 비교 결과'), findsNothing);
-      expect(
-        tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
-        isFalse,
-      );
+      expect(find.byType(CheckboxListTile), findsNothing);
     },
   );
 

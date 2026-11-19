@@ -165,10 +165,7 @@ void main() {
         find.byKey(const ValueKey('recommend-keyword')),
         '초안 개발 직무',
       );
-      final selected = find.widgetWithText(CheckboxListTile, record.title);
-      await tester.ensureVisible(selected);
-      await tester.tap(selected);
-      await tester.pumpAndSettle();
+      expect(find.byType(CheckboxListTile), findsNothing);
       await tester.ensureVisible(find.text('공고 1개 비교'));
       await tester.tap(find.text('공고 1개 비교'));
       await tester.pumpAndSettle();
@@ -195,7 +192,7 @@ void main() {
             .text,
         '초안 개발 직무',
       );
-      expect(tester.widget<CheckboxListTile>(selected).value, true);
+      expect(find.byType(CheckboxListTile), findsNothing);
       expect(api.calls, isEmpty);
     },
   );

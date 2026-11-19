@@ -16,12 +16,17 @@ void main() {
         'university_path.ai_consent.a.v1': jsonEncode({
           'owner_id': 'a',
           'notice_version': 1,
-          'allowed': ['jobAnalysis', 'personalizedQuestion'],
+          'allowed': [
+            'jobAnalysis',
+            'jobRecommendation',
+            'personalizedQuestion',
+          ],
         }),
       });
       final preferences = AiConsentPreferences(ownerId: 'a');
       await preferences.load();
       expect(preferences.allows(AiConsentFeature.jobAnalysis), isFalse);
+      expect(preferences.allows(AiConsentFeature.jobRecommendation), isFalse);
       expect(preferences.allows(AiConsentFeature.personalizedQuestion), isTrue);
       expect(
         await preferences.setAllowed(AiConsentFeature.jobAnalysis, true),
