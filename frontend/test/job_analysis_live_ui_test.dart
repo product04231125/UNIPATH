@@ -74,15 +74,14 @@ Future<void> prepare(WidgetTester tester) async {
   );
   final selected = find.byKey(const ValueKey('job-record-activity/$id'));
   await tester.ensureVisible(selected);
-  await tester.tap(selected);
-  await tester.pump();
+  expect(tester.widget<CheckboxListTile>(selected).value, isTrue);
 }
 
 Future<void> run(WidgetTester tester) async {
   final button = find.byKey(const ValueKey('job-analysis-run'));
   await tester.ensureVisible(button);
   await tester.pump();
-  expect(find.text('선택한 기록 1/20개'), findsOneWidget);
+  expect(find.text('비교에 포함할 기록 1개'), findsOneWidget);
   expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
   await tester.tap(button);
   await tester.pump();

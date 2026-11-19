@@ -17,6 +17,7 @@ import '../../settings/ai_consent_section.dart';
 import 'job_recommendation_page.dart';
 
 const jobPostingFileMaxBytes = 10 * 1024 * 1024;
+const _recordLimit = 20;
 
 Future<XFile?> pickJobPostingFile() => openFile(
   acceptedTypeGroups: const [
@@ -151,21 +152,27 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
           ? <AiRecordOption>[]
           : await loadAiRecords(widget.api!, includeCourses: false);
       if (!mounted || revision != _revision) return;
-      final removed = _selected.entries
-          .where(
-            (e) => !options.any(
-              (r) => r.key == e.key && r.version == e.value.version,
-            ),
-          )
-          .map((e) => e.key)
-          .toList();
-      for (final key in removed) {
-        _selected.remove(key);
-      }
       setState(() {
+        final nextVersions = {
+          for (final option in options) option.key: option.version,
+        };
+        final previousKeys = _options.map((option) => option.key).toSet();
+        final previousCount = _selected.length;
+        _selected.removeWhere(
+          (key, record) => nextVersions[key] != record.version,
+        );
+        if (_selected.length < previousCount) {
+          _recordMessage = '변경되거나 삭제된 기록은 제외했습니다. 목록을 확인해 주세요.';
+        }
+        if (options.length <= _recordLimit) {
+          for (final option in options) {
+            if (!previousKeys.contains(option.key)) {
+              _selected[option.key] = option;
+            }
+          }
+        }
         _options = options;
         _loading = false;
-        if (removed.isNotEmpty) _recordMessage = '변경되거나 삭제된 기록은 다시 선택해 주세요.';
       });
     } catch (_) {
       if (mounted && revision == _revision) {
@@ -191,7 +198,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
     if (posting.isEmpty ||
         posting.runes.length > 20000 ||
         _selected.isEmpty ||
-        _selected.length > 20) {
+        _selected.length > _recordLimit) {
       setState(() => _error = '공고 본문(1~20,000자)과 비교할 기록 1~20개를 선택해 주세요.');
       return;
     }
@@ -386,7 +393,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
                 ),
               ],
             ),
-            const Text('직접 고른 서버 기록만 포함합니다. 개인 PDF는 전송하지 않습니다.'),
+            const Text('서버 기록은 20개 이하일 때 기본으로 포함됩니다. 필요 없는 기록은 체크를 해제하세요.'),
             const Material(
               type: MaterialType.transparency,
               child: CheckboxListTile(
@@ -401,9 +408,14 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
               ),
             ),
             if (_loading) const LinearProgressIndicator(),
-            if (_recordMessage != null) Text(_recordMessage!),
+            if (_recordMessage != null)
+              Semantics(liveRegion: true, child: Text(_recordMessage!)),
             if (!_loading && !_failed && _options.isEmpty)
-              const Text('선택할 개인 기록이 없습니다. 활동·경험·자격·성과 기록을 추가한 뒤 다시 읽어 주세요.'),
+              const Text('비교할 개인 기록이 없습니다. 활동·경험·자격·성과 기록을 추가한 뒤 다시 읽어 주세요.'),
+            if (!_loading && !_failed && _options.length > _recordLimit)
+              Text(
+                '저장 기록 ${_options.length}개 중 비교에 포함할 기록을 최대 $_recordLimit개까지 선택하세요.',
+              ),
             for (final record in _options)
               Material(
                 type: MaterialType.transparency,
@@ -413,12 +425,13 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
                   title: Text(record.title),
                   subtitle: Text('${record.kindLabel} · 버전 ${record.version}'),
                   value: _selected.containsKey(record.key),
-                  onChanged: _sending
+                  onChanged: _loading || _sending
                       ? null
                       : (value) => setState(() {
                           if (value == true) {
-                            if (_selected.length >= 20) {
-                              _recordMessage = '최대 20개까지 선택할 수 있습니다.';
+                            if (_selected.length >= _recordLimit) {
+                              _recordMessage =
+                                  '최대 $_recordLimit개까지 선택할 수 있습니다.';
                             } else {
                               _selected[record.key] = record;
                             }
@@ -428,7 +441,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
                         }),
                 ),
               ),
-            Text('선택한 기록 ${_selected.length}/20개'),
+            Text('비교에 포함할 기록 ${_selected.length}개'),
           ],
         ),
       ),
