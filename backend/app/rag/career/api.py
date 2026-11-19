@@ -16,6 +16,7 @@ from app.services.personalization.context import assemble
 from app.services.personalization.redaction import redact_context
 
 from .contracts import SearchQuery
+from .crawling import Work24Crawler
 from .documents import prepare_documents
 from .greenhouse import Greenhouse
 from .ocr import OcrInputError, OcrUnavailable
@@ -34,6 +35,7 @@ class Document(BaseModel):
 
 
 class RecommendationRequest(PersonalizationRequest):
+    academic_stage: Literal["year1", "year2", "year3", "year4", "graduate"] | None = None
     documents: list[Document] = Field(default_factory=list, max_length=5)
     keyword: str = Field(min_length=1, max_length=80)
     region: str = Field(min_length=1, max_length=100)
@@ -97,6 +99,7 @@ def recommendations(
         records,
         configured_sources(),
         request.app.state.portfolio_analyzer,
+        academic_stage=payload.academic_stage,
         before_analysis=lambda: gemini.reserve_call(db, request),
     )
     db.expire_all()
@@ -113,6 +116,12 @@ def recommendations(
 
 def configured_sources():
     network = Transport(allow_network=True)
+    mode = os.getenv("CAREER_SOURCE_MODE", "api")
+    if mode not in {"api", "crawl", "hybrid"}:
+        raise ValueError("CAREER_SOURCE_MODE must be api, crawl or hybrid")
+    crawler = Work24Crawler(Transport(allow_network=True, timeout=5))
+    if mode == "crawl":
+        return [crawler]
     sources = [
         Saramin(os.getenv("SARAMIN_ACCESS_KEY"), transport=network),
         Work24(os.getenv("WORK24_AUTH_KEY"), transport=network),
@@ -120,6 +129,8 @@ def configured_sources():
     board = os.getenv("CAREER_GREENHOUSE_BOARD", "sendbird").strip()
     if board:
         sources.append(Greenhouse(board, network))
+    if mode == "hybrid":
+        sources.append(crawler)
     return sources
 
 

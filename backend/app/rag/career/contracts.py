@@ -62,6 +62,9 @@ class SearchQuery:
     def __post_init__(self):
         if not isinstance(self.keyword, str) or not 1 <= len(self.keyword.strip()) <= 80:
             raise ValueError("Select a job keyword")
+        from .search_terms import search_terms
+
+        search_terms(self.keyword)
         if not isinstance(self.region_label, str) or not self.region_label.strip():
             raise ValueError("Select a region explicitly")
         if (
