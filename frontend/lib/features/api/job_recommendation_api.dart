@@ -14,24 +14,29 @@ class RecommendationDocument {
   };
 }
 
+enum RecommendationAcademicStage { year1, year2, year3, year4, graduate }
+
 class JobRecommendationRequest {
   const JobRecommendationRequest({
     required this.keyword,
     required this.region,
     this.documents = const [],
     this.records = const [],
+    this.academicStage,
     required this.consent,
   });
   final String keyword, region;
   final List<RecommendationDocument> documents;
   final List<PersonalEvidenceSelection> records;
   final bool consent;
+  final RecommendationAcademicStage? academicStage;
   Map<String, Object?> toJson() => {
     'keyword': keyword,
     'region': region,
     'documents': documents.map((d) => d.toJson()).toList(),
     'records': records.map((r) => r.toJson()).toList(),
     'external_processing_consent': consent,
+    if (academicStage != null) 'academic_stage': academicStage!.name,
     'limit': 3,
   };
 }
@@ -42,6 +47,9 @@ List<T> _rows<T>(Object? value, T Function(Map<String, dynamic>) parse) =>
     List.unmodifiable(((value ?? const []) as List).map((v) => parse(_map(v))));
 List<String> _strings(Object? value) =>
     List<String>.from((value ?? const []) as List);
+
+List<String> _guidanceSentences(Object? value) =>
+    value == null ? const [] : _strings(_map(value)['sentences']);
 
 class RecommendationCitation {
   RecommendationCitation.fromJson(Map<String, dynamic> json)
@@ -92,6 +100,7 @@ class RecommendationItem {
         RecommendationComparison.fromJson,
       ),
       warnings = _strings(json['warnings']),
+      guidanceSentences = _guidanceSentences(json['stage_guidance']),
       failureReason = json['failure_reason'] as String?;
   final RecommendationPosting posting;
   final String status, scope;
@@ -100,19 +109,39 @@ class RecommendationItem {
   final String? failureReason;
   final List<RecommendationComparison> comparisons;
   final List<String> warnings;
+  final List<String> guidanceSentences;
 }
 
 class RecommendedJob {
   RecommendedJob.fromJson(Map<String, dynamic> json)
     : key = '${json['source']}/${json['source_id']}',
       requiredToCheck = json['required_to_check'] as int,
+      type = json['recommendation_type'] as String?,
+      notice = json['notice'] as String?,
       matched = _rows(
         json['matched_requirements'],
         RecommendationComparison.fromJson,
       );
   final String key;
   final int requiredToCheck;
+  final String? type, notice;
   final List<RecommendationComparison> matched;
+
+  bool get hasVerifiedEvidence => type == null || type == 'evidence_match';
+}
+
+class RecommendationDisplayCandidate {
+  RecommendationDisplayCandidate.fromJson(Map<String, dynamic> json)
+    : posting = RecommendationPosting.fromJson(_map(json['posting'])),
+      type = json['display_type'] as String,
+      status = json['analysis_status'] as String,
+      notice = json['notice'] as String?,
+      guidanceSentences = _guidanceSentences(json['stage_guidance']);
+
+  final RecommendationPosting posting;
+  final String type, status;
+  final String? notice;
+  final List<String> guidanceSentences;
 }
 
 class DocumentCitationLocation {
@@ -140,6 +169,12 @@ class JobRecommendationResponse {
       sources = _rows(json['sources'], RecommendationSource.fromJson),
       items = _rows(json['items'], RecommendationItem.fromJson),
       recommendations = _rows(json['recommendations'], RecommendedJob.fromJson),
+      displayCandidates = json['display_candidates'] == null
+          ? null
+          : _rows(
+              json['display_candidates'],
+              RecommendationDisplayCandidate.fromJson,
+            ),
       warnings = _strings(json['document_warnings']),
       locations = _map(
         json['document_locations'] ?? {},
@@ -149,6 +184,7 @@ class JobRecommendationResponse {
   final List<RecommendationSource> sources;
   final List<RecommendationItem> items;
   final List<RecommendedJob> recommendations;
+  final List<RecommendationDisplayCandidate>? displayCandidates;
   final Map<String, DocumentCitationLocation> locations;
 }
 

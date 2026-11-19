@@ -61,6 +61,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
   final _keyword = TextEditingController();
   var _form = GlobalKey<FormState>();
   String? _region, _error, _requestId, _recordError;
+  RecommendationAcademicStage? _academicStage;
   List<AiRecordOption> _options = [];
   final _selected = <String, AiRecordOption>{};
   final _documents = <RecommendationDocument>[];
@@ -87,6 +88,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
       _loadRevision++;
       _busy = false;
       _region = null;
+      _academicStage = null;
       _keyword.clear();
       _documents.clear();
       _selected.clear();
@@ -219,6 +221,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
     final request = JobRecommendationRequest(
       keyword: _keyword.text.trim(),
       region: _region!,
+      academicStage: _academicStage,
       documents: List.of(_documents),
       records: _selected.values
           .map(
@@ -286,6 +289,25 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
 
   bool _hasField(String name) =>
       _fields.any((f) => f.split('.').contains(name));
+
+  String? _validateKeyword(String? value) {
+    final keyword = value?.trim() ?? '';
+    if (keyword.isEmpty || keyword.runes.length > 80) {
+      return '직무를 1~80자로 입력하세요.';
+    }
+    final terms = keyword
+        .split(RegExp(r'[,，\n]+'))
+        .map(
+          (term) => term.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase(),
+        )
+        .where((term) => term.isNotEmpty)
+        .toSet();
+    if (terms.contains('벡엔드') && terms.contains('백엔드')) {
+      terms.remove('벡엔드');
+    }
+    return terms.isEmpty || terms.length > 5 ? '직무를 쉼표로 구분해 1~5개 입력하세요.' : null;
+  }
+
   @override
   Widget build(BuildContext context) => FeaturePage(
     title: '내 자료로 공고 찾기',
@@ -314,15 +336,12 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
                   enabled: !_busy,
                   key: const ValueKey('recommend-keyword'),
                   decoration: InputDecoration(
-                    hintText: '예: 개발자, Engineer',
+                    hintText: '예: 프론트엔드, 백엔드, 전산실',
+                    helperText: '쉼표로 구분해 최대 5개 직무를 입력할 수 있습니다.',
+                    helperMaxLines: 2,
                     errorText: _hasField('keyword') ? '직무 입력을 확인하세요.' : null,
                   ),
-                  validator: (v) =>
-                      v == null ||
-                          v.trim().isEmpty ||
-                          v.trim().runes.length > 80
-                      ? '직무를 1~80자로 입력하세요.'
-                      : null,
+                  validator: _validateKeyword,
                 ),
               ),
               const SizedBox(height: 16),
@@ -350,6 +369,48 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
               const SizedBox(height: 8),
               const Text(
                 '특정 지역 검색은 지역 목록 연결 후 제공됩니다. 현재는 전국을 직접 선택해 검색할 수 있습니다.',
+              ),
+              const SizedBox(height: 16),
+              FieldLabel(
+                label: '현재 학년 (선택)',
+                child: DropdownButtonFormField<RecommendationAcademicStage>(
+                  key: const ValueKey('recommend-academic-stage'),
+                  initialValue: _academicStage,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    helperText: '선택한 학년에 맞춰 다음 준비 활동을 안내합니다.',
+                    helperMaxLines: 2,
+                    errorText: _hasField('academic_stage')
+                        ? '선택한 학년을 확인하세요.'
+                        : null,
+                  ),
+                  items: const [
+                    DropdownMenuItem(child: Text('선택 안 함')),
+                    DropdownMenuItem(
+                      value: RecommendationAcademicStage.year1,
+                      child: Text('1학년'),
+                    ),
+                    DropdownMenuItem(
+                      value: RecommendationAcademicStage.year2,
+                      child: Text('2학년'),
+                    ),
+                    DropdownMenuItem(
+                      value: RecommendationAcademicStage.year3,
+                      child: Text('3학년'),
+                    ),
+                    DropdownMenuItem(
+                      value: RecommendationAcademicStage.year4,
+                      child: Text('4학년'),
+                    ),
+                    DropdownMenuItem(
+                      value: RecommendationAcademicStage.graduate,
+                      child: Text('졸업'),
+                    ),
+                  ],
+                  onChanged: _busy
+                      ? null
+                      : (stage) => setState(() => _academicStage = stage),
+                ),
               ),
             ],
           ),

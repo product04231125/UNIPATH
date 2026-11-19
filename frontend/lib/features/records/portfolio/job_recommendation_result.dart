@@ -106,33 +106,82 @@ class JobRecommendationResult extends StatelessWidget {
 
   Widget _posting(
     BuildContext context,
-    RecommendationItem item, {
+    RecommendationPosting posting, {
+    RecommendationItem? item,
     RecommendedJob? recommendation,
+    RecommendationDisplayCandidate? candidate,
   }) {
-    final posting = item.posting;
+    final type = candidate?.type ?? recommendation?.type;
+    final badge = switch (type) {
+      'evidence_match' => '근거가 확인된 후보',
+      'closest_needs_review' => '조건 확인 필요',
+      'analysis_unavailable' => '분석 미완료 · 검색 후보',
+      null => null,
+      _ => '후보 유형 확인 필요',
+    };
+    final evidence =
+        (type == null || type == 'evidence_match') &&
+            recommendation?.hasVerifiedEvidence == true
+        ? recommendation
+        : null;
+    final status = candidate?.status ?? item?.status;
+    final notice = candidate?.notice ?? recommendation?.notice;
+    final guidance = candidate != null && candidate.guidanceSentences.isNotEmpty
+        ? candidate.guidanceSentences
+        : item?.guidanceSentences ?? const <String>[];
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: _surface(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(posting.title, style: Theme.of(context).textTheme.titleMedium),
+            if (badge != null)
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    badge,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                ),
+              ),
+            Text(posting.title, style: theme.textTheme.titleMedium),
             Text('${posting.company} · ${posting.location}'),
             Text('${_sourceName(posting.source)} · 마감 ${posting.closing}'),
-            if (recommendation != null)
-              Text('미확인 필수조건 ${recommendation.requiredToCheck}개'),
-            Text(
-              '비교 범위: ${switch (item.scope) {
-                'metadata_only' => '공고 요약 정보',
-                'excerpt' => '공고 본문 일부',
-                'full_text' => '공고 본문 전체',
-                _ => '확인 필요',
-              }}',
-            ),
-            Text(recommendationStateLabel(item.status)),
-            if (item.status == 'failed' && item.failureReason != null)
-              Text(recommendationFailureLabel(item.failureReason!)),
-            for (final warning in item.warnings) Text(warning),
+            if (notice != null && notice.isNotEmpty) Text(notice),
+            if (evidence != null) Text('미확인 필수조건 ${evidence.requiredToCheck}개'),
+            if (item != null && type != 'analysis_unavailable')
+              Text(
+                '비교 범위: ${switch (item.scope) {
+                  'metadata_only' => '공고 요약 정보',
+                  'excerpt' => '공고 본문 일부',
+                  'full_text' => '공고 본문 전체',
+                  _ => '확인 필요',
+                }}',
+              ),
+            if (status != null) Text(recommendationStateLabel(status)),
+            if (status == 'failed' && item?.failureReason != null)
+              Text(recommendationFailureLabel(item!.failureReason!)),
+            if (item != null)
+              for (final warning in item.warnings)
+                if (warning != notice) Text(warning),
+            if (guidance.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text('준비 안내', style: theme.textTheme.titleSmall),
+              for (final sentence in guidance) Text(sentence),
+            ],
             Align(
               alignment: Alignment.centerLeft,
               child: ExternalLinkButton(
@@ -141,23 +190,23 @@ class JobRecommendationResult extends StatelessWidget {
                 description: '최신 모집 조건과 마감은 원 공고에서 확인하세요.',
               ),
             ),
-            if (recommendation != null)
+            if (evidence != null && evidence.matched.isNotEmpty)
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
                 title: const Text('왜 추천됐나요?'),
+                children: [for (final c in evidence.matched) _comparison(c)],
+              ),
+            if (item != null &&
+                (type != 'analysis_unavailable' || item.comparisons.isNotEmpty))
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: const Text('전체 요건과 비교 근거'),
                 children: [
-                  for (final c in recommendation.matched) _comparison(c),
+                  if (item.comparisons.isEmpty)
+                    const Text('비교 결과가 없습니다. 위 분석 상태를 확인하세요.'),
+                  for (final c in item.comparisons) _comparison(c),
                 ],
               ),
-            ExpansionTile(
-              tilePadding: EdgeInsets.zero,
-              title: const Text('전체 요건과 비교 근거'),
-              children: [
-                if (item.comparisons.isEmpty)
-                  const Text('비교 결과가 없습니다. 위 분석 상태를 확인하세요.'),
-                for (final c in item.comparisons) _comparison(c),
-              ],
-            ),
           ],
         ),
       ),
@@ -166,7 +215,18 @@ class JobRecommendationResult extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final recommendedKeys = result.recommendations.map((r) => r.key).toSet();
+    final candidates = result.displayCandidates;
+    final recommendations = {
+      for (final recommendation in result.recommendations)
+        recommendation.key: recommendation,
+    };
+    final items = {for (final item in result.items) item.posting.key: item};
+    final displayedKeys =
+        candidates?.map((c) => c.posting.key).toSet() ??
+        recommendations.keys.toSet();
+    final remainingItems = result.items.where(
+      (item) => !displayedKeys.contains(item.posting.key),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -194,28 +254,33 @@ class JobRecommendationResult extends StatelessWidget {
             Text(recommendationFailureLabel(source.failureReason!)),
         ],
         for (final warning in result.warnings) Text(warning),
-        if (result.items.isNotEmpty && result.recommendations.isEmpty)
+        if (items.isNotEmpty && displayedKeys.isEmpty)
           const Text('추천 공고가 없습니다. 비교 대상의 분석 상태와 근거를 확인하세요.'),
-        for (final recommendation in result.recommendations)
-          if (result.items.any((i) => i.posting.key == recommendation.key))
+        if (candidates != null)
+          for (final candidate in candidates)
             _posting(
               context,
-              result.items.firstWhere(
-                (i) => i.posting.key == recommendation.key,
-              ),
-              recommendation: recommendation,
+              candidate.posting,
+              candidate: candidate,
+              item: items[candidate.posting.key],
+              recommendation: recommendations[candidate.posting.key],
             )
-          else
-            const Text('추천 공고의 상세 응답을 확인하지 못했습니다.'),
-        if (result.items.any(
-          (i) => !recommendedKeys.contains(i.posting.key),
-        )) ...[
+        else
+          for (final recommendation in result.recommendations)
+            if (items[recommendation.key] case final item?)
+              _posting(
+                context,
+                item.posting,
+                item: item,
+                recommendation: recommendation,
+              )
+            else
+              const Text('추천 공고의 상세 응답을 확인하지 못했습니다.'),
+        if (remainingItems.isNotEmpty) ...[
           const SizedBox(height: 16),
           Text('함께 비교한 공고', style: Theme.of(context).textTheme.titleMedium),
-          for (final item in result.items.where(
-            (i) => !recommendedKeys.contains(i.posting.key),
-          ))
-            _posting(context, item),
+          for (final item in remainingItems)
+            _posting(context, item.posting, item: item),
         ],
       ],
     );
