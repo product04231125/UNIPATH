@@ -6,7 +6,7 @@ from dataclasses import asdict, replace
 from datetime import UTC, datetime
 from time import monotonic
 
-from .contracts import NotConfigured, Posting, failure_reason, selected_records
+from .contracts import NotConfigured, Posting, failure_reason, fit_records, selected_records
 from .crawling import CrawlBatch
 from .job_scope import occupation_matches
 from .search_terms import search_terms
@@ -141,6 +141,7 @@ class CareerService:
                 "comparisons": [],
                 "analysis_scope": posting.text_scope,
             }
+            notes = []
             if not allow_personal_analysis:
                 item["analysis_status"] = "personal_analysis_not_authorized"
             elif self.analyzer is not None:
@@ -150,8 +151,14 @@ class CareerService:
                     if before_analysis is not None:
                         before_analysis()
                     attempted += 1
+                    compared = fit_records(records, posting.text)
+                    if len(compared) < len(records):
+                        notes.append(
+                            f"기록이 많아 이 공고와 관련이 높은 기록 {len(compared)}개만 "
+                            f"비교했습니다(전체 {len(records)}개)."
+                        )
                     try:
-                        values = self.analyzer.analyze(posting.text, {"records": records})
+                        values = self.analyzer.analyze(posting.text, {"records": compared})
                         item.update(
                             comparisons=values,
                             analysis_status="completed" if values else "insufficient_evidence",
@@ -167,7 +174,7 @@ class CareerService:
                             type(error).__name__,
                             item["failure_reason"],
                         )
-            item["warnings"] = []
+            item["warnings"] = notes
             if posting.text_scope == "metadata_only":
                 item["warnings"].append(
                     "공고 요약 정보만 확보되어 상세 직무·필수조건 비교는 제한됩니다."

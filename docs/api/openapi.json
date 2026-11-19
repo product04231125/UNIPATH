@@ -61861,7 +61861,7 @@
               "$ref": "#/components/schemas/PersonalEvidenceSelection"
             },
             "type": "array",
-            "maxItems": 20,
+            "maxItems": 200,
             "title": "Records"
           },
           "posting_text": {
@@ -62136,7 +62136,7 @@
               "$ref": "#/components/schemas/PersonalEvidence"
             },
             "type": "array",
-            "maxItems": 20,
+            "maxItems": 200,
             "title": "Records"
           },
           "official": {
@@ -67893,7 +67893,7 @@
               "$ref": "#/components/schemas/PersonalEvidenceSelection"
             },
             "type": "array",
-            "maxItems": 20,
+            "maxItems": 200,
             "title": "Records"
           },
           "documents": {

@@ -10,7 +10,11 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.api.auth import CurrentIdentity, Database
 from app.core.auth_errors import AuthError, conflict
 from app.schemas.common import ErrorCode
-from app.schemas.personalization import PersonalizationRequest
+from app.schemas.personalization import (
+    MAX_ANALYSIS_RECORDS,
+    PersonalEvidenceSelection,
+    PersonalizationRequest,
+)
 from app.services import auth, gemini
 from app.services.personalization.context import assemble
 from app.services.personalization.redaction import redact_context
@@ -35,6 +39,10 @@ class Document(BaseModel):
 
 
 class RecommendationRequest(PersonalizationRequest):
+    # Every saved record may be sent; each comparison bounds the text that reaches the model.
+    records: list[PersonalEvidenceSelection] = Field(
+        default_factory=list, max_length=MAX_ANALYSIS_RECORDS
+    )
     academic_stage: Literal["year1", "year2", "year3", "year4", "graduate"] | None = None
     documents: list[Document] = Field(default_factory=list, max_length=5)
     keyword: str = Field(min_length=1, max_length=80)
@@ -78,9 +86,8 @@ def recommendations(
             uploaded, locations, warnings = prepare_documents(
                 files, names=(identity.user.display_name,)
             )
+            # At most 20 document chunks (prepare_documents) on top of the saved records.
             records.extend(uploaded["records"])
-        if len(records) > 20:
-            raise ValueError("문서 범위와 선택 기록 수를 줄여 주세요.")
     except OcrUnavailable as error:
         raise AuthError(503, ErrorCode.SERVICE_UNAVAILABLE, str(error)) from error
     except OcrInputError as error:
