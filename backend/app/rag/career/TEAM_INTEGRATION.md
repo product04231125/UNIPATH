@@ -6,7 +6,7 @@
 
 1. PR을 develop에 병합한 뒤 최신 API 이미지를 빌드·배포한다. 기존 Vertex/OCR/로그인/DB 설정은 유지한다.
 2. API 컨테이너 환경에 `CAREER_SOURCE_MODE=crawl`을 전달한다. 기본값은 `api`이며 서버 설정만 사용한다. 요청의 `source_mode`는 허용하지 않고 422로 거절한다. API 승인 후 `api` 또는 `hybrid`로 복귀할 수 있다.
-3. Compose 사용 시 기존 프로젝트명·env 파일·Compose 파일을 유지하고 마지막 `-f`에 `backend/app/rag/career/compose.crawl.yaml`을 추가한다. 서버 `.env`에만 추가하는 것으로는 API에 전달되지 않는다. `compose.server.yaml`과 이미지 ID·자격증명 마운트를 빼지 않는다.
+3. Compose 사용 시 기존 프로젝트명·env 파일·Compose 파일을 유지하고 env 파일에 `CAREER_SOURCE_MODE=crawl`을 넣는다. `compose.yaml`이 이 값을 API 컨테이너에 전달한다(기본 `api`). `compose.server.yaml`과 이미지 ID·자격증명 마운트를 빼지 않는다.
 4. 기존 `POST /api/v1/me/job-recommendations`를 사용한다. `keyword`에 쉼표로 최대 5개 직무(총 80자)를 넣는다. `벡엔드`는 `백엔드`로 보정한다. **통합 후보 최대 10개**, LLM 비교는 기존 최대 3개다. 검색어별 최대 3페이지·최대 10개를 모은 후 통합·중복 제거·직무 필터·문서 관련도 정렬로 10개를 유지한다. 전체 네트워크 상세 요청 수가 항상 10회 이하라는 뜻은 아니다.
 5. 고용24 직접 공고 필터(`siteClcd=WORK`)와 제목 검색을 사용하고 제목이 직무와 맞는 공고만 상세 조회한다. 직무 동의어 사전은 제한적이다. 외부 연계 공고와 잡코리아·사람인 HTML은 수집하지 않는다.
 

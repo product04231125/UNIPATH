@@ -1,5 +1,0 @@
-# Append to existing Compose files; only changes the job collector default.
-services:
-  api:
-    environment:
-      CAREER_SOURCE_MODE: ${CAREER_SOURCE_MODE:-crawl}

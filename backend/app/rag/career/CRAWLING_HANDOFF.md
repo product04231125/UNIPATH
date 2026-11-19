@@ -13,10 +13,10 @@
 로컬에서는 저장소 루트에서:
 
 ```sh
-docker compose -f compose.yaml -f backend/app/rag/career/compose.crawl.yaml up -d --build api
+CAREER_SOURCE_MODE=crawl docker compose -f compose.yaml up -d --build api
 ```
 
-서버에서는 **현재 사용 중인 프로젝트명·env 파일·Compose 파일 목록을 그대로 유지**하고 마지막 `-f`로 `backend/app/rag/career/compose.crawl.yaml`을 추가한다. 서버 이미지 ID는 이번 변경을 포함한 이미지로 바꾼다. 기존 명령에서 서버 오버레이를 빼지 않는다. `.env`에 변수만 추가하면 기본 Compose가 자동 전달하지 않으므로 이 오버레이 또는 명시적인 `api.environment`가 필요하다.
+`compose.yaml`이 `CAREER_SOURCE_MODE`를 API 컨테이너에 전달한다(기본 `api`). 서버에서는 **현재 사용 중인 프로젝트명·env 파일·Compose 파일 목록을 그대로 유지**하고 env 파일(예: `.env.staging`)에 `CAREER_SOURCE_MODE=crawl`을 넣은 뒤 컨테이너를 다시 만든다. 서버 이미지 ID는 이번 변경을 포함한 이미지로 바꾼다.
 
 | 모드 | 동작 |
 |---|---|

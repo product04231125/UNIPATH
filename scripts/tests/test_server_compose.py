@@ -93,6 +93,12 @@ class ServerComposeTests(unittest.TestCase):
         )
         self.assertTrue(all(mount["read_only"] for mount in api["volumes"]))
 
+    def test_job_collection_defaults_to_api_until_the_server_chooses_crawl(self):
+        result = self.config()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        api = json.loads(result.stdout)["services"]["api"]
+        self.assertEqual(api["environment"]["CAREER_SOURCE_MODE"], "api")
+
     def test_local_development_still_builds_backend(self):
         result = self.config(server=False)
         self.assertEqual(result.returncode, 0, result.stderr)
