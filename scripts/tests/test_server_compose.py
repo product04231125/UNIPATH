@@ -87,6 +87,7 @@ class ServerComposeTests(unittest.TestCase):
         api = json.loads(result.stdout)["services"]["api"]
         for name in ("VERTEX_PROJECT", "VERTEX_LOCATION", "VERTEX_MODEL"):
             self.assertEqual(api["environment"][name], "")
+        self.assertEqual(api["environment"]["VERTEX_TIMEOUT_SECONDS"], "40")
         self.assertEqual(
             [mount["source"] for mount in api["volumes"]],
             ["/dev/null"],
