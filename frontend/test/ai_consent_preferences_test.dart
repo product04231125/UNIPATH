@@ -9,6 +9,36 @@ import 'package:university_path_frontend/features/settings/ai_consent_section.da
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  test(
+    'existing job analysis consent requires confirmation for all records',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'university_path.ai_consent.a.v1': jsonEncode({
+          'owner_id': 'a',
+          'notice_version': 1,
+          'allowed': [
+            'jobAnalysis',
+            'jobRecommendation',
+            'personalizedQuestion',
+          ],
+        }),
+      });
+      final preferences = AiConsentPreferences(ownerId: 'a');
+      await preferences.load();
+      expect(preferences.allows(AiConsentFeature.jobAnalysis), isFalse);
+      expect(preferences.allows(AiConsentFeature.jobRecommendation), isFalse);
+      expect(preferences.allows(AiConsentFeature.personalizedQuestion), isTrue);
+      expect(
+        await preferences.setAllowed(AiConsentFeature.jobAnalysis, true),
+        isTrue,
+      );
+      final restored = AiConsentPreferences(ownerId: 'a');
+      await restored.load();
+      expect(restored.allows(AiConsentFeature.jobAnalysis), isTrue);
+      preferences.dispose();
+      restored.dispose();
+    },
+  );
   test('permissions are isolated by owner and feature and revocable', () async {
     final a = AiConsentPreferences(ownerId: 'account-a');
     final b = AiConsentPreferences(ownerId: 'account-b');

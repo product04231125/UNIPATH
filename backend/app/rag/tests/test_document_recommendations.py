@@ -147,11 +147,27 @@ class DocumentRecommendations(unittest.TestCase):
             {"priority": "required", "status": "insufficient_evidence"},
             {"priority": "preferred", "status": "supported"},
         ]
-        for failed in (False, True):
+        for preferred_status, failed in (
+            ("supported", False),
+            ("insufficient_evidence", False),
+            ("supported", True),
+        ):
+            analyzer.analyze.return_value[1]["status"] = preferred_status
             if failed:
                 analyzer.analyze.side_effect = RuntimeError("model failed")
             result = recommend(SearchQuery("Engineer", "Seoul"), ctx["records"], [source], analyzer)
-            self.assertEqual(result["recommendations"], [])
+            if failed:
+                self.assertEqual(result["recommendations"], [])
+                self.assertEqual(len(result["closest_candidates"]), 1)
+                self.assertEqual(len(result["display_candidates"]), 1)
+                self.assertEqual(
+                    result["display_candidates"][0]["display_type"], "analysis_unavailable"
+                )
+            else:
+                self.assertEqual(
+                    result["display_candidates"][0]["display_type"], "closest_needs_review"
+                )
+                self.assertEqual(result["recommendations"], [])
             self.assertEqual(
                 result["items"][0]["analysis_status"], "failed" if failed else "completed"
             )

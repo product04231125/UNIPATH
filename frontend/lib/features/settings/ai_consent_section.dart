@@ -43,7 +43,7 @@ Future<bool?> chooseAiConsent(
             children: [
               Text(
                 '${feature.transferredData}을 Google의 Gemini(Vertex AI)로 보내 '
-                '답변 또는 비교 설명을 생성합니다. 개인 기록은 직접 선택한 항목만 사용합니다.',
+                '답변 또는 비교 설명을 생성합니다.',
               ),
               const SizedBox(height: 12),
               const Text(

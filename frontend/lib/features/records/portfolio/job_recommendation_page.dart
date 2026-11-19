@@ -60,21 +60,14 @@ class JobRecommendationPage extends StatefulWidget {
 class _JobRecommendationPageState extends State<JobRecommendationPage> {
   final _keyword = TextEditingController();
   var _form = GlobalKey<FormState>();
-  String? _region, _error, _requestId, _recordError;
-  List<AiRecordOption> _options = [];
-  final _selected = <String, AiRecordOption>{};
+  String? _region, _error, _requestId;
+  RecommendationAcademicStage? _academicStage;
   final _documents = <RecommendationDocument>[];
-  bool _loading = false, _busy = false;
-  int _revision = 0, _loadRevision = 0;
+  bool _busy = false;
+  int _revision = 0;
   JobRecommendationResponse? _result;
   List<AiRecordOption> _resultRecords = const [];
   List<String> _fields = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
 
   @override
   void didUpdateWidget(covariant JobRecommendationPage oldWidget) {
@@ -84,18 +77,16 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
         !identical(oldWidget.consent, widget.consent)) {
       _revision++;
       _form = GlobalKey<FormState>();
-      _loadRevision++;
       _busy = false;
       _region = null;
+      _academicStage = null;
       _keyword.clear();
       _documents.clear();
-      _selected.clear();
-      _options = [];
       _result = null;
+      _resultRecords = const [];
       _error = null;
       _requestId = null;
       _fields = [];
-      _load();
     }
   }
 
@@ -103,43 +94,6 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
   void dispose() {
     _keyword.dispose();
     super.dispose();
-  }
-
-  Future<void> _load() async {
-    final revision = _revision, load = ++_loadRevision;
-    setState(() {
-      _loading = true;
-      _recordError = null;
-    });
-    try {
-      final values = widget.loadRecords != null
-          ? await widget.loadRecords!()
-          : widget.api == null
-          ? <AiRecordOption>[]
-          : await loadAiRecords(widget.api!, includeCourses: false);
-      if (!mounted || revision != _revision || load != _loadRevision) return;
-      final before = _selected.length;
-      _selected.removeWhere(
-        (key, value) =>
-            !values.any((r) => r.key == key && r.version == value.version),
-      );
-      setState(() {
-        _options = values;
-        if (before != _selected.length) {
-          _recordError = '변경되거나 삭제된 기록은 다시 선택해 주세요.';
-        }
-      });
-    } catch (_) {
-      if (mounted && revision == _revision && load == _loadRevision) {
-        setState(() {
-          _recordError = '저장 기록을 읽지 못했습니다. 다시 읽거나 기기 파일만 선택할 수 있습니다.';
-        });
-      }
-    } finally {
-      if (mounted && revision == _revision && load == _loadRevision) {
-        setState(() => _loading = false);
-      }
-    }
   }
 
   Future<void> _pick() async {
@@ -207,39 +161,44 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
       _requestId = null;
     });
     if (!_form.currentState!.validate()) return;
-    if (_documents.isEmpty && _selected.isEmpty) {
-      setState(() => _error = '기기 파일 또는 저장 기록을 하나 이상 선택하세요.');
-      return;
-    }
-    if (_loading || (_recordError != null && _selected.isNotEmpty)) {
-      setState(() => _error = '선택한 저장 기록을 다시 읽고 확인한 뒤 실행하세요.');
-      return;
-    }
     final revision = _revision;
-    final request = JobRecommendationRequest(
-      keyword: _keyword.text.trim(),
-      region: _region!,
-      documents: List.of(_documents),
-      records: _selected.values
-          .map(
-            (r) => PersonalEvidenceSelection(
-              kind: r.kind,
-              recordId: r.id,
-              expectedVersion: r.version,
-            ),
-          )
-          .toList(),
-      consent: true,
-    );
-    setState(() {
-      _busy = true;
-      _result = null;
-    });
+    final api = widget.api!;
+    final consent = widget.consent!;
+    setState(() => _busy = true);
     widget.onBusyChanged?.call(true);
+    var readingRecords = true;
     try {
+      final records =
+          await (widget.loadRecords?.call() ??
+              loadAiRecords(api, includeCourses: false));
+      if (!mounted ||
+          revision != _revision ||
+          GuestPreviewScope.isActive(context)) {
+        return;
+      }
+      if (_documents.isEmpty && records.isEmpty) {
+        setState(() => _error = '기기 파일을 첨부하거나 활동·경험·자격·성과 기록을 등록해 주세요.');
+        return;
+      }
+      readingRecords = false;
+      final request = JobRecommendationRequest(
+        keyword: _keyword.text.trim(),
+        region: _region!,
+        academicStage: _academicStage,
+        documents: List.of(_documents),
+        records: [
+          for (final record in records)
+            PersonalEvidenceSelection(
+              kind: record.kind,
+              recordId: record.id,
+              expectedVersion: record.version,
+            ),
+        ],
+        consent: true,
+      );
       if (!await requestAiConsent(
             context,
-            widget.consent!,
+            consent,
             AiConsentFeature.jobRecommendation,
           ) ||
           !mounted ||
@@ -247,34 +206,46 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
           GuestPreviewScope.isActive(context)) {
         return;
       }
-      final result = await JobRecommendationApi(widget.api!.api)
-          .recommend(request);
+      setState(() => _result = null);
+      final result = await JobRecommendationApi(api.api).recommend(request);
       if (mounted &&
           revision == _revision &&
           !GuestPreviewScope.isActive(context)) {
         setState(() {
           _result = result;
-          _resultRecords = _selected.values.toList();
+          _resultRecords = records;
         });
       }
     } on AuthFailure catch (e) {
       if (mounted && revision == _revision) {
         setState(() {
-          _error = switch (e.status) {
-            404 => '공고 추천 API가 연결되지 않았거나 선택 자료를 찾을 수 없습니다. 입력과 선택은 유지했습니다.',
-            409 => '저장 기록이 변경되었습니다. 기록을 다시 읽고 선택해 주세요.',
-            413 => '파일 용량이 서버 업로드 한도를 넘었습니다. 파일을 줄여 다시 시도하세요.',
-            422 => '검색 조건과 파일 형식·분량·판독 가능 여부를 확인하세요.',
-            503 => '문서 인식 서버를 사용할 수 없습니다. 잠시 후 다시 시도하세요.',
-            _ => e.message,
-          };
+          _error = readingRecords
+              ? '저장 기록을 읽지 못했습니다. 입력과 첨부 파일을 유지했습니다. 다시 실행해 주세요.'
+              : switch (e.status) {
+                  404 =>
+                    '공고 추천 API가 연결되지 않았거나 선택 자료를 찾을 수 없습니다. 입력과 선택은 유지했습니다.',
+                  409 => '저장 기록이 변경되었습니다. 다시 실행하면 최신 기록을 불러옵니다.',
+                  413 => '파일 용량이 서버 업로드 한도를 넘었습니다. 파일을 줄여 다시 시도하세요.',
+                  422
+                      when e.fields.any(
+                        (field) => field.split('.').last == 'records',
+                      ) =>
+                    '서버가 전체 기록 요청을 받아들이지 못했습니다. 입력과 첨부 파일은 유지했습니다.',
+                  422 => '검색 조건과 파일 형식·분량·판독 가능 여부를 확인하세요.',
+                  503 => '문서 인식 서버를 사용할 수 없습니다. 잠시 후 다시 시도하세요.',
+                  _ => e.message,
+                };
           _fields = e.fields;
           _requestId = e.requestId;
         });
       }
     } catch (_) {
       if (mounted && revision == _revision) {
-        setState(() => _error = '추천 응답을 확인하지 못했습니다. 입력과 선택은 유지했습니다.');
+        setState(
+          () => _error = readingRecords
+              ? '저장 기록을 읽지 못했습니다. 입력과 첨부 파일을 유지했습니다. 다시 실행해 주세요.'
+              : '추천 응답을 확인하지 못했습니다. 입력과 첨부 파일은 유지했습니다.',
+        );
       }
     } finally {
       if (mounted && revision == _revision) {
@@ -286,6 +257,25 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
 
   bool _hasField(String name) =>
       _fields.any((f) => f.split('.').contains(name));
+
+  String? _validateKeyword(String? value) {
+    final keyword = value?.trim() ?? '';
+    if (keyword.isEmpty || keyword.runes.length > 80) {
+      return '직무를 1~80자로 입력하세요.';
+    }
+    final terms = keyword
+        .split(RegExp(r'[,，\n]+'))
+        .map(
+          (term) => term.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase(),
+        )
+        .where((term) => term.isNotEmpty)
+        .toSet();
+    if (terms.contains('벡엔드') && terms.contains('백엔드')) {
+      terms.remove('벡엔드');
+    }
+    return terms.isEmpty || terms.length > 5 ? '직무를 쉼표로 구분해 1~5개 입력하세요.' : null;
+  }
+
   @override
   Widget build(BuildContext context) => FeaturePage(
     title: '내 자료로 공고 찾기',
@@ -314,15 +304,12 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
                   enabled: !_busy,
                   key: const ValueKey('recommend-keyword'),
                   decoration: InputDecoration(
-                    hintText: '예: 개발자, Engineer',
+                    hintText: '예: 프론트엔드, 백엔드, 전산실',
+                    helperText: '쉼표로 구분해 최대 5개 직무를 입력할 수 있습니다.',
+                    helperMaxLines: 2,
                     errorText: _hasField('keyword') ? '직무 입력을 확인하세요.' : null,
                   ),
-                  validator: (v) =>
-                      v == null ||
-                          v.trim().isEmpty ||
-                          v.trim().runes.length > 80
-                      ? '직무를 1~80자로 입력하세요.'
-                      : null,
+                  validator: _validateKeyword,
                 ),
               ),
               const SizedBox(height: 16),
@@ -351,6 +338,48 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
               const Text(
                 '특정 지역 검색은 지역 목록 연결 후 제공됩니다. 현재는 전국을 직접 선택해 검색할 수 있습니다.',
               ),
+              const SizedBox(height: 16),
+              FieldLabel(
+                label: '현재 학년 (선택)',
+                child: DropdownButtonFormField<RecommendationAcademicStage>(
+                  key: const ValueKey('recommend-academic-stage'),
+                  initialValue: _academicStage,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    helperText: '선택한 학년에 맞춰 다음 준비 활동을 안내합니다.',
+                    helperMaxLines: 2,
+                    errorText: _hasField('academic_stage')
+                        ? '선택한 학년을 확인하세요.'
+                        : null,
+                  ),
+                  items: const [
+                    DropdownMenuItem(child: Text('선택 안 함')),
+                    DropdownMenuItem(
+                      value: RecommendationAcademicStage.year1,
+                      child: Text('1학년'),
+                    ),
+                    DropdownMenuItem(
+                      value: RecommendationAcademicStage.year2,
+                      child: Text('2학년'),
+                    ),
+                    DropdownMenuItem(
+                      value: RecommendationAcademicStage.year3,
+                      child: Text('3학년'),
+                    ),
+                    DropdownMenuItem(
+                      value: RecommendationAcademicStage.year4,
+                      child: Text('4학년'),
+                    ),
+                    DropdownMenuItem(
+                      value: RecommendationAcademicStage.graduate,
+                      child: Text('졸업'),
+                    ),
+                  ],
+                  onChanged: _busy
+                      ? null
+                      : (stage) => setState(() => _academicStage = stage),
+                ),
+              ),
             ],
           ),
         ),
@@ -360,8 +389,11 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('비교할 내 자료', style: Theme.of(context).textTheme.titleMedium),
-            const Text('기기 파일 또는 저장 기록을 선택하세요. 선택한 자료만 이번 요청에 전송합니다.'),
+            Text(
+              '비교할 기기 파일 (선택)',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const Text('저장 기록은 분석할 때 자동으로 포함합니다. 함께 비교할 기기 파일을 추가할 수 있습니다.'),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -393,41 +425,6 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
                 ),
               ),
             if (_hasField('documents')) const Text('선택 파일의 형식과 분량을 확인하세요.'),
-            const Divider(height: 24),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: _busy || _loading ? null : _load,
-                icon: const Icon(Icons.refresh),
-                label: const Text('저장 기록 다시 읽기'),
-              ),
-            ),
-            if (_loading) const LinearProgressIndicator(),
-            if (_recordError != null) Text(_recordError!),
-            if (!_loading && _options.isEmpty && _recordError == null)
-              const Text(
-                '선택할 저장 기록이 없습니다. 기기 파일을 선택하거나 활동·경험·자격·성과를 먼저 등록하세요.',
-              ),
-            for (final r in _options)
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(r.title),
-                subtitle: Text('${r.kindLabel} · 버전 ${r.version}'),
-                value: _selected.containsKey(r.key),
-                onChanged: _busy || _loading
-                    ? null
-                    : (v) => setState(() {
-                        if (v == true && _selected.length < 20) {
-                          _selected[r.key] = r;
-                        } else if (v != true) {
-                          _selected.remove(r.key);
-                        } else {
-                          _error = '저장 기록은 최대 20개까지 선택하세요.';
-                        }
-                      }),
-              ),
-            Text('선택 기록 ${_selected.length}/20개 · 파일에서 추출한 조각과 합계 20개 이내'),
-            if (_hasField('records')) const Text('저장 기록을 다시 읽고 선택해 주세요.'),
           ],
         ),
       ),
@@ -437,7 +434,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              '선택 자료에서 추출한 텍스트를 외부 Gemini에 보내 공고와 비교합니다. 다른 사람의 이름이나 민감한 정보가 없는지 확인하세요.',
+              '저장된 활동·경험·자격·성과 기록과 첨부 파일의 텍스트를 외부 Gemini에 보내 공고와 비교합니다. 다른 사람의 이름이나 민감한 정보가 없는지 확인하세요.',
             ),
             if (widget.api == null || widget.consent == null)
               const Text('로그인 후 이용할 수 있습니다.'),

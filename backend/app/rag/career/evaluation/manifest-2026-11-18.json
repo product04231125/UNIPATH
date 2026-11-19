@@ -1,0 +1,31 @@
+{
+  "date": "2026-11-18",
+  "model": "gemini-3.8-flash",
+  "vertex_location": "global",
+  "max_workers": 3,
+  "model_timeout_seconds": 40,
+  "planned_postings": 20,
+  "planned_profiles": 4,
+  "planned_comparisons": 80,
+  "actual_pdf_in_repository": false,
+  "synthetic_profiles": 3,
+  "input_scope": "selected posting text fields, not attachments or full HTML",
+  "analysis_only": true,
+  "code_hashes": {
+    "backend/app/rag/career/analyzer.py": "fbaa3982561be025cab1b1c7b3e341002b4ccfd38013773b5f4564b625479667",
+    "backend/app/rag/career/documents.py": "779d5e2319c27dd199c3ae5e288b8b2a445c07d091c89058496eb85c220a0bf3",
+    "backend/app/rag/career/vertex.py": "37ef09effb45894a9ca4235a76710fbbfaa96f7d30c66ecac17487c3fb5ed0d7"
+  },
+  "fixture_hashes": {
+    "postings-2026-11-18.json": "bad59718b6ac8caebeceee9cf8ab6846a5c352b75b356c38be371f6e90efa98b",
+    "profiles.synthetic.json": "657822f5e060fd74a6980eb1d5f3780c7aa9b970478cf6d7877e3322ad392729"
+  },
+  "actual_comparisons": 80,
+  "validated": 63,
+  "failed": 17,
+  "wall_seconds": 521.3,
+  "failures": {
+    "model_timeout": 12,
+    "personal_citation": 5
+  }
+}
