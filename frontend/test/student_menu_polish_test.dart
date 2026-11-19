@@ -24,6 +24,13 @@ class PendingRecommendation extends ApiGateway {
     Map<String, Object?>? body,
   ]) async {
     expect(path, 'me/job-recommendations');
+    expect(body?['records'], [
+      {
+        'kind': analysis.record.kind,
+        'record_id': analysis.record.id,
+        'expected_version': analysis.record.version,
+      },
+    ]);
     calls++;
     return pending.future;
   }
@@ -112,13 +119,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('전국').last);
       await tester.pumpAndSettle();
-      await tester.ensureVisible(
-        find.widgetWithText(CheckboxListTile, analysis.record.title),
-      );
-      await tester.tap(
-        find.widgetWithText(CheckboxListTile, analysis.record.title),
-      );
-      await tester.pumpAndSettle();
+      expect(find.byType(CheckboxListTile), findsNothing);
       await tester.ensureVisible(find.text('분석 실행'));
       await tester.tap(find.text('분석 실행'));
       await tester.pump();
