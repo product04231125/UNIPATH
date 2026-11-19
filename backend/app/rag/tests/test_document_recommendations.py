@@ -148,7 +148,9 @@ class DocumentRecommendations(unittest.TestCase):
             {"priority": "preferred", "status": "supported"},
         ]
         for preferred_status, failed in (
-            ("supported", False), ("insufficient_evidence", False), ("supported", True)
+            ("supported", False),
+            ("insufficient_evidence", False),
+            ("supported", True),
         ):
             analyzer.analyze.return_value[1]["status"] = preferred_status
             if failed:
