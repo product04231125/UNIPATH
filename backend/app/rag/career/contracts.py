@@ -136,11 +136,40 @@ class Posting:
             raise ValueError("Invalid active flag")
 
 
+# Saved records (200) plus up to 20 uploaded document chunks in a recommendation request.
+MAX_RECORDS = 220
+# Record text sent to the model in one comparison. Typical records are a few hundred characters,
+# so this keeps every record for nearly all students while bounding latency and cost.
+RECORD_TEXT_BUDGET = 60_000
+TERM = re.compile(r"[a-z0-9가-힣+#.]{2,}")
+
+
+def fit_records(records, posting_text, budget=RECORD_TEXT_BUDGET):
+    """Keep every record that fits. Past the budget, prefer records sharing more posting terms.
+
+    Selection is local and deterministic; kept records stay in their original order.
+    """
+    if sum(len(record["text"]) for record in records) <= budget:
+        return records
+    terms = set(TERM.findall(posting_text.casefold()))
+
+    def overlap(index):
+        return len(terms & set(TERM.findall(records[index]["text"].casefold())))
+
+    kept, used = set(), 0
+    for index in sorted(range(len(records)), key=lambda i: -overlap(i)):
+        size = len(records[index]["text"])
+        if used + size <= budget:
+            kept.add(index)
+            used += size
+    return [record for index, record in enumerate(records) if index in kept]
+
+
 def selected_records(context):
     data = context.model_dump(mode="json") if hasattr(context, "model_dump") else context
     values = data["records"]
-    if not isinstance(values, list) or not 1 <= len(values) <= 20:
-        raise ValueError("Select 1..20 records")
+    if not isinstance(values, list) or not 1 <= len(values) <= MAX_RECORDS:
+        raise ValueError(f"Select 1..{MAX_RECORDS} records")
     records, seen = [], set()
     for value in values:
         key = (value["kind"], str(UUID(value["record_id"])))

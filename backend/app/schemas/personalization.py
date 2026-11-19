@@ -8,6 +8,10 @@ from pydantic import Field, model_validator
 from app.schemas.auth import Name, StrictModel
 from app.schemas.personal import RecordKind
 
+# Job analysis and recommendations send every saved record the student consented to share
+# (D6, 2026-11-19); other features still take up to 20 records the student picked.
+MAX_ANALYSIS_RECORDS = 200
+
 
 class PersonalEvidenceSelection(StrictModel):
     kind: RecordKind
@@ -38,5 +42,5 @@ class PersonalEvidence(StrictModel):
 
 
 class PersonalizationContext(StrictModel):
-    records: list[PersonalEvidence] = Field(max_length=20)
+    records: list[PersonalEvidence] = Field(max_length=MAX_ANALYSIS_RECORDS)
     official: Literal[False] = False

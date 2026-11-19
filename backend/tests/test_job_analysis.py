@@ -170,6 +170,33 @@ def test_job_analysis_missing_inputs_unconfigured_and_synthetic_minimum_scenario
 
 
 @pytest.mark.integration
+def test_job_analysis_accepts_more_than_twenty_saved_records(auth_client):
+    c = auth_client
+    owner, record, body = setup(c)
+    extra = [
+        post(
+            c,
+            owner,
+            "experience-records",
+            {
+                "title": f"합성 기록 {index}",
+                "experience_type": "프로젝트",
+                "role": "개발",
+                "result": "합성 결과",
+            },
+        )
+        for index in range(24)
+    ]
+    body["records"] = [selection(record)] + [selection(item) for item in extra]
+    analyzer = SyntheticAnalyzer()
+    c.app.state.job_analyzer = analyzer
+    result = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert result.status_code == 200, result.text
+    assert result.json()["status"] == "completed"
+    assert len(analyzer.calls[0].records) == 25
+
+
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "case", ["posting", "record", "excerpt", "version", "duplicate", "missing"]
 )

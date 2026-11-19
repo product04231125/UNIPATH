@@ -8,12 +8,20 @@ from pydantic import Field, StringConstraints, model_validator
 
 from app.schemas.auth import StrictModel
 from app.schemas.personal import RecordKind
-from app.schemas.personalization import PersonalizationRequest
+from app.schemas.personalization import (
+    MAX_ANALYSIS_RECORDS,
+    PersonalEvidenceSelection,
+    PersonalizationRequest,
+)
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
 
 
 class JobAnalysisRequest(PersonalizationRequest):
+    # Every saved record may be sent; the analyzer bounds the text that reaches the model.
+    records: list[PersonalEvidenceSelection] = Field(
+        default_factory=list, max_length=MAX_ANALYSIS_RECORDS
+    )
     posting_text: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20000)
     ]
