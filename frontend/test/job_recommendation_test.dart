@@ -207,7 +207,7 @@ void main() {
       ..result = {
         'status': 'completed',
         'query': {'occupation_label': '소프트웨어'},
-        'search_notice': '세부 검색어와 일치하는 공고가 없어 직종 전체를 보여 줍니다.',
+        'search_notice': '고른 직종에서 ‘프론트엔드’와 맞는 공고를 찾지 못했습니다. 다른 세부 검색어로 찾거나 직종 전체 공고를 볼 수 있습니다.',
         'sources': [
           {
             'source': 'saramin',
@@ -238,7 +238,12 @@ void main() {
     expect(api.calls.last['category_codes'], ['024']);
     expect(api.calls.last['keyword'], '프론트엔드');
     expect(find.text('검색 직종 · 소프트웨어'), findsOneWidget);
-    expect(find.text('세부 검색어와 일치하는 공고가 없어 직종 전체를 보여 줍니다.'), findsOneWidget);
+    expect(
+      find.text(
+        '고른 직종에서 ‘프론트엔드’와 맞는 공고를 찾지 못했습니다. 다른 세부 검색어로 찾거나 직종 전체 공고를 볼 수 있습니다.',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('사람인 · 직종 검색 미지원'), findsOneWidget);
 
     await selectOption(tester, 'recommend-category', '교육');
@@ -249,6 +254,80 @@ void main() {
     await run(tester);
     expect(api.calls.last, isNot(contains('category_codes')));
     expect(api.calls.last['keyword'], '프론트엔드');
+  });
+
+  testWidgets('세부 검색어 0건이면 학생이 직종 전체 보기를 고른다', (tester) async {
+    final api = RecommendationGateway()
+      ..result = {
+        'status': 'no_results',
+        'query': {
+          'keyword': '프런트엔드',
+          'occupation_codes': ['024'],
+          'occupation_label': '소프트웨어',
+        },
+        'search_notice': '고른 직종에서 ‘프런트엔드’와 맞는 공고를 찾지 못했습니다. 다른 세부 검색어로 찾거나 직종 전체 공고를 볼 수 있습니다.',
+        'category_browse_available': true,
+        'sources': [
+          {'source': 'work24', 'status': 'completed'},
+        ],
+        'items': [],
+      };
+    final p = await permission();
+    addTearDown(p.dispose);
+    await mount(tester, api, p);
+    await selectOption(tester, 'recommend-region', '전국');
+    await selectOption(tester, 'recommend-category', '연구 및 공학기술');
+    await selectOption(tester, 'recommend-subcategory-02', '소프트웨어');
+    await tester.enterText(
+      find.byKey(const ValueKey('recommend-keyword')),
+      '프런트엔드',
+    );
+    await run(tester);
+    await tester.pumpAndSettle();
+    final browse = find.byKey(const ValueKey('recommend-browse-category'));
+    expect(find.text('검색 직종 · 소프트웨어'), findsOneWidget);
+    expect(browse, findsOneWidget);
+    // The server never substitutes postings; nothing runs until the student chooses.
+    expect(api.calls, hasLength(1));
+
+    // A different category in the form no longer matches the empty result.
+    await selectOption(tester, 'recommend-category', '교육');
+    expect(browse, findsNothing);
+    await selectOption(tester, 'recommend-category', '연구 및 공학기술');
+    await selectOption(tester, 'recommend-subcategory-02', '소프트웨어');
+    expect(browse, findsOneWidget);
+
+    api.result = {
+      'status': 'completed',
+      'query': {
+        'keyword': '',
+        'occupation_codes': ['024'],
+        'occupation_label': '소프트웨어',
+      },
+      'search_notice': null,
+      'category_browse_available': false,
+      'sources': [
+        {'source': 'work24', 'status': 'completed'},
+      ],
+    };
+    await tester.ensureVisible(browse);
+    await tester.tap(browse);
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(api.calls, hasLength(2));
+    expect(api.calls.last['keyword'], '');
+    expect(api.calls.last['category_codes'], ['024']);
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const ValueKey('recommend-keyword')),
+          )
+          .controller!
+          .text,
+      '',
+    );
+    expect(find.text('검색 직종 · 소프트웨어 · 세부 검색어 없음'), findsOneWidget);
+    expect(browse, findsNothing);
   });
 
   testWidgets('직종 조회 실패에서 검색어 검색과 재시도를 제공한다', (tester) async {

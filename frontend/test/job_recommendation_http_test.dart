@@ -63,8 +63,13 @@ void main() {
         request.response.write(
           jsonEncode({
             'status': 'completed',
-            'query': {'occupation_label': '소프트웨어'},
-            'search_notice': '직종 전체를 보여 줍니다.',
+            'query': {
+              'keyword': '',
+              'occupation_codes': ['024'],
+              'occupation_label': '소프트웨어',
+            },
+            'search_notice': null,
+            'category_browse_available': false,
           }),
         );
       }
@@ -96,7 +101,10 @@ void main() {
       );
       final result = await api.recommend(request);
       expect(result.occupationLabel, '소프트웨어');
-      expect(result.searchNotice, '직종 전체를 보여 줍니다.');
+      expect(result.occupationCodes, ['024']);
+      expect(result.queryKeyword, '');
+      expect(result.searchNotice, isNull);
+      expect(result.categoryBrowseAvailable, isFalse);
       await auth.logout();
       await expectLater(api.recommend(request), throwsA(isA<AuthFailure>()));
       await expectLater(api.loadCategories(), throwsA(isA<AuthFailure>()));

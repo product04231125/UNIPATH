@@ -642,6 +642,16 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
         JobRecommendationResult(
           result: _result!,
           selectedRecords: _resultRecords,
+          // Offered only while the form still has the category that found nothing.
+          onBrowseCategory:
+              _busy ||
+                  _result!.occupationCodes.length != 1 ||
+                  _result!.occupationCodes.single != _selectedCode
+              ? null
+              : () {
+                  _keyword.clear();
+                  _run();
+                },
         ),
       ],
     ],

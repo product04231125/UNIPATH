@@ -181,7 +181,12 @@ class JobRecommendationResponse {
       notice = json['notice'] as String? ?? '',
       occupationLabel =
           _map(json['query'] ?? const {})['occupation_label'] as String?,
+      occupationCodes = _strings(
+        _map(json['query'] ?? const {})['occupation_codes'],
+      ),
+      queryKeyword = _map(json['query'] ?? const {})['keyword'] as String?,
       searchNotice = json['search_notice'] as String?,
+      categoryBrowseAvailable = json['category_browse_available'] == true,
       missingFields = _strings(json['missing_fields']),
       sources = _rows(json['sources'], RecommendationSource.fromJson),
       items = _rows(json['items'], RecommendationItem.fromJson),
@@ -197,7 +202,11 @@ class JobRecommendationResponse {
         json['document_locations'] ?? {},
       ).map((k, v) => MapEntry(k, DocumentCitationLocation.fromJson(_map(v))));
   final String status, notice;
-  final String? occupationLabel, searchNotice;
+  final String? occupationLabel, queryKeyword, searchNotice;
+  final List<String> occupationCodes;
+
+  /// No posting in the chosen category matched the detail words; the student may browse it.
+  final bool categoryBrowseAvailable;
   final List<String> missingFields, warnings;
   final List<RecommendationSource> sources;
   final List<RecommendationItem> items;
