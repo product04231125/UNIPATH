@@ -43,9 +43,7 @@ def build_guidance(item, stage=None):
     if gaps:
         focus = " · ".join(label(c) for c in gaps[:2])
         gap = f"우선 준비할 항목은 「{focus}」이며, 구체적인 실행 방법은 항목별 분석을 참고하세요."
-        action = (
-            f"「{label(gaps[0])}」의 실제 경험·자격 여부에 맞춰, {STAGES[stage]}."
-        )
+        action = f"「{label(gaps[0])}」의 실제 경험·자격 여부에 맞춰, {STAGES[stage]}."
     else:
         gap = (
             "분석된 조건에서 추가 격차는 확인되지 않았지만 "
