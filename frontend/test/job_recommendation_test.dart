@@ -9,6 +9,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:university_path_frontend/app.dart';
+import 'package:university_path_frontend/features/api/academic_guidance_models.dart';
 import 'package:university_path_frontend/features/api/job_recommendation_api.dart';
 import 'package:university_path_frontend/features/api/student_api.dart';
 import 'package:university_path_frontend/features/assistant/ai_record_catalog.dart';
@@ -123,6 +124,8 @@ Future<void> mount(
   bool guest = false,
   String owner = 'owner',
   Future<List<AiRecordOption>> Function()? loadRecords,
+  Future<List<AssistantMaterial>> Function()? loadMaterials,
+  Future<List<GuidanceDocument>> Function(List<String> ids)? loadDocuments,
 }) async {
   await tester.binding.setSurfaceSize(const Size(1440, 1000));
   addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -136,6 +139,8 @@ Future<void> mount(
             consent: consent,
             pickFiles: pickFiles,
             loadRecords: loadRecords ?? () async => [record],
+            loadMaterials: loadMaterials,
+            loadDocuments: loadDocuments,
           ),
         ),
       ),
@@ -322,6 +327,39 @@ void main() {
     },
   );
 
+  testWidgets('selected 내 자료 travel with attached files', (tester) async {
+    final api = RecommendationGateway()..pending = Completer();
+    final consent = await permission();
+    await mount(
+      tester,
+      api,
+      consent,
+      loadMaterials: () async => const [
+        AssistantMaterial(id: 'm1', title: '합성 포트폴리오', type: '포트폴리오'),
+      ],
+      loadDocuments: (ids) async => [
+        GuidanceDocument(
+          filename: '합성.txt',
+          contentBase64: base64Encode(utf8.encode('Synthetic material')),
+        ),
+      ],
+    );
+    await fill(tester);
+    final box = find.byKey(const ValueKey('job-recommendation-material-m1'));
+    await tester.ensureVisible(box);
+    await tester.tap(box);
+    await tester.pump();
+    await run(tester);
+    expect(api.calls.single['documents'], [
+      {
+        'filename': '합성.txt',
+        'content_base64': base64Encode(utf8.encode('Synthetic material')),
+      },
+    ]);
+    api.pending!.complete({'status': 'not_configured'});
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('cancel consent sends nothing and preserves search input', (
     tester,
   ) async {
@@ -361,7 +399,7 @@ void main() {
       await fill(tester);
       await run(tester);
       expect(
-        find.text('기기 파일을 첨부하거나 활동·경험·자격·성과 기록을 등록해 주세요.'),
+        find.text('기기 파일이나 내 자료를 고르거나 활동·경험·자격·성과 기록을 등록해 주세요.'),
         findsOneWidget,
       );
       await tester.ensureVisible(find.text('기기 파일 선택'));

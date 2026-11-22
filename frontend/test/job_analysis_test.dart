@@ -212,6 +212,7 @@ void main() {
             'expected_version': 2,
           },
         ],
+        'documents': [],
         'external_processing_consent': true,
       });
       expect(find.text('분석 기능 준비 중'), findsOneWidget);

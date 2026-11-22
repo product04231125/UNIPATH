@@ -33,7 +33,7 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 ## 3. 기존 서버 배포 구성에 반영
 
 1. [서버 Compose](../../../../compose.server.yaml)는 기본 API 이미지 ID만 바꾸면 된다. 별도 OCR 이미지와 오버레이는 없앴다.
-2. 파일을 싣는 `/api/v1/me/job-recommendations`와 `/api/v1/me/personalized-guidance`는 [웹 프록시](../../../../deploy/preview/nginx.conf)와 [외부 게이트웨이](../../../../deploy/gateway/unipath-https.conf)에서 본문 12m, 응답 대기 180초다. 원본 합계 8MiB는 base64로 약 10.7MiB다. 다른 `/api/v1/me/` 경로는 256k·기본 60초 그대로다. 외부 게이트웨이(`/opt/gateway/nginx.conf`)는 저장소 템플릿과 같게 맞춘다.
+2. 파일을 싣는 `/api/v1/me/job-analyses`(2026-11-22 추가), `/api/v1/me/job-recommendations`, `/api/v1/me/personalized-guidance`는 [웹 프록시](../../../../deploy/preview/nginx.conf)와 [외부 게이트웨이](../../../../deploy/gateway/unipath-https.conf)에서 본문 12m, 응답 대기 180초다. 원본 합계 8MiB는 base64로 약 10.7MiB다. 다른 `/api/v1/me/` 경로는 256k·기본 60초 그대로다. 외부 게이트웨이(`/opt/gateway/nginx.conf`)는 저장소 템플릿과 같게 맞춘다.
 3. OCR과 공급자 호출을 순차 실행하는 동기 요청이다. OCR 예산 45초, 검색·비교 예산 60초, 화면 대기 180초다. 개인 문서 본문·base64·인용문·키는 로그에 남기지 않는다.
 
 ## 4. 인수 확인

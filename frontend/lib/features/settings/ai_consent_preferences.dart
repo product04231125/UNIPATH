@@ -9,14 +9,21 @@ enum AiConsentFeature {
     '내 자료로 질문',
     '질문, 학교 문서의 관련 내용, 직접 선택한 개인 기록과 등록 자료 설명·PDF에서 추출한 텍스트(OCR 포함)',
   ),
-  jobAnalysis('채용 분석', '공고 본문과 저장된 활동·경험·자격·성과 기록 전체'),
-  jobRecommendation('내 자료로 공고 찾기', '첨부 파일에서 추출한 텍스트와 저장된 활동·경험·자격·성과 기록 전체');
+  jobAnalysis(
+    '채용 분석',
+    '공고 본문, 저장된 활동·경험·자격·성과 기록 전체와 직접 고른 내 자료의 설명·PDF에서 추출한 텍스트(OCR 포함)',
+  ),
+  jobRecommendation(
+    '내 자료로 공고 찾기',
+    '첨부 파일·직접 고른 내 자료에서 추출한 텍스트(OCR 포함)와 저장된 활동·경험·자격·성과 기록 전체',
+  );
 
   const AiConsentFeature(this.label, this.transferredData);
   final String label, transferredData;
 
   String? get _allRecordsConsentKey => switch (this) {
-    jobAnalysis => 'job_analysis_all_records',
+    // Bumped when 채용 분석 started sending selected 내 자료: earlier consent did not cover it.
+    jobAnalysis => 'job_analysis_all_records_materials',
     jobRecommendation => 'job_recommendation_all_records',
     _ => null,
   };

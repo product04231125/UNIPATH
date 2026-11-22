@@ -13,6 +13,9 @@ void main() {
           'expected_version': 2,
         },
       ],
+      'documents': [
+        {'filename': '합성.txt', 'content_base64': 'Zm9v'},
+      ],
       'external_processing_consent': true,
     };
     expect(JobAnalysisRequest.fromJson(request).toJson(), request);
@@ -29,6 +32,7 @@ void main() {
         'comparisons': <Object?>[],
         'missing_fields': <String>[],
         'warnings': <String>[],
+        'document_sources': <Object?>[],
       };
       final result = JobAnalysisResponse.fromJson(response);
       expect(result.toJson(), response);

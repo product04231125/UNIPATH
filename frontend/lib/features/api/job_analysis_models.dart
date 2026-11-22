@@ -144,13 +144,57 @@ class PersonalizationContext implements JobAnalysisPayload {
   };
 }
 
+class AnalysisDocument implements JobAnalysisPayload {
+  const AnalysisDocument({required this.filename, required this.contentBase64});
+  final String filename;
+  final String contentBase64;
+  factory AnalysisDocument.fromJson(Map<String, dynamic> value) =>
+      AnalysisDocument(
+        filename: value['filename'] as String,
+        contentBase64: value['content_base64'] as String,
+      );
+  @override
+  Map<String, Object?> toJson() => {
+    'filename': filename,
+    'content_base64': contentBase64,
+  };
+}
+
+class DocumentSource implements JobAnalysisPayload {
+  const DocumentSource({
+    required this.recordId,
+    required this.filename,
+    required this.location,
+    required this.ocr,
+  });
+  final String recordId;
+  final String filename;
+  final String location;
+  final bool ocr;
+  factory DocumentSource.fromJson(Map<String, dynamic> value) => DocumentSource(
+    recordId: value['record_id'] as String,
+    filename: value['filename'] as String,
+    location: value['location'] as String,
+    ocr: value['ocr'] as bool,
+  );
+  @override
+  Map<String, Object?> toJson() => {
+    'record_id': recordId,
+    'filename': filename,
+    'location': location,
+    'ocr': ocr,
+  };
+}
+
 class JobAnalysisRequest implements JobAnalysisPayload {
   const JobAnalysisRequest({
     this.records = const [],
+    this.documents = const [],
     required this.postingText,
     this.externalProcessingConsent = false,
   });
   final List<PersonalEvidenceSelection> records;
+  final List<AnalysisDocument> documents;
   final String postingText;
   final bool externalProcessingConsent;
   factory JobAnalysisRequest.fromJson(Map<String, dynamic> value) =>
@@ -164,6 +208,15 @@ class JobAnalysisRequest implements JobAnalysisPayload {
                   ),
                 ),
               ),
+        documents: value['documents'] == null
+            ? const []
+            : List.unmodifiable(
+                (value['documents'] as List).map(
+                  (v) => AnalysisDocument.fromJson(
+                    Map<String, dynamic>.from(v as Map),
+                  ),
+                ),
+              ),
         postingText: value['posting_text'] as String,
         externalProcessingConsent: value['external_processing_consent'] == null
             ? false
@@ -172,6 +225,7 @@ class JobAnalysisRequest implements JobAnalysisPayload {
   @override
   Map<String, Object?> toJson() => {
     'records': records.map((v) => v.toJson()).toList(),
+    'documents': documents.map((v) => v.toJson()).toList(),
     'posting_text': postingText,
     'external_processing_consent': externalProcessingConsent,
   };
@@ -295,6 +349,7 @@ class JobAnalysisResponse implements JobAnalysisPayload {
     this.comparisons = const [],
     this.missingFields = const [],
     this.warnings = const [],
+    this.documentSources = const [],
   });
   final String analysisId;
   final String status;
@@ -303,6 +358,7 @@ class JobAnalysisResponse implements JobAnalysisPayload {
   final List<JobRequirementComparison> comparisons;
   final List<String> missingFields;
   final List<String> warnings;
+  final List<DocumentSource> documentSources;
   factory JobAnalysisResponse.fromJson(Map<String, dynamic> value) =>
       JobAnalysisResponse(
         analysisId: value['analysis_id'] as String,
@@ -345,6 +401,15 @@ class JobAnalysisResponse implements JobAnalysisPayload {
             : List.unmodifiable(
                 (value['warnings'] as List).map((v) => v as String),
               ),
+        documentSources: value['document_sources'] == null
+            ? const []
+            : List.unmodifiable(
+                (value['document_sources'] as List).map(
+                  (v) => DocumentSource.fromJson(
+                    Map<String, dynamic>.from(v as Map),
+                  ),
+                ),
+              ),
       );
   @override
   Map<String, Object?> toJson() => {
@@ -355,5 +420,6 @@ class JobAnalysisResponse implements JobAnalysisPayload {
     'comparisons': comparisons.map((v) => v.toJson()).toList(),
     'missing_fields': missingFields.map((v) => v).toList(),
     'warnings': warnings.map((v) => v).toList(),
+    'document_sources': documentSources.map((v) => v.toJson()).toList(),
   };
 }
