@@ -36,15 +36,15 @@ def build_guidance(item, stage=None):
         return str(c.get("requirement", "공고 조건")).strip()[:120]
 
     current = (
-        f"제출 자료에서 {len(supported)}개 조건의 충족 근거가 확인됩니다."
+        f"「{label(supported[0])}」과 연결되는 이력을 지원서에 구체적으로 활용하세요."
         if supported
-        else "현재 제출 자료에서는 공고 조건을 충족하는 근거가 확인되지 않습니다."
+        else "공고의 필수 조건부터 실제 이력과 연결하고, 처음 접하는 업무는 실습으로 확인하세요."
     )
     if gaps:
         focus = " · ".join(label(c) for c in gaps[:2])
-        gap = f"우선 확인할 격차는 「{focus}」이며 부분 근거나 확인되지 않은 항목이 포함됩니다."
+        gap = f"우선 준비할 항목은 「{focus}」이며, 구체적인 실행 방법은 항목별 분석을 참고하세요."
         action = (
-            f"「{label(gaps[0])}」의 보유·경험 여부와 제출 근거를 먼저 확인하고, {STAGES[stage]}."
+            f"「{label(gaps[0])}」의 실제 경험·자격 여부에 맞춰, {STAGES[stage]}."
         )
     else:
         gap = (

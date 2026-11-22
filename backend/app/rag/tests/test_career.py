@@ -158,6 +158,35 @@ class CareerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             selected_records({"records": CONTEXT["records"] * 2})
 
+    def test_actionable_analysis_preserves_unverified_status_and_api_contract(self):
+        # Synthetic model response: verifies transport/validation, not live model quality.
+        explanation = (
+            "직무 해석: SQL 조회 결과를 운영 보고서에 연결하는 업무입니다.\n"
+            "경험 활용: SQL 경험이 있다면 조회 목적과 결과를 설명하세요. "
+            "처음이라면 작은 예제 테이블로 시작할 수 있습니다.\n"
+            "다음 행동: 연습으로 월별 집계 쿼리와 실행 결과를 README에 정리하세요."
+        )
+        analyzer = self.analyzer(
+            {
+                **VALUE,
+                "requirement": "SQL 조회 경험",
+                "posting_quote": "SQL 조회 경험",
+                "status": "insufficient_evidence",
+                "personal_evidence": [],
+                "explanation": explanation,
+            }
+        )
+        result = analyzer.analyze("SQL 조회 경험. 운영 보고서 작성", CONTEXT)[0]
+        self.assertEqual(result["explanation"], explanation)
+        self.assertEqual(result["status"], "insufficient_evidence")
+        self.assertEqual(result["personal_evidence"], [])
+        self.assertEqual(result["posting_evidence"]["excerpt"], "SQL 조회 경험")
+        self.assertEqual(analyzer.generator.generate.call_count, 1)
+        # Keep the public response accepted by the backend's strict schema.
+        from app.schemas.job_analysis import JobRequirementComparison
+
+        JobRequirementComparison.model_validate(result)
+
     def test_profile_requires_evidence(self):
         generator = Mock(
             generate=Mock(
