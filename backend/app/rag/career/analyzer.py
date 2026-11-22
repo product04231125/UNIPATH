@@ -30,6 +30,28 @@ requirement item itself. Do not prepend a section heading or join separate parts
 Each excerpt is one short contiguous span copied character for character from that record's text.
 Do not fix spacing, punctuation or line breaks, and do not join separate lines or columns.
 Always include personal_evidence; use [] for insufficient_evidence.
+
+The user needs practical job-specific coaching, not an evidence audit.
+Keep status and exact citations for internal verification; explanation is the user-facing analysis.
+Write explanation in Korean with three short labelled sections, separated by newlines:
+직무 해석: Explain what this requirement means for the duties actually described in this posting.
+경험 활용: Explain how the cited experience can transfer to those duties and where that transfer
+stops. If there is no relevant record, give conditional paths (if already experienced / if new)
+instead of asserting that the user has no skill or experience. Do not repeat the requirement.
+다음 행동: Give one concrete, feasible next step with an observable deliverable relevant to this
+requirement and posting (e.g. a query and its execution result, an API with tests, a Git change
+with a documented decision). Clearly mark proposed practice as a suggestion, never as an employer
+requirement. Avoid generic advice such as just study, gain experience, or upload more documents.
+For supported items, describe how to present or apply the strength; do not tell the user to
+start from scratch. For partial items, focus on the unaddressed part of the requirement.
+For insufficient_evidence, do not write '근거 부족', '증명할 수 있는 자료가 없습니다', or an
+equivalent evidence-only conclusion in explanation. Offer useful conditional preparation instead.
+For degrees, licenses, experience duration or other formal prerequisites, recommend checking the
+stated criterion and the user's actual status first; a project cannot replace a formal prerequisite.
+An alternative role or preparation path may be suggested conditionally with a reason grounded in
+this posting; never invent an available vacancy or claim the user qualifies for that alternative.
+Do not invent personal strengths, weaknesses, activities, employer duties or deadlines. Do not
+promise acceptance. Keep each explanation within 700 Korean characters to bound output length.
 """
 
 # Characters text extraction and models disagree on: whitespace, controls and zero-width marks.

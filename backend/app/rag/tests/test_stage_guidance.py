@@ -24,6 +24,8 @@ class StageGuidanceTests(unittest.TestCase):
         for o in outputs:
             self.assertEqual(len(o["sentences"]), 3)
             self.assertEqual(o["comparison_refs"], ["r1"])
+            self.assertNotIn("근거가 확인되지", " ".join(o["sentences"]))
+            self.assertIn("API 개발 경험", o["sentences"][1])
 
     def test_experienced_first_year_not_told_to_start_over(self):
         item = {
