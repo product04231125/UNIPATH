@@ -162,23 +162,31 @@ def throttled():
     return ProviderFailure("x", "http_429")
 
 
-def test_a_quick_429_is_retried_once_after_a_short_wait(caplog):
+def test_a_quick_429_is_retried_after_a_short_wait(caplog):
     replies, sleeps = Replies(throttled(), candidate('{"comparisons": []}')), []
     with caplog.at_level(logging.WARNING):
         assert vertex(replies, sleeps).generate("instruction", {"records": [SECRET]}) == {
             "comparisons": []
         }
     assert replies.calls == 2 and len(sleeps) == 1 and 1.0 <= sleeps[0] <= 2.0
-    assert "Vertex call throttled (http_429); retrying once" in caplog.text
+    assert "Vertex call throttled (http_429); retry 1 of 2" in caplog.text
     assert SECRET not in caplog.text
 
 
-def test_a_second_429_is_reported_without_more_retries():
+def test_a_second_quick_429_is_retried_once_more(caplog):
     replies, sleeps = Replies(throttled(), throttled(), candidate("{}")), []
+    with caplog.at_level(logging.WARNING):
+        assert vertex(replies, sleeps).generate("instruction", {}) == {}
+    assert replies.calls == 3 and len(sleeps) == 2 and 1.5 <= sleeps[1] <= 3.0
+    assert "retry 2 of 2" in caplog.text
+
+
+def test_a_third_429_is_reported_without_more_retries():
+    replies, sleeps = Replies(throttled(), throttled(), throttled(), candidate("{}")), []
     with pytest.raises(ProviderFailure) as caught:
         vertex(replies, sleeps).generate("instruction", {})
     assert caught.value.reason == "model_http_429"
-    assert replies.calls == 2 and len(sleeps) == 1
+    assert replies.calls == 3 and len(sleeps) == 2
 
 
 def test_other_failures_are_not_retried():
@@ -189,14 +197,23 @@ def test_other_failures_are_not_retried():
         assert replies.calls == 1 and sleeps == []
 
 
-def test_a_slow_429_is_not_retried(monkeypatch):
-    clock = iter([0.0, vertex_module.RETRY_WINDOW_SECONDS + 1])
-    monkeypatch.setattr(vertex_module.time, "monotonic", lambda: next(clock))
-    replies, sleeps = Replies(throttled(), candidate("{}")), []
+@pytest.mark.parametrize(
+    ("clock", "calls"),
+    [
+        # The first 429 came back too late to wait and still finish within the budget.
+        ([0.0, vertex_module.RETRY_BUDGET_SECONDS], 1),
+        # The second one did: waiting at least 1.5 s more would pass the 7 s budget.
+        ([0.0, 0.5, vertex_module.RETRY_BUDGET_SECONDS - 1.4], 2),
+    ],
+)
+def test_a_429_is_not_retried_past_the_budget(monkeypatch, clock, calls):
+    times = iter(clock)
+    monkeypatch.setattr(vertex_module.time, "monotonic", lambda: next(times))
+    replies, sleeps = Replies(*[throttled()] * calls, candidate("{}")), []
     with pytest.raises(ProviderFailure) as caught:
         vertex(replies, sleeps).generate("instruction", {})
     assert caught.value.reason == "model_http_429"
-    assert replies.calls == 1 and sleeps == []
+    assert replies.calls == calls and len(sleeps) == calls - 1
 
 
 def test_a_comparison_without_a_field_names_the_field():
