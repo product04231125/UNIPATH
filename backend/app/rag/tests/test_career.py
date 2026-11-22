@@ -150,7 +150,7 @@ class CareerTests(unittest.TestCase):
                 self.assertEqual(values[0]["status"], "insufficient_evidence")
                 self.assertEqual(values[0]["personal_evidence"], [])
                 self.assertNotIn("자격증이 기재", values[0]["explanation"])
-                self.assertIn("근거 부족으로 표시했습니다", notes[0])
+                self.assertIn("확인 방법을 안내했습니다", notes[0])
         repeated = self.analyzer().analyze(POSTING.text * 2, CONTEXT)[0]
         self.assertEqual(repeated["posting_evidence"]["excerpt"], "정보처리기사 우대")
 

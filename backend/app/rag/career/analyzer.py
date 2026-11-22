@@ -55,14 +55,33 @@ promise acceptance. Keep each explanation within 700 Korean characters to bound 
 """
 
 # Characters text extraction and models disagree on: whitespace, controls and zero-width marks.
-SPACING = re.compile(r"[\s\x00-\x1f\x7f​-‍⁠﻿]")
+SPACING = re.compile(r"[\s\x00-\x1f\x7f\u200b-\u200d\u2060\ufeff]")
 # "기타 우대사항: - 항목": a section label the model put in front of a list item.
 LABELLED = re.compile(r"\s*[^:：\n]{1,40}[:：]\s*(?:[-•·*]\s*)?(?P<item>\S.*)", re.S)
 MIN_SPACING_FREE = 4
-UNVERIFIED = (
-    "제시된 근거 문장을 선택한 기록 원문에서 확인하지 못해 근거 부족으로 표시했습니다. "
-    "기록 원문을 직접 확인해 주세요."
+# A positive comparison whose citations could not be verified keeps the model's reading of the
+# job and its next step; only the part about the user's experience leaned on unverified text.
+SECTION = re.compile(r"^\s*(직무 해석|경험 활용|다음 행동)\s*[:：]", re.M)
+UNVERIFIED_EXPERIENCE = (
+    "경험 활용: 이 조건과 연결해 인용한 기록 문장을 원문에서 확인하지 못했습니다. 관련 경험이 "
+    "있다면 기록 원문의 문장을 확인해 맡은 역할과 결과를 구체적으로 적어 보세요."
 )
+UNVERIFIED = (
+    "이 조건과 연결해 인용한 기록 문장을 원문에서 확인하지 못했습니다. 관련 경험이 있다면 "
+    "기록 원문의 문장을 확인해 맡은 역할과 결과를 구체적으로 적어 보세요."
+)
+
+
+def without_unverified_experience(explanation):
+    """Replace only the 경험 활용 section; without the labelled sections use a fixed sentence."""
+    marks = list(SECTION.finditer(explanation))
+    sections = {
+        m[1]: explanation[m.start() : marks[i + 1].start() if i + 1 < len(marks) else None].strip()
+        for i, m in enumerate(marks)
+    }
+    if "직무 해석" not in sections or "다음 행동" not in sections:
+        return UNVERIFIED
+    return "\n".join([sections["직무 해석"], UNVERIFIED_EXPERIENCE, sections["다음 행동"]])
 
 
 def bounded_text(value):
@@ -206,8 +225,8 @@ class EvidenceAnalyzer:
             )
         if downgraded:
             notes.append(
-                f"근거 문장을 기록 원문에서 확인하지 못한 조건 {downgraded}개는 근거 부족으로 "
-                "표시했습니다."
+                f"인용한 기록 문장을 원문에서 확인하지 못한 조건 {downgraded}개는 경험 연결 설명 "
+                "대신 확인 방법을 안내했습니다."
             )
         return result, notes
 
@@ -227,7 +246,8 @@ class EvidenceAnalyzer:
         status, explanation = value["status"], bounded_text(value["explanation"])
         lowered = status != "insufficient_evidence" and not citations
         if lowered:
-            status, explanation = "insufficient_evidence", UNVERIFIED
+            status = "insufficient_evidence"
+            explanation = without_unverified_experience(explanation)
         identifier = str(uuid5(NAMESPACE_URL, f"{posting_text}\n{index}\n{start}\n{quote}"))
         item = {
             "requirement_id": identifier,

@@ -84,7 +84,8 @@ def test_unverifiable_items_are_dropped_or_downgraded_one_by_one(caplog):
             assert citation["excerpt"] in RECORD_TEXT
     assert notes == [
         "공고 원문에서 위치를 확인하지 못한 조건 1개는 결과에서 뺐습니다.",
-        "근거 문장을 기록 원문에서 확인하지 못한 조건 1개는 근거 부족으로 표시했습니다.",
+        "인용한 기록 문장을 원문에서 확인하지 못한 조건 1개는 경험 연결 설명 대신 확인 방법을 "
+        "안내했습니다.",
     ]
     assert "dropped=posting_quote:1 downgraded=1 citations_removed=2" in caplog.text
     assert SECRET not in caplog.text and SECRET not in str(values)
@@ -118,3 +119,24 @@ def test_recommendation_item_shows_the_notes():
     item = result["items"][0]
     assert item["analysis_status"] == "completed" and len(item["comparisons"]) == 1
     assert "공고 원문에서 위치를 확인하지 못한 조건 1개는 결과에서 뺐습니다." in item["warnings"]
+
+
+def test_unverified_experience_section_is_replaced_but_the_analysis_stays():
+    explanation = (
+        "직무 해석: 화면 API를 설계하고 데이터 구조를 정하는 업무입니다.\n"
+        f"경험 활용: {SECRET} 경험을 그대로 활용할 수 있습니다.\n"
+        "다음 행동: 예시 API 하나를 테스트와 함께 만들어 설계 이유를 README에 남겨 보세요."
+    )
+    value = comparison("Java 숙련", evidence=[cite(SECRET)], explanation=explanation)
+    [item], _ = analyzer(value).analyze_detailed(POSTING_TEXT, CONTEXT)
+    assert item["status"] == "insufficient_evidence" and item["personal_evidence"] == []
+    lines = item["explanation"].split("\n")
+    assert lines[0] == "직무 해석: 화면 API를 설계하고 데이터 구조를 정하는 업무입니다."
+    assert lines[1].startswith("경험 활용: 이 조건과 연결해 인용한 기록 문장을 원문에서 확인하지")
+    assert lines[2].startswith("다음 행동: 예시 API 하나를")
+    assert SECRET not in item["explanation"]
+    # Without the labelled sections nothing of the unverified explanation is kept.
+    [plain], _ = analyzer(
+        comparison("Java 숙련", evidence=[cite(SECRET)], explanation=SECRET)
+    ).analyze_detailed(POSTING_TEXT, CONTEXT)
+    assert SECRET not in plain["explanation"] and "확인하지 못했습니다" in plain["explanation"]
