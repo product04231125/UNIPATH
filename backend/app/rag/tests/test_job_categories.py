@@ -99,16 +99,41 @@ def test_unsupported_sources_are_skipped_and_the_keyword_orders_postings():
     # Title match first, then body match, then the rest.
     assert [i["posting"]["source_id"] for i in result["items"]] == ["K3", "K2", "K1"]
     assert result["query"]["occupation_label"] == "소프트웨어"
-    assert result["search_notice"] is None
+    assert result["search_notice"] is None and result["category_browse_available"] is False
 
 
-def test_no_keyword_match_in_the_category_shows_the_category_with_a_notice():
+def test_no_keyword_match_never_substitutes_postings_and_offers_the_category():
     work24 = Mock(supports_occupation=True)
     work24.name = "work24"
-    work24.search.side_effect = [[], [posting("합성 개발자")]]
+    work24.search.return_value = []
     result = CareerService([work24]).recommend(replace(QUERY, keyword="없는세부어"), RECORDS)
-    assert [c.args[0].keyword for c in work24.search.call_args_list] == ["없는세부어", ""]
-    assert len(result["items"]) == 1
-    assert (
-        result["search_notice"] == "‘없는세부어’와 맞는 공고가 없어 고른 직종의 공고를 보여 줍니다."
+    # One search only: other postings are never shown in place of the detail words.
+    assert [c.args[0].keyword for c in work24.search.call_args_list] == ["없는세부어"]
+    assert result["items"] == [] and result["status"] == "no_results"
+    assert result["category_browse_available"] is True
+    assert result["search_notice"] == (
+        "고른 직종에서 ‘없는세부어’와 맞는 공고를 찾지 못했습니다. "
+        "다른 세부 검색어로 찾거나 직종 전체 공고를 볼 수 있습니다."
     )
+    # The student's choice to browse is the same request with an empty keyword.
+    work24.search.return_value = [posting("합성 개발자")]
+    browse = CareerService([work24]).recommend(QUERY, RECORDS)
+    assert len(browse["items"]) == 1
+    assert browse["category_browse_available"] is False and browse["search_notice"] is None
+
+
+def test_category_offer_counts_only_postings_left_after_scope():
+    crawler = crawling.Work24Crawler(Mock())
+    crawler.search = Mock(return_value=[posting("웹개발 양성과정 교육생 모집")])
+    result = CareerService([crawler]).recommend(replace(QUERY, keyword="웹개발"), RECORDS)
+    assert result["items"] == [] and result["excluded_occupation_count"] == 1
+    assert result["category_browse_available"] is True
+
+
+def test_failed_collection_is_not_reported_as_no_match():
+    work24 = Mock(supports_occupation=True)
+    work24.name = "work24"
+    work24.search.side_effect = crawling.ProviderFailure("down", "timeout")
+    result = CareerService([work24]).recommend(replace(QUERY, keyword="개발"), RECORDS)
+    assert result["status"] == "not_available"
+    assert result["category_browse_available"] is False and result["search_notice"] is None
