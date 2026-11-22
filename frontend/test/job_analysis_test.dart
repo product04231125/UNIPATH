@@ -319,7 +319,7 @@ void main() {
     },
   );
   testWidgets(
-    'completed displays posting and personal citations with comparison status',
+    'completed shows the multiline explanation before its citations',
     (tester) async {
       final api = AnalysisGateway()
         ..result = {
@@ -343,7 +343,7 @@ void main() {
                   'excerpt': '프로젝트 경험',
                 },
               ],
-              'explanation': '선택한 기록에서 개발 경험을 확인했습니다.',
+              'explanation': '직무 해석: 개발 경험\n다음 행동: 역할을 정리하세요.',
             },
           ],
         };
@@ -352,9 +352,15 @@ void main() {
       await mount(tester, api, p);
       await execute(tester);
       expect(find.text('분석 완료'), findsOneWidget);
-      expect(find.text('근거 있음'), findsOneWidget);
-      expect(find.text('공고 근거: 합성'), findsOneWidget);
-      expect(find.text('선택한 기록에서 개발 경험을 확인했습니다.'), findsOneWidget);
+      expect(find.text('근거 있음'), findsNothing);
+      final explanation = find.text('직무 해석: 개발 경험\n다음 행동: 역할을 정리하세요.');
+      final citation = find.text('공고 근거: 합성');
+      expect(explanation, findsOneWidget);
+      expect(citation, findsOneWidget);
+      expect(
+        tester.getTopLeft(explanation).dy,
+        lessThan(tester.getTopLeft(citation).dy),
+      );
       expect(find.text('근거: 받은 근거 없음'), findsNothing);
       expect(find.text('내 기록 근거 (버전 2): 프로젝트 경험'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());

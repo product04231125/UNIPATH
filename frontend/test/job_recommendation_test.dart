@@ -88,6 +88,9 @@ const record = AiRecordOption(
 
 class RecommendationGateway extends ApiGateway {
   final calls = <Map<String, Object?>>[];
+  int categoryCalls = 0;
+  Object? categoryFailure;
+  Completer<Map<String, dynamic>>? pendingCategories;
   Object? failure;
   Completer<Map<String, dynamic>>? pending;
   Map<String, dynamic> result = {'status': 'not_configured'};
@@ -97,6 +100,13 @@ class RecommendationGateway extends ApiGateway {
     String path, [
     Map<String, Object?>? body,
   ]) async {
+    if (method == 'GET' && path == 'me/job-categories') {
+      categoryCalls++;
+      if (categoryFailure != null) throw categoryFailure!;
+      return pendingCategories == null
+          ? categoryFixture
+          : await pendingCategories!.future;
+    }
     expect(method, 'POST');
     expect(path, 'me/job-recommendations');
     calls.add(body!);
@@ -104,6 +114,25 @@ class RecommendationGateway extends ApiGateway {
     return pending == null ? result : await pending!.future;
   }
 }
+
+const categoryFixture = {
+  'categories': [
+    {
+      'code': '02',
+      'name': '연구 및 공학기술',
+      'children': [
+        {'code': '024', 'name': '소프트웨어'},
+      ],
+    },
+    {
+      'code': '03',
+      'name': '교육',
+      'children': [
+        {'code': '031', 'name': '학교 교사'},
+      ],
+    },
+  ],
+};
 
 Future<AiConsentPreferences> permission({bool allowed = true}) async {
   final value = AiConsentPreferences(
@@ -154,9 +183,15 @@ Future<void> fill(WidgetTester tester) async {
     find.byKey(const ValueKey('recommend-keyword')),
     'Engineer',
   );
-  await tester.tap(find.byKey(const ValueKey('recommend-region')));
+  await selectOption(tester, 'recommend-region', '전국');
+}
+
+Future<void> selectOption(WidgetTester tester, String key, String label) async {
+  final field = find.byKey(ValueKey(key));
+  await tester.ensureVisible(field);
+  await tester.tap(field);
   await tester.pumpAndSettle();
-  await tester.tap(find.text('전국').last);
+  await tester.tap(find.text(label).last);
   await tester.pumpAndSettle();
 }
 
@@ -167,6 +202,97 @@ Future<void> run(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('직종 단독 검색과 세부 검색어, 상위 직종 변경을 처리한다', (tester) async {
+    final api = RecommendationGateway()
+      ..result = {
+        'status': 'completed',
+        'query': {'occupation_label': '소프트웨어'},
+        'search_notice': '세부 검색어와 일치하는 공고가 없어 직종 전체를 보여 줍니다.',
+        'sources': [
+          {
+            'source': 'saramin',
+            'status': 'skipped',
+            'reason': 'category_unsupported',
+          },
+        ],
+      };
+    final p = await permission();
+    addTearDown(p.dispose);
+    await mount(tester, api, p);
+    await selectOption(tester, 'recommend-region', '전국');
+    await run(tester);
+    expect(api.calls, isEmpty);
+    expect(find.text('직종을 선택하거나 세부 검색어를 입력하세요.'), findsOneWidget);
+
+    await selectOption(tester, 'recommend-category', '연구 및 공학기술');
+    await run(tester);
+    expect(api.calls.single['category_codes'], ['02']);
+    expect(api.calls.single['keyword'], '');
+
+    await selectOption(tester, 'recommend-subcategory-02', '소프트웨어');
+    await tester.enterText(
+      find.byKey(const ValueKey('recommend-keyword')),
+      '프론트엔드',
+    );
+    await run(tester);
+    expect(api.calls.last['category_codes'], ['024']);
+    expect(api.calls.last['keyword'], '프론트엔드');
+    expect(find.text('검색 직종 · 소프트웨어'), findsOneWidget);
+    expect(find.text('세부 검색어와 일치하는 공고가 없어 직종 전체를 보여 줍니다.'), findsOneWidget);
+    expect(find.text('사람인 · 직종 검색 미지원'), findsOneWidget);
+
+    await selectOption(tester, 'recommend-category', '교육');
+    await run(tester);
+    expect(api.calls.last['category_codes'], ['03']);
+
+    await selectOption(tester, 'recommend-category', '선택 안 함');
+    await run(tester);
+    expect(api.calls.last, isNot(contains('category_codes')));
+    expect(api.calls.last['keyword'], '프론트엔드');
+  });
+
+  testWidgets('직종 조회 실패에서 검색어 검색과 재시도를 제공한다', (tester) async {
+    final api = RecommendationGateway()
+      ..categoryFailure = const AuthFailure('synthetic');
+    final p = await permission();
+    addTearDown(p.dispose);
+    await mount(tester, api, p);
+    final retry = find.text('직종 목록을 불러오지 못했습니다. 다시 시도');
+    expect(retry, findsOneWidget);
+    await fill(tester);
+    await run(tester);
+    expect(api.calls.single['keyword'], 'Engineer');
+    expect(api.calls.single, isNot(contains('category_codes')));
+
+    api.categoryFailure = null;
+    await tester.ensureVisible(retry);
+    await tester.tap(retry);
+    await tester.pumpAndSettle();
+    expect(api.categoryCalls, 2);
+    expect(retry, findsNothing);
+    expect(find.text('Engineer'), findsOneWidget);
+    await selectOption(tester, 'recommend-category', '교육');
+  });
+
+  testWidgets('계정이 바뀌면 늦게 도착한 이전 직종 목록을 표시하지 않는다', (tester) async {
+    final old = RecommendationGateway()..pendingCategories = Completer();
+    final p = await permission();
+    addTearDown(p.dispose);
+    await mount(tester, old, p);
+    final next = RecommendationGateway();
+    await mount(tester, next, p, owner: 'next');
+    old.pendingCategories!.complete({
+      'categories': [
+        {'code': '01', 'name': '이전 응답'},
+      ],
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('recommend-category')));
+    await tester.pumpAndSettle();
+    expect(find.text('이전 응답'), findsNothing);
+    expect(find.text('교육'), findsOneWidget);
+  });
+
   testWidgets(
     'validates job count and sends only the selected academic stage',
     (tester) async {
@@ -178,7 +304,7 @@ void main() {
       await tester.enterText(keyword, 'A, B, C, D, E, F');
       await run(tester);
       expect(api.calls, isEmpty);
-      expect(find.text('직무를 쉼표로 구분해 1~5개 입력하세요.'), findsOneWidget);
+      expect(find.text('세부 검색어를 쉼표로 구분해 1~5개 입력하세요.'), findsOneWidget);
       await tester.ensureVisible(keyword);
       await tester.enterText(keyword, '프론트엔드, 백엔드, 전산실');
       await tester.ensureVisible(stage);

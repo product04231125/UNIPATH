@@ -71,12 +71,8 @@ class JobRecommendationResult extends StatelessWidget {
               : '구분 확인 필요'} · ${c.requirement}',
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
-        Text(switch (c.status) {
-          'supported' => '근거 있음',
-          'partially_supported' => '일부 근거 있음',
-          'insufficient_evidence' => '근거 부족',
-          _ => '비교 상태 확인 필요',
-        }),
+        SelectableText(c.explanation),
+        const SizedBox(height: 8),
         SelectableText('공고 근거: ${c.postingExcerpt}'),
         for (final cite in c.evidence) ...[
           SelectableText(_citationLabel(cite)),
@@ -84,7 +80,6 @@ class JobRecommendationResult extends StatelessWidget {
             const Text('자동 문자 인식 · 원본 확인'),
           SelectableText(cite.excerpt),
         ],
-        SelectableText(c.explanation),
       ],
     ),
   );
@@ -246,9 +241,17 @@ class JobRecommendationResult extends StatelessWidget {
           }),
         ),
         if (result.notice.isNotEmpty) Text(result.notice),
+        if (result.occupationLabel case final label? when label.isNotEmpty)
+          Text('검색 직종 · $label'),
+        if (result.searchNotice case final notice? when notice.isNotEmpty)
+          Text(notice),
         for (final source in result.sources) ...[
           Text(
-            '${_sourceName(source.source)} · ${source.status == 'completed' ? '검색 완료' : recommendationStateLabel(source.status)}',
+            '${_sourceName(source.source)} · ${switch ((source.status, source.reason)) {
+              ('completed', _) => '검색 완료',
+              ('skipped', 'category_unsupported') => '직종 검색 미지원',
+              _ => recommendationStateLabel(source.status),
+            }}',
           ),
           if (source.status == 'failed' && source.failureReason != null)
             Text(recommendationFailureLabel(source.failureReason!)),

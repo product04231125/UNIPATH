@@ -23,6 +23,9 @@ class PendingRecommendation extends ApiGateway {
     String path, [
     Map<String, Object?>? body,
   ]) async {
+    if (method == 'GET' && path == 'me/job-categories') {
+      return recommendation.categoryFixture;
+    }
     expect(path, 'me/job-recommendations');
     expect(body?['records'], [
       {
