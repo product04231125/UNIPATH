@@ -54,9 +54,13 @@ class JobRecommendationResult extends StatelessWidget {
     super.key,
     required this.result,
     this.selectedRecords = const [],
+    this.onBrowseCategory,
   });
   final JobRecommendationResponse result;
   final List<AiRecordOption> selectedRecords;
+
+  /// Search the same category again without detail words (shown after a 0-match search).
+  final VoidCallback? onBrowseCategory;
 
   Widget _comparison(RecommendationComparison c) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -242,9 +246,22 @@ class JobRecommendationResult extends StatelessWidget {
         ),
         if (result.notice.isNotEmpty) Text(result.notice),
         if (result.occupationLabel case final label? when label.isNotEmpty)
-          Text('검색 직종 · $label'),
+          Text(
+            result.queryKeyword?.isEmpty ?? false
+                ? '검색 직종 · $label · 세부 검색어 없음'
+                : '검색 직종 · $label',
+          ),
         if (result.searchNotice case final notice? when notice.isNotEmpty)
           Text(notice),
+        if (result.categoryBrowseAvailable && onBrowseCategory != null)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: OutlinedButton(
+              key: const ValueKey('recommend-browse-category'),
+              onPressed: onBrowseCategory,
+              child: const Text('직종 전체 보기'),
+            ),
+          ),
         for (final source in result.sources) ...[
           Text(
             '${_sourceName(source.source)} · ${switch ((source.status, source.reason)) {
