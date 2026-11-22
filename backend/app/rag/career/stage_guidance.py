@@ -36,7 +36,7 @@ def build_guidance(item, stage=None):
         return str(c.get("requirement", "공고 조건")).strip()[:120]
 
     current = (
-        f"「{label(supported[0])}」과 연결되는 이력을 지원서에 구체적으로 활용하세요."
+        f"「{label(supported[0])}」 관련 이력을 지원서에 구체적으로 활용하세요."
         if supported
         else "공고의 필수 조건부터 실제 이력과 연결하고, 처음 접하는 업무는 실습으로 확인하세요."
     )

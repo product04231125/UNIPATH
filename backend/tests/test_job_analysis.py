@@ -246,7 +246,8 @@ def test_job_analysis_keeps_verified_items_and_explains_the_rest(auth_client):
     assert second["status"] == "insufficient_evidence" and second["personal_evidence"] == []
     assert value["warnings"] == [
         "공고 원문에서 위치를 확인하지 못한 조건 1개는 결과에서 뺐습니다.",
-        "근거 문장을 기록 원문에서 확인하지 못한 조건 1개는 근거 부족으로 표시했습니다.",
+        "인용한 기록 문장을 원문에서 확인하지 못한 조건 1개는 경험 연결 설명 대신 확인 방법을 "
+        "안내했습니다.",
     ]
     assert "기록에 없는" not in result.text and "Docker" not in result.text
 
