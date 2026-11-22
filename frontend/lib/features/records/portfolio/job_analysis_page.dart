@@ -443,15 +443,11 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
                 Text(
                   '${item.priority == "required" ? "필수" : "우대"} · ${item.requirement}',
                 ),
-                Text(switch (item.status) {
-                  'supported' => '근거 있음',
-                  'partially_supported' => '일부 근거 있음',
-                  _ => '근거 부족',
-                }),
+                SelectableText(item.explanation),
+                const SizedBox(height: 8),
                 SelectableText('공고 근거: ${item.postingEvidence.excerpt}'),
                 for (final citation in item.personalEvidence)
                   SelectableText(_citationLabel(_result!, citation)),
-                SelectableText(item.explanation),
               ],
             ],
           ],

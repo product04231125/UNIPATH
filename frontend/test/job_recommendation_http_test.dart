@@ -13,6 +13,7 @@ void main() {
   test('recommendation HTTP uses authenticated owner and base64 payload; logout blocks reuse', () async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     var posts = 0;
+    var categoryGets = 0;
     server.listen((request) async {
       final text = await utf8.decoder.bind(request).join();
       request.response.headers.contentType = ContentType.json;
@@ -22,6 +23,25 @@ void main() {
         );
       } else if (request.uri.path.endsWith('/logout')) {
         request.response.statusCode = 204;
+      } else if (request.uri.path == '/api/v1/me/job-categories') {
+        expect(request.method, 'GET');
+        expect(request.headers.value('Authorization'), 'Bearer $token');
+        expect(request.headers.value('X-Unipath-Owner'), userId);
+        expect(text, isEmpty);
+        categoryGets++;
+        request.response.write(
+          jsonEncode({
+            'categories': [
+              {
+                'code': '02',
+                'name': '연구 및 공학기술',
+                'children': [
+                  {'code': '024', 'name': '소프트웨어'},
+                ],
+              },
+            ],
+          }),
+        );
       } else {
         expect(request.uri.path, '/api/v1/me/job-recommendations');
         expect(request.method, 'POST');
@@ -30,6 +50,8 @@ void main() {
         final body = jsonDecode(text) as Map;
         expect(body['external_processing_consent'], true);
         expect(body['region'], '전국');
+        expect(body['keyword'], '');
+        expect(body['category_codes'], ['024']);
         expect(body.containsKey('region_codes'), false);
         expect(
           utf8.decode(
@@ -38,7 +60,13 @@ void main() {
           'synthetic',
         );
         posts++;
-        request.response.write(jsonEncode({'status': 'not_configured'}));
+        request.response.write(
+          jsonEncode({
+            'status': 'completed',
+            'query': {'occupation_label': '소프트웨어'},
+            'search_notice': '직종 전체를 보여 줍니다.',
+          }),
+        );
       }
       await request.response.close();
     });
@@ -52,9 +80,12 @@ void main() {
         password: 'synthetic test password',
       );
       final api = JobRecommendationApi(auth.forOwner(userId));
+      final categories = await api.loadCategories();
+      expect(categories.single.name, '연구 및 공학기술');
       final request = JobRecommendationRequest(
-        keyword: 'Engineer',
+        keyword: '',
         region: '전국',
+        categoryCodes: [categories.single.children.single.code],
         consent: true,
         documents: [
           RecommendationDocument(
@@ -63,9 +94,13 @@ void main() {
           ),
         ],
       );
-      expect((await api.recommend(request)).status, 'not_configured');
+      final result = await api.recommend(request);
+      expect(result.occupationLabel, '소프트웨어');
+      expect(result.searchNotice, '직종 전체를 보여 줍니다.');
       await auth.logout();
       await expectLater(api.recommend(request), throwsA(isA<AuthFailure>()));
+      await expectLater(api.loadCategories(), throwsA(isA<AuthFailure>()));
+      expect(categoryGets, 1);
       expect(posts, 1);
     } finally {
       auth.close();

@@ -71,6 +71,10 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
   final _keyword = TextEditingController();
   var _form = GlobalKey<FormState>();
   String? _region, _error, _requestId;
+  Future<List<JobCategory>>? _categories;
+  String _categoryCode = '', _subcategoryCode = '';
+  String get _selectedCode =>
+      _subcategoryCode.isEmpty ? _categoryCode : _subcategoryCode;
   RecommendationAcademicStage? _academicStage;
   final _documents = <RecommendationDocument>[];
   final _materialIds = <String>{};
@@ -79,6 +83,23 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
   JobRecommendationResponse? _result;
   List<AiRecordOption> _resultRecords = const [];
   List<String> _fields = const [];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateCategoryAccess();
+  }
+
+  void _updateCategoryAccess() {
+    final api = widget.api;
+    if (GuestPreviewScope.isActive(context) || api == null) {
+      _categories = null;
+      _categoryCode = '';
+      _subcategoryCode = '';
+    } else {
+      _categories ??= JobRecommendationApi(api.api).loadCategories();
+    }
+  }
 
   @override
   void didUpdateWidget(covariant JobRecommendationPage oldWidget) {
@@ -90,6 +111,10 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
       _form = GlobalKey<FormState>();
       _busy = false;
       _region = null;
+      _categories = null;
+      _categoryCode = '';
+      _subcategoryCode = '';
+      _updateCategoryAccess();
       _academicStage = null;
       _keyword.clear();
       _documents.clear();
@@ -209,6 +234,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
       readingRecords = false;
       final request = JobRecommendationRequest(
         keyword: _keyword.text.trim(),
+        categoryCodes: _selectedCode.isEmpty ? const [] : [_selectedCode],
         region: _region!,
         academicStage: _academicStage,
         documents: documents,
@@ -289,8 +315,11 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
 
   String? _validateKeyword(String? value) {
     final keyword = value?.trim() ?? '';
-    if (keyword.isEmpty || keyword.runes.length > 80) {
-      return '직무를 1~80자로 입력하세요.';
+    if (keyword.isEmpty) {
+      return _selectedCode.isEmpty ? '직종을 선택하거나 세부 검색어를 입력하세요.' : null;
+    }
+    if (keyword.runes.length > 80) {
+      return '세부 검색어를 80자 이내로 입력하세요.';
     }
     final terms = keyword
         .split(RegExp(r'[,，\n]+'))
@@ -302,8 +331,101 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
     if (terms.contains('벡엔드') && terms.contains('백엔드')) {
       terms.remove('벡엔드');
     }
-    return terms.isEmpty || terms.length > 5 ? '직무를 쉼표로 구분해 1~5개 입력하세요.' : null;
+    return terms.isEmpty || terms.length > 5
+        ? '세부 검색어를 쉼표로 구분해 1~5개 입력하세요.'
+        : null;
   }
+
+  Widget _categoryField({
+    required String label,
+    required Key key,
+    required String value,
+    required String emptyLabel,
+    required List<JobCategory> options,
+    required ValueChanged<String> onChanged,
+    String? error,
+  }) => FieldLabel(
+    label: label,
+    child: Semantics(
+      label: label,
+      child: DropdownButtonFormField<String>(
+        key: key,
+        initialValue: value,
+        isExpanded: true,
+        itemHeight: null,
+        decoration: InputDecoration(errorText: error, errorMaxLines: 2),
+        items: [
+          DropdownMenuItem(value: '', child: Text(emptyLabel)),
+          for (final option in options)
+            DropdownMenuItem(value: option.code, child: Text(option.name)),
+        ],
+        onChanged: _busy || options.isEmpty
+            ? null
+            : (code) => onChanged(code ?? ''),
+      ),
+    ),
+  );
+
+  Widget _categoryFields(Future<List<JobCategory>> future) =>
+      FutureBuilder<List<JobCategory>>(
+        key: ObjectKey(future),
+        future: future,
+        builder: (context, snapshot) {
+          final categories = snapshot.data ?? const <JobCategory>[];
+          final subcategories =
+              categories
+                  .where((category) => category.code == _categoryCode)
+                  .firstOrNull
+                  ?.children ??
+              const <JobCategory>[];
+          final loading = snapshot.connectionState != ConnectionState.done;
+          final error = _hasField('category_codes') ? '선택한 직종을 확인하세요.' : null;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _categoryField(
+                label: '직종',
+                key: const ValueKey('recommend-category'),
+                value: _categoryCode,
+                emptyLabel: loading ? '직종 목록 불러오는 중…' : '선택 안 함',
+                options: categories,
+                error: _subcategoryCode.isEmpty ? error : null,
+                onChanged: (value) => setState(() {
+                  _categoryCode = value;
+                  _subcategoryCode = '';
+                }),
+              ),
+              if (subcategories.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _categoryField(
+                  label: '세부 직종 (선택)',
+                  key: ValueKey('recommend-subcategory-$_categoryCode'),
+                  value: _subcategoryCode,
+                  emptyLabel: '선택한 직종 전체',
+                  options: subcategories,
+                  error: _subcategoryCode.isEmpty ? null : error,
+                  onChanged: (value) =>
+                      setState(() => _subcategoryCode = value),
+                ),
+              ],
+              if (!loading && categories.isEmpty)
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() {
+                            _categories = JobRecommendationApi(widget.api!.api)
+                                .loadCategories();
+                          }),
+                    child: const Text('직종 목록을 불러오지 못했습니다. 다시 시도'),
+                  ),
+                ),
+              const SizedBox(height: 16),
+            ],
+          );
+        },
+      );
 
   @override
   Widget build(BuildContext context) => FeaturePage(
@@ -326,17 +448,20 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (_categories case final future?) _categoryFields(future),
               FieldLabel(
-                label: '찾는 직무',
+                label: '세부 검색어',
                 child: TextFormField(
                   controller: _keyword,
                   enabled: !_busy,
                   key: const ValueKey('recommend-keyword'),
                   decoration: InputDecoration(
                     hintText: '예: 프론트엔드, 백엔드, 전산실',
-                    helperText: '쉼표로 구분해 최대 5개 직무를 입력할 수 있습니다.',
+                    helperText: _selectedCode.isEmpty
+                        ? '직종을 선택하거나 검색어를 쉼표로 구분해 최대 5개 입력하세요.'
+                        : '선택한 직종 전체를 검색하려면 비워 두세요.',
                     helperMaxLines: 2,
-                    errorText: _hasField('keyword') ? '직무 입력을 확인하세요.' : null,
+                    errorText: _hasField('keyword') ? '세부 검색어를 확인하세요.' : null,
                   ),
                   validator: _validateKeyword,
                 ),

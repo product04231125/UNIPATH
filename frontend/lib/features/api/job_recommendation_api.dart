@@ -20,18 +20,21 @@ class JobRecommendationRequest {
   const JobRecommendationRequest({
     required this.keyword,
     required this.region,
+    this.categoryCodes = const [],
     this.documents = const [],
     this.records = const [],
     this.academicStage,
     required this.consent,
   });
   final String keyword, region;
+  final List<String> categoryCodes;
   final List<RecommendationDocument> documents;
   final List<PersonalEvidenceSelection> records;
   final bool consent;
   final RecommendationAcademicStage? academicStage;
   Map<String, Object?> toJson() => {
     'keyword': keyword,
+    if (categoryCodes.isNotEmpty) 'category_codes': categoryCodes,
     'region': region,
     'documents': documents.map((d) => d.toJson()).toList(),
     'records': records.map((r) => r.toJson()).toList(),
@@ -50,6 +53,16 @@ List<String> _strings(Object? value) =>
 
 List<String> _guidanceSentences(Object? value) =>
     value == null ? const [] : _strings(_map(value)['sentences']);
+
+class JobCategory {
+  JobCategory.fromJson(Map<String, dynamic> json)
+    : code = json['code'] as String,
+      name = json['name'] as String,
+      children = _rows(json['children'], JobCategory.fromJson);
+
+  final String code, name;
+  final List<JobCategory> children;
+}
 
 class RecommendationCitation {
   RecommendationCitation.fromJson(Map<String, dynamic> json)
@@ -156,15 +169,19 @@ class RecommendationSource {
   RecommendationSource.fromJson(Map<String, dynamic> json)
     : source = json['source'] as String,
       status = json['status'] as String,
-      failureReason = json['failure_reason'] as String?;
+      failureReason = json['failure_reason'] as String?,
+      reason = json['reason'] as String?;
   final String source, status;
-  final String? failureReason;
+  final String? failureReason, reason;
 }
 
 class JobRecommendationResponse {
   JobRecommendationResponse.fromJson(Map<String, dynamic> json)
     : status = json['status'] as String,
       notice = json['notice'] as String? ?? '',
+      occupationLabel =
+          _map(json['query'] ?? const {})['occupation_label'] as String?,
+      searchNotice = json['search_notice'] as String?,
       missingFields = _strings(json['missing_fields']),
       sources = _rows(json['sources'], RecommendationSource.fromJson),
       items = _rows(json['items'], RecommendationItem.fromJson),
@@ -180,6 +197,7 @@ class JobRecommendationResponse {
         json['document_locations'] ?? {},
       ).map((k, v) => MapEntry(k, DocumentCitationLocation.fromJson(_map(v))));
   final String status, notice;
+  final String? occupationLabel, searchNotice;
   final List<String> missingFields, warnings;
   final List<RecommendationSource> sources;
   final List<RecommendationItem> items;
@@ -191,6 +209,12 @@ class JobRecommendationResponse {
 class JobRecommendationApi {
   const JobRecommendationApi(this.api);
   final ApiGateway api;
+
+  Future<List<JobCategory>> loadCategories() async {
+    final payload = await api.request('GET', 'me/job-categories');
+    return _rows(payload?['categories'], JobCategory.fromJson);
+  }
+
   Future<JobRecommendationResponse> recommend(
     JobRecommendationRequest request,
   ) async => JobRecommendationResponse.fromJson(
