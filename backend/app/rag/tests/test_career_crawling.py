@@ -1,12 +1,15 @@
 """Synthetic public HTML fixtures; no network or real applicant information."""
 
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from threading import Barrier, Event
 from unittest.mock import Mock, patch
 
 from app.rag.career import crawling
 from app.rag.career.api import configured_sources
 from app.rag.career.contracts import ProviderFailure, SearchQuery
+from app.rag.career.job_scope import title_matches
 from app.rag.career.service import CareerService
 
 ID = "K120612611180019"
@@ -71,11 +74,65 @@ class CrawlingTests(unittest.TestCase):
             source.search(QUERY)
         self.assertEqual(caught.exception.reason, "crawl_disallowed")
         source.transport.request.assert_called_once()
-        with patch.object(crawling, "_FETCH_LOCK") as lock:
-            lock.acquire.return_value = False
+        with patch.object(crawling, "_FETCH_SLOTS") as slots:
+            slots.acquire.return_value = False
             with self.assertRaises(ProviderFailure) as caught:
                 source.search(QUERY)
             self.assertEqual(caught.exception.reason, "crawl_busy")
+
+    def test_concurrent_users_share_one_collection_per_keyword(self):
+        source = crawling.Work24Crawler(Mock())
+        posting = crawling.parse_detail(DETAIL, ID)
+        entered, release = Event(), Event()
+
+        def slow(keyword):
+            entered.set()
+            release.wait(5)
+            return [posting]
+
+        with patch.object(source, "collect", side_effect=slow) as collect:
+            with ThreadPoolExecutor(max_workers=3) as pool:
+                first = pool.submit(source.search, QUERY)
+                entered.wait(5)
+                others = [pool.submit(source.search, QUERY) for _ in range(2)]
+                release.set()
+                results = [first.result(5)] + [f.result(5) for f in others]
+        collect.assert_called_once_with("Python")
+        self.assertTrue(all(len(rows) == 1 for rows in results))
+
+    def test_different_keywords_are_collected_at_the_same_time(self):
+        source = crawling.Work24Crawler(Mock())
+        posting = crawling.parse_detail(DETAIL, ID)
+        both = Barrier(2, timeout=5)
+
+        def together(keyword):
+            both.wait()  # Raises BrokenBarrierError if collections were serialized.
+            return [posting]
+
+        with patch.object(source, "collect", side_effect=together):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                futures = [
+                    pool.submit(source.search, replace(QUERY, keyword=keyword))
+                    for keyword in ("Python", "Java")
+                ]
+                self.assertTrue(all(len(f.result(10)) == 1 for f in futures))
+
+    def test_a_third_keyword_waits_for_a_slot_then_reports_busy(self):
+        source = crawling.Work24Crawler(Mock())
+        crawling._FETCH_SLOTS.acquire()
+        crawling._FETCH_SLOTS.acquire()
+        try:
+            with (
+                patch.object(crawling, "FETCH_WAIT_SECONDS", 0.05),
+                patch.object(source, "collect") as collect,
+            ):
+                with self.assertRaises(ProviderFailure) as caught:
+                    source.search(QUERY)
+            self.assertEqual(caught.exception.reason, "crawl_busy")
+            collect.assert_not_called()
+        finally:
+            crawling._FETCH_SLOTS.release()
+            crawling._FETCH_SLOTS.release()
 
     def test_switch_preserves_api_and_adds_hybrid(self):
         with patch.dict("os.environ", {"CAREER_SOURCE_MODE": "api"}):
@@ -244,6 +301,19 @@ class CrawlingTests(unittest.TestCase):
         self.assertEqual(result["closest_candidates"], [])
         self.assertEqual(result["excluded_occupation_count"], 1)
         analyzer.analyze.assert_not_called()
+
+    def test_teaching_or_training_titles_are_not_the_occupation(self):
+        for title in (
+            "[재택가능 / 프론트엔드] 국비과정 전문강사 채용",
+            "[국비지원] 웹개발 양성과정 교육생 모집",
+            "백엔드 개발 튜터 모집",
+        ):
+            with self.subTest(title=title):
+                self.assertFalse(title_matches(title, ["프론트엔드", "백엔드"]))
+        self.assertTrue(title_matches("프론트엔드 개발자 (React)", ["프론트엔드"]))
+        # Searching for teaching jobs keeps them.
+        self.assertTrue(title_matches("프론트엔드 강사 채용 (국비과정)", ["프론트엔드 강사"]))
+        self.assertTrue(title_matches("IT 강사 채용", ["강사"]))
 
     def test_title_is_primary_not_generic_occupation(self):
         from app.rag.career.job_scope import title_matches
