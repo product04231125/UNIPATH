@@ -13,8 +13,6 @@ def title_matches(title, keywords):
         "프론트엔드": (
             "프론트엔드",
             "프론트앤드",
-            "프런트엔드",
-            "프런트앤드",
             "frontend",
             "front-end",
             "웹개발",
@@ -26,7 +24,6 @@ def title_matches(title, keywords):
         "백엔드": (
             "백엔드",
             "벡엔드",
-            "백앤드",
             "backend",
             "back-end",
             "서버개발",
