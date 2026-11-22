@@ -2,6 +2,10 @@
 
 import re
 
+# A title that teaches or trains the occupation ("프론트엔드 국비과정 전문강사", "웹개발 양성과정
+# 교육생 모집") is a different job, unless the student searched for that kind of job.
+TEACHING = ("강사", "튜터", "교육생", "수강생", "훈련생", "국비과정", "국비지원", "양성과정")
+
 
 def title_matches(title, keywords):
     identity = re.sub(r"\s+", "", title.casefold())
@@ -61,6 +65,10 @@ def title_matches(title, keywords):
                     "약국",
                     "자료입력",
                 )
+            ):
+                continue
+            if any(word in identity for word in TEACHING) and not any(
+                word in term for word in TEACHING
             ):
                 continue
             return True

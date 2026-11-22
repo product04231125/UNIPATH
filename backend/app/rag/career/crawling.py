@@ -5,7 +5,7 @@ from collections import Counter, OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from html.parser import HTMLParser
-from threading import Lock
+from threading import BoundedSemaphore, Lock
 from time import monotonic
 from urllib.parse import parse_qs, urlencode, urlsplit
 from urllib.robotparser import RobotFileParser
@@ -20,7 +20,12 @@ DETAIL = "/wk/a/b/1500/empDetailAuthView.do"
 AGENT = "UNIPATH-JobCollector/1.0"
 _CACHE = OrderedDict()
 _LOCK = Lock()
-_FETCH_LOCK = Lock()
+CACHE_SECONDS = 300
+# Concurrent users: one collection per keyword (others wait, then read the cache) and at most
+# two different keywords collected at once, which keeps the load on Work24 bounded.
+_KEY_LOCKS = {}
+_FETCH_SLOTS = BoundedSemaphore(2)
+FETCH_WAIT_SECONDS = 20
 _FIELDS = {
     "경력",
     "학력",
@@ -171,6 +176,14 @@ def parse_detail(raw, identifier):
     )
 
 
+def _cached(key):
+    with _LOCK:
+        cached = _CACHE.get(key)
+    if cached and monotonic() - cached[0] < CACHE_SECONDS:
+        return cached[1]
+    return None
+
+
 class CrawlBatch(list):
     """Per-search diagnostics travel with cached rows, never on shared source state."""
 
@@ -188,27 +201,9 @@ class Work24Crawler:
 
     def search(self, query):
         key = query.keyword.strip().casefold()
-        with _LOCK:
-            cached = _CACHE.get(key)
-        if cached and monotonic() - cached[0] < 300:
-            rows = cached[1]
-        else:
-            if not _FETCH_LOCK.acquire(timeout=2):
-                raise ProviderFailure("Collector busy; retry shortly", "crawl_busy")
-            try:
-                with _LOCK:
-                    cached = _CACHE.get(key)
-                if cached and monotonic() - cached[0] < 300:
-                    rows = cached[1]
-                else:
-                    rows = self.collect(query.keyword.strip())
-                    with _LOCK:
-                        _CACHE[key] = (monotonic(), rows)
-                        _CACHE.move_to_end(key)
-                        while len(_CACHE) > 32:
-                            _CACHE.popitem(last=False)
-            finally:
-                _FETCH_LOCK.release()
+        rows = _cached(key)
+        if rows is None:
+            rows = self.collect_once(key, query.keyword.strip())
         region = query.region_label.strip()
         alias = {"서울": "서울", "경기": "경기", "부산": "부산"}.get(region, region)
         now = datetime.now(UTC)
@@ -220,6 +215,37 @@ class Work24Crawler:
             and (query.nationwide or alias in p.location)
         ][: query.limit]
         return CrawlBatch(filtered, detail_failures=getattr(rows, "detail_failures", {}))
+
+    def collect_once(self, key, keyword):
+        deadline = monotonic() + FETCH_WAIT_SECONDS
+        with _LOCK:
+            key_lock = _KEY_LOCKS.setdefault(key, Lock())
+        if not key_lock.acquire(timeout=FETCH_WAIT_SECONDS):
+            raise ProviderFailure("Collector busy; retry shortly", "crawl_busy")
+        try:
+            # Another request may have collected the same keyword while this one waited.
+            rows = _cached(key)
+            if rows is not None:
+                return rows
+            if not _FETCH_SLOTS.acquire(timeout=max(0.0, deadline - monotonic())):
+                raise ProviderFailure("Collector busy; retry shortly", "crawl_busy")
+            try:
+                rows = self.collect(keyword)
+            finally:
+                _FETCH_SLOTS.release()
+            with _LOCK:
+                _CACHE[key] = (monotonic(), rows)
+                _CACHE.move_to_end(key)
+                while len(_CACHE) > 32:
+                    _CACHE.popitem(last=False)
+            return rows
+        finally:
+            key_lock.release()
+            with _LOCK:
+                if len(_KEY_LOCKS) > 64:
+                    for name, lock in list(_KEY_LOCKS.items()):
+                        if not lock.locked():
+                            del _KEY_LOCKS[name]
 
     def collect(self, keyword):
         def fetch(url):
