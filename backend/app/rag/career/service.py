@@ -137,24 +137,26 @@ class CareerService:
                 logger.warning("posting source %s failed: %s", source.name, failure_reason(error))
 
         collect(searches)
-        search_notice = None
-        if (
-            codes
-            and keywords
-            and not postings
-            and any(item["status"] in {"completed", "partial"} for item in sources)
-        ):
-            # Nothing in the category matched the detail keyword: show the category itself.
-            collect([(source, replace(query, keyword="", limit=10)) for source in self.sources])
-            search_notice = (
-                f"‘{query.keyword.strip()}’와 맞는 공고가 없어 고른 직종의 공고를 보여 줍니다."
-            )
         collected_count = len(postings)
         excluded_count = 0
         if crawl_enabled:
             scoped = [p for p in postings if occupation_matches(p, keywords, codes)]
             excluded_count = len(postings) - len(scoped)
             postings = scoped
+        # No posting in the category matched the detail words. Never substitute other postings:
+        # the student decides whether to browse the whole category (same request, empty keyword).
+        category_browse_available = bool(
+            codes
+            and keywords
+            and not postings
+            and any(item["status"] in {"completed", "partial"} for item in sources)
+        )
+        search_notice = (
+            f"고른 직종에서 ‘{query.keyword.strip()}’와 맞는 공고를 찾지 못했습니다. "
+            "다른 세부 검색어로 찾거나 직종 전체 공고를 볼 수 있습니다."
+            if category_browse_available
+            else None
+        )
         # A source returns only public posting data; never sees selected personal records.
         if rank_candidates:
             terms = set(
@@ -236,6 +238,7 @@ class CareerService:
                 "occupation_label": label(codes) if codes else None,
             },
             "search_notice": search_notice,
+            "category_browse_available": category_browse_available,
             "sources": sources,
             "items": items,
             "search_keywords": keywords,
