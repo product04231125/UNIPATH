@@ -97,9 +97,12 @@ class RecommendationPosting {
       company = json['company'] as String,
       url = json['url'] as String,
       location = json['location'] as String,
-      closing =
-          (json['expires_at'] ?? json['closing_label'] ?? '확인 필요') as String;
-  final String source, id, title, company, url, location, closing;
+      expiresAt = DateTime.tryParse(json['expires_at'] as String? ?? ''),
+      closingLabel = json['closing_label'] as String? ?? '확인 필요';
+  final String source, id, title, company, url, location, closingLabel;
+
+  /// Parsed `expires_at`; UTC when the server sent an offset, otherwise wall-clock time.
+  final DateTime? expiresAt;
   String get key => '$source/$id';
 }
 

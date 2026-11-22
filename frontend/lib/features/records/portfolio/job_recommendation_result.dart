@@ -4,6 +4,7 @@ import '../../../shared/widgets/external_link_button.dart';
 import '../../../shared/widgets/surface_card.dart';
 import '../../api/job_recommendation_api.dart';
 import '../../assistant/ai_record_catalog.dart';
+import '../../planning/planning_dates.dart';
 
 Widget _surface({required Widget child}) => SurfaceCard(
   child: Material(type: MaterialType.transparency, child: child),
@@ -48,6 +49,24 @@ String _sourceName(String value) => switch (value) {
   'jobkorea' => '잡코리아',
   _ => value,
 };
+
+/// Posting deadline as a Korean date, e.g. `마감 11월 30일(일)`.
+///
+/// Korean postings close in Korea time, so an `expires_at` with an offset is shown in KST
+/// whatever the device time zone. A deadline at the end of the day (23:59) or with no time
+/// shows the date only; the year appears only when it differs from [now]. Without a date the
+/// posting's own closing text (`채용시까지`, `확인 필요`) is shown as is.
+String postingDeadlineLabel(RecommendationPosting posting, {DateTime? now}) {
+  final value = posting.expiresAt;
+  if (value == null) return '마감 ${posting.closingLabel}';
+  final at = value.isUtc ? value.add(const Duration(hours: 9)) : value;
+  final today = (now ?? DateTime.now()).toUtc().add(const Duration(hours: 9));
+  final year = at.year == today.year ? '' : '${at.year}년 ';
+  final dateOnly =
+      (at.hour == 23 && at.minute == 59) || (at.hour == 0 && at.minute == 0);
+  final time = dateOnly ? '' : ' ${planningTime(at)}';
+  return '마감 $year${at.month}월 ${at.day}일(${weekdayLabel(at.weekday)})$time';
+}
 
 class JobRecommendationResult extends StatelessWidget {
   const JobRecommendationResult({
@@ -158,7 +177,9 @@ class JobRecommendationResult extends StatelessWidget {
               ),
             Text(posting.title, style: theme.textTheme.titleMedium),
             Text('${posting.company} · ${posting.location}'),
-            Text('${_sourceName(posting.source)} · 마감 ${posting.closing}'),
+            Text(
+              '${_sourceName(posting.source)} · ${postingDeadlineLabel(posting)}',
+            ),
             if (notice != null && notice.isNotEmpty) Text(notice),
             if (evidence != null) Text('미확인 필수조건 ${evidence.requiredToCheck}개'),
             if (item != null && type != 'analysis_unavailable')
