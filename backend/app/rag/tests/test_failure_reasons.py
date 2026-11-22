@@ -211,6 +211,26 @@ def test_a_comparison_without_a_field_names_the_field():
             }
         ]
     }
-    with pytest.raises(KeyError) as caught:
+    with pytest.raises(AnalysisRejected) as caught:
         EvidenceAnalyzer(model).analyze(POSTING.text, CONTEXT)
-    assert failure_reason(caught.value) == "output_missing_personal_evidence"
+    # personal_evidence may be left out; explanation may not, and the code names it.
+    assert failure_reason(caught.value) == "output_missing_explanation"
+
+
+@pytest.mark.parametrize("status", ["insufficient_evidence", "supported"])
+def test_left_out_personal_evidence_reads_as_none(status):
+    model = Mock()
+    model.generate.return_value = {
+        "comparisons": [
+            {
+                "priority": "required",
+                "requirement": "요건",
+                "posting_quote": POSTING.text[:20],
+                "status": status,
+                "explanation": "설명",
+            }
+        ]
+    }
+    values = EvidenceAnalyzer(model).analyze(POSTING.text, CONTEXT)
+    assert values[0]["status"] == "insufficient_evidence"
+    assert values[0]["personal_evidence"] == []

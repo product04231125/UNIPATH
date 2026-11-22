@@ -1,4 +1,5 @@
 from copy import deepcopy
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -8,6 +9,7 @@ from test_auth import auth_db as auth_db
 from test_auth import authorization, register
 from test_personal import post
 
+from app.rag.career.analyzer import EvidenceAnalyzer
 from app.schemas.job_analysis import JobAnalysisRequest
 
 ROOT = "/api/v1/me"
@@ -194,6 +196,94 @@ def test_job_analysis_accepts_more_than_twenty_saved_records(auth_client):
     assert result.status_code == 200, result.text
     assert result.json()["status"] == "completed"
     assert len(analyzer.calls[0].records) == 25
+
+
+@pytest.mark.integration
+def test_job_analysis_keeps_verified_items_and_explains_the_rest(auth_client):
+    c = auth_client
+    owner, _, body = setup(c)
+
+    def generate(instruction, payload):
+        sent = payload["records"][0]
+        cite = {"kind": sent["kind"], "record_id": sent["record_id"], "version": sent["version"]}
+        return {
+            "comparisons": [
+                {
+                    "priority": "required",
+                    "requirement": "Python 개발 경험",
+                    "posting_quote": "필수: Python  개발\n경험",
+                    "status": "supported",
+                    "personal_evidence": [{**cite, "excerpt": "Python으로API구현"}],
+                    "explanation": "기록에 구현 경험이 있습니다.",
+                },
+                {
+                    "priority": "preferred",
+                    "requirement": "FastAPI 경험",
+                    "posting_quote": "FastAPI 경험",
+                    "status": "supported",
+                    "personal_evidence": [{**cite, "excerpt": "기록에 없는 Django 경력"}],
+                    "explanation": "기록에 없는 Django 경력이 있습니다.",
+                },
+                {
+                    "priority": "preferred",
+                    "requirement": "Docker",
+                    "posting_quote": "공고에 없는 Docker 경험",
+                    "status": "insufficient_evidence",
+                    "personal_evidence": [],
+                    "explanation": "확인되지 않습니다.",
+                },
+            ]
+        }
+
+    c.app.state.job_analyzer = EvidenceAnalyzer(Mock(generate=Mock(side_effect=generate)))
+    result = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert result.status_code == 200, result.text
+    value = result.json()
+    assert value["status"] == "completed"
+    first, second = value["comparisons"]
+    assert first["posting_evidence"]["excerpt"] == "필수: Python 개발 경험"
+    assert first["personal_evidence"][0]["excerpt"] == "Python으로 API 구현"
+    assert second["status"] == "insufficient_evidence" and second["personal_evidence"] == []
+    assert value["warnings"] == [
+        "공고 원문에서 위치를 확인하지 못한 조건 1개는 결과에서 뺐습니다.",
+        "근거 문장을 기록 원문에서 확인하지 못한 조건 1개는 근거 부족으로 표시했습니다.",
+    ]
+    assert "기록에 없는" not in result.text and "Docker" not in result.text
+
+
+@pytest.mark.integration
+def test_job_analysis_says_when_only_some_records_were_compared(auth_client):
+    c = auth_client
+    owner, record, body = setup(c)
+    long = [
+        post(
+            c,
+            owner,
+            "experience-records",
+            {
+                "title": f"합성 긴 기록 {index}",
+                "experience_type": "프로젝트",
+                "role": "개발",
+                "result": "합성 결과 " * 1300,
+            },
+        )
+        for index in range(12)
+    ]
+    body["records"] = [selection(record)] + [selection(item) for item in long]
+    seen = []
+
+    def generate(instruction, payload):
+        seen.append(len(payload["records"]))
+        return {"comparisons": []}
+
+    c.app.state.job_analyzer = EvidenceAnalyzer(Mock(generate=Mock(side_effect=generate)))
+    result = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert result.status_code == 200, result.text
+    value = result.json()
+    assert value["status"] == "insufficient_evidence" and seen[0] < 13
+    assert value["warnings"] == [
+        f"기록이 많아 이 공고와 관련이 높은 기록 {seen[0]}개만 비교했습니다(전체 13개)."
+    ]
 
 
 @pytest.mark.integration

@@ -6,7 +6,8 @@ from dataclasses import asdict, replace
 from datetime import UTC, datetime
 from time import monotonic
 
-from .contracts import NotConfigured, Posting, failure_reason, fit_records, selected_records
+from .analyzer import analyze_with_notes
+from .contracts import NotConfigured, Posting, failure_reason, selected_records
 from .crawling import CrawlBatch
 from .job_scope import occupation_matches
 from .search_terms import search_terms
@@ -151,14 +152,11 @@ class CareerService:
                     if before_analysis is not None:
                         before_analysis()
                     attempted += 1
-                    compared = fit_records(records, posting.text)
-                    if len(compared) < len(records):
-                        notes.append(
-                            f"기록이 많아 이 공고와 관련이 높은 기록 {len(compared)}개만 "
-                            f"비교했습니다(전체 {len(records)}개)."
-                        )
                     try:
-                        values = self.analyzer.analyze(posting.text, {"records": compared})
+                        # Notes say which records were compared and what could not be verified.
+                        values, notes = analyze_with_notes(
+                            self.analyzer, posting.text, {"records": records}
+                        )
                         item.update(
                             comparisons=values,
                             analysis_status="completed" if values else "insufficient_evidence",

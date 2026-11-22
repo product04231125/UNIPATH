@@ -294,6 +294,7 @@ class JobAnalysisResponse implements JobAnalysisPayload {
     this.official = false,
     this.comparisons = const [],
     this.missingFields = const [],
+    this.warnings = const [],
   });
   final String analysisId;
   final String status;
@@ -301,6 +302,7 @@ class JobAnalysisResponse implements JobAnalysisPayload {
   final bool official;
   final List<JobRequirementComparison> comparisons;
   final List<String> missingFields;
+  final List<String> warnings;
   factory JobAnalysisResponse.fromJson(Map<String, dynamic> value) =>
       JobAnalysisResponse(
         analysisId: value['analysis_id'] as String,
@@ -338,6 +340,11 @@ class JobAnalysisResponse implements JobAnalysisPayload {
                   (v) => _choice(v, ["records", "external_processing_consent"]),
                 ),
               ),
+        warnings: value['warnings'] == null
+            ? const []
+            : List.unmodifiable(
+                (value['warnings'] as List).map((v) => v as String),
+              ),
       );
   @override
   Map<String, Object?> toJson() => {
@@ -347,5 +354,6 @@ class JobAnalysisResponse implements JobAnalysisPayload {
     'official': official,
     'comparisons': comparisons.map((v) => v.toJson()).toList(),
     'missing_fields': missingFields.map((v) => v).toList(),
+    'warnings': warnings.map((v) => v).toList(),
   };
 }

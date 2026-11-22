@@ -28,6 +28,7 @@ void main() {
         'official': false,
         'comparisons': <Object?>[],
         'missing_fields': <String>[],
+        'warnings': <String>[],
       };
       final result = JobAnalysisResponse.fromJson(response);
       expect(result.toJson(), response);

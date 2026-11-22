@@ -66,6 +66,8 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 | `failed` | `analysis_failed` | 공급자 출력·처리 오류 차단 |
 
 상태 응답은 HTTP 200이며 `official=false`다. `completed`에만 최대 50개 `comparisons`가 있다.
+`warnings`(최대 10개)는 결과에 붙는 한국어 안내다. 기록 본문이 6만 자 예산을 넘어 공고와 관련이 높은 기록만
+비교했을 때, 원문에서 확인하지 못한 요건을 빼거나 근거 부족으로 바꿨을 때 문장이 들어간다. 상태와 관계없이 올 수 있다.
 
 유효한 본인 기록을 선택했지만 Gemini가 설정되지 않은 응답은 다음과 같다.
 
@@ -76,7 +78,8 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
   "reason": "analyzer_not_configured",
   "official": false,
   "comparisons": [],
-  "missing_fields": []
+  "missing_fields": [],
+  "warnings": []
 }
 ```
 
@@ -84,10 +87,30 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 `posting_evidence`, `status`, `personal_evidence`, `explanation`이다.
 공고 근거의 `start`, `end`, `excerpt`는 공백 제거한 입력의 Python 문자열 `[start:end]`와
 일치해야 한다. UTF-8 바이트나 JavaScript UTF-16 오프셋이 아니다. 같은 문구가 공고에 반복되면
-아직 인용하지 않은 위치에 연결하고, 공고에 없는 문구는 전체 결과를 차단한다.
+아직 인용하지 않은 위치에 연결한다.
 비교 상태는 `supported`, `partially_supported`, `insufficient_evidence`이며 앞의 두 값은
 개인 인용이 필수다. 개인 인용의 `kind`, `record_id`, `version`, `excerpt`가 선택 자료와
-일치해야 한다. 없는 인용·다른 버전·중복 요건 ID는 전체 결과를 차단한다.
+일치해야 한다. API 경계(`validate_comparisons`)는 어떤 분석기의 결과든 이를 다시 검사해, 공고에 없는 문구·없는
+인용·다른 버전·중복 요건 ID가 하나라도 있으면 전체 결과를 차단한다.
+
+기본 분석기(Gemini, `EvidenceAnalyzer`)는 모델 출력을 요건 단위로 검사해 그 결과만 넘긴다(2026-11-22).
+- 모델 인용을 원문에서 찾을 때 공백·줄바꿈·제어 문자 차이는 무시한다(공백을 뺀 글자가 4자 이상일 때).
+  공고 인용 앞에 붙은 머리말(`기타 우대사항: - 웹 개발 경험`)은 떼고 찾는다. 찾은 구간은 원문 글자 그대로
+  돌려주므로 `excerpt`는 항상 원문의 부분 문자열이다.
+- 공고에서 찾지 못한 요건, 분류 값이 틀리거나 필드가 빠진 요건은 뺀다. 선택 기록과 맞지 않는 개인 인용은 지운다.
+  `personal_evidence`가 빠진 요건은 인용 없음으로 읽는다.
+- 인용이 모두 지워진 `supported`·`partially_supported`는 `insufficient_evidence`로 바꾸고 설명을 고정 문구
+  (근거 문장을 기록 원문에서 확인하지 못함)로 바꾼다. 모델 설명은 내보내지 않는다.
+- 남는 요건이 하나도 없을 때만 실패하며, 원인 코드는 가장 많이 나온 요건 실패 원인이다. 뺀 요건·바꾼 요건 수는
+  `warnings`에, 원인 코드와 수는 로그 `posting analysis adjusted: dropped=<코드>:<수> downgraded=<수>
+  citations_removed=<수>`에 남는다.
+
+스테이징 공고 추천(2026-11-20 저녁, 파일 2회)에서 공고 4건이 `personal_citation`·`output_missing_personal_evidence`로
+실패했다. 합성 PDF 포트폴리오·합성 기록 6건과 고용24 실공고로 격리 재현한 원인은 두 가지였다. 일부 PDF 글꼴은
+공백을 제어 문자(`\x01`)로 추출해 모델이 정상 공백으로 고쳐 인용했고, 한 줄로 이어진 공고 목록에서는 모델이
+머리말을 붙여 인용했다. 업로드 문서의 제어 문자는 이제 추출 단계에서 공백으로 바꾼다. 수정 전에는 공고 2건 중
+2건이 실패했다. 수정 후에는 공고 6건을 3회(18건) 분석해 인용 실패가 0건이었다. 시간 초과(`model_timeout`)는
+1건 있었다. 근거 부족으로 바뀐 요건은 2건이었는데, 둘 다 PDF 2단 배치의 서로 다른 열을 이어 붙인 인용이다.
 구조·출처 검증만으로 의미적 정확성을 보장하지 않으며 실제 자격 확인·합격 예측이 아니다.
 
 로그인 누락 401, 타인/삭제 자료 404, 버전 충돌 409, 검증 실패 422, 제한 429는 공통 오류다.
@@ -118,11 +141,11 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 
 | 코드 | 뜻 |
 |---|---|
-| `posting_quote` | 모델이 인용한 공고 문장이 원문에 그대로 없음 |
-| `personal_citation` | 모델이 인용한 개인 기록이 선택한 기록과 맞지 않음 |
+| `posting_quote` | 모델이 인용한 공고 문장이 공백 차이·머리말을 무시해도 원문에 없음. 공고 비교에서는 그 요건만 빼고, 모든 요건이 이 이유로 빠질 때 실패 |
+| `personal_citation` | 모델이 인용한 개인 기록이 선택한 기록과 맞지 않음. 공고 비교에서는 그 인용만 지우므로 실패 원인이 되지 않고, 맞춤 안내·자료 요약에서 남는다 |
 | `school_citation` | 맞춤 안내에서 검색되지 않은 학교 근거를 인용함 |
 | `classification` | 필수/우대, 근거 상태 값이 허용 범위 밖 |
-| `output_missing_<필드>` | 모델 응답에 코드가 읽는 필드가 없음(예: `output_missing_personal_evidence`). 필드 이름은 소문자 스키마 키일 때만 남긴다 |
+| `output_missing_<필드>` | 모델 응답에 코드가 읽는 필드가 없음(예: `output_missing_explanation`, 공고 비교의 `personal_evidence`는 빠져도 인용 없음으로 읽음). 필드 이름은 소문자 스키마 키일 때만 남긴다 |
 | `output_shape` | 그 밖에 모델 응답의 필드·형식이 계약과 다름 |
 | `invalid_posting` | 공고 본문이 비었거나 너무 김 |
 | `model_http_<상태>` | Vertex가 HTTP 오류를 돌려줌(예: `model_http_429` 호출 한도·용량 초과, `model_http_404` 모델·리전 없음) |
@@ -134,8 +157,8 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 | `http_<상태>`, `timeout`, `network` | 공고 수집처 호출 실패 |
 | `unexpected_<예외>` | 분류되지 않은 예외 |
 
-화면은 코드를 쉬운 문장과 함께 보여 준다(`recommendationFailureLabel`). 모델 검증 실패는 다시 시도하면 대개
-통과한다.
+화면은 코드를 쉬운 문장과 함께 보여 준다(`recommendationFailureLabel`). 요건 일부를 빼거나 근거 부족으로 바꾼
+공고는 실패가 아니며 `items[].warnings`에 안내가 붙는다.
 
 Vertex가 429를 5초 안에 돌려주면 어댑터(`VertexJSON`)가 1~2초 쉬고 한 번만 다시 호출한다. 다시 호출할 때는
 로그에 `Vertex call throttled (http_429); retrying once`가 남는다. 두 번째도 429이면

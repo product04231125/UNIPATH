@@ -61921,6 +61921,16 @@
             "type": "array",
             "maxItems": 2,
             "title": "Missing Fields"
+          },
+          "warnings": {
+            "items": {
+              "type": "string",
+              "maxLength": 2000,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Warnings"
           }
         },
         "additionalProperties": false,
