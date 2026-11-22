@@ -12,7 +12,7 @@ from urllib.robotparser import RobotFileParser
 from zoneinfo import ZoneInfo
 
 from .contracts import Posting, ProviderFailure, failure_reason
-from .job_scope import title_matches
+from .job_scope import scope_matches
 
 BASE = "https://www.work24.go.kr"
 LIST = "/wk/a/b/1200/retriveDtlEmpSrchList.do"
@@ -89,7 +89,7 @@ class Tree(HTMLParser):
         self.stack[-1].children.append(data)
 
 
-def detail_links(raw, keyword=None, *, native_only=True):
+def detail_links(raw, keyword=None, *, native_only=True, codes=()):
     root = Tree(raw).root
     links = []
     for anchor in root.nodes("a"):
@@ -101,7 +101,9 @@ def detail_links(raw, keyword=None, *, native_only=True):
             or (native_only and params.get("infoTypeCd") != ["VALIDATION"])
         ):
             continue
-        if keyword is not None and not title_matches(anchor.clean(), [keyword]):
+        if (keyword is not None or codes) and not scope_matches(
+            anchor.clean(), [keyword] if keyword else [], codes
+        ):
             continue
         identifier = params.get("wantedAuthNo", [""])[0]
         if re.fullmatch(r"[A-Z0-9]{8,30}", identifier) and identifier not in links:
@@ -195,15 +197,17 @@ class CrawlBatch(list):
 class Work24Crawler:
     name = "work24"
     collection_method = "crawl"
+    supports_occupation = True
 
     def __init__(self, transport):
         self.transport = transport
 
     def search(self, query):
-        key = query.keyword.strip().casefold()
+        codes = query.occupation_codes
+        key = query.keyword.strip().casefold() + ("|" + ",".join(codes) if codes else "")
         rows = _cached(key)
         if rows is None:
-            rows = self.collect_once(key, query.keyword.strip())
+            rows = self.collect_once(key, query.keyword.strip(), codes)
         region = query.region_label.strip()
         alias = {"서울": "서울", "경기": "경기", "부산": "부산"}.get(region, region)
         now = datetime.now(UTC)
@@ -216,7 +220,7 @@ class Work24Crawler:
         ][: query.limit]
         return CrawlBatch(filtered, detail_failures=getattr(rows, "detail_failures", {}))
 
-    def collect_once(self, key, keyword):
+    def collect_once(self, key, keyword, codes=()):
         deadline = monotonic() + FETCH_WAIT_SECONDS
         with _LOCK:
             key_lock = _KEY_LOCKS.setdefault(key, Lock())
@@ -230,7 +234,7 @@ class Work24Crawler:
             if not _FETCH_SLOTS.acquire(timeout=max(0.0, deadline - monotonic())):
                 raise ProviderFailure("Collector busy; retry shortly", "crawl_busy")
             try:
-                rows = self.collect(keyword)
+                rows = self.collect(keyword, codes) if codes else self.collect(keyword)
             finally:
                 _FETCH_SLOTS.release()
             with _LOCK:
@@ -247,7 +251,7 @@ class Work24Crawler:
                         if not lock.locked():
                             del _KEY_LOCKS[name]
 
-    def collect(self, keyword):
+    def collect(self, keyword, codes=()):
         def fetch(url):
             return self.transport.request(url, headers={"User-Agent": AGENT})
 
@@ -258,24 +262,17 @@ class Work24Crawler:
             raise ProviderFailure("Public collection disallowed", "crawl_disallowed")
         identifiers = []
         for page in range(1, 4):
-            page_url = (
-                BASE
-                + LIST
-                + "?"
-                + urlencode(
-                    {
-                        "srcKeyword": keyword,
-                        "siteClcd": "WORK",
-                        "keywordWantedTitle": "Y",
-                        "currentPageNo": page,
-                        "pageIndex": page,
-                        "recordCountPerPage": 10,
-                    }
-                )
-            )
+            params = {"srcKeyword": keyword, "siteClcd": "WORK"}
+            if codes:
+                # Work24 filters by its own occupation codes; the keyword may then match the body.
+                params["occupation"] = ",".join(codes)
+            else:
+                params["keywordWantedTitle"] = "Y"
+            params.update(currentPageNo=page, pageIndex=page, recordCountPerPage=10)
+            page_url = BASE + LIST + "?" + urlencode(params)
             raw = fetch(page_url)
             all_links = detail_links(raw, native_only=False)
-            found = detail_links(raw, keyword)
+            found = detail_links(raw, keyword or None, codes=codes)
             fresh = [identifier for identifier in found if identifier not in identifiers]
             identifiers.extend(fresh)
             if len(identifiers) >= 10 or not all_links:

@@ -5,7 +5,7 @@ import os
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Request
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.api.auth import CurrentIdentity, Database
 from app.core.auth_errors import AuthError, conflict
@@ -19,6 +19,7 @@ from app.services import auth, gemini
 from app.services.personalization.context import assemble
 from app.services.personalization.redaction import redact_context
 
+from . import categories
 from .contracts import SearchQuery
 from .crawling import Work24Crawler
 from .documents import prepare_documents
@@ -38,6 +39,9 @@ class Document(BaseModel):
     content_base64: str = Field(min_length=4, max_length=11_184_812)
 
 
+OccupationCode = Annotated[str, Field(pattern=r"^[0-9]{2}[0-9A-Z]?$")]
+
+
 class RecommendationRequest(PersonalizationRequest):
     # Every saved record may be sent; each comparison bounds the text that reaches the model.
     records: list[PersonalEvidenceSelection] = Field(
@@ -45,11 +49,26 @@ class RecommendationRequest(PersonalizationRequest):
     )
     academic_stage: Literal["year1", "year2", "year3", "year4", "graduate"] | None = None
     documents: list[Document] = Field(default_factory=list, max_length=5)
-    keyword: str = Field(min_length=1, max_length=80)
+    # Detail search words; optional once a category (Work24 occupation codes) is chosen.
+    keyword: str = Field(default="", max_length=80)
+    category_codes: list[OccupationCode] = Field(default_factory=list, max_length=10)
     region: str = Field(min_length=1, max_length=100)
     region_codes: dict[Literal["work24", "saramin"], RegionCode] = Field(default_factory=dict)
     limit: int = Field(default=3, ge=1, le=3)
     external_processing_consent: bool = Field(default=False, strict=True)
+
+    @model_validator(mode="after")
+    def keyword_or_category(self):
+        categories.validate_codes(self.category_codes)
+        if not self.keyword.strip() and not self.category_codes:
+            raise ValueError("직무 대분류를 고르거나 세부 검색어를 입력해 주세요.")
+        return self
+
+
+@router.get("/job-categories")
+def job_categories(identity: CurrentIdentity):
+    """Work24's 1차·2차 occupation tree: the categories a student picks before detail words."""
+    return categories.table()
 
 
 @router.post("/job-recommendations")
@@ -75,6 +94,7 @@ def recommendations(
             nationwide=payload.region.strip() == "전국",
             region_codes=payload.region_codes,
             limit=payload.limit,
+            occupation_codes=tuple(payload.category_codes),
         )
         if sum(len(doc.content_base64) for doc in payload.documents) > 11_184_812:
             raise ValueError("선택한 파일의 합계는 8MiB 이하여야 합니다.")

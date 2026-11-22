@@ -58,13 +58,20 @@ class SearchQuery:
     nationwide: bool = False
     region_codes: dict[str, str] = field(default_factory=dict)
     limit: int = 10
+    # Work24 occupation codes (categories.py). With a category the detail keyword is optional.
+    occupation_codes: tuple[str, ...] = ()
 
     def __post_init__(self):
-        if not isinstance(self.keyword, str) or not 1 <= len(self.keyword.strip()) <= 80:
-            raise ValueError("Select a job keyword")
+        from .categories import validate_codes
         from .search_terms import search_terms
 
-        search_terms(self.keyword)
+        validate_codes(self.occupation_codes)
+        if not isinstance(self.keyword, str) or len(self.keyword.strip()) > 80:
+            raise ValueError("Select a job keyword")
+        if self.keyword.strip():
+            search_terms(self.keyword)
+        elif not self.occupation_codes:
+            raise ValueError("Select a job keyword or category")
         if not isinstance(self.region_label, str) or not self.region_label.strip():
             raise ValueError("Select a region explicitly")
         if (

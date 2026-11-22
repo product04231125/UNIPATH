@@ -75,5 +75,17 @@ def title_matches(title, keywords):
     return False
 
 
-def occupation_matches(posting, keywords):
-    return title_matches(posting.title, keywords)
+def scope_matches(title, keywords, codes=()):
+    """With a chosen Work24 category the category itself scopes postings, not the title words.
+
+    Teaching or training titles stay out unless the student chose an education category (03).
+    """
+    if not codes:
+        return title_matches(title, keywords)
+    identity = re.sub(r"\s+", "", title.casefold())
+    teaching = any(word in identity for word in TEACHING)
+    return not teaching or any(code.startswith("03") for code in codes)
+
+
+def occupation_matches(posting, keywords, codes=()):
+    return scope_matches(posting.title, keywords, codes)

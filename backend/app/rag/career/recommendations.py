@@ -40,7 +40,11 @@ def recommend(query, records, sources, analyzer, *, before_analysis=None, academ
     relevant_items = [
         i
         for i in result["items"]
-        if occupation_matches(Posting(**i["posting"]), result["search_keywords"])
+        if occupation_matches(
+            Posting(**i["posting"]),
+            result["search_keywords"],
+            tuple(result["query"]["occupation_codes"]),
+        )
     ]
     fallback = None
     if not matches:
