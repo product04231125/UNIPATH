@@ -1,3 +1,4 @@
+import base64
 from copy import deepcopy
 from unittest.mock import Mock
 from uuid import uuid4
@@ -249,6 +250,69 @@ def test_job_analysis_keeps_verified_items_and_explains_the_rest(auth_client):
         "근거 문장을 기록 원문에서 확인하지 못한 조건 1개는 근거 부족으로 표시했습니다.",
     ]
     assert "기록에 없는" not in result.text and "Docker" not in result.text
+
+
+def document(text, name="합성 포트폴리오.txt"):
+    return {"filename": name, "content_base64": base64.b64encode(text.encode()).decode()}
+
+
+@pytest.mark.integration
+def test_job_analysis_compares_selected_materials_and_reports_their_source(auth_client):
+    c = auth_client
+    owner, _, body = setup(c)
+    body["documents"] = [document("FastAPI로 합성 예약 API를 만들고 테스트를 작성했다.")]
+    sent = []
+
+    def generate(instruction, payload):
+        sent.append(payload["records"])
+        chunk = next(r for r in payload["records"] if "합성 예약 API" in r["text"])
+        cite = {"kind": chunk["kind"], "record_id": chunk["record_id"], "version": chunk["version"]}
+        return {
+            "comparisons": [
+                {
+                    "priority": "preferred",
+                    "requirement": "FastAPI 경험",
+                    "posting_quote": "FastAPI 경험",
+                    "status": "supported",
+                    "personal_evidence": [{**cite, "excerpt": "FastAPI로 합성 예약 API를 만들고"}],
+                    "explanation": "직무 해석: API 개발\n경험 활용: 예약 API\n다음 행동: 정리",
+                }
+            ]
+        }
+
+    c.app.state.job_analyzer = EvidenceAnalyzer(Mock(generate=Mock(side_effect=generate)))
+    result = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert result.status_code == 200, result.text
+    value = result.json()
+    assert value["status"] == "completed"
+    # The saved record and the selected material both reached the model.
+    assert len(sent[0]) == 2
+    [source] = value["document_sources"]
+    assert source["filename"] == "합성 포트폴리오.txt" and source["ocr"] is False
+    assert value["comparisons"][0]["personal_evidence"][0]["record_id"] == source["record_id"]
+
+
+@pytest.mark.integration
+def test_selected_materials_alone_are_enough_and_wait_for_consent(auth_client):
+    c = auth_client
+    owner, _, body = setup(c)
+    body["records"] = []
+    # Not valid base64: extraction would reject it, so a consent answer proves nothing was read.
+    body["documents"] = [{"filename": "합성.txt", "content_base64": "@@@@"}]
+    body["external_processing_consent"] = False
+    c.app.state.job_analyzer = EvidenceAnalyzer(Mock())
+    result = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert result.status_code == 200, result.text
+    assert result.json()["missing_fields"] == ["external_processing_consent"]
+    body["external_processing_consent"] = True
+    assert c.post(ROOT + "/job-analyses", headers=owner, json=body).status_code == 422
+    body["documents"] = [document("Python 합성 프로젝트를 만들었다.")]
+    model = Mock(generate=Mock(return_value={"comparisons": []}))
+    c.app.state.job_analyzer = EvidenceAnalyzer(model)
+    result = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert result.status_code == 200, result.text
+    assert result.json()["status"] == "insufficient_evidence"
+    assert len(model.generate.call_args.args[1]["records"]) == 1
 
 
 @pytest.mark.integration

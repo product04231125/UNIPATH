@@ -4,6 +4,7 @@ import 'package:university_path_frontend/features/assistant/ai_record_catalog.da
 import 'dart:async';
 
 import 'package:university_path_frontend/features/api/job_analysis_api.dart';
+import 'package:university_path_frontend/features/api/academic_guidance_models.dart';
 import 'package:university_path_frontend/features/api/job_analysis_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,7 +48,11 @@ class Gateway implements ApiGateway {
   }
 }
 
-Widget host(StudentApi api) => MaterialApp(
+Widget host(
+  StudentApi api, {
+  Future<List<AssistantMaterial>> Function()? loadMaterials,
+  Future<List<GuidanceDocument>> Function(List<String> ids)? loadDocuments,
+}) => MaterialApp(
   home: PersonalRepositoryScope(
     records: (kind) => Records(kind),
     portfolio: () => PortfolioWorkspaceRepository(),
@@ -55,6 +60,8 @@ Widget host(StudentApi api) => MaterialApp(
       body: JobAnalysisPage(
         api: api,
         consent: consent,
+        loadMaterials: loadMaterials,
+        loadDocuments: loadDocuments,
         loadRecords: () async => [
           const AiRecordOption(
             kind: 'activity',
@@ -169,6 +176,82 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('selected 내 자료 are sent and their citations are labelled', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await consent.load();
+    await consent.setAllowed(AiConsentFeature.jobAnalysis, true);
+    final gateway = Gateway();
+    final requested = <List<String>>[];
+    await tester.pumpWidget(
+      host(
+        StudentApi(gateway, ownerId: id),
+        loadMaterials: () async => const [
+          AssistantMaterial(id: 'm1', title: '합성 포트폴리오', type: '포트폴리오'),
+        ],
+        loadDocuments: (ids) async {
+          requested.add(ids);
+          return const [
+            GuidanceDocument(filename: '합성.txt', contentBase64: 'Zm9v'),
+          ];
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    await prepare(tester);
+    final box = find.byKey(const ValueKey('job-analysis-material-m1'));
+    await tester.ensureVisible(box);
+    await tester.tap(box);
+    await tester.pump();
+    await run(tester);
+    expect(requested, [
+      ['m1'],
+    ]);
+    expect(gateway.bodies.single['documents'], [
+      {'filename': '합성.txt', 'content_base64': 'Zm9v'},
+    ]);
+    const doc = '20000000-0000-4000-8000-000000000002';
+    gateway.pending.single.complete({
+      'analysis_id': id,
+      'status': 'completed',
+      'reason': 'compared_with_personal_evidence',
+      'official': false,
+      'missing_fields': [],
+      'warnings': [],
+      'document_sources': [
+        {
+          'record_id': doc,
+          'filename': '합성.txt',
+          'location': '본문',
+          'ocr': false,
+        },
+      ],
+      'comparisons': [
+        {
+          'requirement_id': id,
+          'priority': 'required',
+          'requirement': '요건',
+          'status': 'supported',
+          'posting_evidence': {'start': 0, 'end': 2, 'excerpt': '공고'},
+          'personal_evidence': [
+            {
+              'kind': 'experience',
+              'record_id': doc,
+              'version': 1,
+              'excerpt': '합성 근거',
+            },
+          ],
+          'explanation': '직무 해석: 합성',
+        },
+      ],
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('내 자료 근거 (합성.txt · 본문): 합성 근거'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('analysis notes are shown with the result', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -217,6 +300,8 @@ void main() {
         'records': [
           {'kind': 'activity', 'record_id': id, 'expected_version': 3},
         ],
+        // Nothing from 내 자료 unless the student selects it.
+        'documents': [],
       });
       expect(
         tester

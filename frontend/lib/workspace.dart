@@ -440,7 +440,13 @@ class _WorkspaceState extends State<Workspace> {
           repository: _materialRepository,
           onChanged: () => unawaited(_assistantConversation.refreshMaterials()),
         ),
-        7 => JobAnalysisPage(api: _personalApi, consent: _aiConsent),
+        7 => JobAnalysisPage(
+          api: _personalApi,
+          consent: _aiConsent,
+          loadMaterials: () => loadAssistantMaterials(_materialRepository),
+          loadDocuments: (ids) =>
+              loadGuidanceDocuments(_materialRepository, ids),
+        ),
         _ when index == settingsPage - 1 => SettingsPage(
           repository: _planningRepository,
           chatPreferences: widget.windowHost.supportsDetached

@@ -75,6 +75,7 @@ void main() {
         'records': [
           {'kind': 'experience', 'record_id': 'record', 'expected_version': 3},
         ],
+        'documents': [],
       });
     },
   );

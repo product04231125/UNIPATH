@@ -11,6 +11,8 @@ MODELS = [
     personal.PersonalizationRequest,
     personal.PersonalEvidence,
     personal.PersonalizationContext,
+    jobs.AnalysisDocument,
+    jobs.DocumentSource,
     jobs.JobAnalysisRequest,
     jobs.PostingEvidence,
     jobs.PersonalEvidenceCitation,

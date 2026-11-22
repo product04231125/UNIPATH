@@ -61874,6 +61874,14 @@
             "type": "boolean",
             "title": "External Processing Consent",
             "default": false
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/AnalysisDocument"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Documents"
           }
         },
         "additionalProperties": false,
@@ -61931,6 +61939,14 @@
             "type": "array",
             "maxItems": 10,
             "title": "Warnings"
+          },
+          "document_sources": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentSource"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Document Sources"
           }
         },
         "additionalProperties": false,
@@ -62146,7 +62162,7 @@
               "$ref": "#/components/schemas/PersonalEvidence"
             },
             "type": "array",
-            "maxItems": 200,
+            "maxItems": 220,
             "title": "Records"
           },
           "official": {
@@ -67978,6 +67994,65 @@
           "region"
         ],
         "title": "RecommendationRequest"
+      },
+      "AnalysisDocument": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Filename"
+          },
+          "content_base64": {
+            "type": "string",
+            "maxLength": 11184812,
+            "minLength": 4,
+            "title": "Content Base64"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "filename",
+          "content_base64"
+        ],
+        "title": "AnalysisDocument",
+        "description": "A file or description the student picked from 내 자료 for this one request."
+      },
+      "DocumentSource": {
+        "properties": {
+          "record_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Record Id"
+          },
+          "filename": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Filename"
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Location"
+          },
+          "ocr": {
+            "type": "boolean",
+            "title": "Ocr"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "record_id",
+          "filename",
+          "location",
+          "ocr"
+        ],
+        "title": "DocumentSource",
+        "description": "Where a request-scoped document record came from, for showing its citations."
       }
     },
     "securitySchemes": {

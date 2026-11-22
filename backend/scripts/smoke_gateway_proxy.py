@@ -133,8 +133,12 @@ def verify_chain(base):
     )
     assert status == 413 and "X-Synthetic-Body-Bytes" not in headers
     common_size_error(headers, body)
-    # Selected files travel as base64 (8 MiB raw is about 10.7 MiB) on two routes only.
-    for path in ["/api/v1/me/job-recommendations", "/api/v1/me/personalized-guidance"]:
+    # Selected files travel as base64 (8 MiB raw is about 10.7 MiB) on three routes only.
+    for path in [
+        "/api/v1/me/job-analyses",
+        "/api/v1/me/job-recommendations",
+        "/api/v1/me/personalized-guidance",
+    ]:
         status, headers, _, expected_size = request(base, path, 11 * 1024 * 1024)
         assert status == 401 and int(headers["X-Synthetic-Body-Bytes"]) == expected_size
         status, headers, body, _ = request(base, path, 13 * 1024 * 1024, headers_only=True)

@@ -17,11 +17,29 @@ from app.schemas.personalization import (
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
 
 
+class AnalysisDocument(StrictModel):
+    """A file or description the student picked from 내 자료 for this one request."""
+
+    filename: str = Field(min_length=1, max_length=200)
+    content_base64: str = Field(min_length=4, max_length=11_184_812)
+
+
+class DocumentSource(StrictModel):
+    """Where a request-scoped document record came from, for showing its citations."""
+
+    record_id: UUID
+    filename: str = Field(min_length=1, max_length=200)
+    location: str = Field(min_length=1, max_length=40)
+    ocr: bool
+
+
 class JobAnalysisRequest(PersonalizationRequest):
     # Every saved record may be sent; the analyzer bounds the text that reaches the model.
     records: list[PersonalEvidenceSelection] = Field(
         default_factory=list, max_length=MAX_ANALYSIS_RECORDS
     )
+    # Up to 5 files (8 MiB in total) chosen by the student; never stored on the server.
+    documents: list[AnalysisDocument] = Field(default_factory=list, max_length=5)
     posting_text: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20000)
     ]
@@ -95,8 +113,10 @@ class JobAnalysisResponse(StrictModel):
     missing_fields: list[Literal["records", "external_processing_consent"]] = Field(
         default_factory=list, max_length=2
     )
-    # Korean notes: records left out over the text budget, unverifiable items dropped/downgraded.
+    # Korean notes: records left out over the text budget, unverifiable items dropped/downgraded,
+    # and pages of selected documents without extractable text or read by OCR.
     warnings: list[Text] = Field(default_factory=list, max_length=10)
+    document_sources: list[DocumentSource] = Field(default_factory=list, max_length=20)
 
     @model_validator(mode="after")
     def completed_evidence(self):

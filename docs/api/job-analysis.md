@@ -36,6 +36,15 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 거부한다. 공고·문맥·결과를 저장하지 않으며 UUID `analysis_id`는 요청 식별자다.
 사용자별 15분당 30회로 제한한다. `X-Unipath-Owner` 사전조건을 지원한다.
 
+`documents`(최대 5개, 합계 8MiB, 2026-11-22)는 학생이 앱의 **내 자료**(기기에만 보관하는 설명·PDF)에서 이번
+요청에 고른 파일이다. 각 항목은 `filename`과 파일 바이트의 `content_base64`다. 공고 추천·맞춤 안내와 같은 추출·OCR·
+개인정보 가림을 거쳐 요청 범위의 기록(`kind=experience`, 새 UUID, `version=1`)으로 저장 기록 뒤에 붙는다(최대
+20조각). 파일과 추출 텍스트는 저장하지 않는다. 추출·OCR은 외부 전송 동의와 분석기 설정을 확인한 뒤에만 한다.
+저장 기록이 없어도 고른 자료만으로 분석할 수 있다. 응답의 `document_sources`는 그 UUID마다 `filename`, `location`
+(`3쪽`, `본문` 등), `ocr`을 알려 주므로 화면이 인용을 "내 자료: 파일명 · 쪽"으로 표시한다. 텍스트가 없는 쪽이나 OCR
+쪽 안내는 `warnings` 앞쪽에 들어간다. 파일 형식·용량·판독 오류는 422, OCR 서버 문제는 503이다. 이 경로는 공고 추천과
+같이 프록시 본문 12m, 응답 대기 180초다.
+
 ## 외부 전송
 
 [D6 결정](../../backend/app/rag/TEAM_DECISIONS.md)에 따라 다음 조건을 지킨다.
@@ -130,7 +139,7 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 파일은 동의가 있을 때만 서버에서 추출·OCR하고 원본을 보관하지 않는다. 계약·응답 예시는
 [`backend/app/rag/career/DOCUMENT_RECOMMENDATIONS.md`](../../backend/app/rag/career/DOCUMENT_RECOMMENDATIONS.md),
 서버 설정은 [`SERVER_HANDOFF.md`](../../backend/app/rag/career/SERVER_HANDOFF.md)를 따른다. 이 경로와
-`/me/personalized-guidance`만 프록시 본문 12m, 응답 대기 180초다(스테이징·운영 게이트웨이, 앱 프록시, 윈도우 시연본 모두 같다).
+`/me/personalized-guidance`, `/me/job-analyses`만 프록시 본문 12m, 응답 대기 180초다(스테이징·운영 게이트웨이, 앱 프록시, 윈도우 시연본 모두 같다).
 
 ### 실패 원인 코드
 

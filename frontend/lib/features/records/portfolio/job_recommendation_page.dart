@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
@@ -12,7 +14,9 @@ import '../../auth/auth_api.dart';
 import '../../auth/guest_preview_scope.dart';
 import '../../settings/ai_consent_preferences.dart';
 import '../../settings/ai_consent_section.dart';
+import '../../api/academic_guidance_models.dart';
 import 'job_recommendation_result.dart';
+import 'material_selection.dart';
 
 const recommendationMaxBytes = 8 * 1024 * 1024;
 Widget _surface({required Widget child}) => SurfaceCard(
@@ -45,6 +49,8 @@ class JobRecommendationPage extends StatefulWidget {
     this.onBack,
     this.onBusyChanged,
     this.purposeSelector,
+    this.loadMaterials,
+    this.loadDocuments,
   });
   final StudentApi? api;
   final AiConsentPreferences? consent;
@@ -53,6 +59,10 @@ class JobRecommendationPage extends StatefulWidget {
   final VoidCallback? onBack;
   final Widget? purposeSelector;
   final ValueChanged<bool>? onBusyChanged;
+  // 내 자료 on this device; only the ones the student selects are sent.
+  final Future<List<AssistantMaterial>> Function()? loadMaterials;
+  final Future<List<GuidanceDocument>> Function(List<String> ids)?
+  loadDocuments;
   @override
   State<JobRecommendationPage> createState() => _JobRecommendationPageState();
 }
@@ -63,6 +73,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
   String? _region, _error, _requestId;
   RecommendationAcademicStage? _academicStage;
   final _documents = <RecommendationDocument>[];
+  final _materialIds = <String>{};
   bool _busy = false;
   int _revision = 0;
   JobRecommendationResponse? _result;
@@ -82,6 +93,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
       _academicStage = null;
       _keyword.clear();
       _documents.clear();
+      _materialIds.clear();
       _result = null;
       _resultRecords = const [];
       _error = null;
@@ -176,8 +188,22 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
           GuestPreviewScope.isActive(context)) {
         return;
       }
-      if (_documents.isEmpty && records.isEmpty) {
-        setState(() => _error = '기기 파일을 첨부하거나 활동·경험·자격·성과 기록을 등록해 주세요.');
+      final materials = _materialIds.isEmpty || widget.loadDocuments == null
+          ? const <GuidanceDocument>[]
+          : await widget.loadDocuments!(_materialIds.toList());
+      if (!mounted || revision != _revision) return;
+      final documents = [
+        ..._documents,
+        for (final m in materials)
+          RecommendationDocument(m.filename, base64Decode(m.contentBase64)),
+      ];
+      if (documents.length > 5 ||
+          documents.fold(0, (n, d) => n + d.bytes.length) > 8 * 1024 * 1024) {
+        setState(() => _error = '기기 파일과 내 자료는 합계 5개·8MiB 이내로 골라 주세요.');
+        return;
+      }
+      if (documents.isEmpty && records.isEmpty) {
+        setState(() => _error = '기기 파일이나 내 자료를 고르거나 활동·경험·자격·성과 기록을 등록해 주세요.');
         return;
       }
       readingRecords = false;
@@ -185,7 +211,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
         keyword: _keyword.text.trim(),
         region: _region!,
         academicStage: _academicStage,
-        documents: List.of(_documents),
+        documents: documents,
         records: [
           for (final record in records)
             PersonalEvidenceSelection(
@@ -239,6 +265,9 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
           _requestId = e.requestId;
         });
       }
+    } on StateError catch (e) {
+      // 내 자료 changed on this device or the selection is over 5 files / 8 MiB.
+      if (mounted && revision == _revision) setState(() => _error = e.message);
     } catch (_) {
       if (mounted && revision == _revision) {
         setState(
@@ -425,6 +454,21 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
                 ),
               ),
             if (_hasField('documents')) const Text('선택 파일의 형식과 분량을 확인하세요.'),
+            if (widget.loadMaterials != null &&
+                widget.api != null &&
+                widget.consent != null) ...[
+              const SizedBox(height: 12),
+              MaterialSelection(
+                keyPrefix: 'job-recommendation',
+                load: widget.loadMaterials!,
+                selected: _materialIds,
+                enabled: !_busy,
+                onChanged: (id, selected) => setState(
+                  () =>
+                      selected ? _materialIds.add(id) : _materialIds.remove(id),
+                ),
+              ),
+            ],
           ],
         ),
       ),

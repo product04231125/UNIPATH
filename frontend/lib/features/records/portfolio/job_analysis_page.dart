@@ -7,6 +7,7 @@ import '../../../shared/widgets/feature_page.dart';
 import '../../../shared/widgets/field_label.dart';
 import '../../../shared/widgets/surface_card.dart';
 import '../../api/student_api.dart';
+import '../../api/academic_guidance_models.dart';
 import '../../api/guidance_api.dart';
 import '../../api/job_analysis_models.dart';
 import '../../assistant/ai_record_catalog.dart';
@@ -15,6 +16,7 @@ import '../../auth/guest_preview_scope.dart';
 import '../../settings/ai_consent_preferences.dart';
 import '../../settings/ai_consent_section.dart';
 import 'job_recommendation_page.dart';
+import 'material_selection.dart';
 
 const jobPostingFileMaxBytes = 10 * 1024 * 1024;
 
@@ -76,11 +78,17 @@ class JobAnalysisPage extends StatefulWidget {
     this.api,
     this.consent,
     this.loadRecords,
+    this.loadMaterials,
+    this.loadDocuments,
   });
   final Future<XFile?> Function()? pickFile;
   final StudentApi? api;
   final AiConsentPreferences? consent;
   final Future<List<AiRecordOption>> Function()? loadRecords;
+  // 내 자료 on this device; only the ones the student selects are sent.
+  final Future<List<AssistantMaterial>> Function()? loadMaterials;
+  final Future<List<GuidanceDocument>> Function(List<String> ids)?
+  loadDocuments;
   @override
   State<JobAnalysisPage> createState() => _JobAnalysisPageState();
 }
@@ -92,6 +100,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
   int _revision = 0;
   String? _error, _requestId;
   JobAnalysisResponse? _result;
+  final _materialIds = <String>{};
   bool _recommendations = false, _recommendationsVisited = false;
   bool _recommendationBusy = false;
 
@@ -110,6 +119,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
       _sending = false;
       _requesting = false;
       _posting.clear();
+      _materialIds.clear();
       _result = null;
       _error = null;
       _requestId = null;
@@ -147,8 +157,14 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
           GuestPreviewScope.isActive(context)) {
         return;
       }
-      if (records.isEmpty) {
-        setState(() => _error = '비교할 기록이 없습니다. 활동·경험·자격·성과 기록을 추가해 주세요.');
+      final documents = _materialIds.isEmpty || widget.loadDocuments == null
+          ? const <GuidanceDocument>[]
+          : await widget.loadDocuments!(_materialIds.toList());
+      if (!mounted || revision != _revision) return;
+      if (records.isEmpty && documents.isEmpty) {
+        setState(
+          () => _error = '비교할 기록이 없습니다. 활동·경험·자격·성과 기록을 추가하거나 내 자료를 골라 주세요.',
+        );
         return;
       }
       readingRecords = false;
@@ -175,6 +191,13 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
                 kind: record.kind,
                 recordId: record.id,
                 expectedVersion: record.version,
+              ),
+          ],
+          documents: [
+            for (final document in documents)
+              AnalysisDocument(
+                filename: document.filename,
+                contentBase64: document.contentBase64,
               ),
           ],
           externalProcessingConsent: true,
@@ -206,6 +229,9 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
           _requestId = e.requestId;
         });
       }
+    } on StateError catch (e) {
+      // 내 자료 changed on this device or the selection is over 5 files / 8 MiB.
+      if (mounted && revision == _revision) setState(() => _error = e.message);
     } catch (_) {
       if (mounted && revision == _revision) {
         setState(
@@ -222,6 +248,19 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
         });
       }
     }
+  }
+
+  String _citationLabel(
+    JobAnalysisResponse result,
+    PersonalEvidenceCitation citation,
+  ) {
+    for (final source in result.documentSources) {
+      if (source.recordId == citation.recordId) {
+        final ocr = source.ocr ? ' · 자동 문자 인식, 원본 확인' : '';
+        return '내 자료 근거 (${source.filename} · ${source.location}$ocr): ${citation.excerpt}';
+      }
+    }
+    return '내 기록 근거 (버전 ${citation.version}): ${citation.excerpt}';
   }
 
   String _status(JobAnalysisResponse result) => switch (result.status) {
@@ -273,6 +312,8 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
           api: widget.api,
           consent: widget.consent,
           loadRecords: widget.loadRecords,
+          loadMaterials: widget.loadMaterials,
+          loadDocuments: widget.loadDocuments,
           purposeSelector: _purposeSelector(),
           onBusyChanged: (busy) {
             if (mounted) setState(() => _recommendationBusy = busy);
@@ -285,7 +326,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
 
   Widget _buildAnalysis(BuildContext context) => FeaturePage(
     title: '채용공고 분석',
-    description: '공고 본문과 저장된 활동·경험·자격·성과 기록 전체를 비교합니다.',
+    description: '공고 본문을 저장된 활동·경험·자격·성과 기록 전체, 고른 내 자료와 비교합니다.',
     body: [
       _purposeSelector(),
       SurfaceCard(
@@ -363,6 +404,19 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             if (_requestId != null) SelectableText('문의 식별자: $_requestId'),
+            if (widget.loadMaterials != null && _connected) ...[
+              MaterialSelection(
+                keyPrefix: 'job-analysis',
+                load: widget.loadMaterials!,
+                selected: _materialIds,
+                enabled: !_sending,
+                onChanged: (id, selected) => setState(
+                  () =>
+                      selected ? _materialIds.add(id) : _materialIds.remove(id),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             FilledButton(
               key: const ValueKey('job-analysis-run'),
               onPressed: _canAnalyze ? _analyze : null,
@@ -396,9 +450,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
                 }),
                 SelectableText('공고 근거: ${item.postingEvidence.excerpt}'),
                 for (final citation in item.personalEvidence)
-                  SelectableText(
-                    '내 기록 근거 (버전 ${citation.version}): ${citation.excerpt}',
-                  ),
+                  SelectableText(_citationLabel(_result!, citation)),
                 SelectableText(item.explanation),
               ],
             ],

@@ -7,9 +7,14 @@ from app.core.auth_errors import conflict
 from app.rag.career.analyzer import analyze_with_notes
 from app.rag.career.contracts import AnalysisRejected
 from app.schemas import job_analysis as dto
-from app.schemas.personalization import PersonalizationContext
+from app.schemas.personalization import (
+    MAX_ANALYSIS_RECORDS,
+    MAX_DOCUMENT_RECORDS,
+    PersonalizationContext,
+)
 from app.services import auth, gemini
 from app.services.personalization.context import assemble
+from app.services.personalization.documents import attach_documents
 from app.services.personalization.redaction import redact_context
 
 
@@ -48,7 +53,7 @@ def execute(db, request, payload, analyzer: JobAnalyzer | None):
     identity = auth.current_identity(request, db)
     context = assemble(db, identity, payload.records)
     identifier = uuid4()
-    if not context.records:
+    if not context.records and not payload.documents:
         return dto.JobAnalysisResponse(
             analysis_id=identifier,
             status=dto.JobAnalysisStatus.NEEDS_USER_INPUT,
@@ -70,6 +75,16 @@ def execute(db, request, payload, analyzer: JobAnalyzer | None):
         )
     # Citations are validated against what the model actually received.
     outbound = redact_context(context, identity)
+    sources, document_notes = [], []
+    if payload.documents:
+        # Extraction/OCR only after consent, and never inside an open transaction.
+        db.rollback()
+        outbound, sources, document_notes = attach_documents(
+            payload.documents,
+            outbound,
+            identity,
+            max_records=MAX_ANALYSIS_RECORDS + MAX_DOCUMENT_RECORDS,
+        )
     gemini.reserve_call(db, request)
     # Release the read transaction before calling the external adapter.
     db.rollback()
@@ -89,7 +104,9 @@ def execute(db, request, payload, analyzer: JobAnalyzer | None):
                 else dto.JobAnalysisReason.NO_REQUIREMENTS_FOUND
             ),
             comparisons=comparisons,
-            warnings=notes,
+            # Document notes first (unreadable or OCR pages), then the analyzer's own notes.
+            warnings=(document_notes + notes)[:10],
+            document_sources=sources,
         )
     except Exception as error:
         # Never return provider errors, input or unvalidated comparisons.
