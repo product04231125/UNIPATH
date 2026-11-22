@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from time import monotonic
 
 from .analyzer import analyze_with_notes
+from .categories import label
 from .contracts import NotConfigured, Posting, failure_reason, selected_records
 from .crawling import CrawlBatch
 from .job_scope import occupation_matches
@@ -30,14 +31,32 @@ class CareerService:
         postings, sources, seen = [], [], set()
         now = datetime.now(UTC)
         crawl_enabled = any(getattr(s, "collection_method", None) == "crawl" for s in self.sources)
-        keywords = search_terms(query.keyword)
-        rank_candidates = crawl_enabled or len(keywords) > 1
+        codes = query.occupation_codes
+        # With a category the detail keyword is optional: one category-only search.
+        keywords = search_terms(query.keyword) if query.keyword.strip() else []
+        rank_candidates = crawl_enabled or len(keywords) > 1 or bool(codes)
         searches = [
             (source, replace(query, keyword=keyword, limit=10 if rank_candidates else query.limit))
-            for keyword in keywords
+            for keyword in keywords or [""]
             for source in self.sources
         ]
-        for source, search_query in searches:
+
+        def collect(pairs):
+            for source, search_query in pairs:
+                search(source, search_query)
+
+        def search(source, search_query):
+            if codes and not getattr(source, "supports_occupation", False):
+                # Only sources that filter by Work24 occupation codes can honour a category.
+                sources.append(
+                    {
+                        "source": source.name,
+                        "keyword": search_query.keyword,
+                        "status": "skipped",
+                        "reason": "category_unsupported",
+                    }
+                )
+                return
             if monotonic() - start >= self.budget:
                 sources.append(
                     {
@@ -47,7 +66,7 @@ class CareerService:
                         "reason": "time_budget",
                     }
                 )
-                continue
+                return
             try:
                 batch = source.search(search_query)
                 if not isinstance(batch, list):
@@ -116,10 +135,24 @@ class CareerService:
                     }
                 )
                 logger.warning("posting source %s failed: %s", source.name, failure_reason(error))
+
+        collect(searches)
+        search_notice = None
+        if (
+            codes
+            and keywords
+            and not postings
+            and any(item["status"] in {"completed", "partial"} for item in sources)
+        ):
+            # Nothing in the category matched the detail keyword: show the category itself.
+            collect([(source, replace(query, keyword="", limit=10)) for source in self.sources])
+            search_notice = (
+                f"‘{query.keyword.strip()}’와 맞는 공고가 없어 고른 직종의 공고를 보여 줍니다."
+            )
         collected_count = len(postings)
         excluded_count = 0
         if crawl_enabled:
-            scoped = [p for p in postings if occupation_matches(p, keywords)]
+            scoped = [p for p in postings if occupation_matches(p, keywords, codes)]
             excluded_count = len(postings) - len(scoped)
             postings = scoped
         # A source returns only public posting data; never sees selected personal records.
@@ -128,9 +161,15 @@ class CareerService:
                 re.findall(r"[a-z0-9가-힣+#.]{2,}", " ".join(r["text"] for r in records).casefold())
             )
 
+            wanted = [re.sub(r"\s+", "", k.casefold()) for k in keywords] if codes else []
+
             def relevance(posting):
                 words = set(re.findall(r"[a-z0-9가-힣+#.]{2,}", posting.text.casefold()))
-                return len(terms & words)
+                title = re.sub(r"\s+", "", posting.title.casefold())
+                body = re.sub(r"\s+", "", posting.text.casefold())
+                # In a category the detail keyword orders postings: title match, then body match.
+                keyword = sum(2 * (k in title) + (k in body) for k in wanted)
+                return keyword, len(terms & words)
 
             postings.sort(key=relevance, reverse=True)
         postings = postings[:10]
@@ -190,7 +229,13 @@ class CareerService:
             else "no_results"
             if any_success
             else "not_available",
-            "query": {"keyword": query.keyword, "region_label": query.region_label},
+            "query": {
+                "keyword": query.keyword,
+                "region_label": query.region_label,
+                "occupation_codes": list(codes),
+                "occupation_label": label(codes) if codes else None,
+            },
+            "search_notice": search_notice,
             "sources": sources,
             "items": items,
             "search_keywords": keywords,
@@ -198,7 +243,13 @@ class CareerService:
             "collected_count": collected_count,
             "excluded_occupation_count": excluded_count,
             "candidate_limit": 10,
-            "ranking": "selected_record_term_overlap" if rank_candidates else "source_order",
+            "ranking": (
+                "keyword_then_selected_record_term_overlap"
+                if codes and keywords
+                else "selected_record_term_overlap"
+                if rank_candidates
+                else "source_order"
+            ),
             "notice": (
                 "검색 조건에 따른 공고 후보와 선택 자료의 근거 비교이며 "
                 "합격 가능성 점수가 아닙니다."

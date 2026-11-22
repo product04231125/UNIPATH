@@ -84,6 +84,7 @@ def parse_saramin(data):
 
 class Work24:
     name = "work24"
+    supports_occupation = True
 
     def __init__(self, auth_key=None, *, transport=None):
         self.key = auth_key
@@ -103,6 +104,8 @@ class Work24:
         }
         if region:
             params["region"] = region
+        if query.occupation_codes:
+            params["occupation"] = "|".join(query.occupation_codes)
         raw = self.transport.request(
             "https://www.work24.go.kr/cm/openApi/call/wk/callOpenApiSvcInfo210L01.do?"
             + urlencode(params)
