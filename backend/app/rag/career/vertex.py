@@ -23,11 +23,13 @@ def adc_token():
 UNAVAILABLE = "Model response unavailable or invalid"
 # Vertex finishReason values are short upper-case enum names (MAX_TOKENS, SAFETY, ...).
 FINISH = re.compile(r"[A-Z_]{1,40}")
-# Vertex answers 429 when shared capacity or quota is momentarily exhausted. Retry once, only
-# when the rejection came back quickly, so a call never waits much longer than its own timeout.
+# Vertex answers 429 when shared capacity or quota is momentarily exhausted. Retry up to twice,
+# only while the earlier attempts and waits fit in RETRY_BUDGET_SECONDS: a call then ends within
+# its own timeout plus the budget (50 s + 7 s stays under the 60 s job-analysis proxy).
 RETRY_REASON = "http_429"
-RETRY_WINDOW_SECONDS = 5
-RETRY_DELAY_SECONDS = (1.0, 2.0)
+MAX_RETRIES = 2
+RETRY_BUDGET_SECONDS = 7
+RETRY_DELAY_SECONDS = ((1.0, 2.0), (1.5, 3.0))
 logger = logging.getLogger(__name__)
 
 
@@ -102,7 +104,7 @@ class VertexJSON:
     def request(self, data):
         # One generic message for callers; the reason code says which step failed.
         started = time.monotonic()
-        for attempt in (1, 2):
+        for retry in range(MAX_RETRIES + 1):
             try:
                 return self.transport.request(
                     self.url,
@@ -113,11 +115,17 @@ class VertexJSON:
                     body=data,
                 )
             except ProviderFailure as error:
-                quick = time.monotonic() - started <= RETRY_WINDOW_SECONDS
-                if attempt == 1 and error.reason == RETRY_REASON and quick:
-                    logger.warning("Vertex call throttled (%s); retrying once", error.reason)
-                    self.sleep(random.uniform(*RETRY_DELAY_SECONDS))
-                    continue
+                if retry < MAX_RETRIES and error.reason == RETRY_REASON:
+                    delay = random.uniform(*RETRY_DELAY_SECONDS[retry])
+                    if time.monotonic() - started + delay <= RETRY_BUDGET_SECONDS:
+                        logger.warning(
+                            "Vertex call throttled (%s); retry %d of %d",
+                            error.reason,
+                            retry + 1,
+                            MAX_RETRIES,
+                        )
+                        self.sleep(delay)
+                        continue
                 raise ProviderFailure(UNAVAILABLE, "model_" + error.reason) from None
             except Exception:
                 raise ProviderFailure(UNAVAILABLE, "model_auth_or_request") from None
