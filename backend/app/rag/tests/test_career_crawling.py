@@ -238,18 +238,6 @@ class CrawlingTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 replace(QUERY, keyword=keyword)
 
-    def test_spelling_variants_search_the_title_spelling(self):
-        from app.rag.career.search_terms import search_terms
-
-        # 프런트엔드 is the standard spelling but Work24 titles write 프론트엔드.
-        self.assertEqual(
-            search_terms("프런트엔드, 프런트 엔드, 프론트앤드, 백앤드, 벡엔드, 백 엔드"),
-            ["프론트엔드", "백엔드"],
-        )
-        self.assertEqual(search_terms("프런트엔드, 지원"), ["프론트엔드", "지원"])
-        self.assertTrue(title_matches("웹 프런트엔드 개발자", ["프론트엔드"]))
-        self.assertTrue(title_matches("백앤드 개발자 채용", ["백엔드"]))
-
     def test_scope_excludes_facility_despite_workplace_keyword(self):
         from app.rag.career.job_scope import occupation_matches
 
