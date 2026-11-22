@@ -127,17 +127,30 @@ class CareerTests(unittest.TestCase):
         )
 
     def test_invalid_citations_and_classifications(self):
+        # Nothing verifiable is left: the analysis fails instead of returning invented output.
         for change in (
-            {"personal_evidence": []},
             {"posting_quote": "없는 내용"},
             {"priority": "invented"},
             {"status": "guaranteed"},
-            {"personal_evidence": [{**CITE, "version": 2}]},
-            {"personal_evidence": [{**CITE, "excerpt": "다른 자격증"}]},
-            {"personal_evidence": [{**CITE, "excerpt": " "}]},
         ):
             with self.subTest(change=change), self.assertRaises(ValueError):
                 self.analyzer({**VALUE, **change}).analyze(POSTING.text, CONTEXT)
+        # Unverifiable evidence is removed and the positive status is not kept without it.
+        for change in (
+            {"personal_evidence": []},
+            {"personal_evidence": [{**CITE, "version": 2}]},
+            {"personal_evidence": [{**CITE, "excerpt": "다른 자격증"}]},
+            {"personal_evidence": [{**CITE, "excerpt": " "}]},
+            {"personal_evidence": [{**CITE, "record_id": "not-a-uuid"}]},
+        ):
+            with self.subTest(change=change):
+                values, notes = self.analyzer({**VALUE, **change}).analyze_detailed(
+                    POSTING.text, CONTEXT
+                )
+                self.assertEqual(values[0]["status"], "insufficient_evidence")
+                self.assertEqual(values[0]["personal_evidence"], [])
+                self.assertNotIn("자격증이 기재", values[0]["explanation"])
+                self.assertIn("근거 부족으로 표시했습니다", notes[0])
         repeated = self.analyzer().analyze(POSTING.text * 2, CONTEXT)[0]
         self.assertEqual(repeated["posting_evidence"]["excerpt"], "정보처리기사 우대")
 

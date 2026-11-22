@@ -375,6 +375,15 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               if (_result!.status != 'completed') Text(_reason(_result!)),
+              // Records left out over the text budget, or items that could not be verified.
+              for (final warning in _result!.warnings)
+                Text(
+                  warning,
+                  key: const ValueKey('job-analysis-warning'),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
               for (final item in _result!.comparisons) ...[
                 const Divider(),
                 Text(

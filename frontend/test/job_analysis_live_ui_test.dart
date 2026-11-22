@@ -169,6 +169,34 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('analysis notes are shown with the result', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await consent.load();
+    await consent.setAllowed(AiConsentFeature.jobAnalysis, true);
+    final gateway = Gateway();
+    await tester.pumpWidget(host(StudentApi(gateway, ownerId: id)));
+    await tester.pumpAndSettle();
+    await prepare(tester);
+    await run(tester);
+    gateway.pending.single.complete({
+      'analysis_id': id,
+      'status': 'insufficient_evidence',
+      'reason': 'no_requirements_found',
+      'official': false,
+      'comparisons': [],
+      'missing_fields': [],
+      'warnings': ['기록이 많아 이 공고와 관련이 높은 기록 1개만 비교했습니다(전체 2개).'],
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('분석 근거 부족'), findsOneWidget);
+    expect(
+      find.text('기록이 많아 이 공고와 관련이 높은 기록 1개만 비교했습니다(전체 2개).'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'text analysis pins selected versions, blocks duplicates, and preserves retry input',
     (tester) async {

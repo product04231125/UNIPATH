@@ -95,6 +95,8 @@ class JobAnalysisResponse(StrictModel):
     missing_fields: list[Literal["records", "external_processing_consent"]] = Field(
         default_factory=list, max_length=2
     )
+    # Korean notes: records left out over the text budget, unverifiable items dropped/downgraded.
+    warnings: list[Text] = Field(default_factory=list, max_length=10)
 
     @model_validator(mode="after")
     def completed_evidence(self):

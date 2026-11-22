@@ -4,6 +4,7 @@ from typing import Protocol
 from uuid import uuid4
 
 from app.core.auth_errors import conflict
+from app.rag.career.analyzer import analyze_with_notes
 from app.rag.career.contracts import AnalysisRejected
 from app.schemas import job_analysis as dto
 from app.schemas.personalization import PersonalizationContext
@@ -73,9 +74,8 @@ def execute(db, request, payload, analyzer: JobAnalyzer | None):
     # Release the read transaction before calling the external adapter.
     db.rollback()
     try:
-        comparisons = validate_comparisons(
-            payload.posting_text, outbound, analyzer.analyze(payload.posting_text, outbound)
-        )
+        values, notes = analyze_with_notes(analyzer, payload.posting_text, outbound)
+        comparisons = validate_comparisons(payload.posting_text, outbound, values)
         result = dto.JobAnalysisResponse(
             analysis_id=identifier,
             status=(
@@ -89,6 +89,7 @@ def execute(db, request, payload, analyzer: JobAnalyzer | None):
                 else dto.JobAnalysisReason.NO_REQUIREMENTS_FOUND
             ),
             comparisons=comparisons,
+            warnings=notes,
         )
     except Exception as error:
         # Never return provider errors, input or unvalidated comparisons.

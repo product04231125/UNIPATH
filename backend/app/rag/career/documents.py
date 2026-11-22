@@ -1,5 +1,6 @@
 """Extract text from explicitly selected portfolio files; keep citation locations locally."""
 
+import re
 from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
@@ -10,6 +11,8 @@ from .ocr import IMAGE_FORMATS, DocumentOCR, OcrInputError, pdf_image, upload_im
 
 MAX_BYTES = 8 * 1024 * 1024
 WORD = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+# Some PDF fonts map the space glyph to a control character; the model would quote a real space.
+CONTROL = re.compile(r"[\x00-\x08\x0e-\x1f\x7f]")
 
 
 def document_parts(filename, raw, ocr):
@@ -61,7 +64,7 @@ def prepare_documents(files, *, names=()):
     for filename, raw in files:
         usable = False
         for location, original, method in document_parts(filename, raw, ocr):
-            text = redact_text(original.strip(), names=names)
+            text = redact_text(CONTROL.sub(" ", original).strip(), names=names)
             if not text:
                 warnings.append(f"{filename} {location}: 추출 가능한 텍스트 없음")
                 continue
