@@ -10,7 +10,7 @@ import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('course add is gated until academic profile is configured', (
+  testWidgets('course add stays available and notes the missing academic profile', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
@@ -29,10 +29,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('수강 과목 추가'), findsNothing);
+    // Personal courses can be added by hand; the profile only unlocks the
+    // school catalog, so it is a short notice rather than a gate.
+    expect(find.widgetWithText(FilledButton, '수강 과목 추가'), findsOneWidget);
     expect(find.byKey(planningProfileSettingsCtaKey), findsOneWidget);
-    expect(find.text('설정에서 학업 프로필 등록'), findsOneWidget);
-    await tester.tap(find.text('설정에서 학업 프로필 등록'));
+    await tester.tap(find.text('설정 열기'));
     expect(openedSettings, isTrue);
 
     await planning.saveProfile(
@@ -44,7 +45,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byKey(planningProfileSettingsCtaKey), findsNothing);
-    expect(find.text('수강 과목 추가'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, '수강 과목 추가'), findsOneWidget);
   });
 
   for (final (size, sideBySide) in [

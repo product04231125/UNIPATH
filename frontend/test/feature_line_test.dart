@@ -15,11 +15,11 @@ Widget host(Widget child, {bool phone = false}) => MaterialApp(
 void main() {
   testWidgets('FeatureLine.one shows a single text row', (tester) async {
     await tester.pumpWidget(
-      host(const FeatureLine.one(text: '개인 기록이 없습니다. 직접 입력해 주세요.')),
+      host(const FeatureLine.one(text: '아직 등록한 기록이 없습니다')),
     );
     final line = tester.widget<FeatureLine>(find.byType(FeatureLine));
     expect(line.variant, FeatureLineVariant.one);
-    expect(find.text('개인 기록이 없습니다. 직접 입력해 주세요.'), findsOneWidget);
+    expect(find.text('아직 등록한 기록이 없습니다'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byType(FeatureLine),

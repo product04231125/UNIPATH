@@ -14,6 +14,7 @@ import 'support/auth_fixture.dart';
 import 'course_period_test.dart' as period;
 import 'support/personal_gateway.dart';
 import 'support/personal_workspace_fixture.dart';
+import 'support/record_actions.dart';
 
 Widget scope(PersonalGateway gateway, Widget child, {double scale = 1}) =>
     MaterialApp(
@@ -52,14 +53,7 @@ void main() {
           );
           await tester.pumpAndSettle();
           expect(find.text('합성 course'), findsOneWidget);
-          expect(
-            find.textContaining('학기별 수강 계획과 개인 이수 기록을 정리합니다.'),
-            findsOneWidget,
-          );
-          final edit = find.widgetWithText(TextButton, '수정');
-          await tester.ensureVisible(edit);
-          await tester.tap(edit);
-          await tester.pumpAndSettle();
+          await tapRecordAction(tester, '수정');
           expect(
             find.byKey(const ValueKey('record-field-title')),
             findsNothing,
@@ -154,8 +148,8 @@ void main() {
           'academic_entry_id',
         ]),
       );
-      expect(find.textContaining('수강 기간: 2024년 겨울 계절학기'), findsOneWidget);
-      await tester.tap(find.widgetWithText(TextButton, '수정'));
+      expect(find.textContaining('2024년 겨울 계절학기'), findsOneWidget);
+      await tapRecordAction(tester, '수정');
       await tester.pumpAndSettle();
       await period.enter(tester, 'course-year', '2025');
       await period.save(tester);
@@ -164,7 +158,7 @@ void main() {
       expect(patch.$3!['term'], '2025년 겨울 계절학기');
       expect(patch.$3!.containsKey('year'), isFalse);
       expect(patch.$3!.containsKey('client_id'), isFalse);
-      expect(find.textContaining('수강 기간: 2025년 겨울 계절학기'), findsOneWidget);
+      expect(find.textContaining('2025년 겨울 계절학기'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

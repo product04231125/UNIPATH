@@ -20,7 +20,6 @@ class CoursePage extends StatelessWidget {
     key: const ValueKey(PersonalRecordKind.course),
     kind: PersonalRecordKind.course,
     title: '수강 관리',
-    description: '학기별 수강 계획과 개인 이수 기록을 정리합니다.',
     listTitle: '내 수강 과목',
     guideTitle: '교육과정 확인',
     guides: const ['다음 학기 수강 계획 정리', '학과 공지의 변경 사항 확인'],

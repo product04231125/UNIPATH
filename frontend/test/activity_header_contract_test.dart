@@ -20,7 +20,7 @@ class HeaderRepository extends PersonalRecordRepository {
 
 void main() {
   for (final phone in [false, true]) {
-    testWidgets('activity description survives loading error and recovery with phone chrome=$phone', (tester) async {
+    testWidgets('activity header stays put through loading error and recovery with phone chrome=$phone', (tester) async {
       SharedPreferences.setMockInitialValues({});
       await tester.binding.setSurfaceSize(const Size(1440, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -33,17 +33,20 @@ void main() {
           child: const Scaffold(body: ActivityPage()),
         ),
       )));
-      expect(find.text(description), findsOneWidget);
+      // Title and actions render from the first frame; no description line.
+      expect(find.text(description), findsNothing);
+      final title = tester.getTopLeft(find.text('활동'));
+      expect(find.text('활동 추가'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       for (final repo in repos.values) { repo.pending.complete(); }
       await tester.pumpAndSettle();
-      expect(find.text(description), findsOneWidget);
+      expect(tester.getTopLeft(find.text('활동')), title);
       expect(find.text('다시 시도'), findsOneWidget);
       for (final repo in repos.values) { repo.fail = false; }
       await tester.tap(find.text('다시 시도'));
       await tester.pumpAndSettle();
-      expect(find.text(description), findsOneWidget);
-      expect(find.text('등록한 활동'), findsOneWidget);
+      expect(tester.getTopLeft(find.text('활동').first), title);
+      expect(find.text('아직 기록한 활동이 없습니다'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }

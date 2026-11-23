@@ -8,6 +8,7 @@ import 'package:university_path_frontend/features/planning/planning_repository.d
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 import 'package:university_path_frontend/shared/widgets/equal_height_row.dart';
 import 'package:university_path_frontend/shared/widgets/surface_card.dart';
+import 'package:university_path_frontend/shared/widgets/guide_card.dart';
 
 Widget host(Widget child, double scale) => MaterialApp(
   theme: universityPathTheme(),
@@ -103,13 +104,25 @@ void main() {
               ),
             );
             await tester.pumpAndSettle();
-            final cards = find.byType(SurfaceCard);
+            final guide = find.byType(GuideCard);
+            final list = find
+                .byType(SurfaceCard)
+                .evaluate()
+                .where(
+                  (e) => find
+                      .descendant(of: guide, matching: find.byWidget(e.widget))
+                      .evaluate()
+                      .isEmpty,
+                )
+                .toList();
 
-            expect(cards, findsOneWidget);
-            expect(find.byType(ExpansionTile), findsOneWidget);
+            // One list card, then folded guidance below it.
+            expect(list, hasLength(1));
+            expect(guide, findsOneWidget);
+            expect(find.textContaining('긴 안내 문구'), findsNothing);
             expect(
-              tester.getTopLeft(find.byType(ExpansionTile)).dy,
-              greaterThan(tester.getBottomLeft(cards).dy),
+              tester.getTopLeft(guide).dy,
+              greaterThan(tester.getBottomLeft(find.byWidget(list.single.widget)).dy),
             );
             expect(tester.takeException(), isNull, reason: kind.name);
           }

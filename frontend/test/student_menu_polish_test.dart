@@ -66,8 +66,14 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('활동').first);
       await tester.pumpAndSettle();
-      expect(find.text('활동 직접 기록').hitTestable(), findsOneWidget);
+      expect(find.text('활동 추가').hitTestable(), findsOneWidget);
+      // Draft restore lives in the header's more menu next to add.
+      expect(find.byTooltip('더보기').hitTestable(), findsOneWidget);
+      await tester.tap(find.byTooltip('더보기'));
+      await tester.pumpAndSettle();
       expect(find.text('임시저장 불러오기').hitTestable(), findsOneWidget);
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
       final chat = tester.getRect(find.byType(FloatingActionButton));
       final page = find.byType(ActivityPage);
       for (var i = 0; i < 4; i++) {

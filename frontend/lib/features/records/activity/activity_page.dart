@@ -1,4 +1,10 @@
-import '../../../shared/widgets/record_card_header.dart';
+import '../../../shared/app_tones.dart';
+import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/guide_card.dart';
+import '../../../shared/widgets/record_tile.dart';
+import '../../../shared/widgets/responsive_grid.dart';
+import '../../../shared/widgets/tone_chip.dart';
+import '../record_display.dart';
 
 import 'package:flutter/material.dart';
 
@@ -8,7 +14,6 @@ import '../../../shared/drafts/form_draft_store.dart';
 import '../../../shared/widgets/external_link_button.dart';
 import '../../../shared/widgets/feature_line.dart';
 import '../../../shared/widgets/feature_page.dart';
-import '../../../shared/widgets/status_badge.dart';
 import '../../../shared/widgets/surface_card.dart';
 import '../../auth/auth_api.dart';
 import '../../auth/guest_preview_scope.dart';
@@ -100,9 +105,6 @@ class _ActivityPageState extends State<ActivityPage> {
   PersonalRecordRepository _repoFor(PersonalRecordKind kind) =>
       kind == PersonalRecordKind.experience ? _experienceRepo : _activityRepo;
 
-  String _kindLabel(PersonalRecordKind kind) =>
-      kind == PersonalRecordKind.experience ? '경험' : '활동';
-
   bool _guestBlocked() {
     if (!GuestPreviewScope.isActive(context)) return false;
     GuestPreviewScope.showBlockedMessage(context);
@@ -180,9 +182,7 @@ class _ActivityPageState extends State<ActivityPage> {
         context: context,
         kind: kind,
         repository: _repoFor(kind),
-        addLabel: kind == PersonalRecordKind.experience
-            ? '경험 직접 기록'
-            : '활동 직접 기록',
+        addLabel: kind == PersonalRecordKind.experience ? '경험 추가' : '활동 추가',
         record: record,
         draftValues: draftValues,
         appliedDraftId: appliedDraftId,
@@ -283,76 +283,112 @@ class _ActivityPageState extends State<ActivityPage> {
 
   Widget _personalEntry(PersonalRecordKind kind, PersonalRecord record) {
     final fields = _fields[kind] ?? personalRecordFields(kind);
-    return FeatureLine.two(
-      primary: '${_kindLabel(kind)} · ${record.value('title')}',
-      secondary: [
-        if (kind == PersonalRecordKind.experience)
-          for (final keys in const [
-            ['type', 'organization', 'status'],
-            ['startedOn', 'endedOn'],
-            ['role'],
-            ['result'],
-            ['detail'],
-          ])
-            fields
-                .where(
-                  (f) => keys.contains(f.key) && record.value(f.key).isNotEmpty,
-                )
-                .map(
-                  (f) => '${f.label}: ${_fieldDisplay(f, record.value(f.key))}',
-                )
-                .join(' · ')
-        else
-          ...fields
-              .where(
-                (f) =>
-                    f.key != 'title' &&
-                    activityVisibleKeys.contains(f.key) &&
-                    record.value(f.key).isNotEmpty,
-              )
-              .map(
-                (f) => '${f.label}: ${_fieldDisplay(f, record.value(f.key))}',
-              ),
-      ].where((line) => line.isNotEmpty).join('\n'),
-      leading: Icon(
-        Icons.description_outlined,
-        size: 19,
-        color: Theme.of(context).colorScheme.onSurface,
-      ),
-      trailing: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          const StatusBadge(status: '개인 기록'),
-          for (final field in fields.where(
-            (f) =>
-                f.type == PersonalFieldType.url &&
-                record.value(f.key).isNotEmpty,
-          ))
-            ExternalLinkButton(
-              url: record.value(field.key),
-              label: field.label,
-            ),
-          TextButton(
-            onPressed: () => _edit(kind, record: record),
-            child: const Text('수정'),
-          ),
-          TextButton(
-            style: destructiveButtonStyle(context),
-            onPressed: () => _delete(kind, record),
-            child: const Text('삭제'),
-          ),
-        ],
-      ),
+    String value(String key) {
+      final raw = record.value(key);
+      if (raw.isEmpty) return raw;
+      final field = fields.where((f) => f.key == key).firstOrNull;
+      return field == null ? raw : _fieldDisplay(field, raw);
+    }
+
+    final experience = kind == PersonalRecordKind.experience;
+    final type = value('type');
+    final (icon, tone) = experience
+        ? experienceVisual(type)
+        : (Icons.volunteer_activism_outlined, AppTone.success);
+    final period = recordPeriodLabel(
+      record.value('startedOn'),
+      record.value('endedOn'),
+    );
+    final hours = record.value('reportedHours');
+    return RecordTile(
+      key: ValueKey('record-${kind.name}-${record.id}'),
+      icon: icon,
+      tone: tone,
+      title: record.value('title'),
+      chips: [
+        ToneChip(
+          label: experience ? (type.isEmpty ? '경험' : type) : '활동',
+          tone: tone,
+        ),
+        if (period != null)
+          ToneChip(label: period, icon: Icons.calendar_today_outlined),
+        if (hours.isNotEmpty)
+          ToneChip(label: '${recordNumber(hours)}시간', icon: Icons.schedule),
+        if (value('organization') case final org when org.isNotEmpty)
+          ToneChip(label: org, icon: Icons.apartment_outlined),
+        if (value('role') case final role when role.isNotEmpty)
+          ToneChip(label: role, icon: Icons.person_outline),
+        if (value('status') case final status when status.isNotEmpty)
+          ToneChip(label: status),
+      ],
+      lines: [
+        if (value('result') case final result when result.isNotEmpty) result,
+        if (value('detail') case final detail when detail.isNotEmpty) detail,
+      ],
+      onTap: () => _edit(kind, record: record),
+      trailing: [
+        for (final field in fields.where(
+          (f) =>
+              f.type == PersonalFieldType.url && record.value(f.key).isNotEmpty,
+        ))
+          ExternalLinkButton(url: record.value(field.key), label: field.label),
+      ],
+      actions: [
+        RecordAction(
+          '수정',
+          Icons.edit_outlined,
+          () => _edit(kind, record: record),
+        ),
+        RecordAction(
+          '삭제',
+          Icons.delete_outline,
+          () => _delete(kind, record),
+          destructive: true,
+        ),
+      ],
     );
   }
 
-  Widget _statePage({required Widget child}) => FeaturePage(
-    title: '활동',
-    description: '봉사·교내외 활동과 프로젝트·인턴·동아리 경험을 한곳에서 기록합니다.',
-    body: [child],
-  );
+  /// Same header in every state so the title never shifts.
+  List<Widget> _headerActions(bool serverBacked) {
+    final ready = !_loading && !_loadFailed;
+    return [
+      PopupMenuButton<void>(
+        key: const Key('activity-more'),
+        tooltip: '더보기',
+        enabled: ready,
+        icon: const Icon(Icons.more_horiz),
+        itemBuilder: (context) => [
+          PopupMenuItem<void>(
+            key: const Key('activity-load-draft'),
+            onTap: _loadDraft,
+            child: const ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.inventory_2_outlined),
+              title: Text('임시저장 불러오기'),
+            ),
+          ),
+          if (serverBacked)
+            PopupMenuItem<void>(
+              onTap: _load,
+              child: const ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.refresh),
+                title: Text('다시 읽기'),
+              ),
+            ),
+        ],
+      ),
+      FilledButton.icon(
+        onPressed: ready ? _add : null,
+        icon: const Icon(Icons.add),
+        label: const Text('활동 추가'),
+      ),
+    ];
+  }
+
+  Widget _statePage({required Widget child}) =>
+      FeaturePage(title: '활동', trailing: _headerActions(false), body: [child]);
 
   @override
   Widget build(BuildContext context) {
@@ -387,63 +423,54 @@ class _ActivityPageState extends State<ActivityPage> {
 
     return FeaturePage(
       title: '활동',
-      description: '봉사·교내외 활동과 프로젝트·인턴·동아리 경험을 한곳에서 기록합니다.',
+      trailing: _headerActions(serverBacked),
       body: [
         SurfaceCard(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              RecordCardHeader(
-                title: '등록한 활동',
-                reload: serverBacked
-                    ? FeatureLine.reload(onPressed: _loading ? null : _load)
-                    : null,
-                actions: [
-                  FilledButton.icon(
-                    onPressed: _add,
-                    icon: const Icon(Icons.add),
-                    label: const Text('활동 직접 기록'),
-                  ),
-                  OutlinedButton(
-                    key: const Key('activity-load-draft'),
-                    onPressed: _loadDraft,
-                    child: const Text('임시저장 불러오기'),
-                  ),
+              StatStrip(
+                items: [
+                  ('활동', '${_activityRepo.records.length}'),
+                  ('경험', '${_experienceRepo.records.length}'),
+                  ('기록 시간', '${recordNumber('$recordedHours')}시간'),
                 ],
               ),
-              FeatureLine.one(text: '기록한 시간 합계 $recordedHours시간'),
+              const SizedBox(height: 16),
               if (personal.isEmpty)
-                const FeatureLine.one(text: '개인 기록이 없습니다. 직접 입력해 주세요.'),
-              for (final item in personal) _personalEntry(item.$1, item.$2),
+                EmptyState(
+                  icon: Icons.volunteer_activism_outlined,
+                  title: '아직 기록한 활동이 없습니다',
+                  message: '봉사·대외활동·프로젝트·인턴·동아리를 기록해 두면 자기소개서와 직무 분석에 쓰입니다.',
+                  action: OutlinedButton.icon(
+                    onPressed: _add,
+                    icon: const Icon(Icons.add),
+                    label: const Text('첫 활동 추가'),
+                  ),
+                )
+              else
+                ResponsiveGrid(
+                  children: [
+                    for (final item in personal)
+                      _personalEntry(item.$1, item.$2),
+                  ],
+                ),
             ],
           ),
         ),
       ],
-      below: [
-        const ExpansionTile(
-          title: Text('활동 준비'),
-          childrenPadding: EdgeInsets.symmetric(horizontal: 16),
-          expandedCrossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: Text('• 봉사 시간·증빙 자료 점검'),
-            ),
-            Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: Text('• 프로젝트·인턴·동아리는 역할과 결과를 분리해 기록'),
-            ),
-            Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: Text('• 필요할 때 외부 봉사 사이트 안내'),
+      below: const [
+        GuideCard(
+          title: '활동 준비',
+          lines: ['봉사 시간·증빙 자료 점검', '프로젝트·인턴·동아리는 역할과 결과를 분리해 기록'],
+          links: [
+            ExternalLinkButton(
+              url: 'https://www.1365.go.kr/',
+              label: '1365 봉사 찾기',
+              description:
+                  '1365에서 활동을 찾아 직접 신청할 수 있습니다. 링크 열기로 봉사 시간을 자동 변경하지 않습니다.',
             ),
           ],
-        ),
-        const ExternalLinkButton(
-          url: 'https://www.1365.go.kr/',
-          label: '1365 봉사 찾기',
-          description:
-              '1365에서 활동을 찾아 직접 신청할 수 있습니다. 링크 열기로 봉사 시간을 자동 변경하지 않습니다.',
         ),
       ],
     );

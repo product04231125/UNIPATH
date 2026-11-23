@@ -1,16 +1,21 @@
-import '../../shared/widgets/record_card_header.dart';
 import '../../shared/app_style.dart';
 import '../../shared/credits_format.dart';
+
+import '../../shared/app_tones.dart';
+import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/guide_card.dart';
+import '../../shared/widgets/record_tile.dart';
+import '../../shared/widgets/responsive_grid.dart';
+import '../../shared/widgets/tone_chip.dart';
+import 'record_display.dart';
 
 import 'package:flutter/material.dart';
 
 import '../../shared/drafts/form_draft_picker.dart';
 import '../../shared/drafts/form_draft_store.dart';
-import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/surface_card.dart';
-import 'fixtures/record_mock_entry.dart';
 import 'course/course_term.dart';
 import 'personal_record_repository.dart';
 import 'personal_record_fields.dart';
@@ -33,7 +38,7 @@ class RecordMenuPage extends StatefulWidget {
     this.contextLabel,
     required this.kind,
     required this.title,
-    required this.description,
+    this.description,
     required this.listTitle,
     required this.guideTitle,
     required this.guides,
@@ -51,7 +56,9 @@ class RecordMenuPage extends StatefulWidget {
   final PersonalRecordKind kind;
   final String? contextLabel;
   final String title;
-  final String description;
+
+  /// Kept for callers; pages no longer render a description line.
+  final String? description;
   final String listTitle;
   final String guideTitle;
   final List<String> guides;
@@ -231,131 +238,173 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     }
   }
 
-  String _credentialDetails(PersonalRecord record) {
-    String group(List<String> keys) => _fields
-        .where((f) => keys.contains(f.key) && record.value(f.key).isNotEmpty)
-        .map(
-          (f) =>
-              '${f.label}: ${f.optionLabels[record.value(f.key)] ?? record.value(f.key)}',
-        )
-        .join(' · ');
-    final grouped = {'provider', 'level', 'status', 'earnedOn', 'expiresOn'};
-    return [
-      group(['provider', 'level', 'status']),
-      group(['earnedOn', 'expiresOn']),
-      for (final f in _fields.where(
-        (f) =>
-            f.key != 'title' &&
-            !grouped.contains(f.key) &&
-            f.type != PersonalFieldType.url &&
-            record.value(f.key).isNotEmpty,
-      ))
-        '${f.label}: ${f.optionLabels[record.value(f.key)] ?? record.value(f.key)}',
-    ].where((line) => line.isNotEmpty).join('\n');
+  String _display(PersonalRecord record, String key) {
+    final raw = record.value(key);
+    if (raw.isEmpty) return raw;
+    final field = _fields.where((f) => f.key == key).firstOrNull;
+    if (field == null) return raw;
+    if (field.optionLabels[raw] case final label?) return label;
+    if (field.options.isNotEmpty && !field.options.contains(raw)) {
+      return '연결 대상 없음 · 수정에서 다시 선택하세요';
+    }
+    return raw;
   }
 
+  String _date(String iso) {
+    final d = DateTime.tryParse(iso);
+    return d == null
+        ? iso
+        : '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
+  }
+
+  void _showCourseDetail(PersonalRecord record) => showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(record.value('title')),
+      content: SingleChildScrollView(
+        child: SelectableText(
+          _fields
+              .where(
+                (f) =>
+                    !{
+                      'title',
+                      'academicContextId',
+                      'academicEntryId',
+                    }.contains(f.key) &&
+                    record.value(f.key).isNotEmpty,
+              )
+              .map(
+                (f) =>
+                    '${f.label}: ${f.key == 'completion' ? courseStatusLabel(record.value(f.key)) : f.optionLabels[record.value(f.key)] ?? record.value(f.key)}',
+              )
+              .join('\n'),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('닫기'),
+        ),
+      ],
+    ),
+  );
+
   Widget _personalEntry(PersonalRecord record) {
-    final isCourse = widget.kind == PersonalRecordKind.course;
-    final entry = RecordMockEntry(
+    final kind = widget.kind;
+    final isCourse = kind == PersonalRecordKind.course;
+    final IconData icon;
+    final AppTone tone;
+    final chips = <Widget>[];
+    final lines = <String>[];
+    if (isCourse) {
+      final completion = record.value('completion');
+      final status = courseStatusLabel(completion);
+      tone = switch (status) {
+        '이수 완료' => AppTone.success,
+        '수강 중' => AppTone.info,
+        '미이수' => AppTone.warning,
+        _ => AppTone.accent,
+      };
+      icon = Icons.menu_book_outlined;
+      chips.addAll([
+        ToneChip(label: status, tone: tone),
+        ToneChip(
+          label: CourseTerm.parse(record.value('term')).label,
+          icon: Icons.calendar_today_outlined,
+        ),
+        if (record.value('category').isNotEmpty)
+          ToneChip(label: record.value('category')),
+        if (record.value('credits').isNotEmpty)
+          ToneChip(label: '${recordNumber(record.value('credits'))}학점'),
+        if (record.value('gradingBasis') == 'pass_fail')
+          const ToneChip(label: 'P/F'),
+        if (record.value('grade').isNotEmpty)
+          ToneChip(label: '성적 ${record.value('grade')}'),
+      ]);
+    } else if (kind == PersonalRecordKind.credential) {
+      final status = _display(record, 'status');
+      final earned = record.value('earnedOn');
+      tone = status.contains('준비') || status.contains('응시')
+          ? AppTone.warning
+          : earned.isNotEmpty || status.contains('취득') || status.contains('합격')
+          ? AppTone.success
+          : AppTone.accent;
+      icon = Icons.workspace_premium_outlined;
+      chips.addAll([
+        if (status.isNotEmpty) ToneChip(label: status, tone: tone),
+        if (_display(record, 'level') case final level when level.isNotEmpty)
+          ToneChip(label: level, tone: AppTone.info),
+        if (_display(record, 'provider') case final provider
+            when provider.isNotEmpty)
+          ToneChip(label: provider, icon: Icons.apartment_outlined),
+        if (earned.isNotEmpty)
+          ToneChip(
+            label: '취득 ${_date(earned)}',
+            icon: Icons.calendar_today_outlined,
+          ),
+        if (record.value('expiresOn') case final expires
+            when expires.isNotEmpty)
+          ToneChip(label: '만료 ${_date(expires)}', icon: Icons.event_busy),
+      ]);
+    } else {
+      final type = _display(record, 'type');
+      (icon, tone) = experienceVisual(type);
+      final period = recordPeriodLabel(
+        record.value('startedOn'),
+        record.value('endedOn'),
+      );
+      chips.addAll([
+        if (type.isNotEmpty) ToneChip(label: type, tone: tone),
+        if (period != null)
+          ToneChip(label: period, icon: Icons.calendar_today_outlined),
+        if (_display(record, 'organization') case final org when org.isNotEmpty)
+          ToneChip(label: org, icon: Icons.apartment_outlined),
+        if (_display(record, 'role') case final role when role.isNotEmpty)
+          ToneChip(label: role, icon: Icons.person_outline),
+        if (_display(record, 'status') case final status when status.isNotEmpty)
+          ToneChip(label: status),
+      ]);
+      if (_display(record, 'result') case final result when result.isNotEmpty) {
+        lines.add(result);
+      }
+    }
+    if (_display(record, 'detail') case final detail when detail.isNotEmpty) {
+      lines.add(detail);
+    }
+    return RecordTile(
+      key: ValueKey('record-${kind.name}-${record.id}'),
+      icon: icon,
+      tone: tone,
       title: record.value('title'),
-      detail: widget.kind == PersonalRecordKind.credential
-          ? _credentialDetails(record)
-          : isCourse
-          ? [
-              '수강 기간: ${CourseTerm.parse(record.value('term')).label}',
-              record.value('category'),
-              if (record.value('credits').isNotEmpty)
-                '${record.value('credits')}학점',
-              if (record.value('gradingBasis') == 'pass_fail') 'P/F',
-              courseStatusLabel(record.value('completion')),
-            ].where((v) => v.isNotEmpty).join(' · ')
-          : _fields
-                .where(
-                  (f) =>
-                      f.key != 'title' &&
-                      record.value(f.key).isNotEmpty &&
-                      (widget.kind != PersonalRecordKind.activity ||
-                          activityVisibleKeys.contains(f.key)),
-                )
-                .map(
-                  (f) => f.key == 'term' && isCourse
-                      ? '수강 기간: ${CourseTerm.parse(record.value('term')).label}'
-                      : '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
-                )
-                .join(' · '),
-      status: '개인 기록',
-    );
-    return FeatureLine.two(
-      primary: entry.title,
-      secondary: entry.detail,
-      leading: Icon(
-        Icons.description_outlined,
-        size: 19,
-        color: Theme.of(context).colorScheme.onSurface,
-      ),
-      trailing: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          // Course ownership is settings/profile context; keep the badge on
-          // activity/credential/experience menus only.
-          if (!isCourse) StatusBadge(status: entry.status),
-          if (isCourse)
-            TextButton(
-              onPressed: () => showDialog<void>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text(record.value('title')),
-                  content: SingleChildScrollView(
-                    child: SelectableText(
-                      _fields
-                          .where(
-                            (f) =>
-                                !{
-                                  'title',
-                                  'academicContextId',
-                                  'academicEntryId',
-                                }.contains(f.key) &&
-                                record.value(f.key).isNotEmpty,
-                          )
-                          .map(
-                            (f) =>
-                                '${f.label}: ${f.key == 'completion' ? courseStatusLabel(record.value(f.key)) : f.optionLabels[record.value(f.key)] ?? record.value(f.key)}',
-                          )
-                          .join('\n'),
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('닫기'),
-                    ),
-                  ],
-                ),
-              ),
-              child: const Text('상세 보기'),
-            ),
-          for (final field in _fields.where(
-            (f) =>
-                f.type == PersonalFieldType.url &&
-                record.value(f.key).isNotEmpty,
-          ))
-            ExternalLinkButton(
-              url: record.value(field.key),
-              label: field.label,
-            ),
-          TextButton(
-            onPressed: () => _showForm(record: record),
-            child: Text('수정'),
+      chips: chips,
+      lines: lines,
+      onTap: () => _showForm(record: record),
+      trailing: [
+        for (final field in _fields.where(
+          (f) =>
+              f.type == PersonalFieldType.url && record.value(f.key).isNotEmpty,
+        ))
+          ExternalLinkButton(url: record.value(field.key), label: field.label),
+      ],
+      actions: [
+        if (isCourse)
+          RecordAction(
+            '상세 보기',
+            Icons.info_outline,
+            () => _showCourseDetail(record),
           ),
-          TextButton(
-            style: destructiveButtonStyle(context),
-            onPressed: () => _delete(record),
-            child: Text('삭제'),
-          ),
-        ],
-      ),
+        RecordAction(
+          '수정',
+          Icons.edit_outlined,
+          () => _showForm(record: record),
+        ),
+        RecordAction(
+          '삭제',
+          Icons.delete_outline,
+          () => _delete(record),
+          destructive: true,
+        ),
+      ],
     );
   }
 
@@ -404,61 +453,53 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     final ongoing = creditUnits('수강 중');
     String creditLabel(int units) =>
         formatCreditsLabel((units / 1000).toString());
-    final canAdd =
-        !isCourse ||
-        widget.planning == null ||
-        (profile?.isConfigured ?? false);
+    final needsProfile =
+        isCourse &&
+        widget.planning != null &&
+        !(profile?.isConfigured ?? false) &&
+        widget.onOpenSettings != null;
+    final filtered = isCourse && (_year.isNotEmpty || _term.isNotEmpty);
     return FeaturePage(
       title: widget.title,
       contextLabel: widget.contextLabel,
-      description: widget.description,
+      trailing: _headerActions(),
       body: [
         SurfaceCard(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              RecordCardHeader(
-                title: widget.listTitle,
-                reload: _repository.isServerBacked
-                    ? FeatureLine.reload(onPressed: _loading ? null : _load)
-                    : null,
-                actions: [
-                  if (canAdd) ...[
-                    FilledButton.icon(
-                      onPressed: _showForm,
-                      icon: const Icon(Icons.add),
-                      label: Text(widget.addLabel),
-                    ),
-                    OutlinedButton(
-                      key: const Key('record-menu-load-draft'),
-                      onPressed: _loadDraft,
-                      child: const Text('임시저장 불러오기'),
-                    ),
-                  ],
-                ],
-              ),
-              if (isCourse && !canAdd && widget.onOpenSettings != null) ...[
-                const SizedBox(height: 16),
-                PlanningProfileSettingsCta(
-                  need: PlanningProfileNeed.configured,
-                  profile: profile,
-                  onOpenSettings: widget.onOpenSettings!,
+              if (needsProfile) ...[
+                InfoBanner(
+                  key: planningProfileSettingsCtaKey,
+                  icon: Icons.school_outlined,
+                  message: '학업 프로필을 등록하면 학교 교육과정 과목을 골라 추가할 수 있습니다.',
+                  action: TextButton(
+                    onPressed: widget.onOpenSettings,
+                    child: const Text('설정 열기'),
+                  ),
                 ),
+                const SizedBox(height: 16),
               ],
-              if (widget.kind == PersonalRecordKind.course) ...[
-                const SizedBox(height: 12),
-                const Text('이수 완료 과목의 학점이 자동 반영됩니다. 변경은 각 과목의 수정에서 관리하세요.'),
-                const SizedBox(height: 24),
+              if (isCourse) ...[
+                StatStrip(
+                  items: [
+                    ('취득 학점', creditLabel(earned)),
+                    ('수강 중', creditLabel(ongoing)),
+                    ('총 학점', creditLabel(earned + ongoing)),
+                    ('과목', '${_repository.records.length}개'),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 Wrap(
-                  spacing: 16,
+                  spacing: 12,
                   runSpacing: 12,
                   children: [
                     SizedBox(
-                      width: 240,
+                      width: 200,
                       child: AnchoredSelectField<String>(
                         key: const ValueKey('record-course-year-filter'),
                         value: _year,
-                        label: '수강 연도 필터',
+                        label: '수강 연도',
                         options: [
                           const SelectOption('', '전체 연도'),
                           for (final year in {
@@ -479,11 +520,11 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                       ),
                     ),
                     SizedBox(
-                      width: 240,
+                      width: 200,
                       child: AnchoredSelectField<String>(
                         key: const ValueKey('record-course-term-filter'),
                         value: _term,
-                        label: '학기 필터',
+                        label: '학기',
                         options: [
                           const SelectOption('', '전체 학기'),
                           for (final term in {
@@ -499,49 +540,97 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
                     ),
                   ],
                 ),
-                FeatureLine.one(
-                  text:
-                      '취득학점 합계 ${creditLabel(earned)} · 수강 중 ${creditLabel(ongoing)} · 총 ${creditLabel(earned + ongoing)}',
-                ),
+                const SizedBox(height: 16),
               ],
-              if (widget.kind == PersonalRecordKind.activity)
-                FeatureLine.one(
-                  text:
-                      '기록한 시간 합계 ${personal.fold<double>(0, (sum, r) => sum + (double.tryParse(r.value('reportedHours')) ?? 0))}시간',
-                ),
               if (personal.isEmpty)
-                FeatureLine.one(
-                  text: isCourse && (_year.isNotEmpty || _term.isNotEmpty)
-                      ? '선택한 연도·학기에 맞는 개인 기록이 없습니다. 필터를 변경해 주세요.'
-                      : '개인 기록이 없습니다. 직접 입력해 주세요.',
+                filtered
+                    ? EmptyState(
+                        icon: Icons.filter_alt_off_outlined,
+                        title: '선택한 연도·학기에 맞는 과목이 없습니다',
+                        action: OutlinedButton(
+                          onPressed: () => setState(() {
+                            _year = '';
+                            _term = '';
+                          }),
+                          child: const Text('필터 초기화'),
+                        ),
+                      )
+                    : EmptyState(
+                        icon: isCourse
+                            ? Icons.menu_book_outlined
+                            : widget.kind == PersonalRecordKind.credential
+                            ? Icons.workspace_premium_outlined
+                            : Icons.star_outline,
+                        title: '아직 등록한 기록이 없습니다',
+                        action: OutlinedButton.icon(
+                          onPressed: _showForm,
+                          icon: const Icon(Icons.add),
+                          label: const Text('첫 기록 추가'),
+                        ),
+                      )
+              else
+                ResponsiveGrid(
+                  children: [
+                    for (final record in personal) _personalEntry(record),
+                  ],
                 ),
-              for (final record in personal) _personalEntry(record),
             ],
           ),
         ),
       ],
       below: [
-        ExpansionTile(
-          title: Text(widget.guideTitle),
-          childrenPadding: const EdgeInsets.symmetric(horizontal: 16),
-          expandedCrossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final line in widget.guides)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text('• $line'),
-              ),
-          ],
+        GuideCard(
+          title: widget.guideTitle,
+          lines: widget.guides,
+          links: widget.guideActions,
         ),
-        ...widget.guideActions,
       ],
     );
+  }
+
+  /// Same header in loading, failure and loaded states so the title never
+  /// shifts; actions stay disabled until the list is ready.
+  List<Widget> _headerActions() {
+    final ready = !_loading && !_loadFailed;
+    return [
+      PopupMenuButton<void>(
+        key: const Key('record-menu-more'),
+        tooltip: '더보기',
+        enabled: ready,
+        icon: const Icon(Icons.more_horiz),
+        itemBuilder: (context) => [
+          PopupMenuItem<void>(
+            key: const Key('record-menu-load-draft'),
+            onTap: _loadDraft,
+            child: const ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.inventory_2_outlined),
+              title: Text('임시저장 불러오기'),
+            ),
+          ),
+          if (_repository.isServerBacked)
+            PopupMenuItem<void>(
+              onTap: _load,
+              child: const ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.refresh),
+                title: Text('다시 읽기'),
+              ),
+            ),
+        ],
+      ),
+      FilledButton.icon(
+        onPressed: ready ? _showForm : null,
+        icon: const Icon(Icons.add),
+        label: Text(widget.addLabel),
+      ),
+    ];
   }
 
   Widget _statePage({required Widget child}) => FeaturePage(
     title: widget.title,
     contextLabel: widget.contextLabel,
-    description: widget.description,
+    trailing: _headerActions(),
     body: [child],
   );
 }

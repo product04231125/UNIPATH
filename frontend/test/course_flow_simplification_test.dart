@@ -16,6 +16,7 @@ import 'package:university_path_frontend/app.dart';
 import 'student_academic_integration_test.dart' as academic;
 import 'remote_personal_ui_test.dart' as remote;
 import 'support/personal_gateway.dart';
+import 'support/record_actions.dart';
 
 void main() {
   setUpAll(() async {
@@ -130,11 +131,21 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(
-        find.textContaining('취득학점 합계 3학점 · 수강 중 1.5학점 · 총 4.5학점'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('보존할 입력 당시 메모'), findsNothing);
+      for (final (label, value) in [
+        ('취득 학점', '3학점'),
+        ('수강 중', '1.5학점'),
+        ('총 학점', '4.5학점'),
+      ]) {
+        expect(
+          find.descendant(
+            of: find.byKey(ValueKey('stat-$label')),
+            matching: find.text(value),
+          ),
+          findsOneWidget,
+        );
+      }
+      // Cards show the student's own memo, cut to two lines.
+      expect(find.textContaining('보존할 입력 당시 메모'), findsWidgets);
       expect(find.text('학점 산입 연결'), findsNothing);
       expect(find.textContaining('이수 완료'), findsWidgets);
       if (const bool.fromEnvironment('COURSE_FLOW_CAPTURE')) {
@@ -150,9 +161,14 @@ void main() {
           picture.dispose();
         });
       }
-      await tester.tap(find.text('상세 보기').first);
-      await tester.pumpAndSettle();
-      expect(find.textContaining('보존할 입력 당시 메모'), findsOneWidget);
+      await tapRecordAction(tester, '상세 보기');
+      expect(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.textContaining('보존할 입력 당시 메모'),
+        ),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );
@@ -170,12 +186,10 @@ void main() {
       expect(find.text('기존 과목 일괄 연결'), findsNothing);
       expect(find.text('교육과정 과목 확인'), findsNothing);
       expect(find.text('학점 산입 연결'), findsNothing);
-      expect(
-        tester
-            .widget<TextButton>(find.widgetWithText(TextButton, '수정'))
-            .onPressed,
-        isNotNull,
-      );
+      await tapRecordAction(tester, '수정');
+      expect(find.text('내 기록에 저장'), findsOneWidget);
+      await tester.tap(find.text('취소').last);
+      await tester.pumpAndSettle();
       expect(
         gateway.calls.any((call) => call.$2.startsWith('me/academic-')),
         isFalse,
