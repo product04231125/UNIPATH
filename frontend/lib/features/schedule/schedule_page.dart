@@ -645,23 +645,41 @@ class _EventEditorState extends State<_EventEditor> {
                 value == null || value.trim().isEmpty ? '제목을 입력해 주세요.' : null,
           ),
           const SizedBox(height: 12),
-          _dateTimeField(
-            '시작 일시',
-            _start,
-            (value) => setState(() {
-              _start = value;
-              if (_end.isBefore(_start)) {
-                _end = _start.add(const Duration(hours: 1));
-              }
-            }),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final start = _dateTimeField(
+                const Key('event-start'),
+                '시작 일시',
+                _start,
+                (value) => setState(() {
+                  _start = value;
+                  if (_end.isBefore(_start)) {
+                    _end = _start.add(const Duration(hours: 1));
+                  }
+                }),
+              );
+              final end = _dateTimeField(
+                const Key('event-end'),
+                '종료 일시',
+                _end,
+                (value) => setState(() => _end = value),
+              );
+              // Side by side when both values fit on one line each.
+              final sideBySide =
+                  constraints.maxWidth >=
+                  MediaQuery.textScalerOf(context).scale(440);
+              return sideBySide
+                  ? Row(
+                      children: [
+                        Expanded(child: start),
+                        const SizedBox(width: 12),
+                        Expanded(child: end),
+                      ],
+                    )
+                  : Column(children: [start, const SizedBox(height: 12), end]);
+            },
           ),
-          const SizedBox(height: 8),
-          _dateTimeField(
-            '종료 일시',
-            _end,
-            (value) => setState(() => _end = value),
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           AnchoredSelectField<PlanningEventCategory>(
             value: _category,
             label: '분류',
@@ -713,36 +731,57 @@ class _EventEditorState extends State<_EventEditor> {
   );
 
   Widget _dateTimeField(
+    Key key,
     String label,
     DateTime value,
     ValueChanged<DateTime> onChanged,
-  ) => OutlinedButton(
-    onPressed: _saving
-        ? null
-        : () async {
-            final date = await showDatePicker(
-              context: context,
-              initialDate: value,
-              firstDate: DateTime(2000),
-              lastDate: DateTime(2100),
-            );
-            if (date == null || !mounted) return;
-            final time = await showTimePicker(
-              context: context,
-              initialTime: TimeOfDay.fromDateTime(value),
-            );
-            if (time == null || !mounted) return;
-            onChanged(
-              DateTime(date.year, date.month, date.day, time.hour, time.minute),
-            );
-          },
-    child: Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        '$label  ${value.year}.${value.month}.${value.day} ${_time(value)}',
+  ) {
+    final text =
+        '${value.year}.${value.month}.${value.day} (${weekdayLabel(value.weekday)}) ${_time(value)}';
+    return Semantics(
+      button: true,
+      label: '$label $text',
+      excludeSemantics: true,
+      child: InkWell(
+        key: key,
+        borderRadius: BorderRadius.circular(appCornerRadius),
+        onTap: _saving
+            ? null
+            : () async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: value,
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                );
+                if (date == null || !mounted) return;
+                final time = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay.fromDateTime(value),
+                );
+                if (time == null || !mounted) return;
+                onChanged(
+                  DateTime(
+                    date.year,
+                    date.month,
+                    date.day,
+                    time.hour,
+                    time.minute,
+                  ),
+                );
+              },
+        child: InputDecorator(
+          isEmpty: false,
+          decoration: InputDecoration(
+            labelText: label,
+            enabled: !_saving,
+            suffixIcon: const Icon(Icons.event_outlined),
+          ),
+          child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   Future<void> _delete() async {
     if (!widget.allowWrite()) return;
