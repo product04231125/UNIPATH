@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../assistant/ai_record_catalog.dart';
 
-/// Lets the student pick 내 자료 (kept on this device) to send with one analysis request.
+/// Lets the student pick 내 자료 to send with one analysis request.
 /// Nothing is sent from here; the caller converts the selected IDs when the request starts.
 class MaterialSelection extends StatefulWidget {
   const MaterialSelection({
@@ -50,7 +50,7 @@ class _MaterialSelectionState extends State<MaterialSelection> {
         _materials = materials;
         _loading = false;
       });
-      // A material deleted on this device can no longer be sent.
+      // A deleted material can no longer be sent.
       for (final id in widget.selected.toList()) {
         if (!materials.any((m) => m.id == id)) widget.onChanged(id, false);
       }
@@ -99,7 +99,7 @@ class _MaterialSelectionState extends State<MaterialSelection> {
         if (_error != null) Text(_error!),
         if (!_loading && _error == null && _materials.isEmpty)
           Text(
-            '이 기기에 등록한 자료가 없습니다. 자료 메뉴에서 등록해 주세요.',
+            '등록한 자료가 없습니다. 자료 메뉴에서 등록해 주세요.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),

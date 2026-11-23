@@ -36,7 +36,7 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 거부한다. 공고·문맥·결과를 저장하지 않으며 UUID `analysis_id`는 요청 식별자다.
 사용자별 15분당 30회로 제한한다. `X-Unipath-Owner` 사전조건을 지원한다.
 
-`documents`(최대 5개, 합계 8MiB, 2026-11-22)는 학생이 앱의 **내 자료**(기기에만 보관하는 설명·PDF)에서 이번
+`documents`(최대 5개, 합계 8MiB, 2026-11-22)는 학생이 앱의 **내 자료**(계정에 보관하는 설명·PDF, [materials-and-results](materials-and-results.md))에서 이번
 요청에 고른 파일이다. 각 항목은 `filename`과 파일 바이트의 `content_base64`다. 공고 추천·맞춤 안내와 같은 추출·OCR·
 개인정보 가림을 거쳐 요청 범위의 기록(`kind=experience`, 새 UUID, `version=1`)으로 저장 기록 뒤에 붙는다(최대
 20조각). 파일과 추출 텍스트는 저장하지 않는다. 추출·OCR은 외부 전송 동의와 분석기 설정을 확인한 뒤에만 한다.

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:file_selector/file_selector.dart';
@@ -9,6 +10,7 @@ import '../../../shared/widgets/surface_card.dart';
 import '../../api/job_analysis_models.dart';
 import '../../api/job_recommendation_api.dart';
 import '../../career/career_goal.dart';
+import '../../career/saved_analyses.dart';
 import '../../career/job_category_fields.dart';
 import '../../api/student_api.dart';
 import '../../assistant/ai_record_catalog.dart';
@@ -87,12 +89,78 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
   int _revision = 0;
   JobRecommendationResponse? _result;
   List<AiRecordOption> _resultRecords = const [];
+
+  /// Finished searches kept in the account; null before signing in.
+  SavedAnalysesController? _saved;
+  DateTime? _openedAt;
+
+  static SavedAnalysesController? _savedFor(StudentApi? api) => api == null
+      ? null
+      : SavedAnalysesController(
+          AnalysisResultsApi(api.api),
+          AnalysisKind.search,
+        );
+
+  Future<void> _save(
+    JobRecommendationResponse result,
+    List<AiRecordOption> records,
+    String region,
+  ) async {
+    if (result.items.isEmpty) return;
+    // Record titles name the evidence when the result is opened again; keep the cited ones.
+    final text = jsonEncode(result.raw);
+    final cited = [
+      for (final r in records)
+        if (text.contains(r.id)) r,
+    ];
+    final title = [
+      ?result.occupationLabel,
+      if (result.queryKeyword?.isNotEmpty ?? false) result.queryKeyword!,
+      region,
+    ].where((s) => s.isNotEmpty).join(' · ');
+    await _saved?.save(
+      title: analysisTitle(title, fallback: '내 자료로 공고 찾기'),
+      summary: {'postings': result.items.length},
+      input: {
+        'keyword': _keyword.text.trim(),
+        'region': region,
+        'category_codes': [if (_selectedCode.isNotEmpty) _selectedCode],
+        'records': [for (final r in cited) r.toJson()],
+      },
+      result: result.raw,
+    );
+  }
+
+  Future<void> _openSaved(SavedAnalysisSummary item) async {
+    if (_busy) return;
+    final revision = _revision;
+    final saved = await _saved?.open(item.id);
+    if (saved == null || !mounted || revision != _revision) return;
+    try {
+      final result = JobRecommendationResponse.fromJson(saved.result);
+      final records = [
+        for (final raw in saved.input['records'] as List? ?? const [])
+          AiRecordOption.fromJson(Map<String, dynamic>.from(raw as Map)),
+      ];
+      setState(() {
+        _result = result;
+        _resultRecords = records;
+        _openedAt = saved.createdAt;
+        _error = null;
+        _requestId = null;
+      });
+    } catch (_) {
+      setState(() => _error = '저장된 결과의 형식을 읽지 못했습니다.');
+    }
+  }
+
   List<String> _fields = const [];
 
   @override
   void initState() {
     super.initState();
     _applyGoal();
+    _saved = _savedFor(widget.api);
   }
 
   @override
@@ -150,6 +218,9 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
       _materialIds.clear();
       _result = null;
       _resultRecords = const [];
+      _openedAt = null;
+      _saved?.dispose();
+      _saved = _savedFor(widget.api);
       _error = null;
       _requestId = null;
       _fields = [];
@@ -162,6 +233,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
 
   @override
   void dispose() {
+    _saved?.dispose();
     _keyword.dispose();
     super.dispose();
   }
@@ -291,7 +363,10 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
           GuestPreviewScope.isActive(context)) {
         return;
       }
-      setState(() => _result = null);
+      setState(() {
+        _result = null;
+        _openedAt = null;
+      });
       final result = await JobRecommendationApi(api.api).recommend(request);
       if (mounted &&
           revision == _revision &&
@@ -300,6 +375,8 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
           _result = result;
           _resultRecords = records;
         });
+        // Kept in the account; a failed save leaves the result on screen.
+        unawaited(_save(result, records, request.region));
       }
     } on AuthFailure catch (e) {
       if (mounted && revision == _revision) {
@@ -637,12 +714,34 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
             ),
           ),
         WorkLayout(
-          input: input,
+          input: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              input,
+              if (_saved case final saved?) ...[
+                const SizedBox(height: 16),
+                SavedAnalysesPanel(
+                  controller: saved,
+                  enabled: !_busy,
+                  onOpen: _openSaved,
+                ),
+              ],
+            ],
+          ),
           result: _result == null
               ? null
               : JobRecommendationResult(
                   result: _result!,
                   selectedRecords: _resultRecords,
+                  titleTrailing: _saved == null
+                      ? null
+                      : Padding(
+                          padding: const EdgeInsetsDirectional.only(start: 4),
+                          child: SavedAnalysisStar(controller: _saved!),
+                        ),
+                  openedNote: _openedAt == null
+                      ? null
+                      : '저장된 결과 · ${savedAnalysisTime(_openedAt)} 분석',
                   // Offered only while the form still has the category that found nothing.
                   onBrowseCategory:
                       _busy ||

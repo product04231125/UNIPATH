@@ -16,6 +16,9 @@
 없앤다(총 71개 도메인 테이블). 영수증은 응답 재전송용이라 그것으로 만든 과목·연결은 남는다.
 없앨 표나 열에 데이터가 남아 있으면 업그레이드는 아무것도 지우지 않고 멈춘다.
 
+`0031_materials_results`(2026-11-24)는 계정에 보관하는 내 자료 `student_materials`(PDF는 `bytea`, 1개 8MiB)와
+저장된 채용공고 분석 결과 `analysis_results`(종류·제목·요약·입력·결과 JSON·즐겨찾기)를 더한다. 둘 다 `users` 삭제 시 함께 지워진다.
+
 ## 학생 학사 연결의 실제 추가 테이블 (2026-11-08)
 
 `0021_student_academic`은 student_academic_workspaces / contexts / activations /

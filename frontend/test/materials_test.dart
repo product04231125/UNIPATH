@@ -11,12 +11,16 @@ import 'package:university_path_frontend/features/records/portfolio/material_rep
 import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
 import 'package:university_path_frontend/features/auth/local_data_owner.dart';
 import 'package:university_path_frontend/shared/widgets/surface_card.dart';
+
 import 'support/record_actions.dart';
+
 import 'package:university_path_frontend/shared/widgets/record_tile.dart';
 
-class MemoryMaterials extends MaterialRepository {
+class MemoryMaterials implements MaterialRepository {
   final records = <String, PersonalMaterial>{};
   bool fail = false;
+  @override
+  bool get inAccount => false;
   @override
   Future<List<PersonalMaterial>> load() async {
     if (fail) throw StateError('읽기 실패');
@@ -26,16 +30,35 @@ class MemoryMaterials extends MaterialRepository {
   @override
   Future<void> save(PersonalMaterial material) async {
     if (fail) throw StateError('쓰기 실패');
-    if (material.pdf == null && material.description.trim().isEmpty) {
+    if (!material.hasPdf && material.description.trim().isEmpty) {
       throw StateError('설명 또는 PDF를 입력하세요.');
     }
-    records[material.id] = material;
+    // Like the real stores: a missing PDF with its file name keeps the saved one.
+    final keep = material.pdf == null && material.fileName.isNotEmpty
+        ? records[material.id]?.pdf
+        : null;
+    records[material.id] = keep == null
+        ? material
+        : PersonalMaterial(
+            id: material.id,
+            title: material.title,
+            type: material.type,
+            description: material.description,
+            fileName: material.fileName,
+            pdf: keep,
+          );
   }
 
   @override
-  Future<void> delete(String id) async {
+  Future<void> delete(PersonalMaterial material) => deleteId(material.id);
+
+  Future<void> deleteId(String id) async {
     records.remove(id);
   }
+
+  @override
+  Future<Uint8List?> pdf(PersonalMaterial material) async =>
+      material.pdf ?? records[material.id]?.pdf;
 }
 
 void main() {
@@ -46,15 +69,15 @@ void main() {
         'materials-owner-isolation',
       );
       addTearDown(db.close);
-      final first = MaterialRepository(
+      final first = DeviceMaterialRepository(
         open: () async => db,
         owner: const LocalDataOwner('first'),
       );
-      final second = MaterialRepository(
+      final second = DeviceMaterialRepository(
         open: () async => db,
         owner: const LocalDataOwner('second'),
       );
-      final anonymous = MaterialRepository(
+      final anonymous = DeviceMaterialRepository(
         open: () async => db,
         owner: const LocalDataOwner(null),
       );
@@ -76,7 +99,7 @@ void main() {
           description: '다른 자료',
         ),
       );
-      await second.delete('same');
+      await second.deleteId('same');
       expect((await first.load()).single.title, '첫 계정');
     },
   );
@@ -84,7 +107,7 @@ void main() {
   test('PDF and metadata survive another repository, failed validation and deletion', () async {
     final db = await databaseFactoryMemory.openDatabase('materials-repository');
     addTearDown(db.close);
-    final repo = MaterialRepository(open: () async => db);
+    final repo = DeviceMaterialRepository(open: () async => db);
     await repo.save(
       PersonalMaterial(
         id: 'pdf',
@@ -95,7 +118,8 @@ void main() {
         pdf: pdf,
       ),
     );
-    final restored = await MaterialRepository(open: () async => db).load();
+    final restored = await DeviceMaterialRepository(open: () async => db)
+        .load();
     expect(restored.single.pdf, pdf);
     expect(restored.single.description, '핵심 성과');
     await expectLater(
@@ -127,7 +151,7 @@ void main() {
         description: '첨부 없이 보관',
       ),
     );
-    await repo.delete('pdf');
+    await repo.deleteId('pdf');
     expect((await repo.load()).single.id, 'note');
   });
 
@@ -140,7 +164,7 @@ void main() {
       final path = '${directory.path}${Platform.pathSeparator}materials.db';
       var db = await disk.databaseFactoryIo.openDatabase(path);
       try {
-        await MaterialRepository(open: () async => db).save(
+        await DeviceMaterialRepository(open: () async => db).save(
           PersonalMaterial(
             id: 'file',
             title: '합성 PDF',
@@ -152,7 +176,8 @@ void main() {
         );
         await db.close();
         db = await disk.databaseFactoryIo.openDatabase(path);
-        final rows = await MaterialRepository(open: () async => db).load();
+        final rows = await DeviceMaterialRepository(open: () async => db)
+            .load();
         expect(rows.single.pdf, pdf);
         expect(rows.single.fileName, 'synthetic.pdf');
       } finally {
@@ -191,7 +216,7 @@ void main() {
               body: MaterialsPage(
                 repository: repo,
                 pickPdf: () async => selected,
-                exportPdf: (value) async => exported = value,
+                exportPdf: (value, _) async => exported = value,
               ),
             ),
           ),

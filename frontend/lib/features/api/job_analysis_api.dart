@@ -5,10 +5,19 @@ class JobAnalysisApi {
   const JobAnalysisApi(this.api);
   final ApiGateway api;
 
-  Future<JobAnalysisResponse> analyze(JobAnalysisRequest request) async {
-    final result = JobAnalysisResponse.fromJson(
-      (await api.request('POST', 'me/job-analyses', request.toJson()))!,
-    );
+  Future<JobAnalysisResponse> analyze(JobAnalysisRequest request) async =>
+      (await analyzeWithRaw(request)).$1;
+
+  /// The checked result and the server's JSON, which is what a saved result keeps.
+  Future<(JobAnalysisResponse, Map<String, dynamic>)> analyzeWithRaw(
+    JobAnalysisRequest request,
+  ) async {
+    final raw = (await api.request(
+      'POST',
+      'me/job-analyses',
+      request.toJson(),
+    ))!;
+    final result = JobAnalysisResponse.fromJson(raw);
     if ((result.status == 'completed') != result.comparisons.isNotEmpty) {
       throw const FormatException('Inconsistent job analysis result');
     }
@@ -45,6 +54,6 @@ class JobAnalysisApi {
         }
       }
     }
-    return result;
+    return (result, raw);
   }
 }

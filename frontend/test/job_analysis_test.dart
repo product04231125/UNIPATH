@@ -6,7 +6,10 @@ import 'package:university_path_frontend/features/assistant/ai_record_catalog.da
 import 'package:university_path_frontend/features/records/portfolio/job_analysis_page.dart';
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
 
+import 'support/saved_analyses_store.dart';
+
 class AnalysisGateway extends ApiGateway {
+  final saved = SavedAnalysesStore();
   final calls = <Map<String, Object?>>[];
   Object? failure;
   Map<String, dynamic> result = {
@@ -23,6 +26,9 @@ class AnalysisGateway extends ApiGateway {
     String path, [
     Map<String, Object?>? body,
   ]) async {
+    if (SavedAnalysesStore.handles(path)) {
+      return saved.handle(method, path, body);
+    }
     expect(path, 'me/job-analyses');
     calls.add(body!);
     if (failure != null) throw failure!;
@@ -363,6 +369,92 @@ void main() {
       p.dispose();
     },
   );
+  testWidgets('a completed analysis is saved, starred and opened again', (
+    tester,
+  ) async {
+    final api = AnalysisGateway()
+      ..result = {
+        'analysis_id': 'a',
+        'status': 'completed',
+        'reason': 'compared_with_personal_evidence',
+        'official': false,
+        'missing_fields': [],
+        'comparisons': [
+          {
+            'requirement_id': 'r',
+            'priority': 'required',
+            'requirement': '개발 경험',
+            'status': 'supported',
+            'posting_evidence': {'start': 0, 'end': 2, 'excerpt': '합성'},
+            'personal_evidence': [
+              {
+                'kind': 'experience',
+                'record_id': 'record-id',
+                'version': 2,
+                'excerpt': '프로젝트 경험',
+              },
+            ],
+            'explanation': '경험 활용: 프로젝트 경험이 있습니다.',
+          },
+        ],
+      };
+    final p = await consent();
+    await p.setAllowed(AiConsentFeature.jobAnalysis, true);
+    await mount(tester, api, p);
+    expect(
+      find.byKey(const ValueKey('saved-analyses-posting')),
+      findsOneWidget,
+    );
+    await execute(tester);
+    // Saved automatically with what is needed to show it again.
+    final saved = api.saved.items.single;
+    expect(saved['kind'], 'posting');
+    expect(saved['title'], '합성 공고 본문');
+    expect(saved['summary'], {'ready': 1, 'total': 1});
+    expect(saved['input'], {
+      'posting_text': '합성 공고 본문',
+      'record_titles': {'record-id': '선택한 경험'},
+    });
+    expect((saved['result'] as Map)['status'], 'completed');
+    expect(api.calls, hasLength(1));
+    expect(find.textContaining('준비 1 / 1'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('saved-analysis-current-star')));
+    await tester.pumpAndSettle();
+    expect(saved['favorite'], isTrue);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('saved-analysis-saved-0')),
+        matching: find.byIcon(Icons.star),
+      ),
+      findsOneWidget,
+    );
+
+    // Another posting replaces the form; the saved one comes back with its text.
+    await tester.enterText(
+      find.byKey(const ValueKey('job-posting-text')),
+      '다른 공고',
+    );
+    await tester.tap(find.text('합성 공고 본문').last);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('job-analysis-opened')), findsOneWidget);
+    expect(
+      tester
+          .widget<TextField>(
+            find.descendant(
+              of: find.byKey(const ValueKey('job-posting-text')),
+              matching: find.byType(TextField),
+            ),
+          )
+          .controller!
+          .text,
+      '합성 공고 본문',
+    );
+    expect(find.text('선택한 경험 · 프로젝트 경험'), findsOneWidget);
+    expect(api.calls, hasLength(1));
+    await tester.pumpWidget(const SizedBox());
+    p.dispose();
+  });
   for (final item in [
     ('needs_user_input', 'external_processing_consent_required', '추가 입력 필요'),
     ('insufficient_evidence', 'no_requirements_found', '분석 근거 부족'),

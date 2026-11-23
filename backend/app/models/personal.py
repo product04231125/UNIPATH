@@ -13,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
+    LargeBinary,
     Numeric,
     String,
     Text,
@@ -66,6 +67,60 @@ class WritingDocument(Base):
         CheckConstraint("version >= 1", name="version"),
         CheckConstraint("document_type IN ('cover_letter','portfolio')", name="document_type"),
     )
+
+
+class StudentMaterial(Base):
+    """내 자료: a described file (PDF) or a written description, kept in the student's account.
+
+    The id is chosen by the client, so a material saved earlier on a device keeps its id when
+    it moves to the account. Nothing here is sent to a model until the student picks it for one
+    analysis request.
+    """
+
+    __tablename__ = "student_materials"
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(120))
+    material_type: Mapped[str] = mapped_column(String(16))
+    description: Mapped[str] = mapped_column(Text, default="")
+    filename: Mapped[str | None] = mapped_column(String(200))
+    byte_count: Mapped[int] = mapped_column(Integer, default=0)
+    sha256: Mapped[str | None] = mapped_column(String(64))
+    file_data: Mapped[bytes | None] = mapped_column(LargeBinary, deferred=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (
+        CheckConstraint("version >= 1", name="version"),
+        CheckConstraint(
+            "material_type IN ('portfolio','resume','cover_letter','other')", name="material_type"
+        ),
+        CheckConstraint(
+            "(file_data IS NULL AND filename IS NULL AND sha256 IS NULL AND byte_count = 0)"
+            " OR (file_data IS NOT NULL AND filename IS NOT NULL AND sha256 IS NOT NULL"
+            " AND byte_count BETWEEN 5 AND 8388608 AND octet_length(file_data) = byte_count)",
+            name="file",
+        ),
+        CheckConstraint("file_data IS NOT NULL OR length(btrim(description)) > 0", name="content"),
+    )
+
+
+class AnalysisResult(Base):
+    """A finished 채용공고 분석 result, kept so the student can reopen it; star to keep it."""
+
+    __tablename__ = "analysis_results"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(16))
+    title: Mapped[str] = mapped_column(String(160))
+    # Small facts for the list (e.g. ready / total requirements) so it never loads results.
+    summary: Mapped[dict] = mapped_column(JSON, default=dict)
+    # What the student asked (posting text, search conditions); consent and files are not kept.
+    input: Mapped[dict] = mapped_column(JSON, default=dict)
+    result: Mapped[dict] = mapped_column(JSON)
+    favorite: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (CheckConstraint("kind IN ('posting','gap','search')", name="kind"),)
 
 
 class PlanningProfile(Base):

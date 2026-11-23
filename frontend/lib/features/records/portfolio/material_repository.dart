@@ -1,9 +1,12 @@
-import 'package:sembast/blob.dart';
+import 'dart:convert';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
+import 'package:sembast/blob.dart';
 import 'package:sembast/sembast.dart';
 
+import '../../auth/auth_api.dart';
+import '../../auth/material_file_gateway.dart';
 import '../personal_record_repository.dart';
 import '../../auth/local_data_owner.dart';
 import 'material_database.dart';
@@ -25,9 +28,21 @@ class PersonalMaterial {
     required this.description,
     this.fileName = '',
     Uint8List? pdf,
-  }) : pdf = pdf == null ? null : Uint8List.fromList(pdf);
+    int? byteCount,
+    this.version = 0,
+  }) : pdf = pdf == null ? null : Uint8List.fromList(pdf),
+       byteCount = byteCount ?? pdf?.length ?? 0;
   final String id, title, type, description, fileName;
+
+  /// The PDF when it is at hand: a newly picked file, or one kept on this device.
+  /// Account materials leave it out and read it with [MaterialRepository.pdf].
   final Uint8List? pdf;
+  final int byteCount;
+
+  /// The saved version in the account; 0 before the first save.
+  final int version;
+  bool get hasPdf => pdf != null || (fileName.isNotEmpty && byteCount > 0);
+
   Map<String, Object?> toMap() => {
     'title': title,
     'type': type,
@@ -46,25 +61,26 @@ class PersonalMaterial {
       );
 }
 
-/// Private, device-local material store. No upload/indexing or AI request.
-class MaterialRepository {
-  MaterialRepository({Future<Database> Function()? open, LocalDataOwner? owner})
-    : _open = open ?? openMaterialDatabase,
-      _owner = owner ?? LocalDataOwner.current();
-  final Future<Database> Function() _open;
-  final LocalDataOwner _owner;
-  late final _store = stringMapStoreFactory.store(_owner.key('materials'));
-  static const maxPdfBytes = 10 * 1024 * 1024;
+/// Where 내 자료 is kept: the student's account, or this device before signing in.
+abstract class MaterialRepository {
+  /// One PDF: the most a single analysis request can send.
+  static const maxPdfBytes = 8 * 1024 * 1024;
   static const maxTotalBytes = 50 * 1024 * 1024;
-  Future<List<PersonalMaterial>> load() async {
-    final rows = await _store.find(await _open());
-    return [
-      for (final row in rows) PersonalMaterial.fromMap(row.key, row.value),
-    ];
-  }
+
+  /// True when materials are kept in the account rather than on this device.
+  bool get inAccount;
+  Future<List<PersonalMaterial>> load();
+
+  /// Saves [material]. Its [PersonalMaterial.pdf] replaces the saved PDF, an empty
+  /// [PersonalMaterial.fileName] removes it, and otherwise the saved PDF is kept.
+  Future<void> save(PersonalMaterial material);
+  Future<void> delete(PersonalMaterial material);
+
+  /// The material's PDF, or null when it has none.
+  Future<Uint8List?> pdf(PersonalMaterial material);
 
   static void validatePdf(String name, Uint8List bytes) {
-    if (bytes.length > maxPdfBytes) throw StateError('PDF는 10MB 이하로 선택하세요.');
+    if (bytes.length > maxPdfBytes) throw StateError('PDF는 8MB 이하로 선택하세요.');
     if (!name.toLowerCase().endsWith('.pdf') ||
         bytes.length < 5 ||
         String.fromCharCodes(bytes.take(5)) != '%PDF-') {
@@ -72,15 +88,52 @@ class MaterialRepository {
     }
   }
 
-  Future<void> save(PersonalMaterial material) async {
+  static void validate(PersonalMaterial material) {
     if (material.title.trim().isEmpty ||
-        (material.pdf == null && material.description.trim().isEmpty)) {
+        (!material.hasPdf && material.description.trim().isEmpty)) {
       throw StateError('자료 이름과 내용 설명 또는 PDF를 입력하세요.');
     }
     if (material.pdf != null) validatePdf(material.fileName, material.pdf!);
+  }
+
+  static String newId() => PersonalRecord.newId();
+}
+
+/// Private, device-local material store, used before signing in and as the
+/// source when a device's materials move to the account.
+class DeviceMaterialRepository implements MaterialRepository {
+  DeviceMaterialRepository({
+    Future<Database> Function()? open,
+    LocalDataOwner? owner,
+  }) : _open = open ?? openMaterialDatabase,
+       _owner = owner ?? LocalDataOwner.current();
+  final Future<Database> Function() _open;
+  final LocalDataOwner _owner;
+  late final _store = stringMapStoreFactory.store(_owner.key('materials'));
+
+  @override
+  bool get inAccount => false;
+
+  @override
+  Future<List<PersonalMaterial>> load() async {
+    final rows = await _store.find(await _open());
+    return [
+      for (final row in rows) PersonalMaterial.fromMap(row.key, row.value),
+    ];
+  }
+
+  @override
+  Future<void> save(PersonalMaterial material) async {
+    MaterialRepository.validate(material);
     final db = await _open();
     await db.transaction((txn) async {
       final rows = await _store.find(txn);
+      final saved = rows.where((row) => row.key == material.id).firstOrNull;
+      // Keep the saved PDF unless a new one was picked or the file was removed.
+      final keep = material.pdf == null && material.fileName.isNotEmpty
+          ? (saved?.value['pdf'] as Blob?)
+          : null;
+      final value = {...material.toMap(), 'pdf': ?keep};
       final total = rows
           .where((row) => row.key != material.id)
           .fold<int>(
@@ -88,18 +141,158 @@ class MaterialRepository {
             (sum, row) =>
                 sum + ((row.value['pdf'] as Blob?)?.bytes.length ?? 0),
           );
-      if (total + (material.pdf?.length ?? 0) > maxTotalBytes) {
+      final added = (value['pdf'] as Blob?)?.bytes.length ?? 0;
+      if (total + added > MaterialRepository.maxTotalBytes) {
         throw StateError('기기 PDF 보관 한도 50MB입니다. 불필요한 자료를 내보낸 뒤 정리하세요.');
       }
-      await _store.record(material.id).put(txn, material.toMap());
+      await _store.record(material.id).put(txn, value);
     });
   }
 
-  Future<void> delete(String id) async {
+  @override
+  Future<void> delete(PersonalMaterial material) => deleteId(material.id);
+
+  Future<void> deleteId(String id) async {
     await _store.record(id).delete(await _open());
   }
 
-  static String newId() => PersonalRecord.newId();
+  @override
+  Future<Uint8List?> pdf(PersonalMaterial material) async {
+    if (material.pdf != null) return material.pdf;
+    final row = await _store.record(material.id).get(await _open());
+    return (row?['pdf'] as Blob?)?.bytes;
+  }
+}
+
+/// 내 자료 kept in the student's account. Materials still on this device move
+/// to the account the first time the list is read, keeping their ids.
+class AccountMaterialRepository implements MaterialRepository {
+  AccountMaterialRepository(
+    this.api, {
+    required this.ownerId,
+    DeviceMaterialRepository? device,
+  }) : _device =
+           device ?? DeviceMaterialRepository(owner: LocalDataOwner(ownerId));
+  final ApiGateway api;
+  final String ownerId;
+  final DeviceMaterialRepository? _device;
+  static const _path = 'me/materials';
+  Future<void>? _moving;
+
+  /// Device materials that could not move to the account (too large, over the
+  /// account limit or a failed request); they stay on the device and are retried.
+  int unmovedCount = 0;
+
+  static const _codes = {
+    MaterialKinds.portfolio: 'portfolio',
+    MaterialKinds.resume: 'resume',
+    MaterialKinds.coverLetter: 'cover_letter',
+    MaterialKinds.other: 'other',
+  };
+  static String _label(String code) =>
+      _codes.entries
+          .where((e) => e.value == code)
+          .map((e) => e.key)
+          .firstOrNull ??
+      MaterialKinds.other;
+  static String _code(String type) => _codes[type] ?? 'other';
+
+  @override
+  bool get inAccount => true;
+
+  Map<String, Object?> _file(PersonalMaterial m) => {
+    'filename': m.fileName,
+    'content_base64': base64Encode(m.pdf!),
+  };
+
+  Map<String, Object?> _body(PersonalMaterial m) => {
+    'title': m.title.trim(),
+    'material_type': _code(m.type),
+    'description': m.description.trim(),
+  };
+
+  Future<void> _moveDeviceMaterials() async {
+    final device = _device;
+    if (device == null) return;
+    var unmoved = 0;
+    List<PersonalMaterial> local;
+    try {
+      local = await device.load();
+    } catch (_) {
+      return;
+    }
+    for (final m in local) {
+      try {
+        if (m.pdf != null) MaterialRepository.validatePdf(m.fileName, m.pdf!);
+        await api.request('POST', _path, {
+          'id': m.id,
+          ..._body(m),
+          if (m.pdf != null) 'file': _file(m),
+        });
+        await device.deleteId(m.id);
+      } catch (_) {
+        unmoved++;
+      }
+    }
+    unmovedCount = unmoved;
+  }
+
+  @override
+  Future<List<PersonalMaterial>> load() async {
+    // Once per session; a failed move is retried with the next session.
+    await (_moving ??= _moveDeviceMaterials());
+    final value = await api.request('GET', _path);
+    return [
+      for (final raw in (value?['items'] as List? ?? const []))
+        if (raw case final Map<String, dynamic> item)
+          PersonalMaterial(
+            id: item['id'] as String,
+            title: item['title'] as String,
+            type: _label(item['material_type'] as String),
+            description: item['description'] as String? ?? '',
+            fileName: item['filename'] as String? ?? '',
+            byteCount: item['byte_count'] as int? ?? 0,
+            version: item['version'] as int,
+          ),
+    ];
+  }
+
+  @override
+  Future<void> save(PersonalMaterial material) async {
+    MaterialRepository.validate(material);
+    if (material.version == 0) {
+      await api.request('POST', _path, {
+        'id': material.id,
+        ..._body(material),
+        if (material.pdf != null) 'file': _file(material),
+      });
+      return;
+    }
+    await api.request('PUT', '$_path/${material.id}', {
+      ..._body(material),
+      'expected_version': material.version,
+      if (material.pdf != null)
+        'file': _file(material)
+      else if (material.fileName.isEmpty)
+        'file': null,
+    });
+  }
+
+  @override
+  Future<void> delete(PersonalMaterial material) => api.request(
+    'DELETE',
+    '$_path/${material.id}?expected_version=${material.version}',
+  );
+
+  @override
+  Future<Uint8List?> pdf(PersonalMaterial material) async {
+    if (material.pdf != null) return material.pdf;
+    if (!material.hasPdf) return null;
+    if (api case final MaterialFileGateway files) {
+      return files.materialFile(material.id);
+    }
+    throw StateError('PDF는 로그인한 뒤 받을 수 있습니다.');
+  }
 }
 
 Future<XFile?> pickMaterialPdf() => openFile(
@@ -112,9 +305,10 @@ Future<XFile?> pickMaterialPdf() => openFile(
   ],
 );
 
-Future<void> exportMaterialPdf(PersonalMaterial material) async {
-  final bytes = material.pdf;
-  if (bytes == null) return;
+Future<void> exportMaterialPdf(
+  PersonalMaterial material,
+  Uint8List bytes,
+) async {
   final file = XFile.fromData(
     bytes,
     name: material.fileName,

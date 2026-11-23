@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'guidance_asset_gateway.dart';
 import 'file_export_gateway.dart';
+import 'material_file_gateway.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -384,10 +385,11 @@ class AuthApi implements AuthGateway, ApiGateway {
                           (body?['documents'] as List? ?? []).isNotEmpty))
                   ? 180
                   : const {
-                      'me/school-queries',
-                      'me/personalized-guidance',
-                      'me/job-analyses',
-                    }.contains(path)
+                          'me/school-queries',
+                          'me/personalized-guidance',
+                          'me/job-analyses',
+                        }.contains(path) ||
+                        path.startsWith('me/materials')
                   ? 55
                   : 20,
             ),
@@ -588,7 +590,11 @@ class AuthApi implements AuthGateway, ApiGateway {
 }
 
 class _OwnerGateway
-    implements ApiGateway, GuidanceAssetGateway, FileExportGateway {
+    implements
+        ApiGateway,
+        GuidanceAssetGateway,
+        FileExportGateway,
+        MaterialFileGateway {
   const _OwnerGateway(this.auth, this.ownerId, this.epoch);
   final AuthApi auth;
   final String ownerId;
@@ -641,6 +647,55 @@ class _OwnerGateway
     } catch (_) {
       check();
       throw AuthFailure('${format.label} 파일을 받지 못했습니다. 연결을 확인하고 다시 시도해 주세요.');
+    }
+  }
+
+  @override
+  Future<Uint8List> materialFile(String id) async {
+    if (!RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(id)) {
+      throw const AuthFailure('올바른 자료를 선택해 주세요.');
+    }
+    void check() {
+      if (!auth._ownsSession(ownerId, epoch)) {
+        throw const AuthFailure('계정이 변경되었습니다. 다시 로그인해 주세요.', status: 403);
+      }
+    }
+
+    check();
+    try {
+      final request = http.Request(
+        'GET',
+        auth._base.resolve('/api/v1/me/materials/$id/file'),
+      );
+      request.followRedirects = false;
+      request.headers['X-Unipath-Owner'] = ownerId;
+      if (auth._token != null) {
+        request.headers['Authorization'] = 'Bearer ${auth._token}';
+      }
+      final response = await auth._client
+          .send(request)
+          .then(http.Response.fromStream)
+          .timeout(const Duration(seconds: 60));
+      check();
+      if (response.statusCode != 200) {
+        throw AuthFailure(
+          response.statusCode == 404
+              ? '자료의 PDF를 찾을 수 없습니다. 목록을 새로 읽어 주세요.'
+              : '자료의 PDF를 받지 못했습니다. 다시 시도해 주세요.',
+          status: response.statusCode,
+        );
+      }
+      final type = response.headers['content-type']?.split(';').first;
+      final bytes = response.bodyBytes;
+      if (type != ExportFormat.pdf.mime || !ExportFormat.pdf.matches(bytes)) {
+        throw const AuthFailure('자료의 PDF 형식을 확인하지 못했습니다.');
+      }
+      return bytes;
+    } on AuthFailure {
+      rethrow;
+    } catch (_) {
+      check();
+      throw const AuthFailure('자료의 PDF를 받지 못했습니다. 연결을 확인하고 다시 시도해 주세요.');
     }
   }
 

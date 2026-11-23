@@ -13,6 +13,7 @@ from app.api.admin_applications import admin_router as admin_applications_router
 from app.api.admin_applications import router as admin_applications_owner_router
 from app.api.admin_signups import admin_router as school_signup_admin_router
 from app.api.admin_signups import router as school_signup_owner_router
+from app.api.analysis_results import router as analysis_results_router
 from app.api.assistant import router as assistant_router
 from app.api.auth import router as auth_router
 from app.api.catalog import router as catalog_router
@@ -28,6 +29,7 @@ from app.api.graduation import router as graduation_catalog_router
 from app.api.health import health, router
 from app.api.knowledge import router as knowledge_router
 from app.api.knowledge import student_router as knowledge_student_router
+from app.api.materials import router as materials_router
 from app.api.official_records import owner_router as official_records_owner_router
 from app.api.official_records import router as official_records_router
 from app.api.personal import router as personal_router
@@ -130,6 +132,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(personalization_router, prefix="/api/v1")
     application.include_router(career_recommendation_router, prefix="/api/v1")
     application.include_router(writing_router, prefix="/api/v1")
+    application.include_router(materials_router, prefix="/api/v1")
+    application.include_router(analysis_results_router, prefix="/api/v1")
     application.include_router(academic_guidance_router, prefix="/api/v1")
     application.include_router(academic_guidance_admin_router, prefix="/api/v1")
     application.include_router(official_records_router, prefix="/api/v1")

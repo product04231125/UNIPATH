@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
@@ -13,7 +14,7 @@ import '../../../shared/widgets/field_label.dart';
 import '../../../shared/widgets/surface_card.dart';
 import '../../api/student_api.dart';
 import '../../api/academic_guidance_models.dart';
-import '../../api/guidance_api.dart';
+import '../../api/job_analysis_api.dart';
 import '../../api/job_analysis_models.dart';
 import '../../assistant/ai_record_catalog.dart';
 import '../../auth/auth_api.dart';
@@ -22,6 +23,7 @@ import '../../career/career_gap.dart';
 import '../../career/career_gap_view.dart';
 import '../../career/career_goal.dart';
 import '../../career/requirement_result.dart';
+import '../../career/saved_analyses.dart';
 import '../../auth/guest_preview_scope.dart';
 import '../../settings/ai_consent_preferences.dart';
 import '../../settings/ai_consent_section.dart';
@@ -131,6 +133,12 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
   String? _error, _requestId;
   JobAnalysisResponse? _result;
 
+  /// Finished results kept in the account; null before signing in.
+  SavedAnalysesController? _saved;
+
+  /// When the shown result is a saved one opened from the list.
+  DateTime? _openedAt;
+
   /// Titles of the records sent with the last run, to name the evidence.
   Map<String, String> _recordTitles = const {};
   final _materialIds = <String>{};
@@ -147,6 +155,66 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
     super.initState();
     widget.careerGoal?.addListener(_goalChanged);
     _consumeRequest();
+    _saved = _savedFor(widget.api);
+  }
+
+  static SavedAnalysesController? _savedFor(StudentApi? api) => api == null
+      ? null
+      : SavedAnalysesController(
+          AnalysisResultsApi(api.api),
+          AnalysisKind.posting,
+        );
+
+  Future<void> _save(
+    String posting,
+    JobAnalysisResponse result,
+    Map<String, dynamic> raw,
+  ) async {
+    if (result.status != 'completed') return;
+    final cited = {
+      for (final row in result.comparisons)
+        for (final cite in row.personalEvidence) cite.recordId,
+    };
+    await _saved?.save(
+      title: analysisTitle(posting, fallback: '공고 1개 비교'),
+      summary: {
+        'ready': result.comparisons
+            .where((c) => c.status == 'supported')
+            .length,
+        'total': result.comparisons.length,
+      },
+      input: {
+        'posting_text': posting,
+        // Names the evidence when the result is opened again.
+        'record_titles': {
+          for (final entry in _recordTitles.entries)
+            if (cited.contains(entry.key)) entry.key: entry.value,
+        },
+      },
+      result: raw,
+    );
+  }
+
+  Future<void> _openSaved(SavedAnalysisSummary item) async {
+    if (_sending) return;
+    final revision = _revision;
+    final saved = await _saved?.open(item.id);
+    if (saved == null || !mounted || revision != _revision) return;
+    try {
+      final result = JobAnalysisResponse.fromJson(saved.result);
+      setState(() {
+        _result = result;
+        _openedAt = saved.createdAt;
+        _posting.text = saved.input['posting_text'] as String? ?? '';
+        _recordTitles = Map<String, String>.from(
+          saved.input['record_titles'] as Map? ?? const {},
+        );
+        _error = null;
+        _requestId = null;
+      });
+    } catch (_) {
+      setState(() => _error = '저장된 결과의 형식을 읽지 못했습니다.');
+    }
   }
 
   void _goalChanged() {
@@ -173,6 +241,9 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
       _posting.clear();
       _materialIds.clear();
       _result = null;
+      _openedAt = null;
+      _saved?.dispose();
+      _saved = _savedFor(widget.api);
       _error = null;
       _requestId = null;
     }
@@ -180,6 +251,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
 
   @override
   void dispose() {
+    _saved?.dispose();
     widget.careerGoal?.removeListener(_goalChanged);
     _posting.dispose();
     super.dispose();
@@ -231,9 +303,10 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
       }
       setState(() {
         _result = null;
+        _openedAt = null;
         _requesting = true;
       });
-      final result = await GuidanceApi(api.api).analyze(
+      final (result, raw) = await JobAnalysisApi(api.api).analyzeWithRaw(
         JobAnalysisRequest(
           postingText: posting,
           records: [
@@ -261,6 +334,8 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
           _result = result;
           _recordTitles = {for (final r in records) r.id: r.title};
         });
+        // Kept in the account; a failed save leaves the result on screen.
+        unawaited(_save(posting, result, raw));
       }
     } on AuthFailure catch (e) {
       if (mounted && revision == _revision) {
@@ -406,93 +481,107 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
       title: '채용공고 분석',
       body: [
         WorkLayout(
-          input: SurfaceCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                FieldLabel(
-                  label: '채용공고 본문',
-                  child: TextFormField(
-                    key: const ValueKey('job-posting-text'),
-                    controller: _posting,
-                    enabled: !_sending,
-                    minLines: 12,
-                    maxLines: 24,
-                    decoration: const InputDecoration(
-                      hintText: '비교할 공고 본문을 붙여 넣으세요.',
-                    ),
-                  ),
-                ),
-                if (widget.loadMaterials != null && _connected) ...[
-                  const SizedBox(height: 16),
-                  MaterialSelection(
-                    keyPrefix: 'job-analysis',
-                    load: widget.loadMaterials!,
-                    selected: _materialIds,
-                    enabled: !_sending,
-                    onChanged: (id, selected) => setState(
-                      () => selected
-                          ? _materialIds.add(id)
-                          : _materialIds.remove(id),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 16),
-                if (!_connected)
-                  const NoteLine(
-                    icon: Icons.lock_outline,
-                    text: '채용 분석을 사용하려면 로그인해 주세요. 공고와 개인 기록은 전송하지 않았습니다.',
-                  ),
-                if (widget.consent != null)
-                  AnimatedBuilder(
-                    animation: widget.consent!,
-                    builder: (context, _) => Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        NoteLine(
-                          icon: Icons.cloud_upload_outlined,
-                          text:
-                              widget.consent!.allows(
-                                AiConsentFeature.jobAnalysis,
-                              )
-                              ? 'Google 외부 AI 전송 허용 중 · 설정에서 변경'
-                              : 'Google 외부 AI 전송 · 실행 전 동의 확인',
-                          detail: '공고 본문, 저장된 수강·활동·경험·자격·성과 기록 전체, 고른 내 자료를 비교에 사용합니다.',
+          input: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SurfaceCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    FieldLabel(
+                      label: '채용공고 본문',
+                      child: TextFormField(
+                        key: const ValueKey('job-posting-text'),
+                        controller: _posting,
+                        enabled: !_sending,
+                        minLines: 12,
+                        maxLines: 24,
+                        decoration: const InputDecoration(
+                          hintText: '비교할 공고 본문을 붙여 넣으세요.',
                         ),
-                        if (widget.consent!.error != null)
-                          Text(widget.consent!.error!),
-                        if (widget.consent!.loadFailed)
-                          TextButton(
-                            onPressed: widget.consent!.retry,
-                            child: const Text('전송 설정 다시 읽기'),
-                          ),
-                      ],
+                      ),
                     ),
-                  ),
-                if (_error != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    _error!,
-                    style: TextStyle(color: theme.colorScheme.error),
-                  ),
-                ],
-                if (_requestId != null) SelectableText('문의 식별자: $_requestId'),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: FilledButton.icon(
-                    key: const ValueKey('job-analysis-run'),
-                    onPressed: _canAnalyze ? _analyze : null,
-                    icon: const Icon(Icons.fact_check_outlined),
-                    label: Text(_sending ? '분석 중…' : '공고 분석'),
-                  ),
+                    if (widget.loadMaterials != null && _connected) ...[
+                      const SizedBox(height: 16),
+                      MaterialSelection(
+                        keyPrefix: 'job-analysis',
+                        load: widget.loadMaterials!,
+                        selected: _materialIds,
+                        enabled: !_sending,
+                        onChanged: (id, selected) => setState(
+                          () => selected
+                              ? _materialIds.add(id)
+                              : _materialIds.remove(id),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    if (!_connected)
+                      const NoteLine(
+                        icon: Icons.lock_outline,
+                        text: '채용 분석을 사용하려면 로그인해 주세요. 공고와 개인 기록은 전송하지 않았습니다.',
+                      ),
+                    if (widget.consent != null)
+                      AnimatedBuilder(
+                        animation: widget.consent!,
+                        builder: (context, _) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            NoteLine(
+                              icon: Icons.cloud_upload_outlined,
+                              text:
+                                  widget.consent!.allows(
+                                    AiConsentFeature.jobAnalysis,
+                                  )
+                                  ? 'Google 외부 AI 전송 허용 중 · 설정에서 변경'
+                                  : 'Google 외부 AI 전송 · 실행 전 동의 확인',
+                              detail: '공고 본문, 저장된 수강·활동·경험·자격·성과 기록 전체, 고른 내 자료를 비교에 사용합니다.',
+                            ),
+                            if (widget.consent!.error != null)
+                              Text(widget.consent!.error!),
+                            if (widget.consent!.loadFailed)
+                              TextButton(
+                                onPressed: widget.consent!.retry,
+                                child: const Text('전송 설정 다시 읽기'),
+                              ),
+                          ],
+                        ),
+                      ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        _error!,
+                        style: TextStyle(color: theme.colorScheme.error),
+                      ),
+                    ],
+                    if (_requestId != null)
+                      SelectableText('문의 식별자: $_requestId'),
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: FilledButton.icon(
+                        key: const ValueKey('job-analysis-run'),
+                        onPressed: _canAnalyze ? _analyze : null,
+                        icon: const Icon(Icons.fact_check_outlined),
+                        label: Text(_sending ? '분석 중…' : '공고 분석'),
+                      ),
+                    ),
+                    if (_requesting) ...[
+                      const SizedBox(height: 12),
+                      const LinearProgressIndicator(),
+                    ],
+                  ],
                 ),
-                if (_requesting) ...[
-                  const SizedBox(height: 12),
-                  const LinearProgressIndicator(),
-                ],
+              ),
+              if (_saved case final saved?) ...[
+                const SizedBox(height: 16),
+                SavedAnalysesPanel(
+                  controller: saved,
+                  enabled: !_sending,
+                  onOpen: _openSaved,
+                ),
               ],
-            ),
+            ],
           ),
           result: _result == null ? null : _resultCard(context, _result!),
           placeholder: const ResultPlaceholder(
@@ -548,6 +637,10 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
                   Text('비교 결과', style: theme.textTheme.titleMedium),
                   const SizedBox(width: 10),
                   ToneChip(label: _status(result), tone: tone),
+                  if (_saved case final saved?) ...[
+                    const SizedBox(width: 4),
+                    SavedAnalysisStar(controller: saved),
+                  ],
                 ],
               ),
               if (write)
@@ -561,6 +654,14 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
                 ),
             ],
           ),
+          if (_openedAt != null) ...[
+            const SizedBox(height: 8),
+            NoteLine(
+              key: const ValueKey('job-analysis-opened'),
+              icon: Icons.history,
+              text: '저장된 결과 · ${savedAnalysisTime(_openedAt)} 분석',
+            ),
+          ],
           if (result.status != 'completed') ...[
             const SizedBox(height: 8),
             Text(_reason(result)),
