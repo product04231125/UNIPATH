@@ -11,12 +11,15 @@ abstract final class LayoutWidths {
   /// Dashboard rows of three (FHD at 125% and larger).
   static const wide = 1180.0;
 
-  /// Record cards aim for this width (QHD 5, FHD 3, FHD 125% 3 columns)
-  /// so chips and summaries wrap instead of running across the screen.
-  static const recordCard = 440.0;
+  /// Record cards aim for this width (QHD 6, FHD 5, FHD 125% 4 columns)
+  /// so each card reads as a near-square tile, not a long strip.
+  static const recordCard = 300.0;
 
   /// A card never gets narrower than this; the grid drops a column first.
-  static const recordCardMin = 340.0;
+  static const recordCardMin = 260.0;
+
+  /// Record cards are at least this tall relative to their width.
+  static const recordCardMinAspect = .8;
 }
 
 /// Equal-height rows of cards whose column count follows the available
@@ -27,8 +30,9 @@ class ResponsiveGrid extends StatelessWidget {
     required this.children,
     this.targetItemWidth = LayoutWidths.recordCard,
     this.minItemWidth = LayoutWidths.recordCardMin,
-    this.maxColumns = 5,
+    this.maxColumns = 6,
     this.gap = 12,
+    this.minHeightFactor = LayoutWidths.recordCardMinAspect,
   });
 
   final List<Widget> children;
@@ -38,6 +42,10 @@ class ResponsiveGrid extends StatelessWidget {
   final double minItemWidth;
   final int maxColumns;
   final double gap;
+
+  /// In multi-column rows, cards are at least this × their width tall so
+  /// sparse records still read as tiles. A single column ignores it.
+  final double minHeightFactor;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -53,6 +61,7 @@ class ResponsiveGrid extends StatelessWidget {
               scaler.scale(minItemWidth)) {
         columns--;
       }
+      final itemWidth = (width - gap * (columns - 1)) / columns;
       if (columns == 1) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -75,7 +84,12 @@ class ResponsiveGrid extends StatelessWidget {
                   if (c > 0) SizedBox(width: gap),
                   Expanded(
                     child: start + c < children.length
-                        ? children[start + c]
+                        ? ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: itemWidth * minHeightFactor,
+                            ),
+                            child: children[start + c],
+                          )
                         : const SizedBox.shrink(),
                   ),
                 ],

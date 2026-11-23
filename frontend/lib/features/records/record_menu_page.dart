@@ -294,7 +294,8 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
     final isCourse = kind == PersonalRecordKind.course;
     final IconData icon;
     final AppTone tone;
-    final chips = <Widget>[];
+    final badges = <Widget>[];
+    final facts = <RecordFact>[];
     final lines = <String>[];
     if (isCourse) {
       final completion = record.value('completion');
@@ -306,20 +307,23 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         _ => AppTone.accent,
       };
       icon = Icons.menu_book_outlined;
-      chips.addAll([
+      badges.addAll([
         ToneChip(label: status, tone: tone),
-        ToneChip(
-          label: CourseTerm.parse(record.value('term')).label,
-          icon: Icons.calendar_today_outlined,
-        ),
         if (record.value('category').isNotEmpty)
           ToneChip(label: record.value('category')),
+      ]);
+      final result = [
         if (record.value('credits').isNotEmpty)
-          ToneChip(label: '${recordNumber(record.value('credits'))}학점'),
-        if (record.value('gradingBasis') == 'pass_fail')
-          const ToneChip(label: 'P/F'),
-        if (record.value('grade').isNotEmpty)
-          ToneChip(label: '성적 ${record.value('grade')}'),
+          '${recordNumber(record.value('credits'))}학점',
+        if (record.value('gradingBasis') == 'pass_fail') 'P/F',
+        if (record.value('grade').isNotEmpty) '성적 ${record.value('grade')}',
+      ].join(' · ');
+      facts.addAll([
+        RecordFact(
+          Icons.calendar_today_outlined,
+          CourseTerm.parse(record.value('term')).label,
+        ),
+        if (result.isNotEmpty) RecordFact(Icons.grading_outlined, result),
       ]);
     } else if (kind == PersonalRecordKind.credential) {
       final status = _display(record, 'status');
@@ -330,21 +334,20 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
           ? AppTone.success
           : AppTone.accent;
       icon = Icons.workspace_premium_outlined;
-      chips.addAll([
+      badges.addAll([
         if (status.isNotEmpty) ToneChip(label: status, tone: tone),
         if (_display(record, 'level') case final level when level.isNotEmpty)
           ToneChip(label: level, tone: AppTone.info),
+      ]);
+      facts.addAll([
         if (_display(record, 'provider') case final provider
             when provider.isNotEmpty)
-          ToneChip(label: provider, icon: Icons.apartment_outlined),
+          RecordFact(Icons.apartment_outlined, provider),
         if (earned.isNotEmpty)
-          ToneChip(
-            label: '취득 ${_date(earned)}',
-            icon: Icons.calendar_today_outlined,
-          ),
+          RecordFact(Icons.calendar_today_outlined, '취득 ${_date(earned)}'),
         if (record.value('expiresOn') case final expires
             when expires.isNotEmpty)
-          ToneChip(label: '만료 ${_date(expires)}', icon: Icons.event_busy),
+          RecordFact(Icons.event_busy, '만료 ${_date(expires)}'),
       ]);
     } else {
       final type = _display(record, 'type');
@@ -353,16 +356,17 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
         record.value('startedOn'),
         record.value('endedOn'),
       );
-      chips.addAll([
+      badges.addAll([
         if (type.isNotEmpty) ToneChip(label: type, tone: tone),
-        if (period != null)
-          ToneChip(label: period, icon: Icons.calendar_today_outlined),
-        if (_display(record, 'organization') case final org when org.isNotEmpty)
-          ToneChip(label: org, icon: Icons.apartment_outlined),
-        if (_display(record, 'role') case final role when role.isNotEmpty)
-          ToneChip(label: role, icon: Icons.person_outline),
         if (_display(record, 'status') case final status when status.isNotEmpty)
           ToneChip(label: status),
+      ]);
+      facts.addAll([
+        if (period != null) RecordFact(Icons.calendar_today_outlined, period),
+        if (_display(record, 'organization') case final org when org.isNotEmpty)
+          RecordFact(Icons.apartment_outlined, org),
+        if (_display(record, 'role') case final role when role.isNotEmpty)
+          RecordFact(Icons.person_outline, role),
       ]);
       if (_display(record, 'result') case final result when result.isNotEmpty) {
         lines.add(result);
@@ -376,10 +380,11 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
       icon: icon,
       tone: tone,
       title: record.value('title'),
-      chips: chips,
+      badges: badges,
+      facts: facts,
       lines: lines,
       onTap: () => _showForm(record: record),
-      trailing: [
+      footer: [
         for (final field in _fields.where(
           (f) =>
               f.type == PersonalFieldType.url && record.value(f.key).isNotEmpty,
