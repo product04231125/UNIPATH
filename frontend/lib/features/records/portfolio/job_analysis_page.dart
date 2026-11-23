@@ -21,6 +21,7 @@ import '../../../shared/pending_ui_action.dart';
 import '../../career/career_gap.dart';
 import '../../career/career_gap_view.dart';
 import '../../career/career_goal.dart';
+import '../../career/requirement_result.dart';
 import '../../auth/guest_preview_scope.dart';
 import '../../settings/ai_consent_preferences.dart';
 import '../../settings/ai_consent_section.dart';
@@ -129,6 +130,9 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
   int _revision = 0;
   String? _error, _requestId;
   JobAnalysisResponse? _result;
+
+  /// Titles of the records sent with the last run, to name the evidence.
+  Map<String, String> _recordTitles = const {};
   final _materialIds = <String>{};
   var _purpose = JobPurpose.posting;
   final _visited = <JobPurpose>{JobPurpose.posting};
@@ -253,7 +257,10 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
       if (mounted &&
           revision == _revision &&
           !GuestPreviewScope.isActive(context)) {
-        setState(() => _result = result);
+        setState(() {
+          _result = result;
+          _recordTitles = {for (final r in records) r.id: r.title};
+        });
       }
     } on AuthFailure catch (e) {
       if (mounted && revision == _revision) {
@@ -306,6 +313,9 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
         final ocr = source.ocr ? ' · 자동 문자 인식, 원본 확인' : '';
         return '내 자료 근거 (${source.filename} · ${source.location}$ocr): ${citation.excerpt}';
       }
+    }
+    if (_recordTitles[citation.recordId] case final title?) {
+      return '$title · ${citation.excerpt}';
     }
     return '내 기록 근거 (버전 ${citation.version}): ${citation.excerpt}';
   }
@@ -503,20 +513,52 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
       'not_configured' => AppTone.neutral,
       _ => AppTone.danger,
     };
+    List<JobRequirementComparison> group(String priority) =>
+        result.comparisons.where((c) => c.priority == priority).toList()..sort(
+          (a, b) =>
+              RequirementStatus.parse(a.status).order
+                  .compareTo(RequirementStatus.parse(b.status).order),
+        );
+    (int, int) coverage(List<JobRequirementComparison> items) =>
+        (items.where((c) => c.status == 'supported').length, items.length);
+    final required = group('required'), preferred = group('preferred');
+    final write =
+        widget.onWriteCoverLetter != null && _posting.text.trim().isNotEmpty;
+    Widget grid(List<JobRequirementComparison> items) => ResponsiveGrid(
+      targetItemWidth: 420,
+      minItemWidth: 320,
+      maxColumns: 3,
+      minHeightFactor: 0,
+      children: [for (final item in items) _comparison(context, result, item)],
+    );
     return SurfaceCard(
       key: const ValueKey('job-analysis-result'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.spaceBetween,
             children: [
-              Text('비교 결과', style: theme.textTheme.titleMedium),
-              const SizedBox(width: 10),
-              ToneChip(label: _status(result), tone: tone),
-              if (result.comparisons.isNotEmpty) ...[
-                const SizedBox(width: 6),
-                ToneChip(label: '요건 ${result.comparisons.length}개'),
-              ],
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('비교 결과', style: theme.textTheme.titleMedium),
+                  const SizedBox(width: 10),
+                  ToneChip(label: _status(result), tone: tone),
+                ],
+              ),
+              if (write)
+                FilledButton.tonalIcon(
+                  key: const ValueKey('job-analysis-write'),
+                  onPressed: _sending
+                      ? null
+                      : () => widget.onWriteCoverLetter!(_posting.text.trim()),
+                  icon: const Icon(Icons.edit_note_outlined),
+                  label: const Text('이 공고로 자기소개서 쓰기'),
+                ),
             ],
           ),
           if (result.status != 'completed') ...[
@@ -536,31 +578,22 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
           ],
           if (result.comparisons.isNotEmpty) ...[
             const SizedBox(height: 16),
-            ResponsiveGrid(
-              targetItemWidth: 420,
-              minItemWidth: 320,
-              maxColumns: 3,
-              minHeightFactor: 0,
-              children: [
-                for (final item in result.comparisons)
-                  _comparison(context, result, item),
+            ReadinessSummary(
+              statuses: [
+                for (final c in result.comparisons)
+                  RequirementStatus.parse(c.status),
               ],
+              required: coverage(required),
+              preferred: coverage(preferred),
             ),
-          ],
-          if (widget.onWriteCoverLetter != null &&
-              _posting.text.trim().isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: FilledButton.tonalIcon(
-                key: const ValueKey('job-analysis-write'),
-                onPressed: _sending
-                    ? null
-                    : () => widget.onWriteCoverLetter!(_posting.text.trim()),
-                icon: const Icon(Icons.edit_note_outlined),
-                label: const Text('이 공고로 자기소개서 쓰기'),
-              ),
-            ),
+            if (required.isNotEmpty) ...[
+              RequirementGroupHeading(title: '필수 요건', count: required.length),
+              grid(required),
+            ],
+            if (preferred.isNotEmpty) ...[
+              RequirementGroupHeading(title: '우대 요건', count: preferred.length),
+              grid(preferred),
+            ],
           ],
         ],
       ),
@@ -572,63 +605,23 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
     JobAnalysisResponse result,
     JobRequirementComparison item,
   ) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
     final required = item.priority == 'required';
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ToneChip(
-                label: required ? '필수' : '우대',
-                tone: required ? AppTone.danger : AppTone.info,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  item.requirement,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SelectableText(item.explanation),
-          const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(10, 6, 8, 6),
-            decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(color: colors.outlineVariant, width: 3),
-              ),
-            ),
-            child: SelectableText(
-              '공고 근거: ${item.postingEvidence.excerpt}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-          ),
-          for (final citation in item.personalEvidence) ...[
-            const SizedBox(height: 6),
-            SelectableText(
-              _citationLabel(result, citation),
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
-        ],
-      ),
+    return RequirementCard(
+      key: ValueKey('job-analysis-requirement-${item.requirementId}'),
+      requirement: item.requirement,
+      status: RequirementStatus.parse(item.status),
+      explanation: item.explanation,
+      chips: [
+        ToneChip(
+          label: required ? '필수' : '우대',
+          tone: required ? AppTone.accent : AppTone.info,
+        ),
+      ],
+      evidence: [
+        for (final citation in item.personalEvidence)
+          _citationLabel(result, citation),
+      ],
+      postingEvidence: ['공고 근거: ${item.postingEvidence.excerpt}'],
     );
   }
 }

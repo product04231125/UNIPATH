@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../shared/app_tones.dart';
 import '../../shared/widgets/external_link_button.dart';
 import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/responsive_grid.dart';
@@ -17,6 +16,7 @@ import '../settings/ai_consent_section.dart';
 import 'career_gap.dart';
 import 'career_goal.dart';
 import 'career_goal_card.dart';
+import 'requirement_result.dart';
 
 /// Adds one preparation step to 일정; [date] is the target day the student confirmed.
 typedef AddPreparationPlan = Future<void> Function(
@@ -275,12 +275,6 @@ class _CareerGapViewState extends State<CareerGapView> {
     );
   }
 
-  static AppTone _tone(String status) => switch (status) {
-    'supported' => AppTone.success,
-    'partially_supported' => AppTone.warning,
-    _ => AppTone.danger,
-  };
-
   Widget _result(BuildContext context, GapReport report) {
     final theme = Theme.of(context);
     final heading = Text('분석 결과', style: theme.textTheme.titleMedium);
@@ -340,24 +334,11 @@ class _CareerGapViewState extends State<CareerGapView> {
           ].join(' · '),
           style: muted,
         ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            ToneChip(label: '요건 ${report.requirements.length}개'),
-            ToneChip(
-              label: '준비됨 ${report.count('supported')}',
-              tone: AppTone.success,
-            ),
-            ToneChip(
-              label: '일부 준비됨 ${report.count('partially_supported')}',
-              tone: AppTone.warning,
-            ),
-            ToneChip(
-              label: '준비 필요 ${report.count('insufficient_evidence')}',
-              tone: AppTone.danger,
-            ),
+        const SizedBox(height: 16),
+        ReadinessSummary(
+          statuses: [
+            for (final r in report.requirements)
+              RequirementStatus.parse(r.status),
           ],
         ),
         if (report.summary case final summary?) ...[
@@ -374,13 +355,25 @@ class _CareerGapViewState extends State<CareerGapView> {
           text: '공고 요건과 기록의 비교이며 합격 가능성이나 지원 자격 판정이 아닙니다.',
         ),
         const SizedBox(height: 16),
+        RequirementGroupHeading(
+          title: '공통 요건',
+          count: report.requirements.length,
+        ),
         ResponsiveGrid(
           targetItemWidth: 420,
           minItemWidth: 320,
           maxColumns: 3,
           minHeightFactor: 0,
           children: [
-            for (final requirement in report.requirements)
+            for (final requirement
+                in [...report.requirements]..sort((a, b) {
+                  final byStatus = RequirementStatus.parse(a.status).order
+                      .compareTo(RequirementStatus.parse(b.status).order);
+                  // Then the requirement most postings ask for.
+                  return byStatus != 0
+                      ? byStatus
+                      : b.frequency.compareTo(a.frequency);
+                }))
               _requirement(context, report, requirement),
           ],
         ),
@@ -414,67 +407,35 @@ class _CareerGapViewState extends State<CareerGapView> {
     GapReport report,
     GapRequirement requirement,
   ) {
-    final theme = Theme.of(context);
     final titles = {for (final p in report.postings) p.number: p.title};
-    final colors = theme.colorScheme;
-    final small = theme.textTheme.bodySmall;
-    return Container(
+    return RequirementCard(
       key: ValueKey('career-gap-requirement-${requirement.id}'),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  requirement.requirement,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              ToneChip(
-                label: requirement.statusLabel,
-                tone: _tone(requirement.status),
-              ),
-            ],
+      requirement: requirement.requirement,
+      status: RequirementStatus.parse(requirement.status),
+      explanation: requirement.explanation,
+      chips: [
+        Tooltip(
+          message:
+              '공고 ${report.postings.length}건 중 ${requirement.frequency}건이 요구',
+          child: ToneChip(
+            label: '공고 ${report.postings.length}건 중 ${requirement.frequency}건',
+            icon: Icons.work_outline,
           ),
-          const SizedBox(height: 4),
-          Text(
-            '공고 ${report.postings.length}건 중 ${requirement.frequency}건',
-            style: small?.copyWith(color: colors.onSurfaceVariant),
-          ),
-          const SizedBox(height: 8),
-          SelectableText(requirement.explanation),
-          for (final cite in requirement.evidence) ...[
-            const SizedBox(height: 6),
-            SelectableText('내 기록 근거: ${cite.excerpt}', style: small),
-          ],
-          for (final ref in requirement.postings.take(2)) ...[
-            const SizedBox(height: 6),
-            SelectableText(
-              '공고 근거 [${ref.posting}] ${titles[ref.posting] ?? ''}: ${ref.excerpt}',
-              style: small?.copyWith(color: colors.onSurfaceVariant),
-            ),
-          ],
-          if (requirement.postings.length > 2)
-            Text(
-              '외 ${requirement.postings.length - 2}건의 공고에도 있습니다.',
-              style: small?.copyWith(color: colors.onSurfaceVariant),
-            ),
-          for (final action in requirement.actions) ...[
-            const SizedBox(height: 10),
-            _action(context, requirement, action),
-          ],
-        ],
-      ),
+        ),
+      ],
+      evidence: [
+        for (final cite in requirement.evidence) '내 기록 근거: ${cite.excerpt}',
+      ],
+      postingEvidence: [
+        for (final ref in requirement.postings.take(2))
+          '공고 근거 [${ref.posting}] ${titles[ref.posting] ?? ''}: ${ref.excerpt}',
+        if (requirement.postings.length > 2)
+          '외 ${requirement.postings.length - 2}건의 공고에도 있습니다.',
+      ],
+      footer: [
+        for (final action in requirement.actions)
+          _action(context, requirement, action),
+      ],
     );
   }
 
