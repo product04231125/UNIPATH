@@ -43,6 +43,8 @@ from app.core.database import create_session_factory
 from app.core.errors import register_error_handlers
 from app.rag.career.api import router as career_recommendation_router
 from app.rag.career.gap import GAP_TIMEOUT_SECONDS
+from app.rag.writing.api import router as writing_router
+from app.rag.writing.service import WRITING_TIMEOUT_SECONDS
 from app.schemas.common import ErrorResponse
 from app.schemas.health import HealthResponse
 from app.services import gemini
@@ -69,6 +71,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # Gap analysis reads up to 8 postings in one call: same model, longer timeout.
         application.state.gap_model = gemini.create_model(
             config, timeout=max(config.vertex_timeout_seconds, GAP_TIMEOUT_SECONDS)
+        )
+        # 자기소개서·포트폴리오 drafts write a whole document in one call.
+        application.state.writing_model = gemini.create_model(
+            config, timeout=max(config.vertex_timeout_seconds, WRITING_TIMEOUT_SECONDS)
         )
         try:
             yield
@@ -123,6 +129,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(personal_imports_router, prefix="/api/v1")
     application.include_router(personalization_router, prefix="/api/v1")
     application.include_router(career_recommendation_router, prefix="/api/v1")
+    application.include_router(writing_router, prefix="/api/v1")
     application.include_router(academic_guidance_router, prefix="/api/v1")
     application.include_router(academic_guidance_admin_router, prefix="/api/v1")
     application.include_router(official_records_router, prefix="/api/v1")

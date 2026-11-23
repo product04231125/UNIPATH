@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'guidance_asset_gateway.dart';
+import 'word_export_gateway.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -372,7 +373,13 @@ class AuthApi implements AuthGateway, ApiGateway {
           .timeout(
             Duration(
               seconds:
-                  (path == 'me/job-recommendations' ||
+                  // Posting collection, several postings or a whole document in one model
+                  // call; the gateway allows 180 s for these paths.
+                  (const {
+                        'me/job-recommendations',
+                        'me/career-gap-analyses',
+                        'me/writing-drafts',
+                      }.contains(path) ||
                       (path == 'me/personalized-guidance' &&
                           (body?['documents'] as List? ?? []).isNotEmpty))
                   ? 180
@@ -580,11 +587,64 @@ class AuthApi implements AuthGateway, ApiGateway {
   }
 }
 
-class _OwnerGateway implements ApiGateway, GuidanceAssetGateway {
+class _OwnerGateway
+    implements ApiGateway, GuidanceAssetGateway, WordExportGateway {
   const _OwnerGateway(this.auth, this.ownerId, this.epoch);
   final AuthApi auth;
   final String ownerId;
   final int epoch;
+
+  @override
+  Future<Uint8List> exportWord(String path, Map<String, Object?> body) async {
+    void check() {
+      if (!auth._ownsSession(ownerId, epoch)) {
+        throw const AuthFailure('계정이 변경되었습니다. 다시 로그인해 주세요.', status: 403);
+      }
+    }
+
+    check();
+    try {
+      final request = http.Request('POST', auth._base.resolve('/api/v1/$path'));
+      request.followRedirects = false;
+      request.headers['Content-Type'] = 'application/json';
+      request.headers['X-Unipath-Owner'] = ownerId;
+      if (auth._token != null) {
+        request.headers['Authorization'] = 'Bearer ${auth._token}';
+      }
+      request.body = jsonEncode(body);
+      final response = await auth._client
+          .send(request)
+          .then(http.Response.fromStream)
+          .timeout(const Duration(seconds: 30));
+      check();
+      if (response.statusCode != 200) {
+        throw AuthFailure(switch (response.statusCode) {
+          401 => '다시 로그인해 주세요.',
+          422 => '문서 내용의 길이와 형식을 확인해 주세요.',
+          429 => '요청이 많습니다. 잠시 후 다시 시도해 주세요.',
+          _ => 'Word 파일을 만들지 못했습니다. 다시 시도해 주세요.',
+        }, status: response.statusCode);
+      }
+      final type = response.headers['content-type']?.split(';').first;
+      final bytes = response.bodyBytes;
+      // A .docx file is a ZIP archive.
+      if (type != wordMime ||
+          bytes.length < 4 ||
+          bytes[0] != 0x50 ||
+          bytes[1] != 0x4B ||
+          bytes[2] != 3 ||
+          bytes[3] != 4) {
+        throw const AuthFailure('Word 파일 형식을 확인하지 못했습니다.');
+      }
+      return bytes;
+    } on AuthFailure {
+      rethrow;
+    } catch (_) {
+      check();
+      throw const AuthFailure('Word 파일을 받지 못했습니다. 연결을 확인하고 다시 시도해 주세요.');
+    }
+  }
+
   @override
   Future<GuidanceAsset> guidanceAsset(String id) async {
     if (!RegExp(r'^[0-9a-f]{64}$').hasMatch(id)) {

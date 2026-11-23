@@ -44115,6 +44115,260 @@
           }
         }
       }
+    },
+    "/api/v1/me/writing-drafts": {
+      "post": {
+        "tags": [
+          "writing"
+        ],
+        "summary": "Writing Drafts",
+        "description": "An editable draft; every paragraph and fact row cites the student's own records.",
+        "operationId": "writing_drafts_api_v1_me_writing_drafts_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WritingDraftRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/writing-exports": {
+      "post": {
+        "tags": [
+          "writing"
+        ],
+        "summary": "Writing Exports",
+        "description": "The owner's edited draft as a Word file; no model call and nothing stored.",
+        "operationId": "writing_exports_api_v1_me_writing_exports_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WritingExportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Editable Word document",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {}
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -68671,6 +68925,254 @@
         "additionalProperties": false,
         "type": "object",
         "title": "GapAnalysisRequest"
+      },
+      "EditedDocument": {
+        "properties": {
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/EditedSection"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Sections"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sections"
+        ],
+        "title": "EditedDocument",
+        "description": "What is exported: edited text only, never re-verified and never sent to a model."
+      },
+      "EditedFact": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "label"
+        ],
+        "title": "EditedFact"
+      },
+      "EditedSection": {
+        "properties": {
+          "heading": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Heading"
+          },
+          "paragraphs": {
+            "items": {
+              "$ref": "#/components/schemas/EditedText"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Paragraphs"
+          },
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/EditedFact"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Facts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "heading"
+        ],
+        "title": "EditedSection"
+      },
+      "EditedText": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "EditedText"
+      },
+      "ExportProfile": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 160,
+            "title": "Email",
+            "default": ""
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Phone",
+            "default": ""
+          },
+          "link": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Link",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ExportProfile"
+      },
+      "WritingDraftRequest": {
+        "properties": {
+          "document_type": {
+            "type": "string",
+            "enum": [
+              "cover_letter",
+              "portfolio"
+            ],
+            "title": "Document Type"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "create",
+              "improve"
+            ],
+            "title": "Mode",
+            "default": "create"
+          },
+          "target_role": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Target Role"
+          },
+          "target_company": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Target Company",
+            "default": ""
+          },
+          "posting_text": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Posting Text",
+            "default": ""
+          },
+          "questions": {
+            "items": {
+              "type": "string",
+              "maxLength": 300,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Questions"
+          },
+          "char_limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 5000.0,
+                "minimum": 200.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Char Limit"
+          },
+          "original_text": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Original Text",
+            "default": ""
+          },
+          "external_processing_consent": {
+            "type": "boolean",
+            "title": "External Processing Consent",
+            "default": false
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalEvidenceSelection"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Records"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/AnalysisDocument"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Documents"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "document_type",
+          "target_role"
+        ],
+        "title": "WritingDraftRequest"
+      },
+      "WritingExportRequest": {
+        "properties": {
+          "document_type": {
+            "type": "string",
+            "enum": [
+              "cover_letter",
+              "portfolio"
+            ],
+            "title": "Document Type"
+          },
+          "draft": {
+            "$ref": "#/components/schemas/EditedDocument"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/ExportProfile"
+          },
+          "reviewed": {
+            "type": "boolean",
+            "title": "Reviewed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "document_type",
+          "draft",
+          "profile",
+          "reviewed"
+        ],
+        "title": "WritingExportRequest"
       }
     },
     "securitySchemes": {

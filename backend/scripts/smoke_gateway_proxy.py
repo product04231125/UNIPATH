@@ -139,7 +139,7 @@ def verify_chain(base):
         "/api/v1/me/job-recommendations",
         "/api/v1/me/personalized-guidance",
         "/api/v1/me/career-gap-analyses",
-        "/api/v1/me/application-drafts",
+        "/api/v1/me/writing-drafts",
     ]:
         status, headers, _, expected_size = request(base, path, 11 * 1024 * 1024)
         assert status == 401 and int(headers["X-Synthetic-Body-Bytes"]) == expected_size
