@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../shared/app_tones.dart';
 import '../../../shared/widgets/external_link_button.dart';
+import '../../../shared/widgets/responsive_grid.dart';
+import '../../../shared/widgets/tone_chip.dart';
+import '../../../shared/widgets/work_layout.dart';
+import '../../career/requirement_result.dart';
 import '../../../shared/widgets/surface_card.dart';
 import '../../api/job_recommendation_api.dart';
 import '../../assistant/ai_record_catalog.dart';
@@ -82,28 +87,29 @@ class JobRecommendationResult extends StatelessWidget {
   final VoidCallback? onBrowseCategory;
 
   Widget _comparison(RecommendationComparison c) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          '${c.priority == 'required'
+    padding: const EdgeInsets.only(bottom: 10),
+    child: RequirementCard(
+      requirement: c.requirement,
+      status: RequirementStatus.parse(c.status),
+      explanation: c.explanation,
+      chips: [
+        ToneChip(
+          label: c.priority == 'required'
               ? '필수'
               : c.priority == 'preferred'
               ? '우대'
-              : '구분 확인 필요'} · ${c.requirement}',
-          style: const TextStyle(fontWeight: FontWeight.w700),
+              : '구분 확인 필요',
+          tone: c.priority == 'required' ? AppTone.accent : AppTone.info,
         ),
-        SelectableText(c.explanation),
-        const SizedBox(height: 8),
-        SelectableText('공고 근거: ${c.postingExcerpt}'),
+      ],
+      evidence: [
         for (final cite in c.evidence) ...[
-          SelectableText(_citationLabel(cite)),
-          if (result.locations[cite.id]?.method == 'ocr')
-            const Text('자동 문자 인식 · 원본 확인'),
-          SelectableText(cite.excerpt),
+          _citationLabel(cite),
+          if (result.locations[cite.id]?.method == 'ocr') '자동 문자 인식 · 원본 확인',
+          cite.excerpt,
         ],
       ],
+      postingEvidence: ['공고 근거: ${c.postingExcerpt}'],
     ),
   );
 
@@ -148,87 +154,163 @@ class JobRecommendationResult extends StatelessWidget {
         ? candidate.guidanceSentences
         : item?.guidanceSentences ?? const <String>[];
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: _surface(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (badge != null)
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+    final badgeTone = switch (type) {
+      'evidence_match' => AppTone.success,
+      'closest_needs_review' => AppTone.warning,
+      _ => AppTone.neutral,
+    };
+    final statusTone = switch (status) {
+      'completed' => AppTone.success,
+      'failed' => AppTone.danger,
+      null => AppTone.neutral,
+      _ => AppTone.warning,
+    };
+    return _surface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (badge != null) ...[
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: ToneChip(label: badge, tone: badgeTone),
+            ),
+            const SizedBox(height: 10),
+          ],
+          Text(
+            posting.title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${posting.company} · ${posting.location}',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              ToneChip(
+                label:
+                    '${_sourceName(posting.source)} · ${postingDeadlineLabel(posting)}',
+                icon: Icons.event_outlined,
+              ),
+              if (status != null)
+                ToneChip(
+                  label: recommendationStateLabel(status),
+                  tone: statusTone,
+                ),
+              if (evidence != null)
+                ToneChip(
+                  label: '미확인 필수조건 ${evidence.requiredToCheck}개',
+                  tone: evidence.requiredToCheck > 0
+                      ? AppTone.warning
+                      : AppTone.success,
+                ),
+              if (item != null && type != 'analysis_unavailable')
+                ToneChip(
+                  label:
+                      '비교 범위: ${switch (item.scope) {
+                        'metadata_only' => '공고 요약 정보',
+                        'excerpt' => '공고 본문 일부',
+                        'full_text' => '공고 본문 전체',
+                        _ => '확인 필요',
+                      }}',
+                ),
+            ],
+          ),
+          if (notice != null && notice.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            NoteLine(icon: Icons.info_outline, text: notice),
+          ],
+          if (status == 'failed' && item?.failureReason != null) ...[
+            const SizedBox(height: 6),
+            NoteLine(
+              icon: Icons.error_outline,
+              text: recommendationFailureLabel(item!.failureReason!),
+              color: theme.colorScheme.error,
+            ),
+          ],
+          if (item != null)
+            for (final warning in item.warnings)
+              if (warning != notice) ...[
+                const SizedBox(height: 6),
+                NoteLine(icon: Icons.warning_amber_outlined, text: warning),
+              ],
+          if (guidance.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTone.accent.container(context),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.lightbulb_outline,
+                    size: 18,
+                    color: AppTone.accent.color(context),
                   ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    badge,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: theme.colorScheme.onSecondaryContainer,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '준비 안내',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: AppTone.accent.color(context),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        for (final sentence in guidance)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              sentence,
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                ),
-              ),
-            Text(posting.title, style: theme.textTheme.titleMedium),
-            Text('${posting.company} · ${posting.location}'),
-            Text(
-              '${_sourceName(posting.source)} · ${postingDeadlineLabel(posting)}',
-            ),
-            if (notice != null && notice.isNotEmpty) Text(notice),
-            if (evidence != null) Text('미확인 필수조건 ${evidence.requiredToCheck}개'),
-            if (item != null && type != 'analysis_unavailable')
-              Text(
-                '비교 범위: ${switch (item.scope) {
-                  'metadata_only' => '공고 요약 정보',
-                  'excerpt' => '공고 본문 일부',
-                  'full_text' => '공고 본문 전체',
-                  _ => '확인 필요',
-                }}',
-              ),
-            if (status != null) Text(recommendationStateLabel(status)),
-            if (status == 'failed' && item?.failureReason != null)
-              Text(recommendationFailureLabel(item!.failureReason!)),
-            if (item != null)
-              for (final warning in item.warnings)
-                if (warning != notice) Text(warning),
-            if (guidance.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text('준비 안내', style: theme.textTheme.titleSmall),
-              for (final sentence in guidance) Text(sentence),
-            ],
-            Align(
-              alignment: Alignment.centerLeft,
-              child: ExternalLinkButton(
-                url: posting.url,
-                label: '원 공고',
-                description: '최신 모집 조건과 마감은 원 공고에서 확인하세요.',
-              ),
-            ),
-            if (evidence != null && evidence.matched.isNotEmpty)
-              ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                title: const Text('왜 추천됐나요?'),
-                children: [for (final c in evidence.matched) _comparison(c)],
-              ),
-            if (item != null &&
-                (type != 'analysis_unavailable' || item.comparisons.isNotEmpty))
-              ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                title: const Text('전체 요건과 비교 근거'),
-                children: [
-                  if (item.comparisons.isEmpty)
-                    const Text('비교 결과가 없습니다. 위 분석 상태를 확인하세요.'),
-                  for (final c in item.comparisons) _comparison(c),
                 ],
               ),
+            ),
           ],
-        ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ExternalLinkButton(
+              url: posting.url,
+              label: '원 공고',
+              description: '최신 모집 조건과 마감은 원 공고에서 확인하세요.',
+            ),
+          ),
+          if (evidence != null && evidence.matched.isNotEmpty)
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              title: const Text('왜 추천됐나요?'),
+              children: [for (final c in evidence.matched) _comparison(c)],
+            ),
+          if (item != null &&
+              (type != 'analysis_unavailable' || item.comparisons.isNotEmpty))
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              title: const Text('전체 요건과 비교 근거'),
+              children: [
+                if (item.comparisons.isEmpty)
+                  const Text('비교 결과가 없습니다. 위 분석 상태를 확인하세요.'),
+                for (final c in item.comparisons) _comparison(c),
+              ],
+            ),
+        ],
       ),
     );
   }
@@ -247,81 +329,143 @@ class JobRecommendationResult extends StatelessWidget {
     final remainingItems = result.items.where(
       (item) => !displayedKeys.contains(item.posting.key),
     );
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    final shown = <Widget>[
+      if (candidates != null)
+        for (final candidate in candidates)
+          _posting(
+            context,
+            candidate.posting,
+            candidate: candidate,
+            item: items[candidate.posting.key],
+            recommendation: recommendations[candidate.posting.key],
+          )
+      else
+        for (final recommendation in result.recommendations)
+          if (items[recommendation.key] case final item?)
+            _posting(
+              context,
+              item.posting,
+              item: item,
+              recommendation: recommendation,
+            )
+          else
+            const Text('추천 공고의 상세 응답을 확인하지 못했습니다.'),
+    ];
+    Widget grid(List<Widget> cards) => ResponsiveGrid(
+      targetItemWidth: 440,
+      minItemWidth: 340,
+      maxColumns: 3,
+      minHeightFactor: 0,
+      children: cards,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('공고 비교 결과', style: Theme.of(context).textTheme.titleLarge),
-        Semantics(
-          liveRegion: true,
-          child: Text(switch (result.status) {
-            'completed' => '공고 검색 완료 · 아래에서 공고별 비교 상태를 확인하세요.',
-            'needs_user_input' =>
-              result.missingFields.contains('external_processing_consent')
-                  ? '외부 처리 동의가 필요합니다. 입력을 유지했습니다. 다시 실행해 동의를 확인하세요.'
-                  : '비교할 파일 또는 저장 기록을 선택하세요.',
-            'not_configured' => '공고 추천 기능 준비 중입니다. 서버 분석 설정이 필요합니다.',
-            'no_results' => '검색한 수집처에서 조건에 맞는 공고가 없습니다.',
-            'not_available' => '공고를 가져온 수집처가 없습니다. 아래 수집처 상태를 확인하세요.',
-            _ => recommendationStateLabel(result.status),
-          }),
+        _surface(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('공고 비교 결과', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 6),
+              Semantics(
+                liveRegion: true,
+                child: Text(switch (result.status) {
+                  'completed' => '공고 검색 완료 · 아래에서 공고별 비교 상태를 확인하세요.',
+                  'needs_user_input' =>
+                    result.missingFields.contains('external_processing_consent')
+                        ? '외부 처리 동의가 필요합니다. 입력을 유지했습니다. 다시 실행해 동의를 확인하세요.'
+                        : '비교할 파일 또는 저장 기록을 선택하세요.',
+                  'not_configured' => '공고 추천 기능 준비 중입니다. 서버 분석 설정이 필요합니다.',
+                  'no_results' => '검색한 수집처에서 조건에 맞는 공고가 없습니다.',
+                  'not_available' => '공고를 가져온 수집처가 없습니다. 아래 수집처 상태를 확인하세요.',
+                  _ => recommendationStateLabel(result.status),
+                }),
+              ),
+              if (result.notice.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(result.notice, style: muted),
+              ],
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  if (result.occupationLabel case final label?
+                      when label.isNotEmpty)
+                    ToneChip(
+                      label: result.queryKeyword?.isEmpty ?? false
+                          ? '검색 직종 · $label · 세부 검색어 없음'
+                          : '검색 직종 · $label',
+                      icon: Icons.work_outline,
+                      tone: AppTone.accent,
+                    ),
+                  for (final source in result.sources)
+                    ToneChip(
+                      label:
+                          '${_sourceName(source.source)} · ${switch ((source.status, source.reason)) {
+                            ('completed', _) => '검색 완료',
+                            ('skipped', 'category_unsupported') => '직종 검색 미지원',
+                            _ => recommendationStateLabel(source.status),
+                          }}',
+                      tone: switch (source.status) {
+                        'completed' => AppTone.success,
+                        'failed' => AppTone.danger,
+                        _ => AppTone.neutral,
+                      },
+                      dot: true,
+                    ),
+                ],
+              ),
+              for (final source in result.sources)
+                if (source.status == 'failed' && source.failureReason != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: NoteLine(
+                      icon: Icons.error_outline,
+                      text: recommendationFailureLabel(source.failureReason!),
+                    ),
+                  ),
+              if (result.searchNotice case final notice?
+                  when notice.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                NoteLine(icon: Icons.info_outline, text: notice),
+              ],
+              for (final warning in result.warnings) ...[
+                const SizedBox(height: 6),
+                NoteLine(icon: Icons.warning_amber_outlined, text: warning),
+              ],
+              if (result.categoryBrowseAvailable &&
+                  onBrowseCategory != null) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: OutlinedButton(
+                    key: const ValueKey('recommend-browse-category'),
+                    onPressed: onBrowseCategory,
+                    child: const Text('직종 전체 보기'),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
-        if (result.notice.isNotEmpty) Text(result.notice),
-        if (result.occupationLabel case final label? when label.isNotEmpty)
-          Text(
-            result.queryKeyword?.isEmpty ?? false
-                ? '검색 직종 · $label · 세부 검색어 없음'
-                : '검색 직종 · $label',
-          ),
-        if (result.searchNotice case final notice? when notice.isNotEmpty)
-          Text(notice),
-        if (result.categoryBrowseAvailable && onBrowseCategory != null)
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: OutlinedButton(
-              key: const ValueKey('recommend-browse-category'),
-              onPressed: onBrowseCategory,
-              child: const Text('직종 전체 보기'),
-            ),
-          ),
-        for (final source in result.sources) ...[
-          Text(
-            '${_sourceName(source.source)} · ${switch ((source.status, source.reason)) {
-              ('completed', _) => '검색 완료',
-              ('skipped', 'category_unsupported') => '직종 검색 미지원',
-              _ => recommendationStateLabel(source.status),
-            }}',
-          ),
-          if (source.status == 'failed' && source.failureReason != null)
-            Text(recommendationFailureLabel(source.failureReason!)),
-        ],
-        for (final warning in result.warnings) Text(warning),
-        if (items.isNotEmpty && displayedKeys.isEmpty)
+        if (items.isNotEmpty && displayedKeys.isEmpty) ...[
+          const SizedBox(height: 12),
           const Text('추천 공고가 없습니다. 비교 대상의 분석 상태와 근거를 확인하세요.'),
-        if (candidates != null)
-          for (final candidate in candidates)
-            _posting(
-              context,
-              candidate.posting,
-              candidate: candidate,
-              item: items[candidate.posting.key],
-              recommendation: recommendations[candidate.posting.key],
-            )
-        else
-          for (final recommendation in result.recommendations)
-            if (items[recommendation.key] case final item?)
-              _posting(
-                context,
-                item.posting,
-                item: item,
-                recommendation: recommendation,
-              )
-            else
-              const Text('추천 공고의 상세 응답을 확인하지 못했습니다.'),
+        ],
+        if (shown.isNotEmpty) ...[const SizedBox(height: 16), grid(shown)],
         if (remainingItems.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text('함께 비교한 공고', style: Theme.of(context).textTheme.titleMedium),
-          for (final item in remainingItems)
-            _posting(context, item.posting, item: item),
+          const SizedBox(height: 20),
+          Text('함께 비교한 공고', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 10),
+          grid([
+            for (final item in remainingItems)
+              _posting(context, item.posting, item: item),
+          ]),
         ],
       ],
     );

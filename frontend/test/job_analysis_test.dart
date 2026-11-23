@@ -340,16 +340,25 @@ void main() {
       await execute(tester);
       expect(find.text('분석 완료'), findsOneWidget);
       expect(find.text('근거 있음'), findsNothing);
-      final explanation = find.text('직무 해석: 개발 경험\n다음 행동: 역할을 정리하세요.');
+      // The next step is highlighted; the posting quote and role reading
+      // open under it on demand.
+      final next = find.text('역할을 정리하세요.');
+      expect(next, findsOneWidget);
+      expect(find.text('공고 근거: 합성'), findsNothing);
+      await tester.ensureVisible(find.text('공고 근거·직무 해석'));
+      await tester.tap(find.text('공고 근거·직무 해석'));
+      await tester.pumpAndSettle();
       final citation = find.text('공고 근거: 합성');
-      expect(explanation, findsOneWidget);
       expect(citation, findsOneWidget);
+      expect(find.text('직무 해석 · 개발 경험'), findsOneWidget);
       expect(
-        tester.getTopLeft(explanation).dy,
+        tester.getTopLeft(next).dy,
         lessThan(tester.getTopLeft(citation).dy),
       );
+      expect(find.byKey(const ValueKey('readiness-summary')), findsOneWidget);
       expect(find.text('근거: 받은 근거 없음'), findsNothing);
-      expect(find.text('내 기록 근거 (버전 2): 프로젝트 경험'), findsOneWidget);
+      // Evidence is named by the record it came from.
+      expect(find.text('선택한 경험 · 프로젝트 경험'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       p.dispose();
     },
