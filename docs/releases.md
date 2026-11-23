@@ -93,24 +93,29 @@ python scripts/publish_app.py --assets-dir dist/product --tag v0.1.0-preview.소
 
 워크플로는 [app-release.yaml](../.github/workflows/app-release.yaml)로 활성화했다.
 기본 브랜치 `main`의 **Actions → App downloads → Run workflow**에서 채널을 선택한다.
-`develop` 푸시는 개발용, `main` 푸시는 배포용 프리뷰를 검증·빌드·릴리스한다. 수동 실행은
-두 채널을 함께 선택할 수도 있고 API URL을 지정할 수도 있다. 앱 다운로드 워크플로가
-서버 컨테이너를 자동 배포하지는 않는다.
+2026-11-23부터 수동 실행만 한다(이어진 결정). 브랜치 푸시로는 실행되지 않으며, 윈도우 시연
+설치본처럼 다운로드가 필요할 때 담당자가 실행한다. 코드 검증은 PR의 Backend CI·Frontend CI가
+맡으므로 이 워크플로는 테스트 없이 빌드·릴리스만 한다. 개발용은 `channel=develop`, 배포용
+프리뷰는 `channel=product`를 고른다. 두 채널을 함께 선택할 수도 있고 API URL을 지정할 수도
+있다. 앱 다운로드 워크플로가 서버 컨테이너를 자동 배포하지는 않는다.
 
 ```bash
-# 동일한 소스 커밋에서 두 채널의 Web·Windows를 검증·빌드·릴리스
+# 윈도우 시연 설치본(개발용, 스테이징 연결)
+gh workflow run app-release.yaml --ref develop -f channel=develop
+# 동일한 소스 커밋에서 두 채널의 Web·Windows를 빌드·릴리스
 # 셸에서 사용하는 공개 설정이며 비밀값이 아니다.
 gh workflow run app-release.yaml --ref main -f channel=both -f product_preview=true
 ```
 
 repository variables `DEVELOP_API_BASE_URL`, `PRODUCT_API_BASE_URL`은 각각 위 두
 HTTPS 도메인으로 설정했다. 워크플로 기본값도 동일하다. 실제 운영 전환은
-`product_preview=false`를 명시한 수동 실행에서만 가능하다. 검증 실패나 한 플랫폼
-빌드 실패 시 릴리스를 발행하지 않는다. 출력은 Actions Artifacts와 GitHub Releases에
+`product_preview=false`를 명시한 수동 실행에서만 가능하다. 한 플랫폼이라도 빌드에
+실패하면 릴리스를 발행하지 않는다. 출력은 Actions Artifacts와 GitHub Releases에
 저장하며 ZIP에는 SDK나 소스 코드·`.env`를 넣지 않는다.
 
 [backend-ci.yaml](../.github/workflows/backend-ci.yaml)은 백엔드 변경 PR 및
-`main`/`develop` 푸시에 공통 환경을 검증한다. 워크플로 파일 수정·푸시에는 GitHub
+`main`/`develop` 푸시에 공통 환경을 검증한다. 컨테이너 테스트는 테스트마다 별도 스키마를 쓰므로
+`pytest -n auto`로 병렬 실행한다. 워크플로 파일 수정·푸시에는 GitHub
 연결의 `workflow` 권한이 필요하다. 개인 에이전트 설정은 계속 Git에서 제외한다.
 
 ## 이 서버의 도메인 배포

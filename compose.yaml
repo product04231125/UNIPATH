@@ -70,7 +70,8 @@ services:
     environment:
       <<: *backend-environment
       RUN_DB_TESTS: "1"
-    command: ["pytest", "-q"]
+    # Each integration test uses its own schema, so tests run in parallel (pytest-xdist).
+    command: ["pytest", "-q", "-n", "auto"]
     depends_on:
       migrate:
         condition: service_completed_successfully
