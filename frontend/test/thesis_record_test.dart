@@ -6,6 +6,7 @@ import 'package:university_path_frontend/features/records/personal_record_reposi
 import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
 
 import 'support/achievement_records_page.dart';
+import 'support/record_actions.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -111,8 +112,7 @@ void main() {
         await tester.pumpAndSettle();
         await tester.pumpWidget(page());
         await tester.pumpAndSettle();
-        await tester.ensureVisible(find.text('수정'));
-        await tester.tap(find.text('수정'));
+        await tapRecordAction(tester, '수정');
         await tester.pumpAndSettle();
         expect(
           find.byKey(const ValueKey('record-field-thesisApprovedOn')),
@@ -124,15 +124,13 @@ void main() {
         await repo.load();
         expect(repo.records.single.id, id);
         expect(repo.records.single.value('thesisStatus'), '직접 재확인');
-        await tester.ensureVisible(find.text('삭제'));
-        await tester.tap(find.text('삭제'));
+        await tapRecordAction(tester, '삭제');
         await tester.pumpAndSettle();
         await tester.tap(find.text('취소'));
         await tester.pumpAndSettle();
         await repo.load();
         expect(repo.records, hasLength(1));
-        await tester.ensureVisible(find.text('삭제'));
-        await tester.tap(find.text('삭제'));
+        await tapRecordAction(tester, '삭제');
         await tester.pumpAndSettle();
         await tester.tap(find.text('삭제').last);
         await tester.pumpAndSettle();

@@ -6,6 +6,7 @@ import 'package:university_path_frontend/features/records/course/course_term.dar
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
 import 'package:university_path_frontend/shared/widgets/input_dialog.dart';
+import 'support/record_actions.dart';
 
 Future<void> enter(WidgetTester tester, String key, String value) async {
   if (key == 'course-year' || key == 'term') {
@@ -183,12 +184,12 @@ void main() {
       expect(find.text('작년 과목'), findsNothing);
       expect(find.text('기존 과목'), findsNothing);
       expect(find.text('계절 과목'), findsNothing);
-      expect(find.textContaining('취득학점 합계 3학점'), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const ValueKey('stat-취득 학점')), matching: find.text('3학점')), findsOneWidget);
       await choose(tester, 'year', '연도 미지정');
       expect(find.text('기존 과목'), findsOneWidget);
       await choose(tester, 'term', '여름 계절학기');
-      expect(find.textContaining('선택한 연도·학기에 맞는 개인 기록이 없습니다'), findsOneWidget);
-      expect(find.textContaining('취득학점 합계 0학점'), findsOneWidget);
+      expect(find.textContaining('선택한 연도·학기에 맞는 과목이 없습니다'), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const ValueKey('stat-취득 학점')), matching: find.text('0학점')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -267,7 +268,7 @@ void main() {
       expect(repo.records.single.values.containsKey('year'), isFalse);
       await tester.pumpWidget(const SizedBox());
       await open(tester);
-      expect(find.textContaining('수강 기간: 2024년 여름 계절학기'), findsOneWidget);
+      expect(find.textContaining('2024년 여름 계절학기'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -276,7 +277,7 @@ void main() {
     (tester) async {
       await seed({'기존 과목': '  1학기  '});
       await open(tester);
-      await tester.tap(find.widgetWithText(TextButton, '수정'));
+      await tapRecordAction(tester, '수정');
       await tester.pumpAndSettle();
       expect(
         tester
@@ -292,7 +293,7 @@ void main() {
       await repo.load();
       expect(repo.records.single.value('term'), '  1학기  ');
       expect(repo.records.single.value('section'), '2');
-      await tester.tap(find.widgetWithText(TextButton, '수정'));
+      await tapRecordAction(tester, '수정');
       await tester.pumpAndSettle();
       await chooseForm(
         tester,
@@ -326,14 +327,14 @@ void main() {
       await open(tester);
       await choose(tester, 'year', '2025년');
       await choose(tester, 'term', '1학기');
-      await tester.tap(find.widgetWithText(TextButton, '삭제'));
+      await tapRecordAction(tester, '삭제');
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, '삭제'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('선택한 연도·학기에 맞는 개인 기록이 없습니다'), findsOneWidget);
+      expect(find.textContaining('선택한 연도·학기에 맞는 과목이 없습니다'), findsOneWidget);
       await choose(tester, 'year', '전체 연도');
       await choose(tester, 'term', '전체 학기');
-      expect(find.text('개인 기록이 없습니다. 직접 입력해 주세요.'), findsOneWidget);
+      expect(find.text('아직 등록한 기록이 없습니다'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -370,7 +371,7 @@ void main() {
   ) async {
     await seed({'비표준 학기': '2022년 봄학기'});
     await open(tester);
-    await tester.tap(find.widgetWithText(TextButton, '수정'));
+    await tapRecordAction(tester, '수정');
     await tester.pumpAndSettle();
     expect(
       tester
@@ -405,7 +406,7 @@ void main() {
   ) async {
     await seed({'옛 연도': '1899년 1학기'});
     await open(tester);
-    await tester.tap(find.widgetWithText(TextButton, '수정'));
+    await tapRecordAction(tester, '수정');
     await tester.pumpAndSettle();
     expect(
       tester

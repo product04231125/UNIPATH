@@ -38,7 +38,7 @@ void main() {
           description: '학기별 수강 계획과 개인 이수 기록을 정리합니다.',
           body: [
             SurfaceCard(
-              child: FeatureLine.one(text: '개인 기록이 없습니다. 직접 입력해 주세요.'),
+              child: FeatureLine.one(text: '아직 등록한 기록이 없습니다'),
             ),
           ],
           actions: [FilledButton(onPressed: null, child: Text('수강 과목 추가'))],
@@ -72,7 +72,7 @@ void main() {
           description: '학기별 수강 계획과 개인 이수 기록을 정리합니다.',
           body: [
             SurfaceCard(
-              child: FeatureLine.one(text: '개인 기록이 없습니다. 직접 입력해 주세요.'),
+              child: FeatureLine.one(text: '아직 등록한 기록이 없습니다'),
             ),
           ],
         ),

@@ -19,6 +19,7 @@ import '../settings_catalog_profile_test.dart' as settings;
 import '../support/auth_fixture.dart';
 import 'gherkin_runner.dart';
 import 'student_world.dart';
+import '../support/record_actions.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -327,7 +328,7 @@ void main() {
       '개인 메뉴 기록을 고쳐 저장하면': (tester, world) async {
         world.frozenAudit = {'status': world.lastAuditStatus ?? 'satisfied'};
         await world.pumpMenu(tester, const CoursePage());
-        await tester.tap(find.text('수정').first);
+        await tapRecordAction(tester, '수정');
         await tester.pumpAndSettle();
         await world.fillRecord(tester, {'section': '12'});
         await world.saveRecord(tester);
@@ -346,7 +347,7 @@ void main() {
       '저장이 실패하면': (tester, world) async {
         world.ensureGateway().failWrites = true;
         await world.pumpMenu(tester, const CoursePage());
-        await tester.tap(find.text('수정').first);
+        await tapRecordAction(tester, '수정');
         await tester.pumpAndSettle();
         await world.fillRecord(tester, {'section': '13'});
         await world.saveRecord(tester);
@@ -372,8 +373,7 @@ void main() {
       },
       '다른 자료가 참조하는 기록을 삭제하면': (tester, world) async {
         await world.pumpMenu(tester, const CoursePage());
-        await tester.ensureVisible(find.text('삭제').first);
-        await tester.tap(find.text('삭제').first);
+        await tapRecordAction(tester, '삭제');
         await tester.pumpAndSettle();
         await tester.tap(find.text('삭제').last);
         await tester.pumpAndSettle();
@@ -382,7 +382,7 @@ void main() {
         expect(find.textContaining('연결된 자료가 있거나 기록이 변경되었습니다'), findsOneWidget);
         expect(find.textContaining(world.lastCourseTitle), findsOneWidget);
         world.ensureGateway().records['personal-graduation-rules'] = [];
-        await tester.tap(find.text('삭제').first);
+        await tapRecordAction(tester, '삭제');
         await tester.pumpAndSettle();
         await tester.tap(find.text('삭제').last);
         await tester.pumpAndSettle();
@@ -534,7 +534,7 @@ void main() {
         await world.pumpMenu(tester, const ActivityPage());
         await world.addNamedRecord(
           tester,
-          addLabel: '활동 직접 기록',
+          addLabel: '활동 추가',
           values: {'title': world.lastActivityTitle},
         );
       },
@@ -588,7 +588,7 @@ void main() {
       '입력 저장이 실패하면': (tester, world) async {
         world.ensureGateway().failWrites = true;
         await world.pumpMenu(tester, const CoursePage());
-        await tester.tap(find.text('수정').first);
+        await tapRecordAction(tester, '수정');
         await tester.pumpAndSettle();
         await world.fillRecord(tester, {'section': '13'});
         await world.saveRecord(tester);
@@ -751,13 +751,13 @@ Future<void> _saveActivityKinds(WidgetTester tester, StudentWorld world) async {
   await world.pumpMenu(tester, const ActivityPage());
   await world.addNamedRecord(
     tester,
-    addLabel: '활동 직접 기록',
+    addLabel: '활동 추가',
     choice: '봉사',
     values: {'title': world.lastActivityTitle},
   );
   await world.addNamedRecord(
     tester,
-    addLabel: '활동 직접 기록',
+    addLabel: '활동 추가',
     choice: '그 밖의 활동',
     values: {'title': world.lastOtherActivityTitle},
   );
@@ -792,7 +792,7 @@ Future<void> _saveCourseAndCredential(
   await world.pumpMenu(tester, const CredentialPage());
   await world.addNamedRecord(
     tester,
-    addLabel: '자격 직접 등록',
+    addLabel: '자격 추가',
     values: {'title': world.lastCredentialTitle},
   );
 }

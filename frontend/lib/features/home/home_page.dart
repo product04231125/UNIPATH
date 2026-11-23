@@ -8,6 +8,7 @@ import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/feature_page.dart';
 import '../../shared/app_tones.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/responsive_grid.dart';
 import '../../shared/widgets/surface_card.dart';
 import '../../shared/widgets/tone_chip.dart';
 
@@ -70,6 +71,10 @@ class HomePage extends StatelessWidget {
           final gap = FeatureLine.slotGap(context);
           final prepareDone =
               profile.isConfigured && repository.events.isNotEmpty;
+          final wide =
+              !phone &&
+              viewport.maxWidth >= LayoutWidths.wide &&
+              MediaQuery.textScalerOf(context).scale(14) <= 16.8;
           return FeaturePage(
             scrollKey: const Key('home-scroll'),
             padding: EdgeInsets.only(
@@ -80,61 +85,119 @@ class HomePage extends StatelessWidget {
             contextLabel: phone && profile.isConfigured
                 ? (profile.hasCatalogSchool ? '등록' : '개인 설정')
                 : null,
-            body: [
-              if (_career(context) case final career?) ...[
-                career,
-                SizedBox(height: gap),
-              ],
-              WeeklySchedule(
-                compact: compact,
-                events: repository.events,
-                startsOn: profile.weekStartsOn,
-                onSelectDay: onOpenSchedule,
-              ),
-              SizedBox(height: gap),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final upcomingCard = _upcoming(
-                    context,
-                    upcoming,
-                    compact: compact,
-                  );
-                  final side = Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (!prepareDone) ...[
-                        _prepare(context, profile),
-                        SizedBox(height: gap),
-                      ],
-                      _nextSteps(context, year),
+            body: wide
+                ? _dashboard(context, upcoming, profile, year, prepareDone)
+                : [
+                    if (_career(context) case final career?) ...[
+                      career,
+                      SizedBox(height: gap),
                     ],
-                  );
-                  if (constraints.maxWidth < 820) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        upcomingCard,
-                        SizedBox(height: gap),
-                        side,
-                      ],
-                    );
-                  }
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: upcomingCard),
-                      const SizedBox(width: 16),
-                      Expanded(flex: 2, child: side),
-                    ],
-                  );
-                },
-              ),
-            ],
+                    WeeklySchedule(
+                      compact: compact,
+                      events: repository.events,
+                      startsOn: profile.weekStartsOn,
+                      onSelectDay: onOpenSchedule,
+                    ),
+                    SizedBox(height: gap),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final upcomingCard = _upcoming(
+                          context,
+                          upcoming,
+                          compact: compact,
+                        );
+                        final side = Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (!prepareDone) ...[
+                              _prepare(context, profile),
+                              SizedBox(height: gap),
+                            ],
+                            _nextSteps(context, year),
+                          ],
+                        );
+                        if (constraints.maxWidth < 820) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              upcomingCard,
+                              SizedBox(height: gap),
+                              side,
+                            ],
+                          );
+                        }
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 3, child: upcomingCard),
+                            const SizedBox(width: 16),
+                            Expanded(flex: 2, child: side),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
           );
         },
       );
     },
   );
+
+  /// FHD and larger: three columns (career, upcoming, setup) above a
+  /// full-width week, so no card stretches across the whole screen.
+  List<Widget> _dashboard(
+    BuildContext context,
+    List<PlanningEvent> upcoming,
+    PlanningProfile profile,
+    int? year,
+    bool prepareDone,
+  ) {
+    final gap = FeatureLine.slotGap(context);
+    Widget stack(List<Widget> cards) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < cards.length; i++) ...[
+          if (i > 0) SizedBox(height: gap),
+          cards[i],
+        ],
+      ],
+    );
+    final career = [
+      if (careerGoal case final goal?)
+        CareerGoalCard(
+          controller: goal,
+          onFindJobs: () => onOpenPage(StudentPages.jobs),
+        ),
+      if ((gapReport, onOpenCareerGap) case (final report?, final open?))
+        CareerGapSummaryCard(report: report, onOpen: open),
+    ];
+    final columns = [
+      if (career.isNotEmpty) stack(career),
+      _upcoming(context, upcoming),
+      stack([
+        if (!prepareDone) _prepare(context, profile),
+        _nextSteps(context, year),
+      ]),
+    ];
+    return [
+      Row(
+        key: const ValueKey('home-dashboard-columns'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < columns.length; i++) ...[
+            if (i > 0) const SizedBox(width: 16),
+            Expanded(child: columns[i]),
+          ],
+        ],
+      ),
+      SizedBox(height: gap),
+      WeeklySchedule(
+        events: repository.events,
+        startsOn: profile.weekStartsOn,
+        onSelectDay: onOpenSchedule,
+      ),
+    ];
+  }
 
   /// Target job and its readiness side by side on wide screens.
   Widget? _career(BuildContext context) {

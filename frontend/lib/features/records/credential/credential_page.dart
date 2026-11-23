@@ -12,7 +12,6 @@ class CredentialPage extends StatelessWidget {
     key: const ValueKey(PersonalRecordKind.credential),
     kind: PersonalRecordKind.credential,
     title: '자격',
-    description: '자격증·어학·교육 이수 내역을 관리합니다.',
     listTitle: '등록한 자격',
     guideTitle: '자격 준비',
     guides: const [
@@ -27,7 +26,7 @@ class CredentialPage extends StatelessWidget {
         description: '시험 일정·응시자격·원서접수는 Q-Net에서 직접 확인하세요. 자동 조회나 자격 취득·보유 내역 변경은 하지 않습니다.',
       ),
     ],
-    addLabel: '자격 직접 등록',
+    addLabel: '자격 추가',
     detailLabel: '발급 기관 · 취득일 · 유효기간',
   );
 }

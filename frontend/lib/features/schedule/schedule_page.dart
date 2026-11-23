@@ -112,8 +112,8 @@ class _SchedulePageState extends State<SchedulePage> {
           body: [
             Align(
               alignment: Alignment.topLeft,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1400),
+              child: SizedBox(
+                width: double.infinity,
                 child: constraints.maxWidth >= 1000
                     ? EqualHeightRow(
                         children: [
@@ -205,28 +205,40 @@ class _SchedulePageState extends State<SchedulePage> {
             ],
           ),
           const SizedBox(height: 6),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 42,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-              mainAxisExtent:
-                  MediaQuery.textScalerOf(context).scale(14) * 3 + 20,
-            ),
-            itemBuilder: (context, index) {
-              final first = DateTime(_month.year, _month.month);
-              final day = first.add(
-                Duration(
-                  days:
-                      index -
-                      (first.weekday -
-                              widget.repository.profile.weekStartsOn.weekday +
-                              7) %
-                          7,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final scaler = MediaQuery.textScalerOf(context);
+              // PC widths: cells list event titles instead of dots.
+              final detailed = constraints.maxWidth / 7 >= scaler.scale(110);
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: 42,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  mainAxisExtent: detailed
+                      ? scaler.scale(14) * 7 + 12
+                      : scaler.scale(14) * 3 + 20,
                 ),
+                itemBuilder: (context, index) {
+                  final first = DateTime(_month.year, _month.month);
+                  final day = first.add(
+                    Duration(
+                      days:
+                          index -
+                          (first.weekday -
+                                  widget
+                                      .repository
+                                      .profile
+                                      .weekStartsOn
+                                      .weekday +
+                                  7) %
+                              7,
+                    ),
+                  );
+                  return _dayCell(day, detailed: detailed);
+                },
               );
-              return _dayCell(day);
             },
           ),
         ],
@@ -240,7 +252,7 @@ class _SchedulePageState extends State<SchedulePage> {
     _ => Theme.of(context).colorScheme.onSurfaceVariant,
   };
 
-  Widget _dayCell(DateTime day) {
+  Widget _dayCell(DateTime day, {bool detailed = false}) {
     final colors = Theme.of(context).colorScheme;
     final events = _eventsForDay(day);
     final selected = _sameDay(day, _selectedDay);
@@ -283,29 +295,80 @@ class _SchedulePageState extends State<SchedulePage> {
             color: selected ? colors.primaryContainer : null,
             borderRadius: BorderRadius.circular(14),
           ),
-          child: Column(
-            children: [
-              number,
-              const SizedBox(height: 4),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final event in events.take(3))
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 1.5),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: event.category.tone.color(context),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const SizedBox(width: 6, height: 6),
-                      ),
+          child: detailed
+              ? _detailedCell(number, day, events)
+              : Column(
+                  children: [
+                    number,
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final event in events.take(3))
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 1.5,
+                            ),
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: event.category.tone.color(context),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const SizedBox(width: 6, height: 6),
+                            ),
+                          ),
+                      ],
                     ),
-                ],
-              ),
-            ],
-          ),
+                  ],
+                ),
         ),
+      ),
+    );
+  }
+
+  Widget _detailedCell(
+    Widget number,
+    DateTime day,
+    List<PlanningEvent> events,
+  ) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(alignment: Alignment.center, child: number),
+          const SizedBox(height: 4),
+          for (final event in events.take(2))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 3),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: event.category.tone.container(context),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${_sameDay(event.start, day) ? '${_time(event.start)} ' : ''}${event.title}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: event.category.tone.color(context),
+                  ),
+                ),
+              ),
+            ),
+          if (events.length > 2)
+            Text(
+              '+${events.length - 2}개',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -352,9 +415,86 @@ class _SchedulePageState extends State<SchedulePage> {
               _eventTile(event, day),
               const SizedBox(height: 8),
             ],
+          ..._monthAgenda(),
         ],
       ),
     );
+  }
+
+  /// The shown month's other events, so a quiet day still leads somewhere.
+  List<Widget> _monthAgenda() {
+    final theme = Theme.of(context);
+    final events =
+        widget.repository.events
+            .where(
+              (e) =>
+                  e.start.year == _month.year &&
+                  e.start.month == _month.month &&
+                  !_sameDay(e.start, _selectedDay),
+            )
+            .toList()
+          ..sort((a, b) => a.start.compareTo(b.start));
+    if (events.isEmpty) return const [];
+    return [
+      const SizedBox(height: 8),
+      const Divider(),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              '${_month.month}월의 다른 일정',
+              style: theme.textTheme.titleSmall,
+            ),
+          ),
+          ToneChip(label: '${events.length}개'),
+        ],
+      ),
+      const SizedBox(height: 8),
+      for (final event in events)
+        InkWell(
+          key: ValueKey('month-agenda-${event.id}'),
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => setState(() => _selectedDay = _dateOnly(event.start)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 64,
+                  child: Text(
+                    '${event.start.month}.${event.start.day} (${weekdayLabel(event.start.weekday)})',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: event.category.tone.color(context),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const SizedBox(width: 8, height: 8),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    event.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  _time(event.start),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+    ];
   }
 
   Widget _eventTile(PlanningEvent event, DateTime day) {

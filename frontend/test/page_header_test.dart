@@ -188,33 +188,31 @@ void main() {
     },
   );
 
-  testWidgets('record menu headers use Korean titles and a short description', (
+  testWidgets('record menu headers keep their place and carry no description', (
     tester,
   ) async {
-    for (final (page, title) in <(Widget, String)>[
-      (const CoursePage(), '수강 관리'),
-      (const ActivityPage(), '활동'),
-      (const ExperiencePage(), '경험'),
-      (const CredentialPage(), '자격'),
+    for (final (page, title, description) in <(Widget, String, String)>[
+      (const CoursePage(), '수강 관리', '학기별 수강 계획과 개인 이수 기록을 정리합니다.'),
+      (
+        const ActivityPage(),
+        '활동',
+        '봉사·교내외 활동과 프로젝트·인턴·동아리 경험을 한곳에서 기록합니다.',
+      ),
+      (
+        const ExperiencePage(),
+        '경험',
+        '프로젝트·인턴·동아리 경험을 이력 문장과 강점으로 정리합니다.',
+      ),
+      (const CredentialPage(), '자격', '자격증·어학·교육 이수 내역을 관리합니다.'),
     ]) {
       await tester.pumpWidget(host(page));
-      // The same header stays visible before and after storage loads.
+      // The same header (title and actions) stays put before and after load.
       expect(find.byType(PageHeader), findsOneWidget);
-      expect(tester.getTopLeft(find.text(title)), const Offset(28, 28));
+      final loading = tester.getTopLeft(find.text(title).first);
+      expect(loading.dx, 28);
       await tester.pumpAndSettle();
-      expect(tester.getTopLeft(find.text(title)), const Offset(28, 28));
-      expect(
-        find.textContaining(
-          page is CoursePage
-              ? '학기별 수강 계획과 개인 이수 기록을 정리합니다.'
-              : page is ActivityPage
-              ? '봉사·교내외 활동과 프로젝트·인턴·동아리 경험을 한곳에서 기록합니다.'
-              : page is ExperiencePage
-              ? '프로젝트·인턴·동아리 경험을 이력 문장과 강점으로 정리합니다.'
-              : '자격증·어학·교육 이수 내역을 관리합니다.',
-        ),
-        findsOneWidget,
-      );
+      expect(tester.getTopLeft(find.text(title).first), loading);
+      expect(find.textContaining(description), findsNothing);
       expect(find.textContaining('RECORDS'), findsNothing);
       expect(tester.takeException(), isNull);
     }

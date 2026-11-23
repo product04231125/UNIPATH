@@ -15,6 +15,7 @@ import 'package:university_path_frontend/features/assistant/assistant_context_di
 import 'package:university_path_frontend/features/assistant/assistant_api.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_editor_dialog.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
+import 'support/record_actions.dart';
 
 Widget host(Widget child, {double scale = 1}) => MaterialApp(
   theme: universityPathTheme(),
@@ -416,13 +417,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('수정'));
+    await tapRecordAction(tester, '수정');
     await tester.pumpAndSettle();
     await tester.tap(find.text('취소'));
     await tester.pumpAndSettle();
     expect(find.byType(InputDialog), findsNothing);
     expect(find.text('작성한 내용을 폐기할까요?'), findsNothing);
-    await tester.tap(find.text('수정'));
+    await tapRecordAction(tester, '수정');
     await tester.pumpAndSettle();
     for (final element in find.byType(TextFormField).evaluate().toList()) {
       (element.widget as TextFormField).controller!.clear();

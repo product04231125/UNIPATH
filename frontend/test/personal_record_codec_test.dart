@@ -58,7 +58,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('자격'), findsOneWidget);
-    expect(find.text('개인 기록이 없습니다. 직접 입력해 주세요.'), findsOneWidget);
+    expect(find.text('아직 등록한 기록이 없습니다'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -75,7 +75,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    final add = find.text('자격 직접 등록');
+    final add = find.text('자격 추가');
     await tester.ensureVisible(add);
     await tester.tap(add);
     await tester.pump();

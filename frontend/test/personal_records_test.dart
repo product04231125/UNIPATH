@@ -18,6 +18,8 @@ import 'package:university_path_frontend/features/records/personal_repository_sc
 import 'package:university_path_frontend/features/records/record_menu_page.dart';
 
 import 'support/achievement_records_page.dart';
+import 'support/record_actions.dart';
+import 'package:university_path_frontend/shared/widgets/guide_card.dart';
 
 class _ActivityReviewRepository extends PersonalRecordRepository {
   _ActivityReviewRepository() : super(PersonalRecordKind.activity);
@@ -75,7 +77,7 @@ Future<void> _chooseActivityAdd(
   WidgetTester tester, {
   String choice = '봉사',
 }) async {
-  await tester.tap(find.text('활동 직접 기록'));
+  await tester.tap(find.text('활동 추가'));
   await tester.pumpAndSettle();
   final option = find.text(choice);
   if (option.evaluate().isNotEmpty) {
@@ -94,7 +96,7 @@ RecordMenuPage _activityMenu({
   listTitle: '등록한 활동',
   guideTitle: '활동 준비',
   guides: const [],
-  addLabel: '활동 직접 기록',
+  addLabel: '활동 추가',
   detailLabel: '기관 · 기간 · 역할',
   fieldsLoader: fieldsLoader,
   validateValues: validateValues,
@@ -118,9 +120,13 @@ void main() {
     final guest = ValueNotifier(true);
     addTearDown(guest.dispose);
     await _pumpActivityReview(tester, repository: repository, guest: guest);
-    for (final label in ['활동 직접 기록', '수정', '삭제']) {
-      await tester.tap(find.text(label));
-      await tester.pumpAndSettle();
+    for (final label in ['활동 추가', '수정', '삭제']) {
+      if (label == '활동 추가') {
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+      } else {
+        await tapRecordAction(tester, label);
+      }
       expect(find.byType(Dialog), findsNothing);
       expect(find.text(GuestPreviewScope.blockedMessage), findsOneWidget);
     }
@@ -166,7 +172,7 @@ void main() {
         guest: guest,
         page: _activityMenu(validateValues: (_) => validation.future),
       );
-      await tester.tap(find.text('활동 직접 기록'));
+      await tester.tap(find.text('활동 추가'));
       await tester.pumpAndSettle();
       final title = find.byKey(const ValueKey('record-field-title'));
       await tester.enterText(title, '검증 대기 활동');
@@ -204,9 +210,9 @@ void main() {
             },
           ),
         );
-        await tester.tap(find.text('활동 직접 기록'));
+        await tester.tap(find.text('활동 추가'));
         await tester.pump();
-        await tester.tap(find.text('활동 직접 기록'));
+        await tester.tap(find.text('활동 추가'));
         await tester.pump();
         if (becomeGuest) {
           guest.value = true;
@@ -246,7 +252,7 @@ void main() {
       expect(repository.records.single.value('title'), '다시 저장할 활동');
       expect(repository.submitted, hasLength(2));
       expect(repository.submitted.first.id, repository.submitted.last.id);
-      expect(find.textContaining('활동 · 다시 저장할 활동'), findsOneWidget);
+      expect(find.textContaining('다시 저장할 활동'), findsOneWidget);
     },
   );
 
@@ -261,7 +267,7 @@ void main() {
       final guest = ValueNotifier(false);
       addTearDown(guest.dispose);
       await _pumpActivityReview(tester, repository: repository, guest: guest);
-      await tester.tap(find.text('삭제'));
+      await tapRecordAction(tester, '삭제');
       await tester.pumpAndSettle();
       guest.value = true;
       await tester.pumpAndSettle();
@@ -330,7 +336,7 @@ void main() {
       );
       expect(find.text('개인 기록'), findsOneWidget);
       expect(find.text('개인 설정'), findsNothing);
-      await tester.tap(find.text('삭제'));
+      await tester.tap(find.text('삭제').first);
       await tester.pumpAndSettle();
       guest.value = true;
       await tester.pumpAndSettle();
@@ -357,7 +363,7 @@ void main() {
     await _pumpActivityReview(tester, repository: repository, guest: guest);
     expect(find.textContaining('알 수 없는 승인 상태'), findsNothing);
     expect(find.textContaining('연결 대상 없음'), findsNothing);
-    await tester.tap(find.text('수정'));
+    await tapRecordAction(tester, '수정');
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('record-field-approval')), findsNothing);
     await tester.tap(find.text('내 기록에 저장'));
@@ -440,7 +446,7 @@ void main() {
         const MaterialApp(home: Scaffold(body: ActivityPage())),
       );
       await tester.pumpAndSettle();
-      expect(find.text('개인 기록'), findsOneWidget);
+      expect(find.text('내 활동'), findsOneWidget);
       expect(find.text('충족'), findsNothing);
       expect(find.textContaining('사용자가 확인한 승인 상태'), findsNothing);
       expect(find.textContaining('needs_review'), findsNothing);
@@ -457,9 +463,10 @@ void main() {
       const MaterialApp(home: Scaffold(body: ActivityPage())),
     );
     await tester.pumpAndSettle();
-    expect(find.text('개인 기록이 없습니다. 직접 입력해 주세요.'), findsOneWidget);
+    expect(find.text('아직 기록한 활동이 없습니다'), findsOneWidget);
     expect(find.text('학과 멘토링'), findsNothing);
-    expect(find.byType(ExpansionTile), findsOneWidget);
+    expect(find.byType(GuideCard), findsOneWidget);
+    expect(find.text('• 봉사 시간·증빙 자료 점검'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -522,9 +529,9 @@ void main() {
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('활동 · 통합 봉사'), findsOneWidget);
-      expect(find.textContaining('활동 · 통합 기타'), findsOneWidget);
-      expect(find.textContaining('경험 · 통합 프로젝트'), findsOneWidget);
+      expect(find.textContaining('통합 봉사'), findsOneWidget);
+      expect(find.textContaining('통합 기타'), findsOneWidget);
+      expect(find.textContaining('통합 프로젝트'), findsOneWidget);
       expect(activity.records.map((r) => r.value('title')), ['통합 봉사', '통합 기타']);
       expect(experience.records.single.value('title'), '통합 프로젝트');
       expect(experience.records.single.value('type'), '프로젝트');
@@ -566,10 +573,11 @@ void main() {
         expect(find.text('내 과목'), findsOneWidget);
         expect(find.text('자료구조'), findsNothing);
         expect(find.text('개인 기록'), findsNothing);
-        expect(find.textContaining('취득학점 합계 2학점'), findsOneWidget);
+        expect(find.descendant(of: find.byKey(const ValueKey('stat-취득 학점')), matching: find.text('2학점')), findsOneWidget);
+        // Pages no longer repeat a description under the title.
         expect(
           find.textContaining('학기별 수강 계획과 개인 이수 기록을 정리합니다.'),
-          findsOneWidget,
+          findsNothing,
         );
         expect(find.textContaining('졸업 반영은 학교의 확정 기록'), findsNothing);
         expect(find.textContaining('학교에서 확인한 정보가 없으면'), findsNothing);
@@ -703,13 +711,13 @@ void main() {
       );
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('취득학점 합계 5학점'), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const ValueKey('stat-취득 학점')), matching: find.text('5학점')), findsOneWidget);
       await tester.tap(find.text('전체 학기'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('2학기').last);
       await tester.pumpAndSettle();
       expect(find.text('다른 학기 합성 과목'), findsNothing);
-      expect(find.textContaining('취득학점 합계 3학점'), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const ValueKey('stat-취득 학점')), matching: find.text('3학점')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -733,7 +741,7 @@ void main() {
       await tester.ensureVisible(find.byTooltip('활동'));
       await tester.tap(find.byTooltip('활동'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('활동 직접 기록'));
+      await tester.ensureVisible(find.text('활동 추가'));
       await _chooseActivityAdd(tester);
       final title = find.byKey(const ValueKey('record-field-title'));
       await tester.ensureVisible(title);
@@ -795,8 +803,7 @@ void main() {
       await tester.tap(find.text('학사').first);
       await tester.pumpAndSettle();
       expect(find.textContaining('합성 과목'), findsWidgets);
-      await tester.ensureVisible(find.text('수정').first);
-      await tester.tap(find.text('수정').first);
+      await tapRecordAction(tester, '수정');
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('record-field-title')), findsNothing);
       await tester.enterText(
@@ -806,8 +813,7 @@ void main() {
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
       expect(find.textContaining('합성 과목'), findsWidgets);
-      await tester.ensureVisible(find.text('삭제').first);
-      await tester.tap(find.text('삭제').first);
+      await tapRecordAction(tester, '삭제');
       await tester.pumpAndSettle();
       await tester.tap(find.text('삭제').last);
       await tester.pumpAndSettle();
@@ -817,8 +823,8 @@ void main() {
   );
 
   for (final item in [
-    ('활동', '활동 직접 기록', {'title': '합성 활동'}),
-    ('자격', '자격 직접 등록', {'title': '합성 자격'}),
+    ('활동', '활동 추가', {'title': '합성 활동'}),
+    ('자격', '자격 추가', {'title': '합성 자격'}),
   ]) {
     testWidgets(
       '${item.$1} supports structured input, remount and confirmed delete',
@@ -849,8 +855,7 @@ void main() {
         await tester.tap(find.text(item.$1).first);
         await tester.pumpAndSettle();
         expect(find.textContaining(item.$3['title']!), findsOneWidget);
-        await tester.ensureVisible(find.text('수정').first);
-        await tester.tap(find.text('수정').first);
+        await tapRecordAction(tester, '수정');
         await tester.pumpAndSettle();
         final name = find.byKey(const ValueKey('record-field-title'));
         await tester.ensureVisible(name);
@@ -858,8 +863,7 @@ void main() {
         await tester.tap(find.text('내 기록에 저장'));
         await tester.pumpAndSettle();
         expect(find.textContaining('수정된 합성 기록'), findsOneWidget);
-        await tester.ensureVisible(find.text('삭제').first);
-        await tester.tap(find.text('삭제').first);
+        await tapRecordAction(tester, '삭제');
         await tester.pumpAndSettle();
         await tester.tap(find.text('삭제').last);
         await tester.pumpAndSettle();
@@ -879,7 +883,7 @@ void main() {
         const MaterialApp(home: Scaffold(body: ExperiencePage())),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('경험 직접 기록'));
+      await tester.tap(find.text('경험 추가'));
       await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const ValueKey('record-field-title')),
@@ -892,7 +896,7 @@ void main() {
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
       expect(find.text('합성 경험'), findsOneWidget);
-      await tester.tap(find.text('삭제').first);
+      await tapRecordAction(tester, '삭제');
       await tester.pumpAndSettle();
       await tester.tap(find.text('삭제').last);
       await tester.pumpAndSettle();
@@ -925,7 +929,7 @@ void main() {
       await tester.tap(find.text('내 기록에 저장'));
       await tester.pumpAndSettle();
       expect(find.text('합성 성과'), findsOneWidget);
-      await tester.tap(find.text('삭제').first);
+      await tapRecordAction(tester, '삭제');
       await tester.pumpAndSettle();
       await tester.tap(find.text('삭제').last);
       await tester.pumpAndSettle();
