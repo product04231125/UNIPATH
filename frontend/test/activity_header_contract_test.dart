@@ -36,7 +36,7 @@ void main() {
       // Title and actions render from the first frame; no description line.
       expect(find.text(description), findsNothing);
       final title = tester.getTopLeft(find.text('활동'));
-      expect(find.text('활동 추가'), findsOneWidget);
+      expect(find.byTooltip('활동 추가'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       for (final repo in repos.values) { repo.pending.complete(); }
       await tester.pumpAndSettle();

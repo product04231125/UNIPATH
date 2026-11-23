@@ -619,10 +619,10 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
             ),
         ],
       ),
-      FilledButton.icon(
+      IconButton(
+        tooltip: widget.addLabel,
         onPressed: ready ? _showForm : null,
         icon: const Icon(Icons.add),
-        label: Text(widget.addLabel),
       ),
     ];
   }

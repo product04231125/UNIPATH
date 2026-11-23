@@ -149,7 +149,7 @@ void main() {
 
     await tester.tap(find.descendant(of: sheet, matching: find.text('학사')));
     await tester.pumpAndSettle();
-    expect(find.text('수강 과목 추가'), findsOneWidget);
+    expect(find.byTooltip('수강 과목 추가'), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -220,7 +220,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('수강 과목 추가'));
+    await tester.tap(find.byTooltip('수강 과목 추가'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('record-field-title')), findsNothing);
     expect(find.byKey(const ValueKey('record-field-detail')), findsNothing);

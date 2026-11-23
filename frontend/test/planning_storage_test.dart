@@ -212,8 +212,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('일정 추가'));
-      await tester.tap(find.text('일정 추가'));
+      await tester.ensureVisible(find.byTooltip('일정 추가'));
+      await tester.tap(find.byTooltip('일정 추가'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField).first, '합성 일정');
       fail = true;

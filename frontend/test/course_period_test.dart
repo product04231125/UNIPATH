@@ -207,7 +207,7 @@ void main() {
         }
       }
       await open(tester);
-      await tester.tap(find.text('수강 과목 추가'));
+      await tester.tap(find.byTooltip('수강 과목 추가'));
       await tester.pumpAndSettle();
       expect(find.text('학교 과목 조회에 연결되지 않았습니다.'), findsOneWidget);
       expect(
@@ -236,7 +236,7 @@ void main() {
     (tester) async {
       await seedCurriculumCourse(title: '과거 계절 과목');
       await open(tester);
-      await tester.tap(find.text('수강 과목 추가'));
+      await tester.tap(find.byTooltip('수강 과목 추가'));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('record-field-title')), findsNothing);
       expect(find.byKey(const ValueKey('record-field-credits')), findsNothing);
@@ -342,13 +342,13 @@ void main() {
     'default new year is empty content but changed year requires discard',
     (tester) async {
       await open(tester);
-      await tester.tap(find.text('수강 과목 추가'));
+      await tester.tap(find.byTooltip('수강 과목 추가'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, '취소'));
       await tester.pumpAndSettle();
       expect(find.text('작성한 내용을 폐기할까요?'), findsNothing);
       expect(find.byType(InputDialog), findsNothing);
-      await tester.tap(find.text('수강 과목 추가'));
+      await tester.tap(find.byTooltip('수강 과목 추가'));
       await tester.pumpAndSettle();
       final otherYear = DateTime.now().year - 1;
       await chooseForm(

@@ -75,7 +75,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    final add = find.text('자격 추가');
+    final add = find.byTooltip('자격 추가');
     await tester.ensureVisible(add);
     await tester.tap(add);
     await tester.pump();

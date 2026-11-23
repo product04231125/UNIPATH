@@ -77,7 +77,7 @@ Future<void> _chooseActivityAdd(
   WidgetTester tester, {
   String choice = '봉사',
 }) async {
-  await tester.tap(find.text('활동 추가'));
+  await tester.tap(find.byTooltip('활동 추가'));
   await tester.pumpAndSettle();
   final option = find.text(choice);
   if (option.evaluate().isNotEmpty) {
@@ -122,7 +122,7 @@ void main() {
     await _pumpActivityReview(tester, repository: repository, guest: guest);
     for (final label in ['활동 추가', '수정', '삭제']) {
       if (label == '활동 추가') {
-        await tester.tap(find.text(label));
+        await tester.tap(find.byTooltip(label));
         await tester.pumpAndSettle();
       } else {
         await tapRecordAction(tester, label);
@@ -172,7 +172,7 @@ void main() {
         guest: guest,
         page: _activityMenu(validateValues: (_) => validation.future),
       );
-      await tester.tap(find.text('활동 추가'));
+      await tester.tap(find.byTooltip('활동 추가'));
       await tester.pumpAndSettle();
       final title = find.byKey(const ValueKey('record-field-title'));
       await tester.enterText(title, '검증 대기 활동');
@@ -210,9 +210,9 @@ void main() {
             },
           ),
         );
-        await tester.tap(find.text('활동 추가'));
+        await tester.tap(find.byTooltip('활동 추가'));
         await tester.pump();
-        await tester.tap(find.text('활동 추가'));
+        await tester.tap(find.byTooltip('활동 추가'));
         await tester.pump();
         if (becomeGuest) {
           guest.value = true;
@@ -693,7 +693,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('학사').first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('수강 과목 추가'));
+      await tester.tap(find.byTooltip('수강 과목 추가'));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('record-field-title')), findsNothing);
       expect(find.byKey(const ValueKey('record-field-credits')), findsNothing);
@@ -741,7 +741,7 @@ void main() {
       await tester.ensureVisible(find.byTooltip('활동'));
       await tester.tap(find.byTooltip('활동'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('활동 추가'));
+      await tester.ensureVisible(find.byTooltip('활동 추가'));
       await _chooseActivityAdd(tester);
       final title = find.byKey(const ValueKey('record-field-title'));
       await tester.ensureVisible(title);
@@ -784,7 +784,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('학사').first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('수강 과목 추가'));
+      await tester.tap(find.byTooltip('수강 과목 추가'));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('record-select-course')));
       await tester.pumpAndSettle();
@@ -837,7 +837,7 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text(item.$1).first);
         await tester.pumpAndSettle();
-        await tester.tap(find.text(item.$2));
+        await tester.tap(find.byTooltip(item.$2));
         await tester.pumpAndSettle();
         if (item.$1 == '활동') {
           await tester.tap(find.text('봉사').last);
@@ -883,7 +883,7 @@ void main() {
         const MaterialApp(home: Scaffold(body: ExperiencePage())),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('경험 추가'));
+      await tester.tap(find.byTooltip('경험 추가'));
       await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const ValueKey('record-field-title')),
@@ -914,7 +914,7 @@ void main() {
         MaterialApp(home: Scaffold(body: achievementRecordsPage())),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('성과 직접 기록'));
+      await tester.tap(find.byTooltip('성과 직접 기록'));
       await tester.pumpAndSettle();
       for (final field in {
         'title': '합성 성과',

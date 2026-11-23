@@ -471,7 +471,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(FilledButton, '일정 추가'), findsOneWidget);
+      expect(find.byTooltip('일정 추가'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       local.dispose();

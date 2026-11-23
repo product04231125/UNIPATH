@@ -46,7 +46,7 @@ void main() {
     );
   }
 
-  for (final (size, columns) in [(_qhd, 3), (_fhd, 2), (_fhd125, 2)]) {
+  for (final (size, columns) in [(_qhd, 5), (_fhd, 3), (_fhd125, 3)]) {
     testWidgets('activity cards fill $columns columns at $size', (
       tester,
     ) async {
@@ -54,7 +54,7 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final repo = PersonalRecordRepository(PersonalRecordKind.activity);
       await repo.load();
-      for (var i = 0; i < 3; i++) {
+      for (var i = 0; i < 6; i++) {
         await repo.save(
           PersonalRecord(
             id: 'wide-$i',
@@ -71,7 +71,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ActivityPage), findsOneWidget);
       final tops = [
-        for (var i = 0; i < 3; i++)
+        for (var i = 0; i < 6; i++)
           tester.getRect(find.byKey(ValueKey('record-activity-wide-$i'))).top,
       ];
       expect(

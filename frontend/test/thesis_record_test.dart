@@ -84,8 +84,8 @@ void main() {
 
         await tester.pumpWidget(page());
         await tester.pumpAndSettle();
-        await tester.ensureVisible(find.text('성과 직접 기록'));
-        await tester.tap(find.text('성과 직접 기록'));
+        await tester.ensureVisible(find.byTooltip('성과 직접 기록'));
+        await tester.tap(find.byTooltip('성과 직접 기록'));
         await tester.pumpAndSettle();
         for (final entry in {
           'title': '합성 캡스톤',

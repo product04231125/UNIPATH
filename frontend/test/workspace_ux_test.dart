@@ -268,10 +268,10 @@ void main() {
           final weekly = tester.getRect(find.byType(WeeklySchedule));
           expect(weekly.left, closeTo(upcoming.left, 0.5));
           expect(
-            find.descendant(of: card('다가오는 일정'), matching: find.text('일정 추가')),
+            find.descendant(of: card('다가오는 일정'), matching: find.byTooltip('일정 추가')),
             findsOneWidget,
           );
-          expect(find.widgetWithText(FilledButton, '일정 추가'), findsOneWidget);
+          expect(find.byTooltip('일정 추가'), findsOneWidget);
           if (width >= 820) {
             // Upcoming on the left; setup and shortcuts stack on the right.
             expect(upcoming.top, closeTo(prepare.top, 0.01));
@@ -287,7 +287,7 @@ void main() {
           }
           final scheduleAction = populated
               ? find.text('전체 일정 보기 →')
-              : find.text('일정 추가');
+              : find.byTooltip('일정 추가');
           await tester.ensureVisible(scheduleAction);
           await tester.pumpAndSettle();
           await tester.tap(scheduleAction);

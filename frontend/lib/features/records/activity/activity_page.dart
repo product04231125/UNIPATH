@@ -379,10 +379,10 @@ class _ActivityPageState extends State<ActivityPage> {
             ),
         ],
       ),
-      FilledButton.icon(
+      IconButton(
+        tooltip: '활동 추가',
         onPressed: ready ? _add : null,
         icon: const Icon(Icons.add),
-        label: const Text('활동 추가'),
       ),
     ];
   }
