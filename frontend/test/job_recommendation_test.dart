@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/features/api/academic_guidance_models.dart';
 import 'package:university_path_frontend/features/api/job_recommendation_api.dart';
+import 'package:university_path_frontend/features/career/career_goal.dart';
 import 'package:university_path_frontend/features/api/student_api.dart';
 import 'package:university_path_frontend/features/assistant/ai_record_catalog.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
@@ -155,6 +156,7 @@ Future<void> mount(
   Future<List<AiRecordOption>> Function()? loadRecords,
   Future<List<AssistantMaterial>> Function()? loadMaterials,
   Future<List<GuidanceDocument>> Function(List<String> ids)? loadDocuments,
+  CareerGoal? goal,
 }) async {
   await tester.binding.setSurfaceSize(const Size(1440, 1000));
   addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -170,6 +172,7 @@ Future<void> mount(
             loadRecords: loadRecords ?? () async => [record],
             loadMaterials: loadMaterials,
             loadDocuments: loadDocuments,
+            goal: goal,
           ),
         ),
       ),
@@ -328,6 +331,29 @@ void main() {
     );
     expect(find.text('검색 직종 · 소프트웨어 · 세부 검색어 없음'), findsOneWidget);
     expect(browse, findsNothing);
+  });
+
+  testWidgets('저장한 목표 직무로 검색 조건을 채운다', (tester) async {
+    final api = RecommendationGateway();
+    final p = await permission();
+    addTearDown(p.dispose);
+    await mount(
+      tester,
+      api,
+      p,
+      goal: const CareerGoal(
+        categoryCodes: ['024'],
+        keyword: '프론트엔드',
+        version: 1,
+        categoryLabel: '소프트웨어',
+      ),
+    );
+    expect(find.text('소프트웨어'), findsOneWidget);
+    expect(find.text('프론트엔드'), findsOneWidget);
+    await selectOption(tester, 'recommend-region', '전국');
+    await run(tester);
+    expect(api.calls.single['category_codes'], ['024']);
+    expect(api.calls.single['keyword'], '프론트엔드');
   });
 
   testWidgets('직종 조회 실패에서 검색어 검색과 재시도를 제공한다', (tester) async {
@@ -604,7 +630,7 @@ void main() {
       await fill(tester);
       await run(tester);
       expect(
-        find.text('기기 파일이나 내 자료를 고르거나 활동·경험·자격·성과 기록을 등록해 주세요.'),
+        find.text('기기 파일이나 내 자료를 고르거나 수강·활동·경험·자격·성과 기록을 등록해 주세요.'),
         findsOneWidget,
       );
       await tester.ensureVisible(find.text('기기 파일 선택'));

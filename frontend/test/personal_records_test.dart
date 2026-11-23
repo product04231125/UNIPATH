@@ -683,7 +683,7 @@ void main() {
         const UniversityPathApp(startAuthenticated: true),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('수강 관리').first);
+      await tester.tap(find.text('학사').first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('수강 과목 추가'));
       await tester.pumpAndSettle();
@@ -774,7 +774,7 @@ void main() {
         const UniversityPathApp(startAuthenticated: true),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('수강 관리').first);
+      await tester.tap(find.text('학사').first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('수강 과목 추가'));
       await tester.pumpAndSettle();
@@ -792,7 +792,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('홈').first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('수강 관리').first);
+      await tester.tap(find.text('학사').first);
       await tester.pumpAndSettle();
       expect(find.textContaining('합성 과목'), findsWidgets);
       await tester.ensureVisible(find.text('수정').first);

@@ -13,6 +13,7 @@ import 'package:university_path_frontend/features/auth/login_page.dart';
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 import 'package:university_path_frontend/shared/widgets/input_dialog.dart';
 import 'package:university_path_frontend/workspace.dart';
+import 'package:university_path_frontend/app_shell/student_pages.dart';
 
 class MemoryRouteProvider extends RouteInformationProvider with ChangeNotifier {
   MemoryRouteProvider(String path)
@@ -76,7 +77,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 4);
+    expect(
+      tester.widget<Workspace>(find.byType(Workspace)).selectedPage,
+      StudentPages.activity,
+    );
     expect(find.text('등록한 활동'), findsOneWidget);
     expect(find.byTooltip('경험'), findsNothing);
     await tester.pumpWidget(const SizedBox());
@@ -140,7 +144,10 @@ void main() {
       await tester.enterText(find.byType(TextFormField).at(1), 'test-password');
       await tester.tap(find.byKey(const Key('login-submit')));
       await tester.pumpAndSettle();
-      expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 8);
+      expect(
+        tester.widget<Workspace>(find.byType(Workspace)).selectedPage,
+        AppLocation.settingsMenu,
+      );
       expect(provider.value.uri.path, '/settings');
       await tester.pumpWidget(const SizedBox());
       provider.dispose();
@@ -158,12 +165,33 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(tester.widget<Workspace>(find.byType(Workspace)).selectedPage, 8);
+      expect(
+        tester.widget<Workspace>(find.byType(Workspace)).selectedPage,
+        AppLocation.settingsMenu,
+      );
       expect(provider.value.uri.path, '/settings');
       await tester.pumpWidget(const SizedBox());
       provider.dispose();
     },
   );
+
+  for (final (path, tab) in [('/courses', 0), ('/graduation', 1)]) {
+    testWidgets('legacy $path opens the 학사 tab', (tester) async {
+      final provider = MemoryRouteProvider(path);
+      await tester.pumpWidget(
+        UniversityPathApp(
+          startAuthenticated: true,
+          routeInformationProvider: provider,
+        ),
+      );
+      await tester.pumpAndSettle();
+      final workspace = tester.widget<Workspace>(find.byType(Workspace));
+      expect(workspace.selectedPage, StudentPages.academics);
+      expect(workspace.academicTab, tab);
+      await tester.pumpWidget(const SizedBox());
+      provider.dispose();
+    });
+  }
 
   testWidgets('server student denied an admin route can return home', (
     tester,

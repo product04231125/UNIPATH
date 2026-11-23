@@ -89,9 +89,9 @@ void main() {
           for (final destination in bar.destinations)
             (destination as NavigationDestination).label,
         ],
-        ['일정', '졸업 요건', '홈', '자료', '채용공고 분석', '더보기'],
+        ['채용공고 분석', '활동', '홈', '자료', '일정', '더보기'],
       );
-      for (final label in ['일정', '졸업 요건', '홈', '자료', '채용공고 분석', '더보기']) {
+      for (final label in ['채용공고 분석', '활동', '홈', '자료', '일정', '더보기']) {
         expect(barLabel(label), findsOneWidget);
       }
       expect(tester.takeException(), isNull);
@@ -110,7 +110,7 @@ void main() {
     await tester.pumpAndSettle();
     final sheet = find.byKey(const Key('phone-nav-more-sheet'));
     expect(sheet, findsOneWidget);
-    const moreLabels = ['수강 관리', '활동', '자격', '설정'];
+    const moreLabels = ['자격', '학사', '설정'];
     for (final label in moreLabels) {
       expect(
         find.descendant(of: sheet, matching: find.text(label)),
@@ -127,7 +127,7 @@ void main() {
     final moreChip = tester.getSize(
       find
           .ancestor(
-            of: find.descendant(of: sheet, matching: find.text('수강 관리')),
+            of: find.descendant(of: sheet, matching: find.text('학사')),
             matching: find.byType(InkWell),
           )
           .first,
@@ -138,7 +138,7 @@ void main() {
       find.descendant(of: sheet, matching: find.text('계정 보안')),
       findsNothing,
     );
-    for (final label in ['일정', '졸업 요건', '홈', '자료', '채용공고 분석']) {
+    for (final label in ['채용공고 분석', '활동', '홈', '자료', '일정']) {
       expect(
         find.descendant(of: sheet, matching: find.text(label)),
         findsNothing,
@@ -147,7 +147,7 @@ void main() {
     expect(find.byKey(const Key('mock-data-toggle')), findsNothing);
     expect(find.byKey(const Key('logout-button')), findsOneWidget);
 
-    await tester.tap(find.descendant(of: sheet, matching: find.text('수강 관리')));
+    await tester.tap(find.descendant(of: sheet, matching: find.text('학사')));
     await tester.pumpAndSettle();
     expect(find.text('수강 과목 추가'), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
@@ -167,7 +167,7 @@ void main() {
   testWidgets('desktop 1440 keeps the student left sidebar', (tester) async {
     await pumpApp(tester, const Size(1440, 900));
     expect(find.byType(NavigationBar), findsNothing);
-    expect(find.text('수강 관리'), findsWidgets);
+    expect(find.text('학사'), findsWidgets);
     expect(find.byType(WorkspaceShell), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -216,7 +216,7 @@ void main() {
     await tester.tap(
       find.descendant(
         of: find.byKey(const Key('phone-nav-more-sheet')),
-        matching: find.text('수강 관리'),
+        matching: find.text('학사'),
       ),
     );
     await tester.pumpAndSettle();

@@ -11,6 +11,7 @@ import 'package:university_path_frontend/features/planning/weekly_schedule.dart'
 import 'package:university_path_frontend/app_shell/phone_shell.dart';
 import 'package:university_path_frontend/app_shell/workspace_shell.dart';
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
+import 'package:university_path_frontend/app_shell/student_pages.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -107,6 +108,8 @@ void main() {
       final homeWidth = tester
           .widget<WorkspaceShell>(find.byType(WorkspaceShell))
           .minimumContentWidth;
+      await tester.tap(find.text('학사').first);
+      await tester.pumpAndSettle();
       await tester.tap(find.text('졸업 요건').first);
       await tester.pumpAndSettle();
       expect(
@@ -287,7 +290,10 @@ void main() {
           await tester.ensureVisible(scheduleAction);
           await tester.pumpAndSettle();
           await tester.tap(scheduleAction);
-          expect(populated ? openedPage == 1 : openedSchedule, isTrue);
+          expect(
+            populated ? openedPage == StudentPages.schedule : openedSchedule,
+            isTrue,
+          );
           final settingsAction = find.text('학업과 계획 정보');
           await tester.ensureVisible(settingsAction);
           await tester.pumpAndSettle();
@@ -300,7 +306,7 @@ void main() {
           await tester.ensureVisible(nextAction);
           await tester.pumpAndSettle();
           await tester.tap(nextAction);
-          expect(openedPage, 2);
+          expect(openedPage, StudentPages.academics);
           openedPage = null;
           openedSchedule = false;
           openedSettings = false;
@@ -362,6 +368,8 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.binding.setSurfaceSize(const Size(1456, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('학사').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('졸업 요건').first);
     await tester.pumpAndSettle();
@@ -508,13 +516,14 @@ void main() {
       );
       await tester.pumpAndSettle();
       for (final name in [
-        '일정',
-        '수강 관리',
-        '졸업 요건',
+        '채용공고 분석',
         '활동',
         '자격',
         '자료',
-        '채용공고 분석',
+        '일정',
+        '학사',
+        // 학사 tab.
+        '졸업 요건',
         '설정',
       ]) {
         final navigation = find.byTooltip(name).evaluate().isNotEmpty
