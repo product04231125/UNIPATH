@@ -21,6 +21,8 @@ import 'package:university_path_frontend/features/records/portfolio/job_recommen
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
 import 'package:university_path_frontend/shared/app_style.dart';
 
+import 'package:university_path_frontend/features/career/requirement_result.dart';
+
 import 'support/saved_analyses_store.dart';
 
 Map<String, dynamic> responseFixture() => jsonDecode(
@@ -436,14 +438,105 @@ void main() {
     },
   );
 
+  test('every compared posting is ranked with its own verdict', () {
+    final json = responseFixture();
+    final base = (json['items'] as List).first as Map<String, dynamic>;
+    Map<String, dynamic> item(
+      String id,
+      List<(String, String)> rows, {
+      String status = 'completed',
+    }) {
+      final copy = jsonDecode(jsonEncode(base)) as Map<String, dynamic>;
+      (copy['posting'] as Map)['source_id'] = id;
+      (copy['posting'] as Map)['title'] = '공고 $id';
+      copy['analysis_status'] = status;
+      final template = (base['comparisons'] as List).first as Map;
+      copy['comparisons'] = [
+        for (final (i, (priority, state)) in rows.indexed)
+          {
+            ...jsonDecode(jsonEncode(template)) as Map<String, dynamic>,
+            'requirement_id': '$id-$i',
+            'priority': priority,
+            'status': state,
+            if (state != 'supported') 'personal_evidence': [],
+          },
+      ];
+      return copy;
+    }
+
+    json['items'] = [
+      item('failed', [], status: 'failed'),
+      item('none', [('required', 'insufficient_evidence')]),
+      item('preferred-only', [
+        ('required', 'partially_supported'),
+        ('preferred', 'supported'),
+      ]),
+      item('match', [('required', 'supported'), ('preferred', 'supported')]),
+    ];
+    (json['recommendations'] as List).first['source_id'] = 'match';
+    final ranked = rankPostings(JobRecommendationResponse.fromJson(json));
+    expect(ranked.map((p) => p.posting.id), [
+      'match',
+      'preferred-only',
+      'none',
+      'failed',
+    ]);
+    expect(ranked.map((p) => p.verdict), [
+      PostingVerdict.recommended,
+      PostingVerdict.requiredMissing,
+      PostingVerdict.noEvidence,
+      PostingVerdict.unavailable,
+    ]);
+    expect(ranked.first.reason, '필수 요건 1개 중 1개가 준비되어 추천했습니다.');
+    expect(ranked[1].required, (0, 1));
+    expect(ranked[1].reason, contains('추천에서 제외'));
+  });
+
+  testWidgets('several regions and 졸업예정 are sent with the search', (
+    tester,
+  ) async {
+    final api = RecommendationGateway();
+    final consent = await permission();
+    await mount(tester, api, consent);
+    await tester.enterText(
+      find.byKey(const ValueKey('recommend-keyword')),
+      'Engineer',
+    );
+    Future<void> chip(String name) async {
+      final finder = find.byKey(ValueKey('recommend-region-$name'));
+      await tester.ensureVisible(finder);
+      await tester.tap(finder);
+      await tester.pump();
+    }
+
+    bool selected(String name) => tester
+        .widget<FilterChip>(find.byKey(ValueKey('recommend-region-$name')))
+        .selected;
+    await chip('전국');
+    await chip('경기');
+    // A region replaces 전국; picking 전국 again clears the regions.
+    expect(selected('전국'), isFalse);
+    await chip('서울');
+    expect(selected('경기') && selected('서울'), isTrue);
+    await selectOption(tester, 'recommend-academic-stage', '졸업예정');
+    await run(tester);
+    expect(api.calls.single['regions'], ['서울', '경기']);
+    expect(api.calls.single['region'], '서울·경기');
+    expect(api.calls.single['academic_stage'], 'graduating');
+    await chip('전국');
+    expect(selected('서울') || selected('경기'), isFalse);
+    expect(selected('전국'), isTrue);
+  });
+
   testWidgets('shows display candidate states without duplicate cards', (
     tester,
   ) async {
     for (final (type, label) in [
-      ('evidence_match', '근거가 확인된 후보'),
+      ('evidence_match', '추천'),
       ('closest_needs_review', '조건 확인 필요'),
-      ('analysis_unavailable', '분석 미완료 · 검색 후보'),
-      ('unknown', '후보 유형 확인 필요'),
+      ('analysis_unavailable', '분석 미완료'),
+      // An unknown type is judged by its comparisons, never shown as recommended.
+      ('unknown', '조건 확인 필요'),
     ]) {
       final json = displayCandidateFixture(type);
       final result = JobRecommendationResponse.fromJson(json);
@@ -467,8 +560,8 @@ void main() {
         type == 'evidence_match' ? findsOneWidget : findsNothing,
       );
       expect(
-        find.textContaining('미확인 필수조건'),
-        type == 'evidence_match' ? findsOneWidget : findsNothing,
+        find.byType(ReadinessBar),
+        type == 'analysis_unavailable' ? findsNothing : findsOneWidget,
       );
       for (final sentence
           in result.displayCandidates!.single.guidanceSentences) {
@@ -748,7 +841,14 @@ void main() {
       api.pending!.complete(responseFixture());
       await tester.pumpAndSettle();
       expect(find.text('Engineer'), findsNothing);
-      expect(find.text('전국'), findsNothing);
+      expect(
+        tester
+            .widget<FilterChip>(
+              find.byKey(const ValueKey('recommend-region-전국')),
+            )
+            .selected,
+        isFalse,
+      );
       expect(find.text('공고 비교 결과'), findsNothing);
       expect(find.byType(CheckboxListTile), findsNothing);
     },
@@ -798,8 +898,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.textContaining('추천 공고가 없습니다'), findsOneWidget);
-      expect(find.text('처리 실패'), findsOneWidget);
+      expect(find.text('분석 미완료'), findsOneWidget);
+      expect(find.text('추천'), findsNothing);
       expect(
         find.text(
           'AI가 공고 문장을 정확히 인용하지 못했습니다. 잠시 후 다시 시도해 주세요. (코드: posting_quote)',

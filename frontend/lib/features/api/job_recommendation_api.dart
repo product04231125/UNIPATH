@@ -14,19 +14,56 @@ class RecommendationDocument {
   };
 }
 
-enum RecommendationAcademicStage { year1, year2, year3, year4, graduate }
+enum RecommendationAcademicStage {
+  year1('1학년'),
+  year2('2학년'),
+  year3('3학년'),
+  year4('4학년'),
+  graduating('졸업예정'),
+  graduate('졸업');
+
+  const RecommendationAcademicStage(this.label);
+  final String label;
+}
+
+/// Work regions the server searches by each source's region codes, in display order.
+const recommendationRegions = [
+  '서울',
+  '경기',
+  '인천',
+  '부산',
+  '대구',
+  '광주·전남',
+  '대전',
+  '울산',
+  '세종',
+  '강원',
+  '충북',
+  '충남',
+  '전북',
+  '경북',
+  '경남',
+  '제주',
+];
+const nationwideRegion = '전국';
 
 class JobRecommendationRequest {
   const JobRecommendationRequest({
     required this.keyword,
     required this.region,
+    this.regions = const [],
     this.categoryCodes = const [],
     this.documents = const [],
     this.records = const [],
     this.academicStage,
     required this.consent,
   });
+
+  /// `전국`, or the chosen regions joined for display (`서울·경기`).
   final String keyword, region;
+
+  /// The chosen regions; empty for 전국.
+  final List<String> regions;
   final List<String> categoryCodes;
   final List<RecommendationDocument> documents;
   final List<PersonalEvidenceSelection> records;
@@ -36,6 +73,7 @@ class JobRecommendationRequest {
     'keyword': keyword,
     if (categoryCodes.isNotEmpty) 'category_codes': categoryCodes,
     'region': region,
+    if (regions.isNotEmpty) 'regions': regions,
     'documents': documents.map((d) => d.toJson()).toList(),
     'records': records.map((r) => r.toJson()).toList(),
     'external_processing_consent': consent,
@@ -189,6 +227,7 @@ class JobRecommendationResponse {
         _map(json['query'] ?? const {})['occupation_codes'],
       ),
       queryKeyword = _map(json['query'] ?? const {})['keyword'] as String?,
+      regionLabel = _map(json['query'] ?? const {})['region_label'] as String?,
       searchNotice = json['search_notice'] as String?,
       categoryBrowseAvailable = json['category_browse_available'] == true,
       missingFields = _strings(json['missing_fields']),
@@ -209,7 +248,7 @@ class JobRecommendationResponse {
   /// The server's JSON, which is what a saved result keeps.
   final Map<String, dynamic> raw;
   final String status, notice;
-  final String? occupationLabel, queryKeyword, searchNotice;
+  final String? occupationLabel, queryKeyword, searchNotice, regionLabel;
   final List<String> occupationCodes;
 
   /// No posting in the chosen category matched the detail words; the student may browse it.

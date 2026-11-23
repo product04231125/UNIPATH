@@ -24,6 +24,8 @@ class BodyText(HTMLParser):
 
 class Greenhouse:
     name = "greenhouse"
+    # Few postings; filtered by location names instead of region codes.
+    filters_region_by_label = True
 
     def __init__(self, board, transport):
         if not re.fullmatch(r"[a-zA-Z0-9_-]{1,80}", board):
@@ -35,8 +37,9 @@ class Greenhouse:
         url = f"https://boards-api.greenhouse.io/v1/boards/{self.board}/jobs"
         rows = json.loads(self.transport.request(url))["jobs"]
         results = []
-        region = query.region_label.strip().casefold()
+        names = [part.strip().casefold() for part in query.region_label.split("·") if part.strip()]
         aliases = {"서울": ("서울", "seoul"), "경기": ("경기", "gyeonggi")}
+        wanted = [word for name in names for word in aliases.get(name, (name,))]
         for row in rows:
             location = row["location"]["name"]
             if (
@@ -47,7 +50,7 @@ class Greenhouse:
             if query.nationwide:
                 if not any(word in location.casefold() for word in ("korea", "대한민국", "한국")):
                     continue
-            elif not any(word in location.casefold() for word in aliases.get(region, (region,))):
+            elif not any(word in location.casefold() for word in wanted):
                 continue
             job_id = int(row["id"])
             job = json.loads(self.transport.request(f"{url}/{job_id}"))

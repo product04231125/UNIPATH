@@ -20,7 +20,7 @@ from app.services import auth, gemini
 from app.services.personalization.context import assemble
 from app.services.personalization.redaction import redact_context
 
-from . import categories
+from . import categories, regions
 from .contracts import SearchQuery, failure_reason
 from .crawling import Work24Crawler
 from .documents import prepare_documents
@@ -29,12 +29,13 @@ from .goal import CareerGoalUpdate, CareerGoalView, get_goal, save_goal
 from .greenhouse import Greenhouse
 from .ocr import OcrInputError, OcrUnavailable
 from .recommendations import recommend
+from .regions import RegionName
 from .service import CareerService
 from .sources import Saramin, Work24
 from .transport import Transport
 
 router = APIRouter(prefix="/me", tags=["career"])
-RegionCode = Annotated[str, Field(pattern=r"^[0-9]{2,6}$")]
+RegionCode = Annotated[str, Field(pattern=r"^[0-9]{2,6}(,[0-9]{2,6}){0,15}$")]
 
 
 class Document(BaseModel):
@@ -51,18 +52,26 @@ class RecommendationRequest(PersonalizationRequest):
     records: list[PersonalEvidenceSelection] = Field(
         default_factory=list, max_length=MAX_ANALYSIS_RECORDS
     )
-    academic_stage: Literal["year1", "year2", "year3", "year4", "graduate"] | None = None
+    academic_stage: Literal["year1", "year2", "year3", "year4", "graduating", "graduate"] | None = (
+        None
+    )
     documents: list[Document] = Field(default_factory=list, max_length=5)
     # Detail search words; optional once a category (Work24 occupation codes) is chosen.
     keyword: str = Field(default="", max_length=80)
     category_codes: list[OccupationCode] = Field(default_factory=list, max_length=10)
-    region: str = Field(min_length=1, max_length=100)
+    # `전국`, or the chosen regions in `regions` (searched by each source's region codes).
+    region: str = Field(default="", max_length=100)
+    regions: list[RegionName] = Field(default_factory=list, max_length=16)
     region_codes: dict[Literal["work24", "saramin"], RegionCode] = Field(default_factory=dict)
     limit: int = Field(default=3, ge=1, le=3)
     external_processing_consent: bool = Field(default=False, strict=True)
 
     @model_validator(mode="after")
     def keyword_or_category(self):
+        if len(set(self.regions)) != len(self.regions):
+            raise ValueError("근무 지역을 한 번씩만 골라 주세요.")
+        if not self.regions and not self.region.strip():
+            raise ValueError("근무 지역을 골라 주세요.")
         categories.validate_codes(self.category_codes)
         if not self.keyword.strip() and not self.category_codes:
             raise ValueError("직무 대분류를 고르거나 세부 검색어를 입력해 주세요.")
@@ -226,11 +235,13 @@ def recommendations(
     records = redact_context(context, identity).model_dump(mode="json")["records"]
     locations, warnings = {}, []
     try:
+        # Chosen regions go into each source's search; postings are never filtered afterwards.
+        ordered = [name for name in regions.WORK24 if name in payload.regions]
         query = SearchQuery(
             payload.keyword.strip(),
-            payload.region.strip(),
-            nationwide=payload.region.strip() == "전국",
-            region_codes=payload.region_codes,
+            regions.label(ordered) if ordered else payload.region.strip(),
+            nationwide=not ordered and payload.region.strip() == "전국",
+            region_codes=regions.provider_codes(ordered) if ordered else payload.region_codes,
             limit=payload.limit,
             occupation_codes=tuple(payload.category_codes),
         )

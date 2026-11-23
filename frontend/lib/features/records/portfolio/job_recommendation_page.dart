@@ -77,7 +77,17 @@ class JobRecommendationPage extends StatefulWidget {
 class _JobRecommendationPageState extends State<JobRecommendationPage> {
   final _keyword = TextEditingController();
   var _form = GlobalKey<FormState>();
-  String? _region, _error, _requestId;
+  String? _error, _requestId;
+
+  /// `전국` alone, or one or more regions searched together.
+  final _regions = <String>{};
+  List<String> get _orderedRegions => [
+    for (final name in recommendationRegions)
+      if (_regions.contains(name)) name,
+  ];
+  String get _regionLabel => _regions.contains(nationwideRegion)
+      ? nationwideRegion
+      : _orderedRegions.join('·');
   Future<List<JobCategory>>? _categories;
   String _categoryCode = '', _subcategoryCode = '';
   String get _selectedCode =>
@@ -207,7 +217,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
       _revision++;
       _form = GlobalKey<FormState>();
       _busy = false;
-      _region = null;
+      _regions.clear();
       _categories = null;
       _categoryCode = '';
       _subcategoryCode = '';
@@ -340,7 +350,8 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
       final request = JobRecommendationRequest(
         keyword: _keyword.text.trim(),
         categoryCodes: _selectedCode.isEmpty ? const [] : [_selectedCode],
-        region: _region!,
+        region: _regionLabel,
+        regions: _orderedRegions,
         academicStage: _academicStage,
         documents: documents,
         records: [
@@ -452,19 +463,54 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
-    final region = FieldLabel(
-      label: '근무 지역',
-      child: DropdownButtonFormField<String>(
-        key: const ValueKey('recommend-region'),
-        initialValue: _region,
-        isExpanded: true,
-        decoration: InputDecoration(
-          hintText: '지역 선택',
-          errorText: _hasField('region') ? '지역을 확인하세요.' : null,
+    final region = FormField<Set<String>>(
+      key: const ValueKey('recommend-region'),
+      validator: (_) => _regions.isEmpty ? '근무 지역을 선택하세요.' : null,
+      builder: (state) => FieldLabel(
+        label: '근무 지역 (여러 곳 선택 가능)',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final name in [nationwideRegion, ...recommendationRegions])
+                  FilterChip(
+                    key: ValueKey('recommend-region-$name'),
+                    label: Text(name),
+                    selected: _regions.contains(name),
+                    showCheckmark: false,
+                    visualDensity: VisualDensity.compact,
+                    onSelected: _busy
+                        ? null
+                        : (on) {
+                            setState(() {
+                              // 전국 and individual regions exclude each other.
+                              if (name == nationwideRegion) {
+                                _regions.clear();
+                              } else {
+                                _regions.remove(nationwideRegion);
+                              }
+                              on ? _regions.add(name) : _regions.remove(name);
+                            });
+                            state.didChange(_regions);
+                          },
+                  ),
+              ],
+            ),
+            if (state.errorText != null || _hasField('region'))
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  state.errorText ?? '지역을 확인하세요.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ),
+          ],
         ),
-        items: const [DropdownMenuItem(value: '전국', child: Text('전국'))],
-        onChanged: _busy ? null : (v) => setState(() => _region = v),
-        validator: (v) => v == null ? '근무 지역을 선택하세요.' : null,
       ),
     );
     final stage = FieldLabel(
@@ -476,28 +522,10 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
         decoration: InputDecoration(
           errorText: _hasField('academic_stage') ? '선택한 학년을 확인하세요.' : null,
         ),
-        items: const [
-          DropdownMenuItem(child: Text('선택 안 함')),
-          DropdownMenuItem(
-            value: RecommendationAcademicStage.year1,
-            child: Text('1학년'),
-          ),
-          DropdownMenuItem(
-            value: RecommendationAcademicStage.year2,
-            child: Text('2학년'),
-          ),
-          DropdownMenuItem(
-            value: RecommendationAcademicStage.year3,
-            child: Text('3학년'),
-          ),
-          DropdownMenuItem(
-            value: RecommendationAcademicStage.year4,
-            child: Text('4학년'),
-          ),
-          DropdownMenuItem(
-            value: RecommendationAcademicStage.graduate,
-            child: Text('졸업'),
-          ),
+        items: [
+          const DropdownMenuItem(child: Text('선택 안 함')),
+          for (final stage in RecommendationAcademicStage.values)
+            DropdownMenuItem(value: stage, child: Text(stage.label)),
         ],
         onChanged: _busy
             ? null
@@ -550,22 +578,14 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                LayoutBuilder(
-                  builder: (context, constraints) =>
-                      constraints.maxWidth >=
-                          MediaQuery.textScalerOf(context).scale(360)
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(child: region),
-                            const SizedBox(width: 12),
-                            Expanded(child: stage),
-                          ],
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [region, const SizedBox(height: 16), stage],
-                        ),
+                region,
+                const SizedBox(height: 16),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 280),
+                    child: stage,
+                  ),
                 ),
               ],
             ),

@@ -73,6 +73,146 @@ String postingDeadlineLabel(RecommendationPosting posting, {DateTime? now}) {
   return '마감 $year${at.month}월 ${at.day}일(${weekdayLabel(at.weekday)})$time';
 }
 
+/// How one compared posting stands against the recommendation rule: a ready
+/// requirement, and at least one ready 필수 requirement when it has any.
+enum PostingVerdict {
+  recommended('추천', AppTone.success),
+  closest('조건 확인 필요', AppTone.warning),
+  requiredMissing('필수 요건 미충족', AppTone.danger),
+  noEvidence('준비된 요건 없음', AppTone.danger),
+  unavailable('분석 미완료', AppTone.neutral);
+
+  const PostingVerdict(this.label, this.tone);
+  final String label;
+  final AppTone tone;
+}
+
+/// One posting in the single ranked list, with everything its card shows.
+class RankedPosting {
+  RankedPosting({
+    required this.posting,
+    required this.verdict,
+    required this.reason,
+    this.item,
+    this.recommendation,
+    this.candidate,
+  });
+  final RecommendationPosting posting;
+  final RecommendationItem? item;
+  final RecommendedJob? recommendation;
+  final RecommendationDisplayCandidate? candidate;
+  final PostingVerdict verdict;
+  final String reason;
+
+  List<RecommendationComparison> get comparisons =>
+      item?.comparisons ?? const [];
+  List<RequirementStatus> get statuses => [
+    for (final c in comparisons) RequirementStatus.parse(c.status),
+  ];
+  (int, int) get required {
+    final rows = comparisons.where((c) => c.priority == 'required');
+    return (rows.where((c) => c.status == 'supported').length, rows.length);
+  }
+}
+
+/// Every compared posting in one list: recommended ones in the server's order
+/// (fewest unconfirmed 필수 first), then the closest candidate, then the rest
+/// by how near they are, and postings without a finished analysis last.
+List<RankedPosting> rankPostings(JobRecommendationResponse result) {
+  final recommendations = {for (final r in result.recommendations) r.key: r};
+  final candidates = {
+    for (final c
+        in result.displayCandidates ?? const <RecommendationDisplayCandidate>[])
+      c.posting.key: c,
+  };
+  final items = {for (final i in result.items) i.posting.key: i};
+  final keys = <String>[
+    ...result.items.map((i) => i.posting.key),
+    for (final key in candidates.keys)
+      if (!items.containsKey(key)) key,
+  ];
+  RankedPosting entry(String key) {
+    final item = items[key];
+    final candidate = candidates[key];
+    final recommendation = recommendations[key];
+    final posting = item?.posting ?? candidate!.posting;
+    final status = item?.status ?? candidate?.status;
+    final comparisons = item?.comparisons ?? const <RecommendationComparison>[];
+    final required = comparisons.where((c) => c.priority == 'required');
+    final requiredReady = required.where((c) => c.status == 'supported').length;
+    final ready = comparisons.where((c) => c.status == 'supported').length;
+    // The server's candidate type decides first; otherwise the comparisons do.
+    final type =
+        candidate?.type ??
+        recommendation?.type ??
+        (recommendation != null ? 'evidence_match' : null);
+    final (verdict, reason) = switch (type) {
+      'evidence_match' => (
+        PostingVerdict.recommended,
+        required.isEmpty
+            ? '준비된 요건이 $ready개 있어 추천했습니다.'
+            : '필수 요건 ${required.length}개 중 $requiredReady개가 준비되어 추천했습니다.',
+      ),
+      'closest_needs_review' => (
+        PostingVerdict.closest,
+        '추천 기준에는 못 미치지만 비교한 공고 중 가장 가깝습니다. 지원 조건을 직접 확인하세요.',
+      ),
+      _ when type == 'analysis_unavailable' || status != 'completed' => (
+        PostingVerdict.unavailable,
+        item?.failureReason != null
+            ? recommendationFailureLabel(item!.failureReason!)
+            : '${recommendationStateLabel(status ?? '')} · 역량 부족으로 해석하지 마세요.',
+      ),
+      _ when ready == 0 => (
+        PostingVerdict.noEvidence,
+        '준비된 요건이 없어 추천에서 제외했습니다.',
+      ),
+      _ when required.isNotEmpty && requiredReady == 0 => (
+        PostingVerdict.requiredMissing,
+        '필수 요건 ${required.length}개 중 준비된 것이 없어 추천에서 제외했습니다.',
+      ),
+      _ => (PostingVerdict.closest, '추천 기준에 가깝습니다. 지원 조건을 직접 확인하세요.'),
+    };
+    return RankedPosting(
+      posting: posting,
+      item: item,
+      recommendation: recommendation,
+      candidate: candidate,
+      verdict: verdict,
+      reason: reason,
+    );
+  }
+
+  final all = [for (final key in keys) entry(key)];
+  final order = [for (final r in result.recommendations) r.key];
+  int score(RankedPosting p) {
+    final (ready, total) = p.required;
+    final supported = p.statuses
+        .where((s) => s == RequirementStatus.supported)
+        .length;
+    // Fewer unconfirmed 필수, then more ready requirements.
+    return (total - ready) * 100 - supported;
+  }
+
+  int group(RankedPosting p) => switch (p.verdict) {
+    PostingVerdict.recommended => 0,
+    PostingVerdict.closest => 1,
+    PostingVerdict.requiredMissing || PostingVerdict.noEvidence => 2,
+    PostingVerdict.unavailable => 3,
+  };
+  all.sort((a, b) {
+    final byGroup = group(a).compareTo(group(b));
+    if (byGroup != 0) return byGroup;
+    if (a.verdict == PostingVerdict.recommended) {
+      return order
+          .indexOf(a.posting.key)
+          .compareTo(order.indexOf(b.posting.key));
+    }
+    return score(a).compareTo(score(b));
+  });
+  return all;
+}
+
 class JobRecommendationResult extends StatelessWidget {
   const JobRecommendationResult({
     super.key,
@@ -136,54 +276,53 @@ class JobRecommendationResult extends StatelessWidget {
     return '내 기록: ${cite.kind} · ${cite.id} · 버전 ${cite.version}';
   }
 
-  Widget _posting(
-    BuildContext context,
-    RecommendationPosting posting, {
-    RecommendationItem? item,
-    RecommendedJob? recommendation,
-    RecommendationDisplayCandidate? candidate,
-  }) {
-    final type = candidate?.type ?? recommendation?.type;
-    final badge = switch (type) {
-      'evidence_match' => '근거가 확인된 후보',
-      'closest_needs_review' => '조건 확인 필요',
-      'analysis_unavailable' => '분석 미완료 · 검색 후보',
-      null => null,
-      _ => '후보 유형 확인 필요',
-    };
+  Widget _posting(BuildContext context, RankedPosting entry, int rank) {
+    final posting = entry.posting;
+    final item = entry.item;
+    final recommendation = entry.recommendation;
     final evidence =
-        (type == null || type == 'evidence_match') &&
+        entry.verdict == PostingVerdict.recommended &&
             recommendation?.hasVerifiedEvidence == true
         ? recommendation
         : null;
-    final status = candidate?.status ?? item?.status;
-    final notice = candidate?.notice ?? recommendation?.notice;
+    final candidate = entry.candidate;
     final guidance = candidate != null && candidate.guidanceSentences.isNotEmpty
         ? candidate.guidanceSentences
         : item?.guidanceSentences ?? const <String>[];
     final theme = Theme.of(context);
-    final badgeTone = switch (type) {
-      'evidence_match' => AppTone.success,
-      'closest_needs_review' => AppTone.warning,
-      _ => AppTone.neutral,
-    };
-    final statusTone = switch (status) {
-      'completed' => AppTone.success,
-      'failed' => AppTone.danger,
-      null => AppTone.neutral,
-      _ => AppTone.warning,
-    };
+    final verdict = entry.verdict;
     return _surface(
       child: Column(
+        key: ValueKey('recommend-posting-${posting.key}'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (badge != null) ...[
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: ToneChip(label: badge, tone: badgeTone),
-            ),
-            const SizedBox(height: 10),
-          ],
+          Row(
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: verdict.tone.container(context),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '$rank',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: verdict.tone.color(context),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ToneChip(
+                key: ValueKey('recommend-verdict-${posting.key}'),
+                label: verdict.label,
+                tone: verdict.tone,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Text(
             posting.title,
             style: theme.textTheme.titleMedium?.copyWith(
@@ -197,6 +336,22 @@ class JobRecommendationResult extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+          if (entry.comparisons.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ReadinessBar(statuses: entry.statuses, required: entry.required),
+          ],
+          const SizedBox(height: 10),
+          NoteLine(
+            icon: switch (verdict) {
+              PostingVerdict.recommended => Icons.check_circle_outline,
+              PostingVerdict.unavailable => Icons.hourglass_empty,
+              _ => Icons.info_outline,
+            },
+            text: entry.reason,
+            color: verdict == PostingVerdict.unavailable
+                ? null
+                : verdict.tone.color(context),
+          ),
           const SizedBox(height: 10),
           Wrap(
             spacing: 6,
@@ -207,19 +362,7 @@ class JobRecommendationResult extends StatelessWidget {
                     '${_sourceName(posting.source)} · ${postingDeadlineLabel(posting)}',
                 icon: Icons.event_outlined,
               ),
-              if (status != null)
-                ToneChip(
-                  label: recommendationStateLabel(status),
-                  tone: statusTone,
-                ),
-              if (evidence != null)
-                ToneChip(
-                  label: '미확인 필수조건 ${evidence.requiredToCheck}개',
-                  tone: evidence.requiredToCheck > 0
-                      ? AppTone.warning
-                      : AppTone.success,
-                ),
-              if (item != null && type != 'analysis_unavailable')
+              if (item != null && verdict != PostingVerdict.unavailable)
                 ToneChip(
                   label:
                       '비교 범위: ${switch (item.scope) {
@@ -231,24 +374,11 @@ class JobRecommendationResult extends StatelessWidget {
                 ),
             ],
           ),
-          if (notice != null && notice.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            NoteLine(icon: Icons.info_outline, text: notice),
-          ],
-          if (status == 'failed' && item?.failureReason != null) ...[
-            const SizedBox(height: 6),
-            NoteLine(
-              icon: Icons.error_outline,
-              text: recommendationFailureLabel(item!.failureReason!),
-              color: theme.colorScheme.error,
-            ),
-          ],
           if (item != null)
-            for (final warning in item.warnings)
-              if (warning != notice) ...[
-                const SizedBox(height: 6),
-                NoteLine(icon: Icons.warning_amber_outlined, text: warning),
-              ],
+            for (final warning in item.warnings) ...[
+              const SizedBox(height: 6),
+              NoteLine(icon: Icons.warning_amber_outlined, text: warning),
+            ],
           if (guidance.isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
@@ -308,7 +438,8 @@ class JobRecommendationResult extends StatelessWidget {
               children: [for (final c in evidence.matched) _comparison(c)],
             ),
           if (item != null &&
-              (type != 'analysis_unavailable' || item.comparisons.isNotEmpty))
+              (verdict != PostingVerdict.unavailable ||
+                  item.comparisons.isNotEmpty))
             ExpansionTile(
               tilePadding: EdgeInsets.zero,
               title: const Text('전체 요건과 비교 근거'),
@@ -325,51 +456,14 @@ class JobRecommendationResult extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final candidates = result.displayCandidates;
-    final recommendations = {
-      for (final recommendation in result.recommendations)
-        recommendation.key: recommendation,
-    };
-    final items = {for (final item in result.items) item.posting.key: item};
-    final displayedKeys =
-        candidates?.map((c) => c.posting.key).toSet() ??
-        recommendations.keys.toSet();
-    final remainingItems = result.items.where(
-      (item) => !displayedKeys.contains(item.posting.key),
-    );
+    final ranked = rankPostings(result);
     final theme = Theme.of(context);
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
-    final shown = <Widget>[
-      if (candidates != null)
-        for (final candidate in candidates)
-          _posting(
-            context,
-            candidate.posting,
-            candidate: candidate,
-            item: items[candidate.posting.key],
-            recommendation: recommendations[candidate.posting.key],
-          )
-      else
-        for (final recommendation in result.recommendations)
-          if (items[recommendation.key] case final item?)
-            _posting(
-              context,
-              item.posting,
-              item: item,
-              recommendation: recommendation,
-            )
-          else
-            const Text('추천 공고의 상세 응답을 확인하지 못했습니다.'),
-    ];
-    Widget grid(List<Widget> cards) => ResponsiveGrid(
-      targetItemWidth: 440,
-      minItemWidth: 340,
-      maxColumns: 3,
-      minHeightFactor: 0,
-      children: cards,
-    );
+    final recommended = ranked
+        .where((p) => p.verdict == PostingVerdict.recommended)
+        .length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -424,12 +518,21 @@ class JobRecommendationResult extends StatelessWidget {
                       icon: Icons.work_outline,
                       tone: AppTone.accent,
                     ),
+                  if (result.regionLabel case final label?
+                      when label.isNotEmpty)
+                    ToneChip(
+                      key: const ValueKey('recommend-region-chip'),
+                      label: '근무 지역 · $label',
+                      icon: Icons.place_outlined,
+                      tone: AppTone.accent,
+                    ),
                   for (final source in result.sources)
                     ToneChip(
                       label:
                           '${_sourceName(source.source)} · ${switch ((source.status, source.reason)) {
                             ('completed', _) => '검색 완료',
                             ('skipped', 'category_unsupported') => '직종 검색 미지원',
+                            ('skipped', 'region_unsupported') => '지역 검색 미지원',
                             _ => recommendationStateLabel(source.status),
                           }}',
                       tone: switch (source.status) {
@@ -474,19 +577,35 @@ class JobRecommendationResult extends StatelessWidget {
             ],
           ),
         ),
-        if (items.isNotEmpty && displayedKeys.isEmpty) ...[
-          const SizedBox(height: 12),
-          const Text('추천 공고가 없습니다. 비교 대상의 분석 상태와 근거를 확인하세요.'),
-        ],
-        if (shown.isNotEmpty) ...[const SizedBox(height: 16), grid(shown)],
-        if (remainingItems.isNotEmpty) ...[
+        if (ranked.isNotEmpty) ...[
           const SizedBox(height: 20),
-          Text('함께 비교한 공고', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 10),
-          grid([
-            for (final item in remainingItems)
-              _posting(context, item.posting, item: item),
-          ]),
+          Row(
+            children: [
+              Text('비교한 공고', style: theme.textTheme.titleMedium),
+              const SizedBox(width: 8),
+              ToneChip(label: '${ranked.length}건'),
+              const SizedBox(width: 6),
+              if (recommended > 0)
+                ToneChip(label: '추천 $recommended', tone: AppTone.success),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '추천 기준: 준비된 요건이 있고, 필수 요건 중 하나 이상이 준비됨. '
+            '기준을 만족한 공고부터 보여 줍니다.',
+            style: muted,
+          ),
+          const SizedBox(height: 12),
+          ResponsiveGrid(
+            targetItemWidth: 440,
+            minItemWidth: 340,
+            maxColumns: 3,
+            minHeightFactor: 0,
+            children: [
+              for (final (index, entry) in ranked.indexed)
+                _posting(context, entry, index + 1),
+            ],
+          ),
         ],
       ],
     );
