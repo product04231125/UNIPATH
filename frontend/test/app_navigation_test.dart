@@ -81,7 +81,7 @@ void main() {
       tester.widget<Workspace>(find.byType(Workspace)).selectedPage,
       StudentPages.activity,
     );
-    expect(find.text('활동 추가'), findsOneWidget);
+    expect(find.byTooltip('활동 추가'), findsOneWidget);
     expect(find.byTooltip('경험'), findsNothing);
     await tester.pumpWidget(const SizedBox());
     provider.dispose();

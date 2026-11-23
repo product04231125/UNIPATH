@@ -173,7 +173,7 @@ void main() {
             isNot(closeTo(tester.getSize(cards.last).height, .01)),
           );
         }
-        expect(find.widgetWithText(FilledButton, '일정 추가'), findsOneWidget);
+        expect(find.byTooltip('일정 추가'), findsOneWidget);
         expect(find.byTooltip('이전 달'), findsOneWidget);
         expect(find.byTooltip('다음 달'), findsOneWidget);
         expect(tester.takeException(), isNull);

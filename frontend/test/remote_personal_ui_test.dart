@@ -99,7 +99,7 @@ void main() {
         ..failWrites = true;
       await tester.pumpWidget(scope(gateway, const CoursePage()));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('수강 과목 추가'));
+      await tester.tap(find.byTooltip('수강 과목 추가'));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('record-field-detail')), findsNothing);
       await period.pickCourse(tester, '합성 personalCurriculumCourse');

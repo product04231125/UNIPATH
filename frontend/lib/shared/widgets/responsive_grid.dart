@@ -11,8 +11,12 @@ abstract final class LayoutWidths {
   /// Dashboard rows of three (FHD at 125% and larger).
   static const wide = 1180.0;
 
-  /// Narrowest comfortable record card before the grid drops a column.
-  static const recordCard = 540.0;
+  /// Record cards aim for this width (QHD 5, FHD 3, FHD 125% 3 columns)
+  /// so chips and summaries wrap instead of running across the screen.
+  static const recordCard = 440.0;
+
+  /// A card never gets narrower than this; the grid drops a column first.
+  static const recordCardMin = 340.0;
 }
 
 /// Equal-height rows of cards whose column count follows the available
@@ -21,12 +25,16 @@ class ResponsiveGrid extends StatelessWidget {
   const ResponsiveGrid({
     super.key,
     required this.children,
-    this.minItemWidth = LayoutWidths.recordCard,
-    this.maxColumns = 3,
+    this.targetItemWidth = LayoutWidths.recordCard,
+    this.minItemWidth = LayoutWidths.recordCardMin,
+    this.maxColumns = 5,
     this.gap = 12,
   });
 
   final List<Widget> children;
+
+  /// Columns are chosen so each card lands near this width.
+  final double targetItemWidth;
   final double minItemWidth;
   final int maxColumns;
   final double gap;
@@ -35,10 +43,16 @@ class ResponsiveGrid extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       // Larger text needs wider cards, so it gives up columns first.
-      final itemWidth = MediaQuery.textScalerOf(context).scale(minItemWidth);
-      final columns = ((constraints.maxWidth + gap) / (itemWidth + gap))
-          .floor()
+      final scaler = MediaQuery.textScalerOf(context);
+      final width = constraints.maxWidth;
+      var columns = ((width + gap) / (scaler.scale(targetItemWidth) + gap))
+          .round()
           .clamp(1, maxColumns);
+      while (columns > 1 &&
+          (width - gap * (columns - 1)) / columns <
+              scaler.scale(minItemWidth)) {
+        columns--;
+      }
       if (columns == 1) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

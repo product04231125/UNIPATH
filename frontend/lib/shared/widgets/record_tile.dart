@@ -56,23 +56,41 @@ class RecordTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.fromLTRB(14, 12, 4, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              IconBadge(icon: icon, tone: tone),
-              const SizedBox(width: 12),
-              Expanded(
+              Row(
+                children: [
+                  IconBadge(icon: icon, tone: tone, size: 34),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall,
+                    ),
+                  ),
+                  ...trailing,
+                  if (actions.isNotEmpty)
+                    _menu(colors)
+                  else
+                    const SizedBox(width: 10),
+                ],
+              ),
+              // Details use the card's full width under the title row.
+              Padding(
+                padding: const EdgeInsets.only(right: 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: theme.textTheme.titleSmall),
                     if (chips.isNotEmpty) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 10),
                       Wrap(spacing: 6, runSpacing: 6, children: chips),
                     ],
                     for (final line in lines) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       Text(
                         line,
                         maxLines: 2,
@@ -85,43 +103,40 @@ class RecordTile extends StatelessWidget {
                   ],
                 ),
               ),
-              ...trailing,
-              if (actions.isNotEmpty)
-                PopupMenuButton<int>(
-                  tooltip: '$title 메뉴',
-                  icon: const Icon(Icons.more_vert),
-                  onSelected: (index) => actions[index].onSelected(),
-                  itemBuilder: (context) => [
-                    for (var i = 0; i < actions.length; i++)
-                      PopupMenuItem<int>(
-                        value: i,
-                        child: Row(
-                          children: [
-                            Icon(
-                              actions[i].icon,
-                              size: 20,
-                              color: actions[i].destructive
-                                  ? colors.error
-                                  : null,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              actions[i].label,
-                              style: actions[i].destructive
-                                  ? TextStyle(color: colors.error)
-                                  : null,
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
             ],
           ),
         ),
       ),
     );
   }
+
+  Widget _menu(ColorScheme colors) => PopupMenuButton<int>(
+    tooltip: '$title 메뉴',
+    icon: const Icon(Icons.more_vert),
+    onSelected: (index) => actions[index].onSelected(),
+    itemBuilder: (context) => [
+      for (var i = 0; i < actions.length; i++)
+        PopupMenuItem<int>(
+          value: i,
+          child: Row(
+            children: [
+              Icon(
+                actions[i].icon,
+                size: 20,
+                color: actions[i].destructive ? colors.error : null,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                actions[i].label,
+                style: actions[i].destructive
+                    ? TextStyle(color: colors.error)
+                    : null,
+              ),
+            ],
+          ),
+        ),
+    ],
+  );
 }
 
 /// Row of headline numbers above a list (hours, credits, counts).

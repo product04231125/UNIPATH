@@ -66,7 +66,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('활동').first);
       await tester.pumpAndSettle();
-      expect(find.text('활동 추가').hitTestable(), findsOneWidget);
+      expect(find.byTooltip('활동 추가').hitTestable(), findsOneWidget);
       // Draft restore lives in the header's more menu next to add.
       expect(find.byTooltip('더보기').hitTestable(), findsOneWidget);
       await tester.tap(find.byTooltip('더보기'));

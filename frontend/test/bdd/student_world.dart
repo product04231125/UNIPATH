@@ -559,7 +559,11 @@ class StudentWorld {
     String? choice,
     required Map<String, String> values,
   }) async {
-    var add = find.widgetWithText(FilledButton, addLabel);
+    // Page headers show add as a + icon named by its tooltip.
+    var add = find.byTooltip(addLabel);
+    if (add.evaluate().isEmpty) {
+      add = find.widgetWithText(FilledButton, addLabel);
+    }
     if (add.evaluate().isEmpty) {
       add = find.text(addLabel);
     }

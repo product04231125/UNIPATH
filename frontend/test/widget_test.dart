@@ -263,7 +263,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('학사').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('수강 과목 추가'));
+    await tester.tap(find.byTooltip('수강 과목 추가'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('record-field-title')), findsNothing);
     await tester.tap(find.byKey(const ValueKey('record-select-course')));
@@ -290,7 +290,7 @@ void main() {
     expect(find.byKey(const Key('mock-data-toggle')), findsNothing);
     expect(find.text('목업용'), findsNothing);
     expect(find.text('예시 데이터 표시'), findsNothing);
-    expect(find.text('수강 과목 추가'), findsOneWidget);
+    expect(find.byTooltip('수강 과목 추가'), findsOneWidget);
     await tester.binding.setSurfaceSize(null);
   });
 
@@ -332,8 +332,8 @@ void main() {
 
     await tester.tap(find.byTooltip('일정'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('일정 추가'));
-    await tester.tap(find.text('일정 추가'));
+    await tester.ensureVisible(find.byTooltip('일정 추가'));
+    await tester.tap(find.byTooltip('일정 추가'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, '프로젝트 마감');
     await tester.tap(find.text('저장'));

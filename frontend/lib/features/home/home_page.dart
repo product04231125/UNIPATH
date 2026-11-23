@@ -289,7 +289,8 @@ class HomePage extends StatelessWidget {
               ),
             ],
           ),
-    trailing: FilledButton.icon(
+    trailing: IconButton(
+      tooltip: '일정 추가',
       onPressed: () {
         if (GuestPreviewScope.isActive(context) || repository.writesBlocked) {
           GuestPreviewScope.showBlockedMessage(context);
@@ -298,7 +299,6 @@ class HomePage extends StatelessWidget {
         onAddSchedule();
       },
       icon: const Icon(Icons.add),
-      label: const Text('일정 추가'),
     ),
   );
 

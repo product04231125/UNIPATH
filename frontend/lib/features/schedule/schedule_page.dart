@@ -103,10 +103,10 @@ class _SchedulePageState extends State<SchedulePage> {
                 ),
               ],
             ),
-            FilledButton.icon(
+            IconButton(
+              tooltip: '일정 추가',
               onPressed: () => _editEvent(),
               icon: const Icon(Icons.add),
-              label: const Text('일정 추가'),
             ),
           ],
           body: [

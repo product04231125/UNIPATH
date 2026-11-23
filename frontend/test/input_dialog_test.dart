@@ -227,7 +227,7 @@ void main() {
         const UniversityPathApp(startAuthenticated: true),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));
+      await tester.tap(find.byTooltip('일정 추가'));
       await tester.pumpAndSettle();
       expect(find.byType(SchedulePage), findsOneWidget);
       expect(find.byType(InputDialog), findsOneWidget);
@@ -359,12 +359,12 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, '추가'));
+      await tester.tap(find.byTooltip('추가'));
       await tester.pumpAndSettle();
       await tester.tapAt(const Offset(5, 5));
       await tester.pumpAndSettle();
       expect(find.byType(InputDialog), findsNothing, reason: kind.name);
-      await tester.tap(find.widgetWithText(FilledButton, '추가'));
+      await tester.tap(find.byTooltip('추가'));
       await tester.pumpAndSettle();
       // Prefer a real record field over AnchoredSelect search boxes.
       // Course `section` is digits-only; use `grade` when present.
@@ -456,14 +456,14 @@ void main() {
       ),
     );
     await tester.pumpWidget(host(SchedulePage(repository: repo)));
-    await tester.ensureVisible(find.widgetWithText(FilledButton, '일정 추가'));
-    await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));
+    await tester.ensureVisible(find.byTooltip('일정 추가'));
+    await tester.tap(find.byTooltip('일정 추가'));
     await tester.pumpAndSettle();
     await tester.tapAt(const Offset(5, 5));
     await tester.pumpAndSettle();
     expect(find.byType(InputDialog), findsNothing);
-    await tester.ensureVisible(find.widgetWithText(FilledButton, '일정 추가'));
-    await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));
+    await tester.ensureVisible(find.byTooltip('일정 추가'));
+    await tester.tap(find.byTooltip('일정 추가'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, '일정');
     await tester.tapAt(const Offset(5, 5));

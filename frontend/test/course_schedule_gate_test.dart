@@ -31,7 +31,7 @@ void main() {
     await tester.pumpAndSettle();
     // Personal courses can be added by hand; the profile only unlocks the
     // school catalog, so it is a short notice rather than a gate.
-    expect(find.widgetWithText(FilledButton, '수강 과목 추가'), findsOneWidget);
+    expect(find.byTooltip('수강 과목 추가'), findsOneWidget);
     expect(find.byKey(planningProfileSettingsCtaKey), findsOneWidget);
     await tester.tap(find.text('설정 열기'));
     expect(openedSettings, isTrue);
@@ -45,7 +45,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byKey(planningProfileSettingsCtaKey), findsNothing);
-    expect(find.widgetWithText(FilledButton, '수강 과목 추가'), findsOneWidget);
+    expect(find.byTooltip('수강 과목 추가'), findsOneWidget);
   });
 
   for (final (size, sideBySide) in [
@@ -63,7 +63,7 @@ void main() {
         MaterialApp(home: Scaffold(body: SchedulePage(repository: planning))),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));
+      await tester.tap(find.byTooltip('일정 추가'));
       await tester.pumpAndSettle();
       final start = tester.getRect(find.byKey(const Key('event-start')));
       final end = tester.getRect(find.byKey(const Key('event-end')));
@@ -91,7 +91,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byKey(planningProfileSettingsCtaKey), findsNothing);
-    await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));
+    await tester.tap(find.byTooltip('일정 추가'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, '프로필 없이 추가');
     await tester.tap(find.widgetWithText(FilledButton, '저장'));
@@ -107,7 +107,7 @@ void main() {
     await planning.saveEvent(_event);
     await _showSchedule(tester, planning, guest: true);
 
-    await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));
+    await tester.tap(find.byTooltip('일정 추가'));
     await tester.pumpAndSettle();
     expect(find.text(GuestPreviewScope.blockedMessage), findsOneWidget);
     expect(find.byType(TextFormField), findsNothing);
@@ -127,7 +127,7 @@ void main() {
     final guest = ValueNotifier(false);
     addTearDown(guest.dispose);
     await _showSchedule(tester, planning, guestState: guest);
-    await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));
+    await tester.tap(find.byTooltip('일정 추가'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, '보존할 입력');
 
@@ -150,7 +150,7 @@ void main() {
     addTearDown(planning.dispose);
     await _showSchedule(tester, planning);
     expect(find.text('일정이 없습니다'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));
+    await tester.tap(find.byTooltip('일정 추가'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, '재시도 일정');
     reject = true;
@@ -174,7 +174,7 @@ void main() {
     addTearDown(planning.dispose);
     planning.blockWrites(GuestPreviewScope.blockedMessage);
     await _showSchedule(tester, planning);
-    await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));
+    await tester.tap(find.byTooltip('일정 추가'));
     await tester.pumpAndSettle();
     expect(find.byType(TextFormField), findsNothing);
     expect(find.text(GuestPreviewScope.blockedMessage), findsOneWidget);
@@ -199,7 +199,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('일정이 없습니다'), findsNothing);
-    expect(find.widgetWithText(FilledButton, '일정 추가'), findsNothing);
+    expect(find.byTooltip('일정 추가'), findsNothing);
 
     await preferences.setString(key, original);
     await tester.tap(find.text('다시 시도'));

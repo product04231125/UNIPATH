@@ -57,11 +57,14 @@ class _GuideCardState extends State<GuideCard> {
                     ),
                     if (widget.links.isNotEmpty) ...[
                       Flexible(
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          alignment: WrapAlignment.end,
-                          children: widget.links,
+                        child: Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.end,
+                            children: widget.links,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
