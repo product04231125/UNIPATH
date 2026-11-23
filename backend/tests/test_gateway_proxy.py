@@ -12,7 +12,7 @@ def test_gateway_fixture_keeps_staging_limits_for_both_templates(template):
     assert "client_max_body_size 2m;" in fixture
     assert "client_max_body_size 12m;" in fixture
     assert (
-        "^/api/v1/me/(job-analyses|job-recommendations|personalized-guidance|career-gap-analyses|application-drafts)$"
+        "^/api/v1/me/(job-analyses|job-recommendations|personalized-guidance|career-gap-analyses|writing-drafts)$"
         in fixture
     )
     assert "error_page 413 = @staging_payload_too_large;" in fixture
@@ -44,9 +44,9 @@ def test_windows_demo_raises_limits_only_for_the_long_model_routes():
         "job-recommendations",
         "personalized-guidance",
         "career-gap-analyses",
-        "application-drafts",
+        "writing-drafts",
     ):
         assert f"location = /api/v1/me/{path} {{" in config
     # Everything else keeps the demo-wide 3m limit and default timeouts.
     assert config.count("client_max_body_size 3m;") == 1
-    assert config.index("/api/v1/me/application-drafts") < config.index("location /api/v1/ {")
+    assert config.index("/api/v1/me/writing-drafts") < config.index("location /api/v1/ {")

@@ -1,0 +1,145 @@
+"""Authenticated 자기소개서·포트폴리오 drafts and Word export. Nothing is stored on the server."""
+
+from datetime import UTC, datetime
+from typing import Literal
+
+from fastapi import APIRouter, Request, Response
+from pydantic import Field, model_validator
+
+from app.api.auth import CurrentIdentity, Database
+from app.core.auth_errors import AuthError, conflict
+from app.rag.career.contracts import failure_reason
+from app.schemas.common import ErrorCode
+from app.schemas.job_analysis import AnalysisDocument
+from app.schemas.personalization import (
+    MAX_ANALYSIS_RECORDS,
+    MAX_DOCUMENT_RECORDS,
+    PersonalEvidenceSelection,
+)
+from app.services import auth, gemini
+from app.services.personalization.context import assemble
+from app.services.personalization.documents import attach_documents
+from app.services.personalization.redaction import redact_context
+
+from .contracts import EditedDocument, ExportProfile, Strict, WritingRequest
+from .docx_export import MIME, export_docx
+from .service import generate_draft
+
+router = APIRouter(prefix="/me", tags=["writing"])
+FILENAMES = {"cover_letter": "cover-letter.docx", "portfolio": "portfolio.docx"}
+
+
+class WritingDraftRequest(WritingRequest):
+    # Every saved record may be sent (D6); the draft keeps only facts it can cite from them.
+    records: list[PersonalEvidenceSelection] = Field(
+        default_factory=list, max_length=MAX_ANALYSIS_RECORDS
+    )
+    # Files picked from 내 자료 for this request only.
+    documents: list[AnalysisDocument] = Field(default_factory=list, max_length=5)
+
+    @model_validator(mode="after")
+    def unique_records(self):
+        keys = [(item.kind, item.record_id) for item in self.records]
+        if len(keys) != len(set(keys)):
+            raise ValueError("Select each personal record once")
+        return self
+
+
+class WritingExportRequest(Strict):
+    document_type: Literal["cover_letter", "portfolio"]
+    draft: EditedDocument
+    profile: ExportProfile
+    reviewed: bool = Field(strict=True)
+
+
+@router.post("/writing-drafts")
+def writing_drafts(
+    payload: WritingDraftRequest, request: Request, db: Database, identity: CurrentIdentity
+):
+    """An editable draft; every paragraph and fact row cites the student's own records."""
+    base = {"official": False, "document_type": payload.document_type, "mode": payload.mode}
+    if not payload.external_processing_consent:
+        return {
+            **base,
+            "status": "needs_user_input",
+            "missing_fields": ["external_processing_consent"],
+        }
+    if not payload.records and not payload.documents and not payload.original_text.strip():
+        return {**base, "status": "needs_user_input", "missing_fields": ["records"]}
+    model_name = request.app.state.settings.vertex_model
+    model = getattr(request.app.state, "writing_model", None)
+    if model is None:
+        return {**base, "status": "not_configured", "model": model_name}
+    auth.throttle(db, "writing-draft:" + str(identity.user.id), limit=20)
+    context = assemble(db, identity, payload.records)
+    outbound, sources, notes = redact_context(context, identity), [], []
+    if payload.documents:
+        # Extraction/OCR only after consent, and never inside an open transaction.
+        db.rollback()
+        outbound, sources, notes = attach_documents(
+            payload.documents,
+            outbound,
+            identity,
+            max_records=MAX_ANALYSIS_RECORDS + MAX_DOCUMENT_RECORDS,
+        )
+    records = outbound.model_dump(mode="json")["records"]
+    owner_id = identity.user.id
+    gemini.reserve_call(db, request)
+    # Release the read transaction before calling the external model.
+    db.rollback()
+    try:
+        result = generate_draft(
+            payload.model_dump(mode="json", include=set(WritingRequest.model_fields)),
+            records,
+            model,
+            names=(identity.user.display_name,),
+        )
+    except AuthError:
+        raise
+    except Exception as error:
+        gemini.log_failure("writing draft", error)
+        return {
+            **base,
+            "status": "failed",
+            "failure_reason": failure_reason(error),
+            "model": model_name,
+        }
+    db.expire_all()
+    current = auth.current_identity(request, db)
+    if current.user.id != owner_id or assemble(db, current, payload.records) != context:
+        raise conflict()
+    return {
+        **base,
+        **result,
+        # Document notes first (unreadable or OCR pages), then the draft's own notes.
+        "warnings": (notes + result["warnings"])[:10],
+        "document_sources": sources,
+        "model": model_name,
+        "generated_at": datetime.now(UTC).isoformat(),
+    }
+
+
+@router.post(
+    "/writing-exports",
+    response_class=Response,
+    responses={200: {"content": {MIME: {}}, "description": "Editable Word document"}},
+)
+def writing_exports(payload: WritingExportRequest, db: Database, identity: CurrentIdentity):
+    """The owner's edited draft as a Word file; no model call and nothing stored."""
+    if payload.reviewed is not True:
+        raise AuthError(422, ErrorCode.VALIDATION_ERROR, "초안을 검토한 뒤 내보내세요.")
+    auth.throttle(db, "writing-export:" + str(identity.user.id), limit=60)
+    raw = export_docx(
+        payload.draft.model_dump(mode="json"),
+        payload.profile.model_dump(mode="json"),
+        document_type=payload.document_type,
+        reviewed=True,
+    )
+    return Response(
+        raw,
+        media_type=MIME,
+        headers={
+            "Content-Disposition": f'attachment; filename="{FILENAMES[payload.document_type]}"',
+            "Cache-Control": "no-store",
+        },
+    )

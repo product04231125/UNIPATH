@@ -2,9 +2,11 @@
 
 from io import BytesIO
 
-from .contracts import Draft, ExportProfile
+from .contracts import EditedDocument, ExportProfile
 
 MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+# Installed with Windows and Office, so the file opens as designed without embedding a font.
+FONT = "Malgun Gothic"
 
 
 def export_docx(draft, profile, *, document_type, reviewed=False):
@@ -17,29 +19,30 @@ def export_docx(draft, profile, *, document_type, reviewed=False):
         raise ValueError("Review the draft before export")
     if document_type not in {"cover_letter", "portfolio"}:
         raise ValueError("Unknown document type")
-    draft, profile = Draft.model_validate(draft), ExportProfile.model_validate(profile)
-    # Optional dependency: normal application startup does not require python-docx.
+    draft = EditedDocument.model_validate(draft)
+    profile = ExportProfile.model_validate(profile)
     from docx import Document
     from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
-    from docx.shared import Inches, Pt, RGBColor
+    from docx.shared import Inches, Mm, Pt, RGBColor
 
     document = Document()
     page = document.sections[0]
-    page.page_width, page.page_height = Inches(8.5), Inches(11)
+    # A4, the size Korean application forms use.
+    page.page_width, page.page_height = Mm(210), Mm(297)
     page.top_margin = page.bottom_margin = Inches(0.7)
     page.left_margin = page.right_margin = Inches(0.8)
     for name, size in [("Normal", 10.5), ("Title", 24), ("Subtitle", 11), ("Heading 1", 14)]:
         style = document.styles[name]
-        style.font.name = "Pretendard"
+        style.font.name = FONT
         style.font.size = Pt(size)
         style.font.color.rgb = RGBColor(0, 0, 0)
         fonts = style.element.get_or_add_rPr().get_or_add_rFonts()
         for key in list(fonts.attrib):
             del fonts.attrib[key]
         for key in ("ascii", "hAnsi", "eastAsia", "cs"):
-            fonts.set(qn(f"w:{key}"), "Pretendard")
+            fonts.set(qn(f"w:{key}"), FONT)
         style.paragraph_format.space_after = Pt(8)
         style.paragraph_format.line_spacing = 1.3
     document.styles["Heading 1"].paragraph_format.space_before = Pt(16)
@@ -56,7 +59,7 @@ def export_docx(draft, profile, *, document_type, reviewed=False):
         tbl = document.add_table(rows=1, cols=2)
         tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
         tbl.autofit = False
-        tbl.columns[0].width, tbl.columns[1].width = Inches(1.25), Inches(5.65)
+        tbl.columns[0].width, tbl.columns[1].width = Inches(1.25), Inches(5.4)
         props = tbl._tbl.tblPr
         borders = OxmlElement("w:tblBorders")
         for side in ["top", "left", "bottom", "right", "insideH", "insideV"]:
@@ -77,7 +80,7 @@ def export_docx(draft, profile, *, document_type, reviewed=False):
         data = [("항목", "내용"), *[(r.label, r.text) for r in rows]]
         for index, values in enumerate(data):
             cells = tbl.rows[0].cells if index == 0 else tbl.add_row().cells
-            cells[0].width, cells[1].width = Inches(1.25), Inches(5.65)
+            cells[0].width, cells[1].width = Inches(1.25), Inches(5.4)
             for cell, value in zip(cells, values, strict=True):
                 cell.text = value
                 cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER

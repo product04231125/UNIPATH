@@ -89,6 +89,7 @@ class JobAnalysisPage extends StatefulWidget {
     this.onAddPlan,
     this.onGapReport,
     this.purposeRequest,
+    this.onWriteCoverLetter,
   });
   final Future<XFile?> Function()? pickFile;
   final StudentApi? api;
@@ -109,6 +110,9 @@ class JobAnalysisPage extends StatefulWidget {
 
   /// Saved target job; fills the 공고 찾기 search form.
   final CareerGoalController? careerGoal;
+
+  /// Opens 자기소개서 작성 with the analyzed posting.
+  final ValueChanged<String>? onWriteCoverLetter;
   @override
   State<JobAnalysisPage> createState() => _JobAnalysisPageState();
 }
@@ -512,6 +516,22 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
                 SelectableText('공고 근거: ${item.postingEvidence.excerpt}'),
                 for (final citation in item.personalEvidence)
                   SelectableText(_citationLabel(_result!, citation)),
+              ],
+              if (widget.onWriteCoverLetter != null &&
+                  _posting.text.trim().isNotEmpty) ...[
+                const Divider(),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: FilledButton.tonalIcon(
+                    key: const ValueKey('job-analysis-write'),
+                    onPressed: _sending
+                        ? null
+                        : () =>
+                              widget.onWriteCoverLetter!(_posting.text.trim()),
+                    icon: const Icon(Icons.edit_note_outlined),
+                    label: const Text('이 공고로 자기소개서 쓰기'),
+                  ),
+                ),
               ],
             ],
           ],

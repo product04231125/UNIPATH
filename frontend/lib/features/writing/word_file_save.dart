@@ -1,0 +1,3 @@
+export 'word_file_save_stub.dart'
+    if (dart.library.io) 'word_file_save_io.dart'
+    if (dart.library.js_interop) 'word_file_save_web.dart';

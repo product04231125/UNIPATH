@@ -32,6 +32,12 @@ Text = Annotated[
     StringConstraints(strip_whitespace=True, min_length=1, max_length=1200),
     AfterValidator(xml_text),
 ]
+# Section headings may be a whole 자기소개서 question.
+Heading = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=300),
+    AfterValidator(xml_text),
+]
 LongText = Annotated[str, StringConstraints(max_length=20000), AfterValidator(xml_text)]
 
 
@@ -44,7 +50,11 @@ class WritingRequest(Strict):
     mode: Literal["create", "improve"] = "create"
     target_role: Label
     target_company: str = Field(default="", max_length=120)
-    questions: list[Label] = Field(default_factory=list, max_length=6)
+    # Optional posting: experiences are chosen and framed for what it asks.
+    posting_text: LongText = ""
+    questions: list[Heading] = Field(default_factory=list, max_length=6)
+    # Characters (spaces included) per question, as application forms count them.
+    char_limit: int | None = Field(default=None, ge=200, le=5000, strict=True)
     original_text: LongText = ""
     external_processing_consent: bool = Field(default=False, strict=True)
 
@@ -72,7 +82,7 @@ class FactRow(GroundedText):
 
 
 class Section(Strict):
-    heading: Label
+    heading: Heading
     paragraphs: list[GroundedText] = Field(default_factory=list, max_length=4)
     facts: list[FactRow] = Field(default_factory=list, max_length=8)
 
@@ -103,6 +113,45 @@ class Draft(Strict):
             raise ValueError("Document exceeds 18000 characters")
         if any(r.section_index >= len(self.sections) for r in self.revisions):
             raise ValueError("Revision points to an unknown section")
+        return self
+
+
+class EditedText(BaseModel):
+    # The owner's edits: citations from generation may come back and are ignored.
+    model_config = ConfigDict(extra="ignore")
+    text: Text
+
+
+class EditedFact(EditedText):
+    label: Label
+
+
+class EditedSection(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    heading: Heading
+    paragraphs: list[EditedText] = Field(default_factory=list, max_length=8)
+    facts: list[EditedFact] = Field(default_factory=list, max_length=12)
+
+    @model_validator(mode="after")
+    def nonempty(self):
+        if not self.paragraphs and not self.facts:
+            raise ValueError("Empty sections are not allowed")
+        return self
+
+
+class EditedDocument(BaseModel):
+    """What is exported: edited text only, never re-verified and never sent to a model."""
+
+    model_config = ConfigDict(extra="ignore")
+    sections: list[EditedSection] = Field(min_length=1, max_length=12)
+
+    @model_validator(mode="after")
+    def bounded_document(self):
+        size = sum(
+            len(p.text) for section in self.sections for p in [*section.paragraphs, *section.facts]
+        )
+        if size > 24000:
+            raise ValueError("Document exceeds 24000 characters")
         return self
 
 

@@ -19,6 +19,9 @@ import 'features/graduation/graduation_page.dart';
 import 'features/graduation/personal_calculation_controller.dart';
 import 'app_shell/student_pages.dart';
 import 'features/academics/academics_page.dart';
+import 'shared/widgets/page_tabs.dart';
+import 'features/writing/writing_api.dart';
+import 'features/writing/writing_page.dart';
 import 'features/career/career_gap.dart';
 import 'features/career/career_goal.dart';
 import 'features/home/home_page.dart';
@@ -153,6 +156,22 @@ class _WorkspaceState extends State<Workspace> {
       : GapReportStore(ownerId: _personalApi.ownerId);
   final _gapReport = ValueNotifier<GapReport?>(null);
   JobPurposeRequest? _jobPurposeRequest;
+
+  /// 자료 tab: 0 내 자료, 1 자기소개서·포트폴리오.
+  var _materialsTab = 0;
+  late final WritingSessionStore? _writingStore = _personalApi == null
+      ? null
+      : WritingSessionStore(ownerId: _personalApi.ownerId);
+  WritingRequest? _writingRequest;
+
+  /// 채용공고 분석 → 자기소개서 with that posting.
+  void _writeForPosting(String posting) {
+    setState(() {
+      _writingRequest = WritingRequest(postingText: posting);
+      _materialsTab = 1;
+    });
+    _selectPage(StudentPages.materials);
+  }
 
   Future<void> _addPreparationPlan(
     GapAction action,
@@ -467,6 +486,7 @@ class _WorkspaceState extends State<Workspace> {
           onAddPlan: _addPreparationPlan,
           onGapReport: (report) => _gapReport.value = report,
           purposeRequest: _jobPurposeRequest,
+          onWriteCoverLetter: _writeForPosting,
           api: _personalApi,
           consent: _aiConsent,
           loadMaterials: () => loadAssistantMaterials(_materialRepository),
@@ -475,10 +495,29 @@ class _WorkspaceState extends State<Workspace> {
         ),
         StudentPages.activity => const ActivityPage(),
         StudentPages.credential => const CredentialPage(),
-        StudentPages.materials => MaterialsPage(
-          key: _materials,
-          repository: _materialRepository,
-          onChanged: () => unawaited(_assistantConversation.refreshMaterials()),
+        StudentPages.materials => PageTabs(
+          tabsKey: const ValueKey('materials-tabs'),
+          labels: const ['내 자료', '자기소개서·포트폴리오'],
+          tab: _materialsTab,
+          onTabChanged: (tab) => setState(() => _materialsTab = tab),
+          children: [
+            MaterialsPage(
+              key: _materials,
+              repository: _materialRepository,
+              onChanged: () =>
+                  unawaited(_assistantConversation.refreshMaterials()),
+            ),
+            WritingPage(
+              api: _personalApi,
+              consent: _aiConsent,
+              careerGoal: _careerGoal,
+              store: _writingStore,
+              request: _writingRequest,
+              loadMaterials: () => loadAssistantMaterials(_materialRepository),
+              loadDocuments: (ids) =>
+                  loadGuidanceDocuments(_materialRepository, ids),
+            ),
+          ],
         ),
         StudentPages.schedule => SchedulePage(
           repository: _planningRepository,
