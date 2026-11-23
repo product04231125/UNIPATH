@@ -167,3 +167,42 @@ class ExportProfile(Strict):
         for value in (self.email, self.phone, self.link):
             xml_text(value)
         return self
+
+
+class StoredText(Strict):
+    text: Text
+    # Citations from generation; the owner's edits keep them but are not re-verified.
+    citations: list[Citation] = Field(default_factory=list, max_length=5)
+
+
+class StoredFact(StoredText):
+    label: Label
+
+
+class StoredSection(Strict):
+    heading: Heading
+    paragraphs: list[StoredText] = Field(default_factory=list, max_length=8)
+    facts: list[StoredFact] = Field(default_factory=list, max_length=12)
+
+    @model_validator(mode="after")
+    def nonempty(self):
+        if not self.paragraphs and not self.facts:
+            raise ValueError("Empty sections are not allowed")
+        return self
+
+
+class StoredDraft(Strict):
+    sections: list[StoredSection] = Field(min_length=1, max_length=12)
+    questions_for_user: list[Label] = Field(default_factory=list, max_length=8)
+    revisions: list[Revision] = Field(default_factory=list, max_length=8)
+
+    @model_validator(mode="after")
+    def bounded_document(self):
+        size = sum(
+            len(p.text) for section in self.sections for p in [*section.paragraphs, *section.facts]
+        )
+        if size > 24000:
+            raise ValueError("Document exceeds 24000 characters")
+        if any(r.section_index >= len(self.sections) for r in self.revisions):
+            raise ValueError("Revision points to an unknown section")
+        return self

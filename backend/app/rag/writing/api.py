@@ -1,9 +1,10 @@
 """Authenticated 자기소개서·포트폴리오 drafts and Word export. Nothing is stored on the server."""
 
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Annotated, Literal
+from uuid import UUID
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Query, Request, Response
 from pydantic import Field, model_validator
 
 from app.api.auth import CurrentIdentity, Database
@@ -21,12 +22,17 @@ from app.services.personalization.context import assemble
 from app.services.personalization.documents import attach_documents
 from app.services.personalization.redaction import redact_context
 
+from . import documents
 from .contracts import EditedDocument, ExportProfile, Strict, WritingRequest
-from .docx_export import MIME, export_docx
+from .docx_export import MIME as DOCX_MIME
+from .docx_export import export_docx
+from .pdf_export import MIME as PDF_MIME
+from .pdf_export import FontUnavailable, export_pdf
 from .service import generate_draft
 
 router = APIRouter(prefix="/me", tags=["writing"])
-FILENAMES = {"cover_letter": "cover-letter.docx", "portfolio": "portfolio.docx"}
+FILENAMES = {"cover_letter": "cover-letter", "portfolio": "portfolio"}
+FORMATS = {"docx": (DOCX_MIME, export_docx), "pdf": (PDF_MIME, export_pdf)}
 
 
 class WritingDraftRequest(WritingRequest):
@@ -47,6 +53,7 @@ class WritingDraftRequest(WritingRequest):
 
 class WritingExportRequest(Strict):
     document_type: Literal["cover_letter", "portfolio"]
+    format: Literal["docx", "pdf"] = "docx"
     draft: EditedDocument
     profile: ExportProfile
     reviewed: bool = Field(strict=True)
@@ -122,24 +129,77 @@ def writing_drafts(
 @router.post(
     "/writing-exports",
     response_class=Response,
-    responses={200: {"content": {MIME: {}}, "description": "Editable Word document"}},
+    responses={
+        200: {
+            "content": {DOCX_MIME: {}, PDF_MIME: {}},
+            "description": "Editable Word document or A4 PDF",
+        }
+    },
 )
 def writing_exports(payload: WritingExportRequest, db: Database, identity: CurrentIdentity):
-    """The owner's edited draft as a Word file; no model call and nothing stored."""
+    """The owner's edited draft as a Word file or PDF; no model call and nothing stored."""
     if payload.reviewed is not True:
         raise AuthError(422, ErrorCode.VALIDATION_ERROR, "초안을 검토한 뒤 내보내세요.")
     auth.throttle(db, "writing-export:" + str(identity.user.id), limit=60)
-    raw = export_docx(
-        payload.draft.model_dump(mode="json"),
-        payload.profile.model_dump(mode="json"),
-        document_type=payload.document_type,
-        reviewed=True,
-    )
+    media_type, render = FORMATS[payload.format]
+    try:
+        raw = render(
+            payload.draft.model_dump(mode="json"),
+            payload.profile.model_dump(mode="json"),
+            document_type=payload.document_type,
+            reviewed=True,
+        )
+    except FontUnavailable as error:
+        raise AuthError(
+            503, ErrorCode.SERVICE_UNAVAILABLE, "PDF용 글꼴이 서버에 없습니다. Word로 받아 주세요."
+        ) from error
+    filename = f"{FILENAMES[payload.document_type]}.{payload.format}"
     return Response(
         raw,
-        media_type=MIME,
+        media_type=media_type,
         headers={
-            "Content-Disposition": f'attachment; filename="{FILENAMES[payload.document_type]}"',
+            "Content-Disposition": f'attachment; filename="{filename}"',
             "Cache-Control": "no-store",
         },
     )
+
+
+@router.get("/writing-documents", response_model=documents.WritingDocumentList)
+def writing_documents(db: Database, identity: CurrentIdentity):
+    """Saved drafts, newest first; titles and dates only."""
+    return documents.list_documents(db, identity.user.id)
+
+
+@router.post("/writing-documents", response_model=documents.WritingDocumentView, status_code=201)
+def create_writing_document(
+    payload: documents.WritingDocumentData, request: Request, db: Database, _: CurrentIdentity
+):
+    return documents.create_document(db, request, payload)
+
+
+@router.get("/writing-documents/{document_id}", response_model=documents.WritingDocumentView)
+def writing_document(document_id: UUID, db: Database, identity: CurrentIdentity):
+    return documents.get_document(db, identity.user.id, document_id)
+
+
+@router.put("/writing-documents/{document_id}", response_model=documents.WritingDocumentView)
+def update_writing_document(
+    document_id: UUID,
+    payload: documents.WritingDocumentUpdate,
+    request: Request,
+    db: Database,
+    _: CurrentIdentity,
+):
+    return documents.update_document(db, request, document_id, payload)
+
+
+@router.delete("/writing-documents/{document_id}", status_code=204)
+def delete_writing_document(
+    document_id: UUID,
+    expected_version: Annotated[int, Query(ge=1)],
+    request: Request,
+    db: Database,
+    _: CurrentIdentity,
+):
+    documents.delete_document(db, request, document_id, expected_version)
+    return Response(status_code=204)

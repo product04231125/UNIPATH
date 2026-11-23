@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,12 +11,14 @@ import '../../shared/widgets/surface_card.dart';
 import '../api/academic_guidance_models.dart';
 import '../api/student_api.dart';
 import '../assistant/ai_record_catalog.dart';
+import '../auth/auth_api.dart';
 import '../auth/guest_preview_scope.dart';
 import '../career/career_goal.dart';
 import '../records/portfolio/material_selection.dart';
 import '../settings/ai_consent_preferences.dart';
 import '../settings/ai_consent_section.dart';
-import 'word_file_save.dart';
+import '../auth/file_export_gateway.dart';
+import 'export_file_save.dart';
 import 'writing_api.dart';
 
 /// 채용공고 분석 → 자기소개서: opens this page once with the posting filled in.
@@ -39,7 +42,7 @@ class WritingPage extends StatefulWidget {
     this.loadMaterials,
     this.loadDocuments,
     this.request,
-    this.saveFile = saveWordFile,
+    this.saveFile = saveExportFile,
   });
 
   final StudentApi? api;
@@ -51,7 +54,12 @@ class WritingPage extends StatefulWidget {
   final Future<List<GuidanceDocument>> Function(List<String> ids)?
   loadDocuments;
   final WritingRequest? request;
-  final Future<bool> Function(Uint8List bytes, String filename) saveFile;
+  final Future<bool> Function(
+    Uint8List bytes,
+    String filename,
+    ExportFormat format,
+  )
+  saveFile;
 
   @override
   State<WritingPage> createState() => _WritingPageState();
@@ -121,6 +129,7 @@ class _WritingPageState extends State<WritingPage> {
   final _original = TextEditingController();
   final _questions = <TextEditingController>[TextEditingController()];
   final _materialIds = <String>{};
+  final _title = TextEditingController();
 
   WritingInput? _input;
   WritingResult? _result;
@@ -130,6 +139,14 @@ class _WritingPageState extends State<WritingPage> {
   String? _error, _status;
   int _revision = 0;
   Timer? _autosave;
+
+  // The saved document being edited, if any, and its text when last saved.
+  String? _documentId, _savedSnapshot;
+  int? _documentVersion;
+  bool _saving = false, _documentsLoading = false;
+  List<WritingDocumentSummary> _documents = const [];
+  String? _documentsError;
+  int _documentsRequest = 0;
 
   bool get _connected => widget.api != null && widget.consent != null;
   bool get _canRun =>
@@ -142,6 +159,7 @@ class _WritingPageState extends State<WritingPage> {
     _fillRole();
     _consumeRequest();
     unawaited(_restore());
+    unawaited(_loadDocuments());
   }
 
   @override
@@ -157,8 +175,10 @@ class _WritingPageState extends State<WritingPage> {
       _sending = _exporting = false;
       _materialIds.clear();
       _clearDraft();
+      _documents = const [];
       _restored = false;
       unawaited(_restore());
+      unawaited(_loadDocuments());
     }
   }
 
@@ -172,6 +192,7 @@ class _WritingPageState extends State<WritingPage> {
       _posting,
       _charLimit,
       _original,
+      _title,
       ..._questions,
     ]) {
       c.dispose();
@@ -210,10 +231,18 @@ class _WritingPageState extends State<WritingPage> {
     if (saved == null || !mounted || revision != _revision || _result != null) {
       return;
     }
-    final (input, result, draft, labels) = saved;
     setState(() {
-      _fillForm(input);
-      _show(input, result, draft, labels);
+      _fillForm(saved.input);
+      _show(
+        saved.input,
+        saved.result,
+        saved.draft,
+        saved.labels,
+        title: saved.title,
+        documentId: saved.documentId,
+        documentVersion: saved.documentVersion,
+        savedSnapshot: saved.savedSnapshot,
+      );
       _status = '이 기기에 저장된 마지막 초안을 불러왔습니다.';
     });
   }
@@ -241,15 +270,25 @@ class _WritingPageState extends State<WritingPage> {
     WritingInput input,
     WritingResult result,
     WritingDraft draft,
-    Map<String, String> labels,
-  ) {
+    Map<String, String> labels, {
+    required String title,
+    String? documentId,
+    int? documentVersion,
+    String? savedSnapshot,
+  }) {
     for (final s in _sections) {
       s.dispose();
     }
     _input = input;
     _result = result;
     _labels = labels;
+    _documentId = documentId;
+    _documentVersion = documentVersion;
+    _title.removeListener(_edited);
+    _title.text = title;
+    _title.addListener(_edited);
     _sections = [for (final s in draft.sections) _EditableSection(s)];
+    _savedSnapshot = savedSnapshot;
     for (final s in _sections) {
       for (final c in [
         s.heading,
@@ -270,12 +309,32 @@ class _WritingPageState extends State<WritingPage> {
     _result = null;
     _labels = {};
     _error = _status = null;
+    _documentId = _savedSnapshot = null;
+    _documentVersion = null;
+    _title.removeListener(_edited);
+    _title.clear();
   }
 
   WritingDraft get _draft => WritingDraft(
     sections: [for (final s in _sections) s.value],
     questionsForUser: _result?.draft?.questionsForUser ?? const [],
+    revisions: _result?.draft?.revisions ?? const [],
   );
+
+  /// What saving compares: the title and every edited text.
+  String _snapshot() =>
+      jsonEncode({'title': _title.text.trim(), ..._draft.toStoredJson()});
+
+  /// Edits not yet saved on the server (a new draft counts as unsaved).
+  bool get _unsaved => _sections.isNotEmpty && _snapshot() != _savedSnapshot;
+
+  String _defaultTitle(WritingInput input) => [
+    if (input.targetCompany.isNotEmpty)
+      input.targetCompany
+    else
+      input.targetRole,
+    input.type.label,
+  ].join(' ');
 
   void _edited() {
     if (!mounted) return;
@@ -287,7 +346,20 @@ class _WritingPageState extends State<WritingPage> {
   void _persist() {
     final input = _input, result = _result, store = widget.store;
     if (input == null || result == null || store == null) return;
-    unawaited(store.save(input, result, _draft, _labels));
+    unawaited(
+      store.save(
+        WritingSession(
+          input: input,
+          result: result,
+          draft: _draft,
+          labels: _labels,
+          title: _title.text.trim(),
+          documentId: _documentId,
+          documentVersion: _documentVersion,
+          savedSnapshot: _savedSnapshot,
+        ),
+      ),
+    );
   }
 
   WritingInput? _readForm() {
@@ -340,7 +412,7 @@ class _WritingPageState extends State<WritingPage> {
     });
     final input = _readForm();
     if (input == null) return;
-    if (_sections.isNotEmpty && !await _confirmReplace()) return;
+    if (_unsaved && !await _confirmDiscard('새 초안 만들기')) return;
     if (!mounted) return;
     final revision = ++_revision;
     final api = widget.api!;
@@ -384,7 +456,9 @@ class _WritingPageState extends State<WritingPage> {
               '내 자료 · ${s.filename} ${s.location}${s.ocr ? ' (자동 문자 인식, 원본 확인)' : ''}',
         for (final id in result.originalRecordIds) id: '붙여 넣은 원문',
       };
-      setState(() => _show(input, result, draft, labels));
+      setState(
+        () => _show(input, result, draft, labels, title: _defaultTitle(input)),
+      );
       _persist();
     } catch (error) {
       if (mounted && revision == _revision) {
@@ -395,13 +469,13 @@ class _WritingPageState extends State<WritingPage> {
     }
   }
 
-  Future<bool> _confirmReplace() async =>
+  Future<bool> _confirmDiscard(String action) async =>
       await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('새 초안 만들기'),
+          title: Text(action),
           content: const Text(
-            '지금 고치던 초안은 새 초안으로 바뀝니다. 필요하면 먼저 Word로 받거나 복사해 두세요.',
+            '지금 고치던 초안에 저장하지 않은 내용이 있습니다. 계속하면 그 내용은 사라집니다. 필요하면 먼저 저장하세요.',
           ),
           actions: [
             TextButton(
@@ -411,29 +485,188 @@ class _WritingPageState extends State<WritingPage> {
             FilledButton(
               key: const ValueKey('writing-replace'),
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('새로 만들기'),
+              child: const Text('계속'),
             ),
           ],
         ),
       ) ??
       false;
 
+  WritingDocumentApi? get _documentApi =>
+      widget.api == null ? null : WritingDocumentApi(widget.api!.api);
+
+  Future<void> _loadDocuments() async {
+    final api = _documentApi;
+    if (api == null || GuestPreviewScope.isActive(context)) return;
+    final request = ++_documentsRequest;
+    setState(() {
+      _documentsLoading = true;
+      _documentsError = null;
+    });
+    try {
+      final documents = await api.list();
+      if (mounted && request == _documentsRequest) {
+        setState(() => _documents = documents);
+      }
+    } catch (_) {
+      if (mounted && request == _documentsRequest) {
+        setState(() => _documentsError = '저장한 문서를 읽지 못했습니다. 다시 읽어 주세요.');
+      }
+    } finally {
+      if (mounted && request == _documentsRequest) {
+        setState(() => _documentsLoading = false);
+      }
+    }
+  }
+
+  Future<void> _save() async {
+    final api = _documentApi, input = _input, result = _result;
+    if (api == null || input == null || result == null || _saving) return;
+    final title = _title.text.trim();
+    final draft = _draft;
+    if (title.isEmpty || title.length > 120) {
+      setState(() => _error = '문서 이름을 1~120자로 입력해 주세요.');
+      return;
+    }
+    if (draft.isEmpty) {
+      setState(() => _error = '저장할 문단이 없습니다.');
+      return;
+    }
+    final snapshot = _snapshot();
+    setState(() {
+      _saving = true;
+      _error = _status = null;
+    });
+    try {
+      final id = _documentId, version = _documentVersion;
+      final saved = id == null || version == null
+          ? await api.create(title, input, draft, _labels)
+          : await api.update(
+              id,
+              expectedVersion: version,
+              title: title,
+              input: input,
+              draft: draft,
+              labels: _labels,
+            );
+      if (!mounted) return;
+      setState(() {
+        _documentId = saved.id;
+        _documentVersion = saved.version;
+        _savedSnapshot = snapshot;
+        _status = '저장했습니다.';
+      });
+      _persist();
+      unawaited(_loadDocuments());
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = documentFailureMessage(error);
+        // Gone on the server: the next save creates a new document from these edits.
+        if (error is AuthFailure && error.status == 404) {
+          _documentId = _documentVersion = null;
+        }
+      });
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _open(WritingDocumentSummary summary) async {
+    final api = _documentApi;
+    if (api == null || _sending) return;
+    if (summary.id == _documentId && !_unsaved) return;
+    if (_unsaved && !await _confirmDiscard('저장한 문서 열기')) return;
+    if (!mounted) return;
+    final revision = ++_revision;
+    setState(() => _error = _status = null);
+    try {
+      final document = await api.get(summary.id);
+      if (!mounted || revision != _revision) return;
+      final result = WritingResult.fromJson({
+        'status': 'draft_ready',
+        'draft': document.draft.toStoredJson(),
+      });
+      setState(() {
+        _fillForm(document.input);
+        _show(
+          document.input,
+          result,
+          document.draft,
+          document.labels,
+          title: document.title,
+          documentId: document.id,
+          documentVersion: document.version,
+        );
+        _savedSnapshot = _snapshot();
+        _status = '저장한 문서를 열었습니다.';
+      });
+      _persist();
+    } catch (error) {
+      if (mounted && revision == _revision) {
+        setState(() => _error = documentFailureMessage(error));
+      }
+    }
+  }
+
+  Future<void> _delete(WritingDocumentSummary summary) async {
+    final api = _documentApi;
+    if (api == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('저장한 문서 삭제'),
+        content: Text('${summary.title} 문서를 삭제할까요? 되돌릴 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            key: const ValueKey('writing-delete-confirm'),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await api.delete(summary.id, expectedVersion: summary.version);
+      if (!mounted) return;
+      setState(() {
+        // The open copy stays on screen as an unsaved draft.
+        if (summary.id == _documentId) {
+          _documentId = _savedSnapshot = null;
+          _documentVersion = null;
+        }
+        _status = '${summary.title} 문서를 삭제했습니다.';
+      });
+      _persist();
+    } catch (error) {
+      if (mounted) {
+        setState(() => _documentsError = documentFailureMessage(error));
+      }
+    }
+    unawaited(_loadDocuments());
+  }
+
   Future<void> _copy() async {
     await Clipboard.setData(ClipboardData(text: _draft.plainText));
     if (mounted) setState(() => _status = '본문을 복사했습니다.');
   }
 
-  Future<void> _export() async {
+  Future<void> _export(ExportFormat format) async {
     final input = _input;
     if (input == null || _exporting || widget.api == null) return;
     final draft = _draft;
-    if (draft.sections.every((s) => s.paragraphs.isEmpty && s.facts.isEmpty)) {
+    if (draft.isEmpty) {
       setState(() => _error = '내보낼 문단이 없습니다.');
       return;
     }
     final profile = await showDialog<Map<String, String>>(
       context: context,
-      builder: (context) => _ExportDialog(type: input.type),
+      builder: (context) => _ExportDialog(type: input.type, format: format),
     );
     if (profile == null || !mounted) return;
     setState(() {
@@ -441,23 +674,28 @@ class _WritingPageState extends State<WritingPage> {
       _error = _status = null;
     });
     try {
-      final bytes = await WritingApi(widget.api!).exportWord(
+      final bytes = await WritingApi(widget.api!).exportFile(
         input.type,
         draft,
+        format,
         name: profile['name']!,
         email: profile['email']!,
         phone: profile['phone']!,
         link: profile['link']!,
       );
+      final base = input.type == WritingType.coverLetter
+          ? 'cover-letter'
+          : 'portfolio';
       final saved = await widget.saveFile(
         bytes,
-        input.type == WritingType.coverLetter
-            ? 'cover-letter.docx'
-            : 'portfolio.docx',
+        '$base.${format.extension}',
+        format,
       );
       if (mounted) {
         setState(
-          () => _status = saved ? 'Word 파일을 저장했습니다.' : 'Word 파일 저장을 취소했습니다.',
+          () => _status = saved
+              ? '${format.label} 파일을 저장했습니다.'
+              : '${format.label} 파일 저장을 취소했습니다.',
         );
       }
     } catch (error) {
@@ -470,8 +708,12 @@ class _WritingPageState extends State<WritingPage> {
   @override
   Widget build(BuildContext context) => FeaturePage(
     title: '자기소개서·포트폴리오',
-    description: '저장된 수강·활동·경험·자격·성과 기록과 고른 내 자료에서 근거를 확인한 문장만으로 초안을 만들고, 고친 뒤 Word로 받습니다.',
+    description: '저장된 수강·활동·경험·자격·성과 기록과 고른 내 자료에서 근거를 확인한 문장만으로 초안을 만들고, 고친 뒤 저장하거나 Word·PDF로 받습니다.',
     body: [
+      if (_documentApi != null) ...[
+        _savedDocuments(context),
+        const SizedBox(height: 16),
+      ],
       _form(context),
       if (_sections.isNotEmpty) ...[
         const SizedBox(height: 16),
@@ -479,6 +721,91 @@ class _WritingPageState extends State<WritingPage> {
       ],
     ],
   );
+
+  String _when(DateTime? value) {
+    final local = value?.toLocal();
+    if (local == null) return '';
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${local.month}월 ${local.day}일 ${two(local.hour)}:${two(local.minute)}';
+  }
+
+  Widget _savedDocuments(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = TextStyle(color: theme.colorScheme.onSurfaceVariant);
+    return SurfaceCard(
+      key: const ValueKey('writing-documents'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '저장한 문서 ${_documents.length}개',
+                  style: theme.textTheme.titleSmall,
+                ),
+              ),
+              TextButton(
+                key: const ValueKey('writing-documents-refresh'),
+                onPressed: _documentsLoading ? null : _loadDocuments,
+                child: const Text('다시 읽기'),
+              ),
+            ],
+          ),
+          if (_documentsLoading) const LinearProgressIndicator(),
+          if (_documentsError != null)
+            Text(
+              _documentsError!,
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
+          if (!_documentsLoading &&
+              _documents.isEmpty &&
+              _documentsError == null)
+            Text('초안을 만든 뒤 저장하면 여기에서 다시 열 수 있습니다.', style: muted),
+          for (final d in _documents)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          d.title,
+                          style: d.id == _documentId
+                              ? const TextStyle(fontWeight: FontWeight.w700)
+                              : null,
+                        ),
+                        Text(
+                          [
+                            d.type.label,
+                            if (_when(d.updatedAt).isNotEmpty)
+                              '${_when(d.updatedAt)} 저장',
+                            if (d.id == _documentId) '편집 중',
+                          ].join(' · '),
+                          style: muted,
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    key: ValueKey('writing-open-${d.id}'),
+                    onPressed: _sending ? null : () => _open(d),
+                    child: const Text('열기'),
+                  ),
+                  TextButton(
+                    key: ValueKey('writing-delete-${d.id}'),
+                    onPressed: () => _delete(d),
+                    child: const Text('삭제'),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _form(BuildContext context) {
     final cover = _type == WritingType.coverLetter;
@@ -700,6 +1027,49 @@ class _WritingPageState extends State<WritingPage> {
             '${input.type.label} 초안${input.targetCompany.isEmpty ? '' : ' · ${input.targetCompany}'}',
             style: theme.textTheme.titleMedium,
           ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: 360,
+                child: TextField(
+                  key: const ValueKey('writing-title'),
+                  controller: _title,
+                  maxLength: 120,
+                  decoration: const InputDecoration(
+                    labelText: '문서 이름',
+                    counterText: '',
+                  ),
+                ),
+              ),
+              if (_documentApi != null)
+                FilledButton.tonalIcon(
+                  key: const ValueKey('writing-save'),
+                  onPressed: _saving || !_unsaved ? null : _save,
+                  icon: const Icon(Icons.save_outlined),
+                  label: Text(
+                    _saving
+                        ? '저장 중…'
+                        : _documentId == null
+                        ? '저장'
+                        : '변경 저장',
+                  ),
+                ),
+              if (_documentApi != null)
+                Text(
+                  _documentId == null
+                      ? '아직 저장하지 않은 초안'
+                      : _unsaved
+                      ? '저장하지 않은 변경이 있습니다'
+                      : '저장됨',
+                  key: const ValueKey('writing-save-state'),
+                  style: muted,
+                ),
+            ],
+          ),
           const SizedBox(height: 4),
           Text(result.notice ?? '초안입니다. 검토 후 내보내세요.', style: muted),
           Text('직접 고친 문장은 다시 검증하지 않습니다. 사실과 다른 내용이 없는지 확인하세요.', style: muted),
@@ -732,9 +1102,15 @@ class _WritingPageState extends State<WritingPage> {
             children: [
               FilledButton.icon(
                 key: const ValueKey('writing-export'),
-                onPressed: _exporting ? null : _export,
+                onPressed: _exporting ? null : () => _export(ExportFormat.docx),
                 icon: const Icon(Icons.download_outlined),
-                label: Text(_exporting ? 'Word 만드는 중…' : 'Word로 받기'),
+                label: const Text('Word로 받기'),
+              ),
+              FilledButton.icon(
+                key: const ValueKey('writing-export-pdf'),
+                onPressed: _exporting ? null : () => _export(ExportFormat.pdf),
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('PDF로 받기'),
               ),
               OutlinedButton.icon(
                 key: const ValueKey('writing-copy'),
@@ -843,8 +1219,9 @@ class _WritingPageState extends State<WritingPage> {
 }
 
 class _ExportDialog extends StatefulWidget {
-  const _ExportDialog({required this.type});
+  const _ExportDialog({required this.type, required this.format});
   final WritingType type;
+  final ExportFormat format;
 
   @override
   State<_ExportDialog> createState() => _ExportDialogState();
@@ -886,7 +1263,7 @@ class _ExportDialogState extends State<_ExportDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: Text('${widget.type.label} Word로 받기'),
+    title: Text('${widget.type.label} ${widget.format.label}로 받기'),
     content: SizedBox(
       width: 420,
       child: SingleChildScrollView(
@@ -956,7 +1333,7 @@ class _ExportDialogState extends State<_ExportDialog> {
       FilledButton(
         key: const ValueKey('writing-export-confirm'),
         onPressed: _submit,
-        child: const Text('Word 만들기'),
+        child: Text('${widget.format.label} 만들기'),
       ),
     ],
   );

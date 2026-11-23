@@ -65,6 +65,7 @@ from app.models.personal import (
     PlanningProfile,
     PortfolioComposition,
     PortfolioSource,
+    WritingDocument,
 )
 from app.models.personal_imports import PersonalImportReceipt
 from app.models.record_sources import OfficialRecordSource, OfficialRecordSourceEvent
@@ -136,6 +137,7 @@ __all__ = [
     "PersonalEvent",
     "PersonalGraduationRule",
     "CareerGoal",
+    "WritingDocument",
     "PlanningProfile",
     "PortfolioComposition",
     "PortfolioSource",

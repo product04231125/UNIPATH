@@ -44250,7 +44250,7 @@
           "writing"
         ],
         "summary": "Writing Exports",
-        "description": "The owner's edited draft as a Word file; no model call and nothing stored.",
+        "description": "The owner's edited draft as a Word file or PDF; no model call and nothing stored.",
         "operationId": "writing_exports_api_v1_me_writing_exports_post",
         "security": [
           {
@@ -44292,10 +44292,654 @@
         },
         "responses": {
           "200": {
-            "description": "Editable Word document",
+            "description": "Editable Word document or A4 PDF",
             "content": {
-              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {}
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {},
+              "application/pdf": {}
             }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/writing-documents": {
+      "get": {
+        "tags": [
+          "writing"
+        ],
+        "summary": "Writing Documents",
+        "description": "Saved drafts, newest first; titles and dates only.",
+        "operationId": "writing_documents_api_v1_me_writing_documents_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingDocumentList"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "writing"
+        ],
+        "summary": "Create Writing Document",
+        "operationId": "create_writing_document_api_v1_me_writing_documents_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WritingDocumentData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingDocumentView"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/writing-documents/{document_id}": {
+      "get": {
+        "tags": [
+          "writing"
+        ],
+        "summary": "Writing Document",
+        "operationId": "writing_document_api_v1_me_writing_documents__document_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingDocumentView"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "writing"
+        ],
+        "summary": "Update Writing Document",
+        "operationId": "update_writing_document_api_v1_me_writing_documents__document_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WritingDocumentUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingDocumentView"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "writing"
+        ],
+        "summary": "Delete Writing Document",
+        "operationId": "delete_writing_document_api_v1_me_writing_documents__document_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "expected_version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Expected Version"
+            }
+          },
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "401": {
             "content": {
@@ -69162,6 +69806,15 @@
           "reviewed": {
             "type": "boolean",
             "title": "Reviewed"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "docx",
+              "pdf"
+            ],
+            "title": "Format",
+            "default": "docx"
           }
         },
         "additionalProperties": false,
@@ -69173,6 +69826,476 @@
           "reviewed"
         ],
         "title": "WritingExportRequest"
+      },
+      "Citation": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "course",
+              "activity",
+              "experience",
+              "credential",
+              "achievement"
+            ],
+            "title": "Kind"
+          },
+          "record_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Record Id"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "excerpt": {
+            "type": "string",
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Excerpt"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "record_id",
+          "version",
+          "excerpt"
+        ],
+        "title": "Citation"
+      },
+      "Revision": {
+        "properties": {
+          "original_excerpt": {
+            "type": "string",
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Original Excerpt"
+          },
+          "section_index": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 0.0,
+            "title": "Section Index"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "original_excerpt",
+          "section_index",
+          "reason"
+        ],
+        "title": "Revision"
+      },
+      "StoredDraft": {
+        "properties": {
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/StoredSection"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Sections"
+          },
+          "questions_for_user": {
+            "items": {
+              "type": "string",
+              "maxLength": 120,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Questions For User"
+          },
+          "revisions": {
+            "items": {
+              "$ref": "#/components/schemas/Revision"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Revisions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sections"
+        ],
+        "title": "StoredDraft"
+      },
+      "StoredFact": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Citations"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text",
+          "label"
+        ],
+        "title": "StoredFact"
+      },
+      "StoredSection": {
+        "properties": {
+          "heading": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Heading"
+          },
+          "paragraphs": {
+            "items": {
+              "$ref": "#/components/schemas/StoredText"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Paragraphs"
+          },
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/StoredFact"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Facts"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "heading"
+        ],
+        "title": "StoredSection"
+      },
+      "StoredText": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Citations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "StoredText"
+      },
+      "WritingDocumentData": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "input": {
+            "$ref": "#/components/schemas/WritingInput"
+          },
+          "draft": {
+            "$ref": "#/components/schemas/StoredDraft"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "propertyNames": {
+              "maxLength": 64,
+              "minLength": 1
+            },
+            "type": "object",
+            "maxProperties": 300,
+            "title": "Labels"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "input",
+          "draft"
+        ],
+        "title": "WritingDocumentData"
+      },
+      "WritingDocumentList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WritingDocumentSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "WritingDocumentList"
+      },
+      "WritingDocumentSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "document_type": {
+            "type": "string",
+            "title": "Document Type"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "document_type",
+          "version",
+          "updated_at"
+        ],
+        "title": "WritingDocumentSummary"
+      },
+      "WritingDocumentUpdate": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "input": {
+            "$ref": "#/components/schemas/WritingInput"
+          },
+          "draft": {
+            "$ref": "#/components/schemas/StoredDraft"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "propertyNames": {
+              "maxLength": 64,
+              "minLength": 1
+            },
+            "type": "object",
+            "maxProperties": 300,
+            "title": "Labels"
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expected Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "input",
+          "draft",
+          "expected_version"
+        ],
+        "title": "WritingDocumentUpdate"
+      },
+      "WritingDocumentView": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "document_type": {
+            "type": "string",
+            "title": "Document Type"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "input": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Input"
+          },
+          "draft": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Draft"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Labels"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "document_type",
+          "version",
+          "updated_at",
+          "created_at",
+          "input",
+          "draft",
+          "labels"
+        ],
+        "title": "WritingDocumentView"
+      },
+      "WritingInput": {
+        "properties": {
+          "document_type": {
+            "type": "string",
+            "enum": [
+              "cover_letter",
+              "portfolio"
+            ],
+            "title": "Document Type"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "create",
+              "improve"
+            ],
+            "title": "Mode",
+            "default": "create"
+          },
+          "target_role": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Target Role"
+          },
+          "target_company": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Target Company",
+            "default": ""
+          },
+          "posting_text": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Posting Text",
+            "default": ""
+          },
+          "questions": {
+            "items": {
+              "type": "string",
+              "maxLength": 300,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Questions"
+          },
+          "char_limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 5000.0,
+                "minimum": 200.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Char Limit"
+          },
+          "original_text": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Original Text",
+            "default": ""
+          },
+          "external_processing_consent": {
+            "type": "boolean",
+            "title": "External Processing Consent",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "document_type",
+          "target_role"
+        ],
+        "title": "WritingInput",
+        "description": "The generation form as the student filled it in; consent is never stored."
       }
     },
     "securitySchemes": {

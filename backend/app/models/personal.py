@@ -50,6 +50,24 @@ class CareerGoal(Base):
     __table_args__ = (CheckConstraint("version >= 1", name="version"),)
 
 
+class WritingDocument(Base):
+    """A saved 자기소개서·포트폴리오 draft: the request, the edited sections and their citations."""
+
+    __tablename__ = "writing_documents"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(120))
+    document_type: Mapped[str] = mapped_column(String(24))
+    content: Mapped[dict] = mapped_column(JSON)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (
+        CheckConstraint("version >= 1", name="version"),
+        CheckConstraint("document_type IN ('cover_letter','portfolio')", name="document_type"),
+    )
+
+
 class PlanningProfile(Base):
     __tablename__ = "planning_profiles"
     owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
