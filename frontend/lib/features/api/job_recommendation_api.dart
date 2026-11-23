@@ -180,7 +180,8 @@ class RecommendationSource {
 
 class JobRecommendationResponse {
   JobRecommendationResponse.fromJson(Map<String, dynamic> json)
-    : status = json['status'] as String,
+    : raw = json,
+      status = json['status'] as String,
       notice = json['notice'] as String? ?? '',
       occupationLabel =
           _map(json['query'] ?? const {})['occupation_label'] as String?,
@@ -204,6 +205,9 @@ class JobRecommendationResponse {
       locations = _map(
         json['document_locations'] ?? {},
       ).map((k, v) => MapEntry(k, DocumentCitationLocation.fromJson(_map(v))));
+
+  /// The server's JSON, which is what a saved result keeps.
+  final Map<String, dynamic> raw;
   final String status, notice;
   final String? occupationLabel, queryKeyword, searchNotice;
   final List<String> occupationCodes;

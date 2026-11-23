@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../api/student_academic_api.dart';
-import '../auth/local_data_owner.dart';
 import '../records/course/course_status.dart';
 import '../records/portfolio/material_repository.dart';
 
@@ -31,7 +30,8 @@ class AcademicRecordSearchHit {
 class AcademicRecordSearchRepository {
   AcademicRecordSearchRepository(this.api, {MaterialRepository? materials})
     : materials =
-          materials ?? MaterialRepository(owner: LocalDataOwner(api.ownerId));
+          materials ??
+          AccountMaterialRepository(api.gateway, ownerId: api.ownerId);
   final StudentAcademicApi api;
   final MaterialRepository materials;
   Future<List<AcademicRecordSearchHit>> load(String kind) async {

@@ -18,6 +18,7 @@ import 'materials_test.dart' show MemoryMaterials;
 import 'guidance_api_test.dart' show CapturingGateway;
 
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
+
 import 'support/record_actions.dart';
 
 class RecordsGateway extends ApiGateway {
@@ -62,7 +63,7 @@ void main() {
         utf8.decode(base64Decode(documents.single.contentBase64)),
         '봉사 12시간',
       );
-      await repository.delete('selected');
+      await repository.deleteId('selected');
       await expectLater(
         loadGuidanceDocuments(repository, ['selected']),
         throwsStateError,

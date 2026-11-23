@@ -10,6 +10,7 @@ import 'package:university_path_frontend/features/career/career_goal.dart';
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
 
 import 'job_recommendation_test.dart' show categoryFixture;
+import 'support/saved_analyses_store.dart';
 
 const record = AiRecordOption(
   kind: 'course',
@@ -88,6 +89,7 @@ Map<String, dynamic> completed() => {
 };
 
 class GapGateway extends ApiGateway {
+  final saved = SavedAnalysesStore();
   final posts = <Map<String, Object?>>[];
   final results = <Map<String, dynamic>>[];
 
@@ -97,6 +99,9 @@ class GapGateway extends ApiGateway {
     String path, [
     Map<String, Object?>? body,
   ]) async {
+    if (SavedAnalysesStore.handles(path)) {
+      return saved.handle(method, path, body);
+    }
     if (path == 'me/job-categories') return categoryFixture;
     if (path == 'me/career-goal') {
       return {
@@ -186,6 +191,17 @@ void main() {
     expect(find.text('준비 제안 · 자격증 · 정보처리기사 필기 · 약 6주'), findsOneWidget);
     expect(find.text('Q-Net에서 확인 · 외부 열기'), findsOneWidget);
     expect(find.text('자격증 준비가 가장 필요합니다.'), findsOneWidget);
+    // Saved automatically; opening it again marks it as a saved result.
+    final saved = api.saved.items.single;
+    expect(saved['kind'], 'gap');
+    expect(saved['title'], '소프트웨어 · 프론트엔드');
+    expect((saved['summary'] as Map)['total'], isA<int>());
+    final row = find.byKey(const ValueKey('saved-analysis-saved-0'));
+    await tester.ensureVisible(row);
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('(저장된 결과)'), findsOneWidget);
+    expect(api.posts, hasLength(1));
 
     final add = find.text('일정에 추가');
     await tester.ensureVisible(add);

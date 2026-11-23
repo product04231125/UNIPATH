@@ -17,6 +17,7 @@ import '../../../shared/widgets/record_tile.dart';
 import '../../../shared/widgets/responsive_grid.dart';
 import '../../../shared/widgets/tone_chip.dart';
 import '../../../shared/widgets/work_layout.dart';
+import '../../auth/auth_api.dart';
 import '../../auth/guest_preview_scope.dart';
 import 'material_repository.dart';
 
@@ -30,14 +31,15 @@ class MaterialsPage extends StatefulWidget {
   });
   final MaterialRepository? repository;
   final Future<XFile?> Function()? pickPdf;
-  final Future<void> Function(PersonalMaterial)? exportPdf;
+  final Future<void> Function(PersonalMaterial, Uint8List)? exportPdf;
   final VoidCallback? onChanged;
   @override
   State<MaterialsPage> createState() => MaterialsPageState();
 }
 
 class MaterialsPageState extends State<MaterialsPage> {
-  late final _repo = widget.repository ?? MaterialRepository();
+  late final MaterialRepository _repo =
+      widget.repository ?? DeviceMaterialRepository();
   final _title = TextEditingController(),
       _type = TextEditingController(),
       _description = TextEditingController(),
@@ -54,7 +56,7 @@ class MaterialsPageState extends State<MaterialsPage> {
       _type.text != (_editing?.type ?? '') ||
       _description.text != (_editing?.description ?? '') ||
       _fileName != (_editing?.fileName ?? '') ||
-      !identical(_pdf, _editing?.pdf);
+      _pdf != null;
   Future<bool> allowLeave() async =>
       !_busy && (!dirty || await confirmInputDiscardAllowsLeave(context));
   @override
@@ -93,7 +95,8 @@ class MaterialsPageState extends State<MaterialsPage> {
     _type.text = record?.type ?? '';
     _description.text = record?.description ?? '';
     _fileName = record?.fileName ?? '';
-    _pdf = record?.pdf;
+    // A newly picked PDF only; a saved one stays where it is kept.
+    _pdf = null;
     setState(() {
       _error = null;
       _message = null;
@@ -110,7 +113,7 @@ class MaterialsPageState extends State<MaterialsPage> {
       final file = await (widget.pickPdf ?? pickMaterialPdf)();
       if (file == null) return;
       if (await file.length() > MaterialRepository.maxPdfBytes) {
-        throw StateError('PDF는 10MB 이하로 선택하세요.');
+        throw StateError('PDF는 8MB 이하로 선택하세요.');
       }
       final bytes = await file.readAsBytes();
       MaterialRepository.validatePdf(file.name, bytes);
@@ -153,6 +156,8 @@ class MaterialsPageState extends State<MaterialsPage> {
           description: _description.text.trim(),
           fileName: _fileName,
           pdf: _pdf,
+          byteCount: _pdf?.length ?? _editing?.byteCount,
+          version: _editing?.version ?? 0,
         ),
       );
       if (!mounted) return;
@@ -164,13 +169,19 @@ class MaterialsPageState extends State<MaterialsPage> {
       } catch (_) {
         if (mounted) _failed = true;
       }
-      if (mounted) setState(() => _message = '자료를 기기에 보관했습니다.');
+      if (mounted) {
+        setState(
+          () => _message = _repo.inAccount ? '자료를 저장했습니다.' : '자료를 기기에 보관했습니다.',
+        );
+      }
     } catch (e) {
       if (mounted) {
         setState(
-          () => _error = e is StateError
-              ? e.message
-              : '자료를 저장하지 못했습니다. 입력과 PDF를 유지했습니다. 다시 시도하세요.',
+          () => _error = switch (e) {
+            StateError(:final message) => message,
+            AuthFailure(:final message) => message,
+            _ => '자료를 저장하지 못했습니다. 입력과 PDF를 유지했습니다. 다시 시도하세요.',
+          },
         );
       }
     } finally {
@@ -188,8 +199,9 @@ class MaterialsPageState extends State<MaterialsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('${record.title} 삭제'),
-        content: const Text(
-          '이 기기에 보관한 설명과 PDF를 삭제합니다. 원래 선택한 파일과 기존 성과·지원 문서는 삭제하지 않습니다.',
+        content: Text(
+          '${_repo.inAccount ? '계정에' : '이 기기에'} 보관한 설명과 PDF를 삭제합니다. '
+          '원래 선택한 파일과 기존 성과·지원 문서는 삭제하지 않습니다.',
         ),
         actions: [
           TextButton(
@@ -207,7 +219,7 @@ class MaterialsPageState extends State<MaterialsPage> {
     if (yes != true || !mounted) return;
     setState(() => _busy = true);
     try {
-      await _repo.delete(record.id);
+      await _repo.delete(record);
       if (!mounted) return;
       _reset();
       widget.onChanged?.call();
@@ -238,10 +250,16 @@ class MaterialsPageState extends State<MaterialsPage> {
   Future<void> _export(PersonalMaterial r) async {
     setState(() => _busy = true);
     try {
-      await (widget.exportPdf ?? exportMaterialPdf)(r);
-    } catch (_) {
+      final bytes = await _repo.pdf(r);
+      if (bytes == null) return;
+      await (widget.exportPdf ?? exportMaterialPdf)(r, bytes);
+    } catch (e) {
       if (mounted) {
-        setState(() => _error = 'PDF를 내보내지 못했습니다. 보관 자료는 유지했습니다.');
+        setState(
+          () => _error = e is AuthFailure
+              ? e.message
+              : 'PDF를 내보내지 못했습니다. 보관 자료는 유지했습니다.',
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -254,31 +272,30 @@ class MaterialsPageState extends State<MaterialsPage> {
   }
 
   Widget _materialTile(PersonalMaterial r) {
-    final pdf = r.pdf;
-    final tone = pdf != null ? AppTone.danger : AppTone.accent;
+    final pdf = r.hasPdf;
+    final tone = pdf ? AppTone.danger : AppTone.accent;
     return RecordTile(
       key: ValueKey('material-row-${r.id}'),
-      icon: pdf != null
-          ? Icons.picture_as_pdf_outlined
-          : Icons.sticky_note_2_outlined,
+      icon: pdf ? Icons.picture_as_pdf_outlined : Icons.sticky_note_2_outlined,
       tone: tone,
       title: r.title,
       badges: [if (r.type.isNotEmpty) ToneChip(label: r.type, tone: tone)],
       facts: [
-        if (pdf != null)
+        if (pdf)
           RecordFact(
             Icons.attach_file,
-            '${r.fileName} · ${(pdf.length / 1024).ceil()}KB',
+            '${r.fileName} · ${(r.byteCount / 1024).ceil()}KB',
           )
         else
           const RecordFact(Icons.edit_note, '내용 설명 기록'),
-        const RecordFact(Icons.smartphone_outlined, '이 기기에 보관'),
+        if (!_repo.inAccount)
+          const RecordFact(Icons.smartphone_outlined, '이 기기에 보관'),
       ],
       lines: [if (r.description.isNotEmpty) r.description],
       onTap: _busy ? null : () => _edit(r),
       actions: [
         RecordAction('수정', Icons.edit_outlined, () => _edit(r)),
-        if (pdf != null)
+        if (pdf)
           RecordAction('PDF 내보내기', Icons.download_outlined, () {
             if (!_busy) _export(r);
           }),
@@ -336,6 +353,18 @@ class MaterialsPageState extends State<MaterialsPage> {
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
+            ),
+          ],
+          if (_repo case AccountMaterialRepository(:final unmovedCount)
+              when unmovedCount > 0) ...[
+            const SizedBox(height: 8),
+            NoteLine(
+              key: const ValueKey('materials-unmoved'),
+              icon: Icons.warning_amber_outlined,
+              text: '이 기기에 남은 자료 $unmovedCount개를 계정으로 옮기지 못했습니다.',
+              detail:
+                  '8MB를 넘는 PDF이거나 계정 보관 한도(50MB)를 넘었을 수 있습니다. '
+                  '다음에 로그인하면 다시 옮깁니다.',
             ),
           ],
           const SizedBox(height: 12),
@@ -476,7 +505,7 @@ class MaterialsPageState extends State<MaterialsPage> {
                   const SizedBox(height: 4),
                   const NoteLine(
                     icon: Icons.picture_as_pdf_outlined,
-                    text: 'PDF 최대 10MB · 전체 50MB.',
+                    text: 'PDF 최대 8MB · 전체 50MB.',
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -488,7 +517,7 @@ class MaterialsPageState extends State<MaterialsPage> {
                         icon: const Icon(Icons.attach_file),
                         label: const Text('PDF 선택'),
                       ),
-                      if (_pdf != null)
+                      if (_fileName.isNotEmpty)
                         TextButton(
                           onPressed: _busy
                               ? null
@@ -500,10 +529,15 @@ class MaterialsPageState extends State<MaterialsPage> {
                         ),
                     ],
                   ),
-                  if (_pdf != null)
+                  if (_fileName.isNotEmpty)
                     FeatureLine.one(
                       text:
-                          '$_fileName · ${(_pdf!.length / 1024).ceil()}KB · 등록 후 기기 보관',
+                          '$_fileName · ${((_pdf?.length ?? _editing?.byteCount ?? 0) / 1024).ceil()}KB'
+                          '${_pdf == null
+                              ? ''
+                              : _repo.inAccount
+                              ? ' · 저장하면 계정에 보관'
+                              : ' · 등록 후 기기 보관'}',
                     ),
                   if (_error != null)
                     Semantics(

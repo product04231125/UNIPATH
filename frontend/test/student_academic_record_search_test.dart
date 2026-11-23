@@ -103,11 +103,11 @@ void main() {
       'academic-record-search',
     );
     addTearDown(db.close);
-    final current = MaterialRepository(
+    final current = DeviceMaterialRepository(
       open: () async => db,
       owner: const LocalDataOwner('owner'),
     );
-    final other = MaterialRepository(
+    final other = DeviceMaterialRepository(
       open: () async => db,
       owner: const LocalDataOwner('other'),
     );

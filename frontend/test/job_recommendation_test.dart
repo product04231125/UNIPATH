@@ -21,6 +21,8 @@ import 'package:university_path_frontend/features/records/portfolio/job_recommen
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
 import 'package:university_path_frontend/shared/app_style.dart';
 
+import 'support/saved_analyses_store.dart';
+
 Map<String, dynamic> responseFixture() => jsonDecode(
   File('test/fixtures/job_recommendation_response.json').readAsStringSync(),
 ) as Map<String, dynamic>;
@@ -88,6 +90,7 @@ const record = AiRecordOption(
 );
 
 class RecommendationGateway extends ApiGateway {
+  final saved = SavedAnalysesStore();
   final calls = <Map<String, Object?>>[];
   int categoryCalls = 0;
   Object? categoryFailure;
@@ -101,6 +104,9 @@ class RecommendationGateway extends ApiGateway {
     String path, [
     Map<String, Object?>? body,
   ]) async {
+    if (SavedAnalysesStore.handles(path)) {
+      return saved.handle(method, path, body);
+    }
     if (method == 'GET' && path == 'me/job-categories') {
       categoryCalls++;
       if (categoryFailure != null) throw categoryFailure!;
@@ -557,6 +563,36 @@ void main() {
       expect(find.textContaining('서버 분석 설정이 필요'), findsOneWidget);
     },
   );
+
+  testWidgets('a search with postings is saved and opened again', (
+    tester,
+  ) async {
+    final api = RecommendationGateway()
+      ..result = displayCandidateFixture('evidence_match');
+    final consent = await permission();
+    await mount(tester, api, consent);
+    await fill(tester);
+    await run(tester);
+    await tester.pumpAndSettle();
+    final saved = api.saved.items.single;
+    expect(saved['kind'], 'search');
+    expect(saved['summary'], {
+      'postings': (api.result['items'] as List).length,
+    });
+    expect((saved['input'] as Map)['region'], isNotEmpty);
+    expect(saved['result'], api.result);
+    expect(
+      find.byKey(const ValueKey('saved-analysis-current-star')),
+      findsOneWidget,
+    );
+    final row = find.byKey(const ValueKey('saved-analysis-saved-0'));
+    await tester.ensureVisible(row);
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('recommend-opened')), findsOneWidget);
+    expect(find.text('웹 서비스 개발자'), findsOneWidget);
+    expect(api.calls, hasLength(1));
+  });
 
   testWidgets('selected 내 자료 travel with attached files', (tester) async {
     final api = RecommendationGateway()..pending = Completer();

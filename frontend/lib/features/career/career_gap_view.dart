@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../shared/widgets/external_link_button.dart';
@@ -17,6 +19,7 @@ import 'career_gap.dart';
 import 'career_goal.dart';
 import 'career_goal_card.dart';
 import 'requirement_result.dart';
+import 'saved_analyses.dart';
 
 /// Adds one preparation step to 일정; [date] is the target day the student confirmed.
 typedef AddPreparationPlan = Future<void> Function(
@@ -56,7 +59,48 @@ class CareerGapView extends StatefulWidget {
 
 class _CareerGapViewState extends State<CareerGapView> {
   GapReport? _report;
-  bool _busy = false, _cached = false;
+  bool _busy = false, _cached = false, _opened = false;
+
+  /// Finished analyses kept in the account; null before signing in.
+  SavedAnalysesController? _saved;
+
+  static SavedAnalysesController? _savedFor(StudentApi? api) => api == null
+      ? null
+      : SavedAnalysesController(AnalysisResultsApi(api.api), AnalysisKind.gap);
+
+  Future<void> _save(GapReport report) async {
+    if (report.status != 'completed') return;
+    await _saved?.save(
+      title: analysisTitle(report.goalSummary, fallback: '목표 직무 분석'),
+      summary: {
+        'ready': report.requirements
+            .where((r) => r.status == 'supported')
+            .length,
+        'total': report.requirements.length,
+      },
+      input: {'goal': report.goalSummary},
+      result: report.raw,
+    );
+  }
+
+  Future<void> _openSaved(SavedAnalysisSummary item) async {
+    if (_busy) return;
+    final revision = _revision;
+    final saved = await _saved?.open(item.id);
+    if (saved == null || !mounted || revision != _revision) return;
+    try {
+      final report = GapReport.fromJson(saved.result);
+      setState(() {
+        _report = report;
+        _cached = false;
+        _opened = true;
+        _error = null;
+      });
+    } catch (_) {
+      setState(() => _error = '저장된 결과의 형식을 읽지 못했습니다.');
+    }
+  }
+
   String? _error;
   var _revision = 0;
 
@@ -64,6 +108,7 @@ class _CareerGapViewState extends State<CareerGapView> {
   void initState() {
     super.initState();
     widget.careerGoal?.addListener(_changed);
+    _saved = _savedFor(widget.api);
     _restore();
   }
 
@@ -79,12 +124,16 @@ class _CareerGapViewState extends State<CareerGapView> {
       _report = null;
       _error = null;
       _busy = false;
+      _opened = false;
+      _saved?.dispose();
+      _saved = _savedFor(widget.api);
       _restore();
     }
   }
 
   @override
   void dispose() {
+    _saved?.dispose();
     widget.careerGoal?.removeListener(_changed);
     super.dispose();
   }
@@ -158,8 +207,11 @@ class _CareerGapViewState extends State<CareerGapView> {
       setState(() {
         _report = report;
         _cached = false;
+        _opened = false;
       });
       if (report.status == 'completed') {
+        // Kept in the account; a failed save leaves the result on screen.
+        unawaited(_save(report));
         await widget.store?.save(report);
         widget.onReport?.call(report);
       }
@@ -258,6 +310,14 @@ class _CareerGapViewState extends State<CareerGapView> {
                   ],
                 ),
               ),
+              if (_saved case final saved?) ...[
+                const SizedBox(height: 16),
+                SavedAnalysesPanel(
+                  controller: saved,
+                  enabled: !_busy,
+                  onOpen: _openSaved,
+                ),
+              ],
             ],
           ),
           result: report == null
@@ -323,14 +383,26 @@ class _CareerGapViewState extends State<CareerGapView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        heading,
+        Row(
+          children: [
+            heading,
+            if (_saved case final saved?) ...[
+              const SizedBox(width: 4),
+              SavedAnalysisStar(controller: saved),
+            ],
+          ],
+        ),
         const SizedBox(height: 4),
         Text(
           [
             if (report.goalSummary.isNotEmpty) '목표 직무 · ${report.goalSummary}',
             '공고 ${report.postings.length}건 기준',
             if (when != null)
-              '${when.month}월 ${when.day}일 ${planningTime(when)} 분석${_cached ? ' (이 기기에 저장된 최근 결과)' : ''}',
+              '${when.month}월 ${when.day}일 ${planningTime(when)} 분석${_opened
+                  ? ' (저장된 결과)'
+                  : _cached
+                  ? ' (이 기기에 저장된 최근 결과)'
+                  : ''}',
           ].join(' · '),
           style: muted,
         ),

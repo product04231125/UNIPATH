@@ -51,6 +51,7 @@ from app.models.official_records import (
 from app.models.personal import (
     AchievementRecord,
     ActivityRecord,
+    AnalysisResult,
     ApplicationDocument,
     ApplicationSource,
     CareerGoal,
@@ -65,6 +66,7 @@ from app.models.personal import (
     PlanningProfile,
     PortfolioComposition,
     PortfolioSource,
+    StudentMaterial,
     WritingDocument,
 )
 from app.models.personal_imports import PersonalImportReceipt
@@ -138,6 +140,8 @@ __all__ = [
     "PersonalGraduationRule",
     "CareerGoal",
     "WritingDocument",
+    "StudentMaterial",
+    "AnalysisResult",
     "PlanningProfile",
     "PortfolioComposition",
     "PortfolioSource",

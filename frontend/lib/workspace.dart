@@ -99,11 +99,11 @@ class _WorkspaceState extends State<Workspace> {
   late var _academicTab = widget.academicTab;
   final _visitedPages = <int>{};
   final _materials = GlobalKey<MaterialsPageState>();
-  late final _materialRepository = MaterialRepository(
-    owner: widget.studentApi == null
-        ? LocalDataOwner.current()
-        : LocalDataOwner(widget.studentApi!.ownerId),
-  );
+  late final MaterialRepository _materialRepository =
+      switch (widget.studentApi) {
+        final api? => AccountMaterialRepository(api.api, ownerId: api.ownerId),
+        null => DeviceMaterialRepository(owner: LocalDataOwner.current()),
+      };
   var _chatOpen = false;
   var _chatManuallyOpened = false;
   var _detachedChatActive = false;

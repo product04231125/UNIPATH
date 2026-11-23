@@ -79,9 +79,17 @@ class JobRecommendationResult extends StatelessWidget {
     required this.result,
     this.selectedRecords = const [],
     this.onBrowseCategory,
+    this.titleTrailing,
+    this.openedNote,
   });
   final JobRecommendationResponse result;
   final List<AiRecordOption> selectedRecords;
+
+  /// Beside the title, e.g. the star that keeps a saved result.
+  final Widget? titleTrailing;
+
+  /// When a saved result is shown again: `저장된 결과 · 11월 24일 02:13 분석`.
+  final String? openedNote;
 
   /// Search the same category again without detail words (shown after a 0-match search).
   final VoidCallback? onBrowseCategory;
@@ -369,7 +377,20 @@ class JobRecommendationResult extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('공고 비교 결과', style: theme.textTheme.titleMedium),
+              Row(
+                children: [
+                  Text('공고 비교 결과', style: theme.textTheme.titleMedium),
+                  ?titleTrailing,
+                ],
+              ),
+              if (openedNote != null) ...[
+                const SizedBox(height: 4),
+                NoteLine(
+                  key: const ValueKey('recommend-opened'),
+                  icon: Icons.history,
+                  text: openedNote!,
+                ),
+              ],
               const SizedBox(height: 6),
               Semantics(
                 liveRegion: true,

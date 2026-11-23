@@ -5,7 +5,7 @@ import '../api/student_api.dart';
 import '../api/student_api_models.dart';
 import '../records/portfolio/material_repository.dart';
 
-/// Display metadata only. Local files have no personalized-guidance contract.
+/// Display metadata only; contents are read when a request is sent.
 class AssistantMaterial {
   const AssistantMaterial({
     required this.id,
@@ -134,14 +134,17 @@ Future<List<GuidanceDocument>> loadGuidanceDocuments(
         ),
       );
     }
-    if (m.pdf != null) {
-      bytes += m.pdf!.length;
-      documents.add(
-        GuidanceDocument(
-          filename: m.fileName.isEmpty ? '자료.pdf' : m.fileName,
-          contentBase64: base64Encode(m.pdf!),
-        ),
-      );
+    if (m.hasPdf) {
+      final pdf = await repository.pdf(m);
+      if (pdf != null) {
+        bytes += pdf.length;
+        documents.add(
+          GuidanceDocument(
+            filename: m.fileName.isEmpty ? '자료.pdf' : m.fileName,
+            contentBase64: base64Encode(pdf),
+          ),
+        );
+      }
     }
   }
   if (documents.isEmpty || documents.length > 5 || bytes > 8 * 1024 * 1024) {
