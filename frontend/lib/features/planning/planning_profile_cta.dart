@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/surface_card.dart';
 import 'planning_repository.dart';
 
 /// What a screen needs from the saved academic [PlanningProfile].
@@ -80,4 +82,36 @@ class PlanningProfileSettingsCta extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Page-level guide when a screen cannot work without the academic profile:
+/// one centered card with what is missing and the way to Settings, instead
+/// of a sentence and a button in the page's top-left corner.
+class PlanningProfileGuide extends StatelessWidget {
+  const PlanningProfileGuide({
+    super.key,
+    required this.onOpenSettings,
+    this.message = '학교·학과·입학연도를 등록하면 바로 확인할 수 있습니다.',
+  });
+
+  final VoidCallback onOpenSettings;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => SurfaceCard(
+    key: planningProfileSettingsCtaKey,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: EmptyState(
+        icon: Icons.school_outlined,
+        title: '학업 프로필이 필요합니다',
+        message: message,
+        action: FilledButton.icon(
+          onPressed: onOpenSettings,
+          icon: const Icon(Icons.settings_outlined, size: 18),
+          label: Text(planningProfileSettingsCtaLabel(ready: false)),
+        ),
+      ),
+    ),
+  );
 }

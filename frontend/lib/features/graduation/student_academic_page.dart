@@ -498,7 +498,6 @@ class _StudentAcademicPageState extends State<StudentAcademicPage> {
         requirements?.documents.where((d) => d.kind == _tab).toList() ?? [];
     return FeaturePage(
       title: '졸업 요건',
-      description: '내 학업 기준의 요건과 진행 상황을 확인합니다.',
       body: [
         SurfaceCard(
           child: Column(

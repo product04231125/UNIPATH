@@ -172,9 +172,9 @@ void main() {
       expect(find.text('합성 공고 본문'), findsOneWidget);
       expect(find.byType(CheckboxListTile), findsNothing);
       await tester.ensureVisible(
-        find.widgetWithText(ChoiceChip, '내 자료로 공고 찾기'),
+        find.byKey(const ValueKey('job-purpose-search')),
       );
-      await tester.tap(find.widgetWithText(ChoiceChip, '내 자료로 공고 찾기'));
+      await tester.tap(find.byKey(const ValueKey('job-purpose-search')));
       await tester.pumpAndSettle();
       expect(
         identical(
@@ -225,22 +225,9 @@ void main() {
             .text,
         '합성 공고 본문',
       );
-      expect(
-        tester
-            .widget<OutlinedButton>(
-              find.byKey(const ValueKey('job-posting-url')),
-            )
-            .onPressed,
-        isNull,
-      );
-      expect(
-        tester
-            .widget<OutlinedButton>(
-              find.byKey(const ValueKey('job-posting-file')),
-            )
-            .onPressed,
-        isNull,
-      );
+      // No placeholder inputs for methods that are not available.
+      expect(find.byKey(const ValueKey('job-posting-url')), findsNothing);
+      expect(find.byKey(const ValueKey('job-posting-file')), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       p.dispose();

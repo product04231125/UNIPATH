@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/app_tones.dart';
 import '../../shared/widgets/external_link_button.dart';
 import '../../shared/widgets/feature_page.dart';
+import '../../shared/widgets/responsive_grid.dart';
 import '../../shared/widgets/surface_card.dart';
+import '../../shared/widgets/tone_chip.dart';
+import '../../shared/widgets/work_layout.dart';
 import '../api/student_api.dart';
 import '../assistant/ai_record_catalog.dart';
 import '../auth/auth_api.dart';
@@ -30,7 +34,6 @@ class CareerGapView extends StatefulWidget {
     this.careerGoal,
     this.store,
     this.loadRecords,
-    this.purposeSelector,
     this.onAddPlan,
     this.onReport,
     this.now,
@@ -41,7 +44,6 @@ class CareerGapView extends StatefulWidget {
   final CareerGoalController? careerGoal;
   final GapReportStore? store;
   final Future<List<AiRecordOption>> Function()? loadRecords;
-  final Widget? purposeSelector;
   final AddPreparationPlan? onAddPlan;
 
   /// Called with each completed report (홈 summary).
@@ -178,66 +180,110 @@ class _CareerGapViewState extends State<CareerGapView> {
   Widget build(BuildContext context) {
     final goal = widget.careerGoal;
     final report = _report;
+    final theme = Theme.of(context);
     return FeaturePage(
       title: '목표 직무 분석',
-      description:
-          '목표 직무 공고 여러 건이 공통으로 요구하는 조건을 내 기록과 비교하고, 부족한 조건의 준비 계획을 제안합니다.',
       body: [
-        ?widget.purposeSelector,
-        if (goal != null) CareerGoalCard(controller: goal),
-        const SizedBox(height: 16),
-        SurfaceCard(
-          child: Column(
+        WorkLayout(
+          input: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                '목표 직무 공고 최대 8건의 본문과 저장된 수강·활동·경험·자격·성과 기록 전체를 외부 Gemini에 보내 비교합니다. 다른 사람의 이름이나 민감한 정보가 없는지 확인하세요.',
-              ),
-              if (widget.api == null || widget.consent == null)
-                const Text('로그인 후 이용할 수 있습니다.'),
-              if (GuestPreviewScope.isActive(context))
-                const Text('게스트 미리보기에서는 자료를 전송하지 않습니다.'),
-              if (_error != null)
-                Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 8),
-              FilledButton(
-                key: const ValueKey('career-gap-run'),
-                onPressed:
-                    _busy || !_connected || (goal != null && !goal.goal.isSet)
-                    ? null
-                    : _run,
-                child: Text(_busy ? '공고 수집·분석 중…' : '분석 실행'),
-              ),
-              if (goal != null && goal.loaded && !goal.goal.isSet)
-                const Text('목표 직무를 먼저 정해 주세요.'),
-              if (_busy) ...[
-                const LinearProgressIndicator(),
-                const Text(
-                  '공고를 모으고 비교하는 데 1~2분 걸릴 수 있습니다. 같은 요청을 자동으로 다시 보내지 않습니다.',
-                ),
+              if (goal != null) ...[
+                CareerGoalCard(controller: goal),
+                const SizedBox(height: 16),
               ],
+              SurfaceCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const NoteLine(
+                      icon: Icons.cloud_upload_outlined,
+                      text: '목표 직무 공고 최대 8건과 내 기록 전체를 비교합니다',
+                      detail: '목표 직무 공고 최대 8건의 본문과 저장된 수강·활동·경험·자격·성과 기록 전체를 외부 Gemini에 보내 비교합니다. 다른 사람의 이름이나 민감한 정보가 없는지 확인하세요.',
+                    ),
+                    if (widget.api == null || widget.consent == null) ...[
+                      const SizedBox(height: 6),
+                      const NoteLine(
+                        icon: Icons.lock_outline,
+                        text: '로그인 후 이용할 수 있습니다.',
+                      ),
+                    ],
+                    if (GuestPreviewScope.isActive(context)) ...[
+                      const SizedBox(height: 6),
+                      const NoteLine(
+                        icon: Icons.visibility_outlined,
+                        text: '게스트 미리보기에서는 자료를 전송하지 않습니다.',
+                      ),
+                    ],
+                    if (goal != null && goal.loaded && !goal.goal.isSet) ...[
+                      const SizedBox(height: 6),
+                      const Text('목표 직무를 먼저 정해 주세요.'),
+                    ],
+                    if (_error != null) ...[
+                      const SizedBox(height: 8),
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          _error!,
+                          style: TextStyle(color: theme.colorScheme.error),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: FilledButton.icon(
+                        key: const ValueKey('career-gap-run'),
+                        onPressed:
+                            _busy ||
+                                !_connected ||
+                                (goal != null && !goal.goal.isSet)
+                            ? null
+                            : _run,
+                        icon: const Icon(Icons.insights_outlined),
+                        label: Text(_busy ? '공고 수집·분석 중…' : '분석 실행'),
+                      ),
+                    ),
+                    if (_busy) ...[
+                      const SizedBox(height: 12),
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 6),
+                      Text(
+                        '공고를 모으고 비교하는 데 1~2분 걸릴 수 있습니다. 같은 요청을 자동으로 다시 보내지 않습니다.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ],
           ),
+          result: report == null
+              ? null
+              : SurfaceCard(
+                  key: const ValueKey('career-gap-result'),
+                  child: _result(context, report),
+                ),
+          placeholder: const ResultPlaceholder(
+            icon: Icons.insights_outlined,
+            title: '분석을 실행하면 공고 요건과 내 기록의 비교 결과가 나옵니다',
+          ),
         ),
-        if (report != null) ...[
-          const SizedBox(height: 16),
-          _result(context, report),
-        ],
       ],
     );
   }
 
+  static AppTone _tone(String status) => switch (status) {
+    'supported' => AppTone.success,
+    'partially_supported' => AppTone.warning,
+    _ => AppTone.danger,
+  };
+
   Widget _result(BuildContext context, GapReport report) {
     final theme = Theme.of(context);
-    final heading = Text('분석 결과', style: theme.textTheme.titleLarge);
+    final heading = Text('분석 결과', style: theme.textTheme.titleMedium);
     switch (report.status) {
       case 'completed':
         break;
@@ -246,16 +292,19 @@ class _CareerGapViewState extends State<CareerGapView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             heading,
+            const SizedBox(height: 8),
             Text(
               report.searchNotice ??
                   '목표 직무로 비교할 수 있는 공고를 찾지 못했습니다. 잠시 후 다시 시도하거나 목표 직무를 넓혀 보세요.',
             ),
-            if (report.categoryBrowseAvailable)
+            if (report.categoryBrowseAvailable) ...[
+              const SizedBox(height: 12),
               OutlinedButton(
                 key: const ValueKey('career-gap-whole-category'),
                 onPressed: _busy ? null : () => _run(wholeCategory: true),
                 child: const Text('직종 전체로 분석'),
               ),
+            ],
           ],
         );
       case 'needs_user_input':
@@ -274,10 +323,14 @@ class _CareerGapViewState extends State<CareerGapView> {
         );
     }
     final when = report.generatedAt?.toLocal();
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         heading,
+        const SizedBox(height: 4),
         Text(
           [
             if (report.goalSummary.isNotEmpty) '목표 직무 · ${report.goalSummary}',
@@ -285,28 +338,52 @@ class _CareerGapViewState extends State<CareerGapView> {
             if (when != null)
               '${when.month}월 ${when.day}일 ${planningTime(when)} 분석${_cached ? ' (이 기기에 저장된 최근 결과)' : ''}',
           ].join(' · '),
+          style: muted,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            Chip(label: Text('요건 ${report.requirements.length}개')),
-            Chip(label: Text('준비됨 ${report.count('supported')}')),
-            Chip(label: Text('일부 준비됨 ${report.count('partially_supported')}')),
-            Chip(label: Text('준비 필요 ${report.count('insufficient_evidence')}')),
+            ToneChip(label: '요건 ${report.requirements.length}개'),
+            ToneChip(
+              label: '준비됨 ${report.count('supported')}',
+              tone: AppTone.success,
+            ),
+            ToneChip(
+              label: '일부 준비됨 ${report.count('partially_supported')}',
+              tone: AppTone.warning,
+            ),
+            ToneChip(
+              label: '준비 필요 ${report.count('insufficient_evidence')}',
+              tone: AppTone.danger,
+            ),
           ],
         ),
         if (report.summary case final summary?) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           SelectableText(summary),
         ],
-        for (final warning in report.warnings) Text(warning),
-        const Text('공고 요건과 기록의 비교이며 합격 가능성이나 지원 자격 판정이 아닙니다.'),
-        for (final requirement in report.requirements) ...[
-          const SizedBox(height: 12),
-          _requirement(context, report, requirement),
+        for (final warning in report.warnings) ...[
+          const SizedBox(height: 6),
+          NoteLine(icon: Icons.warning_amber_outlined, text: warning),
         ],
+        const SizedBox(height: 6),
+        const NoteLine(
+          icon: Icons.info_outline,
+          text: '공고 요건과 기록의 비교이며 합격 가능성이나 지원 자격 판정이 아닙니다.',
+        ),
+        const SizedBox(height: 16),
+        ResponsiveGrid(
+          targetItemWidth: 420,
+          minItemWidth: 320,
+          maxColumns: 3,
+          minHeightFactor: 0,
+          children: [
+            for (final requirement in report.requirements)
+              _requirement(context, report, requirement),
+          ],
+        ),
         const SizedBox(height: 12),
         ExpansionTile(
           key: const ValueKey('career-gap-postings'),
@@ -339,32 +416,61 @@ class _CareerGapViewState extends State<CareerGapView> {
   ) {
     final theme = Theme.of(context);
     final titles = {for (final p in report.postings) p.number: p.title};
-    return SurfaceCard(
+    final colors = theme.colorScheme;
+    final small = theme.textTheme.bodySmall;
+    return Container(
       key: ValueKey('career-gap-requirement-${requirement.id}'),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Wrap(
-            spacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(requirement.requirement, style: theme.textTheme.titleMedium),
-              Chip(label: Text(requirement.statusLabel)),
-              Text('공고 ${report.postings.length}건 중 ${requirement.frequency}건'),
+              Expanded(
+                child: Text(
+                  requirement.requirement,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ToneChip(
+                label: requirement.statusLabel,
+                tone: _tone(requirement.status),
+              ),
             ],
           ),
           const SizedBox(height: 4),
+          Text(
+            '공고 ${report.postings.length}건 중 ${requirement.frequency}건',
+            style: small?.copyWith(color: colors.onSurfaceVariant),
+          ),
+          const SizedBox(height: 8),
           SelectableText(requirement.explanation),
-          for (final cite in requirement.evidence)
-            SelectableText('내 기록 근거: ${cite.excerpt}'),
-          for (final ref in requirement.postings.take(2))
+          for (final cite in requirement.evidence) ...[
+            const SizedBox(height: 6),
+            SelectableText('내 기록 근거: ${cite.excerpt}', style: small),
+          ],
+          for (final ref in requirement.postings.take(2)) ...[
+            const SizedBox(height: 6),
             SelectableText(
               '공고 근거 [${ref.posting}] ${titles[ref.posting] ?? ''}: ${ref.excerpt}',
+              style: small?.copyWith(color: colors.onSurfaceVariant),
             ),
+          ],
           if (requirement.postings.length > 2)
-            Text('외 ${requirement.postings.length - 2}건의 공고에도 있습니다.'),
+            Text(
+              '외 ${requirement.postings.length - 2}건의 공고에도 있습니다.',
+              style: small?.copyWith(color: colors.onSurfaceVariant),
+            ),
           for (final action in requirement.actions) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             _action(context, requirement, action),
           ],
         ],
@@ -379,7 +485,7 @@ class _CareerGapViewState extends State<CareerGapView> {
   ) => Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(12),
     ),
     child: Column(

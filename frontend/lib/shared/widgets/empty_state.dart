@@ -32,7 +32,7 @@ class EmptyState extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: compact ? 16 : 32),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
+          constraints: const BoxConstraints(maxWidth: 440),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

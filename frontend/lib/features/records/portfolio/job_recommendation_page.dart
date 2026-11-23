@@ -19,6 +19,7 @@ import '../../settings/ai_consent_section.dart';
 import '../../api/academic_guidance_models.dart';
 import 'job_recommendation_result.dart';
 import 'material_selection.dart';
+import '../../../shared/widgets/work_layout.dart';
 
 const recommendationMaxBytes = 8 * 1024 * 1024;
 Widget _surface({required Widget child}) => SurfaceCard(
@@ -50,7 +51,6 @@ class JobRecommendationPage extends StatefulWidget {
     this.pickFiles,
     this.onBack,
     this.onBusyChanged,
-    this.purposeSelector,
     this.loadMaterials,
     this.loadDocuments,
     this.goal,
@@ -63,7 +63,6 @@ class JobRecommendationPage extends StatefulWidget {
   final Future<List<AiRecordOption>> Function()? loadRecords;
   final Future<List<XFile>> Function()? pickFiles;
   final VoidCallback? onBack;
-  final Widget? purposeSelector;
   final ValueChanged<bool>? onBusyChanged;
   // 내 자료 on this device; only the ones the student selects are sent.
   final Future<List<AssistantMaterial>> Function()? loadMaterials;
@@ -371,248 +370,296 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
   }
 
   @override
-  Widget build(BuildContext context) => FeaturePage(
-    title: '내 자료로 공고 찾기',
-    description: '직무와 지역을 고르고, 내 자료에서 확인된 근거로 공고를 비교합니다.',
-    body: [
-      if (widget.purposeSelector != null) widget.purposeSelector!,
-      if (widget.onBack != null)
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: _busy ? null : widget.onBack,
-            icon: const Icon(Icons.arrow_back),
-            label: const Text('공고 본문 분석으로 돌아가기'),
-          ),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    final region = FieldLabel(
+      label: '근무 지역',
+      child: DropdownButtonFormField<String>(
+        key: const ValueKey('recommend-region'),
+        initialValue: _region,
+        isExpanded: true,
+        decoration: InputDecoration(
+          hintText: '지역 선택',
+          errorText: _hasField('region') ? '지역을 확인하세요.' : null,
         ),
-      _surface(
-        child: Form(
-          key: _form,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (_categories case final future?)
-                JobCategoryFields(
-                  key: ValueKey('recommend-goal-$_goalRevision'),
-                  future: future,
-                  categoryCode: _categoryCode,
-                  subcategoryCode: _subcategoryCode,
-                  enabled: !_busy,
-                  error: _hasField('category_codes') ? '선택한 직종을 확인하세요.' : null,
-                  onChanged: (category, subcategory) => setState(() {
-                    _categoryCode = category;
-                    _subcategoryCode = subcategory;
-                  }),
-                  onRetry: () => setState(() {
-                    _categories = JobRecommendationApi(widget.api!.api)
-                        .loadCategories();
-                  }),
-                ),
-              FieldLabel(
-                label: '세부 검색어',
-                child: TextFormField(
-                  controller: _keyword,
-                  enabled: !_busy,
-                  key: const ValueKey('recommend-keyword'),
-                  decoration: InputDecoration(
-                    hintText: '예: 프론트엔드, 백엔드, 전산실',
-                    helperText: _selectedCode.isEmpty
-                        ? '직종을 선택하거나 검색어를 쉼표로 구분해 최대 5개 입력하세요.'
-                        : '선택한 직종 전체를 검색하려면 비워 두세요.',
-                    helperMaxLines: 2,
-                    errorText: _hasField('keyword') ? '세부 검색어를 확인하세요.' : null,
-                  ),
-                  validator: _validateKeyword,
-                ),
-              ),
-              const SizedBox(height: 16),
-              FieldLabel(
-                label: '근무 지역',
-                child: DropdownButtonFormField<String>(
-                  key: const ValueKey('recommend-region'),
-                  initialValue: _region,
-                  decoration: InputDecoration(
-                    hintText: '지역을 직접 선택하세요.',
-                    errorText: _hasField('region') ? '지역을 확인하세요.' : null,
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: '전국', child: Text('전국')),
-                    DropdownMenuItem(
-                      value: '지역',
-                      enabled: false,
-                      child: Text('특정 지역 · 준비 중'),
-                    ),
-                  ],
-                  onChanged: _busy ? null : (v) => setState(() => _region = v),
-                  validator: (v) => v == null ? '근무 지역을 선택하세요.' : null,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                '특정 지역 검색은 지역 목록 연결 후 제공됩니다. 현재는 전국을 직접 선택해 검색할 수 있습니다.',
-              ),
-              const SizedBox(height: 16),
-              FieldLabel(
-                label: '현재 학년 (선택)',
-                child: DropdownButtonFormField<RecommendationAcademicStage>(
-                  key: const ValueKey('recommend-academic-stage'),
-                  initialValue: _academicStage,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    helperText: '선택한 학년에 맞춰 다음 준비 활동을 안내합니다.',
-                    helperMaxLines: 2,
-                    errorText: _hasField('academic_stage')
-                        ? '선택한 학년을 확인하세요.'
-                        : null,
-                  ),
-                  items: const [
-                    DropdownMenuItem(child: Text('선택 안 함')),
-                    DropdownMenuItem(
-                      value: RecommendationAcademicStage.year1,
-                      child: Text('1학년'),
-                    ),
-                    DropdownMenuItem(
-                      value: RecommendationAcademicStage.year2,
-                      child: Text('2학년'),
-                    ),
-                    DropdownMenuItem(
-                      value: RecommendationAcademicStage.year3,
-                      child: Text('3학년'),
-                    ),
-                    DropdownMenuItem(
-                      value: RecommendationAcademicStage.year4,
-                      child: Text('4학년'),
-                    ),
-                    DropdownMenuItem(
-                      value: RecommendationAcademicStage.graduate,
-                      child: Text('졸업'),
-                    ),
-                  ],
-                  onChanged: _busy
-                      ? null
-                      : (stage) => setState(() => _academicStage = stage),
-                ),
-              ),
-            ],
-          ),
-        ),
+        items: const [DropdownMenuItem(value: '전국', child: Text('전국'))],
+        onChanged: _busy ? null : (v) => setState(() => _region = v),
+        validator: (v) => v == null ? '근무 지역을 선택하세요.' : null,
       ),
-      const SizedBox(height: 16),
-      _surface(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              '비교할 기기 파일 (선택)',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const Text('저장 기록은 분석할 때 자동으로 포함합니다. 함께 비교할 기기 파일을 추가할 수 있습니다.'),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
+    );
+    final stage = FieldLabel(
+      label: '현재 학년 (선택)',
+      child: DropdownButtonFormField<RecommendationAcademicStage>(
+        key: const ValueKey('recommend-academic-stage'),
+        initialValue: _academicStage,
+        isExpanded: true,
+        decoration: InputDecoration(
+          errorText: _hasField('academic_stage') ? '선택한 학년을 확인하세요.' : null,
+        ),
+        items: const [
+          DropdownMenuItem(child: Text('선택 안 함')),
+          DropdownMenuItem(
+            value: RecommendationAcademicStage.year1,
+            child: Text('1학년'),
+          ),
+          DropdownMenuItem(
+            value: RecommendationAcademicStage.year2,
+            child: Text('2학년'),
+          ),
+          DropdownMenuItem(
+            value: RecommendationAcademicStage.year3,
+            child: Text('3학년'),
+          ),
+          DropdownMenuItem(
+            value: RecommendationAcademicStage.year4,
+            child: Text('4학년'),
+          ),
+          DropdownMenuItem(
+            value: RecommendationAcademicStage.graduate,
+            child: Text('졸업'),
+          ),
+        ],
+        onChanged: _busy
+            ? null
+            : (stage) => setState(() => _academicStage = stage),
+      ),
+    );
+    final input = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _surface(
+          child: Form(
+            key: _form,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : _pick,
-                  icon: const Icon(Icons.attach_file),
-                  label: const Text('기기 파일 선택'),
+                if (_categories case final future?)
+                  JobCategoryFields(
+                    key: ValueKey('recommend-goal-$_goalRevision'),
+                    future: future,
+                    categoryCode: _categoryCode,
+                    subcategoryCode: _subcategoryCode,
+                    enabled: !_busy,
+                    error: _hasField('category_codes')
+                        ? '선택한 직종을 확인하세요.'
+                        : null,
+                    onChanged: (category, subcategory) => setState(() {
+                      _categoryCode = category;
+                      _subcategoryCode = subcategory;
+                    }),
+                    onRetry: () => setState(() {
+                      _categories = JobRecommendationApi(widget.api!.api)
+                          .loadCategories();
+                    }),
+                  ),
+                FieldLabel(
+                  label: '세부 검색어',
+                  child: TextFormField(
+                    controller: _keyword,
+                    enabled: !_busy,
+                    key: const ValueKey('recommend-keyword'),
+                    decoration: InputDecoration(
+                      hintText: '예: 프론트엔드, 백엔드, 전산실',
+                      helperText: _selectedCode.isEmpty
+                          ? '직종을 선택하거나 검색어를 쉼표로 구분해 최대 5개 입력하세요.'
+                          : '선택한 직종 전체를 검색하려면 비워 두세요.',
+                      helperMaxLines: 2,
+                      errorText: _hasField('keyword') ? '세부 검색어를 확인하세요.' : null,
+                    ),
+                    validator: _validateKeyword,
+                  ),
                 ),
-                Text(
-                  '${_documents.length}/5개 · ${(_documents.fold(0, (n, d) => n + d.bytes.length) / 1024 / 1024).toStringAsFixed(1)}/8MiB',
+                const SizedBox(height: 16),
+                LayoutBuilder(
+                  builder: (context, constraints) =>
+                      constraints.maxWidth >=
+                          MediaQuery.textScalerOf(context).scale(360)
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: region),
+                            const SizedBox(width: 12),
+                            Expanded(child: stage),
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [region, const SizedBox(height: 16), stage],
+                        ),
                 ),
               ],
             ),
-            const Text(
-              'PDF·DOCX·TXT/MD·PNG/JPEG/WebP. PDF당 100쪽·OCR 합계 20장까지 서버에서 처리합니다.',
-            ),
-            for (final doc in _documents)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(doc.filename),
-                trailing: IconButton(
-                  tooltip: '${doc.filename} 선택 해제',
-                  onPressed: _busy
-                      ? null
-                      : () => setState(() => _documents.remove(doc)),
-                  icon: const Icon(Icons.close),
-                ),
-              ),
-            if (_hasField('documents')) const Text('선택 파일의 형식과 분량을 확인하세요.'),
-            if (widget.loadMaterials != null &&
-                widget.api != null &&
-                widget.consent != null) ...[
-              const SizedBox(height: 12),
-              MaterialSelection(
-                keyPrefix: 'job-recommendation',
-                load: widget.loadMaterials!,
-                selected: _materialIds,
-                enabled: !_busy,
-                onChanged: (id, selected) => setState(
-                  () =>
-                      selected ? _materialIds.add(id) : _materialIds.remove(id),
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
-      ),
-      const SizedBox(height: 16),
-      _surface(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              '저장된 수강·활동·경험·자격·성과 기록과 첨부 파일의 텍스트를 외부 Gemini에 보내 공고와 비교합니다. 다른 사람의 이름이나 민감한 정보가 없는지 확인하세요.',
-            ),
-            if (widget.api == null || widget.consent == null)
-              const Text('로그인 후 이용할 수 있습니다.'),
-            if (GuestPreviewScope.isActive(context))
-              const Text('게스트 미리보기에서는 자료를 전송하지 않습니다.'),
-            if (_error != null)
-              Semantics(
-                liveRegion: true,
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
-            if (_requestId != null) SelectableText('문의 식별자: $_requestId'),
-            FilledButton(
-              onPressed:
-                  _busy ||
-                      widget.api == null ||
-                      widget.consent == null ||
-                      GuestPreviewScope.isActive(context)
-                  ? null
-                  : _run,
-              child: Text(_busy ? '자료 확인·공고 비교 중…' : '분석 실행'),
-            ),
-            if (_busy) ...[
-              const LinearProgressIndicator(),
-              const Text(
-                '파일 처리와 공고 비교에 시간이 걸릴 수 있습니다. 같은 요청을 자동으로 다시 보내지 않습니다.',
-              ),
-            ],
-          ],
-        ),
-      ),
-      if (_result != null) ...[
         const SizedBox(height: 16),
-        JobRecommendationResult(
-          result: _result!,
-          selectedRecords: _resultRecords,
-          // Offered only while the form still has the category that found nothing.
-          onBrowseCategory:
-              _busy ||
-                  _result!.occupationCodes.length != 1 ||
-                  _result!.occupationCodes.single != _selectedCode
-              ? null
-              : () {
-                  _keyword.clear();
-                  _run();
-                },
+        _surface(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Text('비교할 기기 파일 (선택)', style: theme.textTheme.titleSmall),
+                  const SizedBox(width: 4),
+                  Tooltip(
+                    message:
+                        '저장 기록은 분석할 때 자동으로 포함합니다. 함께 비교할 기기 파일을 추가할 수 있습니다.\n'
+                        'PDF·DOCX·TXT/MD·PNG/JPEG/WebP. PDF당 100쪽·OCR 합계 20장까지 서버에서 처리합니다.',
+                    triggerMode: TooltipTriggerMode.tap,
+                    child: Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _pick,
+                    icon: const Icon(Icons.attach_file),
+                    label: const Text('기기 파일 선택'),
+                  ),
+                  Text(
+                    '${_documents.length}/5개 · ${(_documents.fold(0, (n, d) => n + d.bytes.length) / 1024 / 1024).toStringAsFixed(1)}/8MiB',
+                    style: muted,
+                  ),
+                ],
+              ),
+              for (final doc in _documents)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  leading: const Icon(Icons.description_outlined),
+                  title: Text(doc.filename),
+                  trailing: IconButton(
+                    tooltip: '${doc.filename} 선택 해제',
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() => _documents.remove(doc)),
+                    icon: const Icon(Icons.close),
+                  ),
+                ),
+              if (_hasField('documents')) const Text('선택 파일의 형식과 분량을 확인하세요.'),
+              if (widget.loadMaterials != null &&
+                  widget.api != null &&
+                  widget.consent != null) ...[
+                const Divider(height: 28),
+                MaterialSelection(
+                  keyPrefix: 'job-recommendation',
+                  load: widget.loadMaterials!,
+                  selected: _materialIds,
+                  enabled: !_busy,
+                  onChanged: (id, selected) => setState(
+                    () => selected
+                        ? _materialIds.add(id)
+                        : _materialIds.remove(id),
+                  ),
+                ),
+              ],
+              const Divider(height: 28),
+              const NoteLine(
+                icon: Icons.cloud_upload_outlined,
+                text: '내 기록과 고른 파일을 외부 AI로 보내 공고와 비교합니다',
+                detail: '저장된 수강·활동·경험·자격·성과 기록과 첨부 파일의 텍스트를 외부 Gemini에 보내 공고와 비교합니다. 다른 사람의 이름이나 민감한 정보가 없는지 확인하세요.',
+              ),
+              if (widget.api == null || widget.consent == null) ...[
+                const SizedBox(height: 6),
+                const NoteLine(
+                  icon: Icons.lock_outline,
+                  text: '로그인 후 이용할 수 있습니다.',
+                ),
+              ],
+              if (GuestPreviewScope.isActive(context)) ...[
+                const SizedBox(height: 6),
+                const NoteLine(
+                  icon: Icons.visibility_outlined,
+                  text: '게스트 미리보기에서는 자료를 전송하지 않습니다.',
+                ),
+              ],
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    _error!,
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                ),
+              ],
+              if (_requestId != null) SelectableText('문의 식별자: $_requestId'),
+              const SizedBox(height: 16),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: FilledButton.icon(
+                  onPressed:
+                      _busy ||
+                          widget.api == null ||
+                          widget.consent == null ||
+                          GuestPreviewScope.isActive(context)
+                      ? null
+                      : _run,
+                  icon: const Icon(Icons.travel_explore_outlined),
+                  label: Text(_busy ? '자료 확인·공고 비교 중…' : '분석 실행'),
+                ),
+              ),
+              if (_busy) ...[
+                const SizedBox(height: 12),
+                const LinearProgressIndicator(),
+                const SizedBox(height: 6),
+                Text(
+                  '파일 처리와 공고 비교에 시간이 걸릴 수 있습니다. 같은 요청을 자동으로 다시 보내지 않습니다.',
+                  style: muted,
+                ),
+              ],
+            ],
+          ),
         ),
       ],
-    ],
-  );
+    );
+    return FeaturePage(
+      title: '내 자료로 공고 찾기',
+      body: [
+        if (widget.onBack != null)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _busy ? null : widget.onBack,
+              icon: const Icon(Icons.arrow_back),
+              label: const Text('공고 본문 분석으로 돌아가기'),
+            ),
+          ),
+        WorkLayout(
+          input: input,
+          result: _result == null
+              ? null
+              : JobRecommendationResult(
+                  result: _result!,
+                  selectedRecords: _resultRecords,
+                  // Offered only while the form still has the category that found nothing.
+                  onBrowseCategory:
+                      _busy ||
+                          _result!.occupationCodes.length != 1 ||
+                          _result!.occupationCodes.single != _selectedCode
+                      ? null
+                      : () {
+                          _keyword.clear();
+                          _run();
+                        },
+                ),
+          placeholder: const ResultPlaceholder(
+            icon: Icons.travel_explore_outlined,
+            title: '조건을 고르고 분석하면 맞는 공고가 여기에 나옵니다',
+          ),
+        ),
+      ],
+    );
+  }
 }

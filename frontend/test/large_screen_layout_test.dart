@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
 import 'package:university_path_frontend/features/records/activity/activity_page.dart';
+import 'package:university_path_frontend/features/records/portfolio/job_analysis_page.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 
@@ -131,4 +132,35 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  for (final (size, side) in [
+    (_qhd, true),
+    (_fhd, true),
+    (_fhd125, true),
+    (const Size(390, 844), false),
+  ]) {
+    testWidgets(
+      'job analysis input and result sit side by side at $size: $side',
+      (tester) async {
+        await tester.binding.setSurfaceSize(size);
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester.pumpWidget(
+          const MaterialApp(home: Scaffold(body: JobAnalysisPage())),
+        );
+        await tester.pumpAndSettle();
+        // The three purposes are the page title, not a row of chips.
+        expect(find.byKey(const ValueKey('job-purpose-tabs')), findsOneWidget);
+        expect(find.byType(ChoiceChip), findsNothing);
+        expect(
+          find.byKey(const ValueKey('work-layout-side')),
+          side ? findsOneWidget : findsNothing,
+        );
+        final input = tester.getSize(
+          find.byKey(const ValueKey('job-posting-text')),
+        );
+        if (side) expect(input.width, lessThanOrEqualTo(600));
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 }

@@ -3,7 +3,12 @@ import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
+import '../../../shared/app_tones.dart';
 import '../../../shared/widgets/feature_page.dart';
+import '../../../shared/widgets/page_tabs.dart';
+import '../../../shared/widgets/responsive_grid.dart';
+import '../../../shared/widgets/tone_chip.dart';
+import '../../../shared/widgets/work_layout.dart';
 import '../../../shared/widgets/field_label.dart';
 import '../../../shared/widgets/surface_card.dart';
 import '../../api/student_api.dart';
@@ -320,25 +325,6 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
     'no_requirements_found' => '공고에서 비교할 요건을 찾지 못했습니다.',
     _ => '분석을 완료하지 못했습니다. 입력을 유지하고 다시 시도할 수 있습니다.',
   };
-  Widget _purposeSelector() => Padding(
-    padding: const EdgeInsets.only(bottom: 16),
-    child: Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final purpose in JobPurpose.values)
-          ChoiceChip(
-            key: ValueKey('job-purpose-${purpose.name}'),
-            label: Text(purpose.label),
-            selected: _purpose == purpose,
-            onSelected: _sending || _recommendationBusy
-                ? null
-                : (_) => _select(purpose),
-          ),
-      ],
-    ),
-  );
-
   void _select(JobPurpose purpose) => setState(() {
     _purpose = purpose;
     _visited.add(purpose);
@@ -353,192 +339,298 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
   }
 
   @override
-  Widget build(BuildContext context) => IndexedStack(
-    index: switch (_purpose) {
-      JobPurpose.posting => 0,
-      JobPurpose.search => 1,
-      JobPurpose.gap => 2,
-    },
-    children: [
-      _buildAnalysis(context),
-      if (_visited.contains(JobPurpose.search))
-        JobRecommendationPage(
-          goal: widget.careerGoal?.goal,
-          api: widget.api,
-          consent: widget.consent,
-          loadRecords: widget.loadRecords,
-          loadMaterials: widget.loadMaterials,
-          loadDocuments: widget.loadDocuments,
-          purposeSelector: _purposeSelector(),
-          onBusyChanged: (busy) {
-            if (mounted) setState(() => _recommendationBusy = busy);
-          },
-        )
-      else
-        const SizedBox.shrink(),
-      if (_visited.contains(JobPurpose.gap))
-        CareerGapView(
-          api: widget.api,
-          consent: widget.consent,
-          careerGoal: widget.careerGoal,
-          store: widget.gapStore,
-          loadRecords: widget.loadRecords,
-          onAddPlan: widget.onAddPlan,
-          onReport: widget.onGapReport,
-          purposeSelector: _purposeSelector(),
-        )
-      else
-        const SizedBox.shrink(),
-    ],
+  Widget build(BuildContext context) => PageTabsScope(
+    // The three purposes are sibling pages: their titles are the tabs.
+    data: PageTabsData(
+      labels: [for (final purpose in JobPurpose.values) purpose.label],
+      selected: JobPurpose.values.indexOf(_purpose),
+      onSelected: (i) => _select(JobPurpose.values[i]),
+      enabled: !_sending && !_recommendationBusy,
+      groupKey: const ValueKey('job-purpose-tabs'),
+      tabKeys: [
+        for (final purpose in JobPurpose.values)
+          ValueKey('job-purpose-${purpose.name}'),
+      ],
+    ),
+    child: IndexedStack(
+      index: switch (_purpose) {
+        JobPurpose.posting => 0,
+        JobPurpose.search => 1,
+        JobPurpose.gap => 2,
+      },
+      children: [
+        _buildAnalysis(context),
+        if (_visited.contains(JobPurpose.search))
+          JobRecommendationPage(
+            goal: widget.careerGoal?.goal,
+            api: widget.api,
+            consent: widget.consent,
+            loadRecords: widget.loadRecords,
+            loadMaterials: widget.loadMaterials,
+            loadDocuments: widget.loadDocuments,
+            onBusyChanged: (busy) {
+              if (mounted) setState(() => _recommendationBusy = busy);
+            },
+          )
+        else
+          const SizedBox.shrink(),
+        if (_visited.contains(JobPurpose.gap))
+          CareerGapView(
+            api: widget.api,
+            consent: widget.consent,
+            careerGoal: widget.careerGoal,
+            store: widget.gapStore,
+            loadRecords: widget.loadRecords,
+            onAddPlan: widget.onAddPlan,
+            onReport: widget.onGapReport,
+          )
+        else
+          const SizedBox.shrink(),
+      ],
+    ),
   );
 
-  Widget _buildAnalysis(BuildContext context) => FeaturePage(
-    title: '채용공고 분석',
-    description: '공고 본문을 저장된 수강·활동·경험·자격·성과 기록 전체, 고른 내 자료와 비교합니다.',
-    body: [
-      _purposeSelector(),
-      SurfaceCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            FieldLabel(
-              label: '채용공고 텍스트',
-              child: TextFormField(
-                key: const ValueKey('job-posting-text'),
-                controller: _posting,
-                enabled: !_sending,
-                minLines: 6,
-                maxLines: 12,
-                decoration: const InputDecoration(
-                  hintText: '비교할 공고 본문을 붙여 넣으세요.',
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: const [
-                Text('다른 입력 방식 · 준비 중'),
-                OutlinedButton(
-                  key: ValueKey('job-posting-url'),
-                  onPressed: null,
-                  child: Text('공고 주소 · 준비 중'),
-                ),
-                OutlinedButton(
-                  key: ValueKey('job-posting-file'),
-                  onPressed: null,
-                  child: Text('PDF·캡처 · 준비 중'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text('현재는 공고 본문을 붙여 넣어 비교할 수 있습니다.'),
-          ],
-        ),
-      ),
-      const SizedBox(height: 16),
-      SurfaceCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!_connected)
-              const Text('채용 분석을 사용하려면 로그인해 주세요. 공고와 개인 기록은 전송하지 않았습니다.'),
-            if (widget.consent != null)
-              AnimatedBuilder(
-                animation: widget.consent!,
-                builder: (context, _) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.consent!.allows(AiConsentFeature.jobAnalysis)
-                          ? 'Google 외부 AI 전송 허용 중 · 설정에서 변경'
-                          : 'Google 외부 AI 전송 · 실행 전 동의 확인',
+  Widget _buildAnalysis(BuildContext context) {
+    final theme = Theme.of(context);
+    return FeaturePage(
+      title: '채용공고 분석',
+      body: [
+        WorkLayout(
+          input: SurfaceCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FieldLabel(
+                  label: '채용공고 본문',
+                  child: TextFormField(
+                    key: const ValueKey('job-posting-text'),
+                    controller: _posting,
+                    enabled: !_sending,
+                    minLines: 12,
+                    maxLines: 24,
+                    decoration: const InputDecoration(
+                      hintText: '비교할 공고 본문을 붙여 넣으세요.',
                     ),
-                    if (widget.consent!.error != null)
-                      Text(widget.consent!.error!),
-                    if (widget.consent!.loadFailed)
-                      TextButton(
-                        onPressed: widget.consent!.retry,
-                        child: const Text('전송 설정 다시 읽기'),
-                      ),
-                  ],
-                ),
-              ),
-            if (_error != null)
-              Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            if (_requestId != null) SelectableText('문의 식별자: $_requestId'),
-            if (widget.loadMaterials != null && _connected) ...[
-              MaterialSelection(
-                keyPrefix: 'job-analysis',
-                load: widget.loadMaterials!,
-                selected: _materialIds,
-                enabled: !_sending,
-                onChanged: (id, selected) => setState(
-                  () =>
-                      selected ? _materialIds.add(id) : _materialIds.remove(id),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            FilledButton(
-              key: const ValueKey('job-analysis-run'),
-              onPressed: _canAnalyze ? _analyze : null,
-              child: Text(_sending ? '분석 중…' : '공고 분석'),
-            ),
-            if (_requesting) const LinearProgressIndicator(),
-            if (_result != null) ...[
-              Text(
-                _status(_result!),
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              if (_result!.status != 'completed') Text(_reason(_result!)),
-              // Records left out over the text budget, or items that could not be verified.
-              for (final warning in _result!.warnings)
-                Text(
-                  warning,
-                  key: const ValueKey('job-analysis-warning'),
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
-              for (final item in _result!.comparisons) ...[
-                const Divider(),
-                Text(
-                  '${item.priority == "required" ? "필수" : "우대"} · ${item.requirement}',
-                ),
-                SelectableText(item.explanation),
-                const SizedBox(height: 8),
-                SelectableText('공고 근거: ${item.postingEvidence.excerpt}'),
-                for (final citation in item.personalEvidence)
-                  SelectableText(_citationLabel(_result!, citation)),
-              ],
-              if (widget.onWriteCoverLetter != null &&
-                  _posting.text.trim().isNotEmpty) ...[
-                const Divider(),
+                if (widget.loadMaterials != null && _connected) ...[
+                  const SizedBox(height: 16),
+                  MaterialSelection(
+                    keyPrefix: 'job-analysis',
+                    load: widget.loadMaterials!,
+                    selected: _materialIds,
+                    enabled: !_sending,
+                    onChanged: (id, selected) => setState(
+                      () => selected
+                          ? _materialIds.add(id)
+                          : _materialIds.remove(id),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                if (!_connected)
+                  const NoteLine(
+                    icon: Icons.lock_outline,
+                    text: '채용 분석을 사용하려면 로그인해 주세요. 공고와 개인 기록은 전송하지 않았습니다.',
+                  ),
+                if (widget.consent != null)
+                  AnimatedBuilder(
+                    animation: widget.consent!,
+                    builder: (context, _) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        NoteLine(
+                          icon: Icons.cloud_upload_outlined,
+                          text:
+                              widget.consent!.allows(
+                                AiConsentFeature.jobAnalysis,
+                              )
+                              ? 'Google 외부 AI 전송 허용 중 · 설정에서 변경'
+                              : 'Google 외부 AI 전송 · 실행 전 동의 확인',
+                          detail: '공고 본문, 저장된 수강·활동·경험·자격·성과 기록 전체, 고른 내 자료를 비교에 사용합니다.',
+                        ),
+                        if (widget.consent!.error != null)
+                          Text(widget.consent!.error!),
+                        if (widget.consent!.loadFailed)
+                          TextButton(
+                            onPressed: widget.consent!.retry,
+                            child: const Text('전송 설정 다시 읽기'),
+                          ),
+                      ],
+                    ),
+                  ),
+                if (_error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _error!,
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                ],
+                if (_requestId != null) SelectableText('문의 식별자: $_requestId'),
+                const SizedBox(height: 16),
                 Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: FilledButton.tonalIcon(
-                    key: const ValueKey('job-analysis-write'),
-                    onPressed: _sending
-                        ? null
-                        : () =>
-                              widget.onWriteCoverLetter!(_posting.text.trim()),
-                    icon: const Icon(Icons.edit_note_outlined),
-                    label: const Text('이 공고로 자기소개서 쓰기'),
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: FilledButton.icon(
+                    key: const ValueKey('job-analysis-run'),
+                    onPressed: _canAnalyze ? _analyze : null,
+                    icon: const Icon(Icons.fact_check_outlined),
+                    label: Text(_sending ? '분석 중…' : '공고 분석'),
                   ),
                 ),
+                if (_requesting) ...[
+                  const SizedBox(height: 12),
+                  const LinearProgressIndicator(),
+                ],
+              ],
+            ),
+          ),
+          result: _result == null ? null : _resultCard(context, _result!),
+          placeholder: const ResultPlaceholder(
+            icon: Icons.fact_check_outlined,
+            title: '공고를 붙여 넣고 분석하면 비교 결과가 여기에 나옵니다',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _resultCard(BuildContext context, JobAnalysisResponse result) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final tone = switch (result.status) {
+      'completed' => AppTone.success,
+      'needs_user_input' || 'insufficient_evidence' => AppTone.warning,
+      'not_configured' => AppTone.neutral,
+      _ => AppTone.danger,
+    };
+    return SurfaceCard(
+      key: const ValueKey('job-analysis-result'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Text('비교 결과', style: theme.textTheme.titleMedium),
+              const SizedBox(width: 10),
+              ToneChip(label: _status(result), tone: tone),
+              if (result.comparisons.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                ToneChip(label: '요건 ${result.comparisons.length}개'),
               ],
             ],
+          ),
+          if (result.status != 'completed') ...[
+            const SizedBox(height: 8),
+            Text(_reason(result)),
           ],
-        ),
+          // Records left out over the text budget, or items that could not be verified.
+          for (final warning in result.warnings) ...[
+            const SizedBox(height: 8),
+            Text(
+              warning,
+              key: const ValueKey('job-analysis-warning'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ],
+          if (result.comparisons.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            ResponsiveGrid(
+              targetItemWidth: 420,
+              minItemWidth: 320,
+              maxColumns: 3,
+              minHeightFactor: 0,
+              children: [
+                for (final item in result.comparisons)
+                  _comparison(context, result, item),
+              ],
+            ),
+          ],
+          if (widget.onWriteCoverLetter != null &&
+              _posting.text.trim().isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: FilledButton.tonalIcon(
+                key: const ValueKey('job-analysis-write'),
+                onPressed: _sending
+                    ? null
+                    : () => widget.onWriteCoverLetter!(_posting.text.trim()),
+                icon: const Icon(Icons.edit_note_outlined),
+                label: const Text('이 공고로 자기소개서 쓰기'),
+              ),
+            ),
+          ],
+        ],
       ),
-    ],
-  );
+    );
+  }
+
+  Widget _comparison(
+    BuildContext context,
+    JobAnalysisResponse result,
+    JobRequirementComparison item,
+  ) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final required = item.priority == 'required';
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ToneChip(
+                label: required ? '필수' : '우대',
+                tone: required ? AppTone.danger : AppTone.info,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  item.requirement,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SelectableText(item.explanation),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(10, 6, 8, 6),
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(color: colors.outlineVariant, width: 3),
+              ),
+            ),
+            child: SelectableText(
+              '공고 근거: ${item.postingEvidence.excerpt}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ),
+          for (final citation in item.personalEvidence) ...[
+            const SizedBox(height: 6),
+            SelectableText(
+              _citationLabel(result, citation),
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 /// What 채용공고 분석 shows; 공고 1개 비교 stays the default.

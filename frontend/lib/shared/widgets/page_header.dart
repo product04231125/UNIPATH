@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app_shell/phone_shell.dart';
 import '../app_typography.dart';
+import 'page_tabs.dart';
 
 /// Presentation only: the feature supplies its title and any real context.
 class PageHeader extends StatelessWidget {
@@ -25,13 +26,17 @@ class PageHeader extends StatelessWidget {
     final titleStyle = phone
         ? AppTypography.pageStyle.copyWith(fontSize: phonePageTitleSize)
         : AppTypography.pageStyle;
-    final heading = Semantics(
-      header: true,
-      child: Text(
-        title,
-        style: theme.textTheme.headlineMedium?.merge(titleStyle),
-      ),
-    );
+    // Inside a tabbed menu the sibling pages replace the title.
+    final tabs = PageTabsScope.of(context);
+    final heading = tabs != null
+        ? PageTabTitles(data: tabs)
+        : Semantics(
+            header: true,
+            child: Text(
+              title,
+              style: theme.textTheme.headlineMedium?.merge(titleStyle),
+            ),
+          );
     return SizedBox(
       width: double.infinity,
       child: LayoutBuilder(
