@@ -36,8 +36,8 @@ git switch -c feature/your-task
 
 백엔드 CI는 [`.github/workflows/backend-ci.yaml`](.github/workflows/backend-ci.yaml)에서
 PR과 `main`/`develop`의 백엔드 변경을 검증합니다. 앱 다운로드 워크플로는
-[`.github/workflows/app-release.yaml`](.github/workflows/app-release.yaml)이며 프론트·백엔드·RAG
-검증 후 Web과 Windows x64를 빌드해 GitHub Releases에 게시합니다.
+[`.github/workflows/app-release.yaml`](.github/workflows/app-release.yaml)이며 필요할 때 수동으로
+실행해 Web과 Windows x64를 빌드하고 GitHub Releases에 게시합니다. 코드 검증은 PR CI가 맡습니다.
 팀 통합·빌드·릴리스 담당은 이어진입니다. 수동 빌드와 실행 절차는 아래 공통 환경과
 [`docs/releases.md`](docs/releases.md)를 참고합니다.
 
