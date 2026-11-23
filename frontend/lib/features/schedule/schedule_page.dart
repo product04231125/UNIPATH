@@ -22,6 +22,7 @@ import '../planning/event_category_tone.dart';
 import '../planning/remote_planning_repository.dart';
 import '../auth/auth_api.dart';
 import '../auth/guest_preview_scope.dart';
+import '../../shared/widgets/page_actions.dart';
 
 const _scheduleDraftScreenId = 'schedule.event';
 
@@ -87,10 +88,8 @@ class _SchedulePageState extends State<SchedulePage> {
           ),
           title: '일정',
           trailing: [
-            PopupMenuButton<void>(
+            PageMoreMenu(
               key: const Key('schedule-more'),
-              tooltip: '더보기',
-              icon: const Icon(Icons.more_horiz),
               itemBuilder: (context) => [
                 PopupMenuItem<void>(
                   key: const Key('schedule-load-draft'),
@@ -103,11 +102,7 @@ class _SchedulePageState extends State<SchedulePage> {
                 ),
               ],
             ),
-            IconButton(
-              tooltip: '일정 추가',
-              onPressed: () => _editEvent(),
-              icon: const Icon(Icons.add),
-            ),
+            PageAddButton(label: '일정 추가', onPressed: () => _editEvent()),
           ],
           body: [
             Align(

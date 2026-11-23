@@ -22,6 +22,7 @@ import '../planning/planning_dates.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../planning/weekly_schedule.dart';
+import '../../shared/widgets/page_actions.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({
@@ -289,8 +290,8 @@ class HomePage extends StatelessWidget {
               ),
             ],
           ),
-    trailing: IconButton(
-      tooltip: '일정 추가',
+    trailing: PageAddButton(
+      label: '일정 추가',
       onPressed: () {
         if (GuestPreviewScope.isActive(context) || repository.writesBlocked) {
           GuestPreviewScope.showBlockedMessage(context);
@@ -298,7 +299,6 @@ class HomePage extends StatelessWidget {
         }
         onAddSchedule();
       },
-      icon: const Icon(Icons.add),
     ),
   );
 

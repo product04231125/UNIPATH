@@ -29,6 +29,7 @@ import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/external_link_button.dart';
 import '../planning/planning_profile_cta.dart';
 import '../planning/planning_repository.dart';
+import '../../shared/widgets/page_actions.dart';
 
 /// Temporary shared presentation only. Each feature entry owns its own
 /// configuration and mounted local input state.
@@ -598,11 +599,9 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
   List<Widget> _headerActions() {
     final ready = !_loading && !_loadFailed;
     return [
-      PopupMenuButton<void>(
+      PageMoreMenu(
         key: const Key('record-menu-more'),
-        tooltip: '더보기',
         enabled: ready,
-        icon: const Icon(Icons.more_horiz),
         itemBuilder: (context) => [
           PopupMenuItem<void>(
             key: const Key('record-menu-load-draft'),
@@ -624,10 +623,9 @@ class _RecordMenuPageState extends State<RecordMenuPage> {
             ),
         ],
       ),
-      IconButton(
-        tooltip: widget.addLabel,
+      PageAddButton(
+        label: widget.addLabel,
         onPressed: ready ? _showForm : null,
-        icon: const Icon(Icons.add),
       ),
     ];
   }
