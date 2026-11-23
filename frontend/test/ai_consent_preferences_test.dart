@@ -161,7 +161,11 @@ void main() {
         home: Scaffold(body: AiConsentSection(preferences: p)),
       ),
     );
-    expect(find.byType(Switch), findsNWidgets(3));
+    // Every feature except 학교 질문, which never sends personal data.
+    expect(
+      find.byType(Switch),
+      findsNWidgets(AiConsentFeature.values.length - 1),
+    );
     expect(find.text('학교 안내는 버튼으로 조회하며 외부 AI에 전송하지 않습니다.'), findsOneWidget);
     await tester.tap(find.byType(Switch).first);
     await tester.pumpAndSettle();
