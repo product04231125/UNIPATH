@@ -7,6 +7,7 @@ import 'package:university_path_frontend/features/records/activity/activity_page
 import 'package:university_path_frontend/features/records/portfolio/job_analysis_page.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
+import 'package:university_path_frontend/features/settings/settings_page.dart';
 
 /// Real PC screens: QHD and FHD at 100%, FHD at 125% (1536 logical).
 const _qhd = Size(2560, 1440),
@@ -162,5 +163,39 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
+  }
+
+  for (final (size, wide) in [
+    (_qhd, true),
+    (_fhd, true),
+    (const Size(1000, 800), false),
+  ]) {
+    testWidgets('settings use the full width in 3:2 columns at $size: $wide', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(size);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final planning = PlanningRepository();
+      await planning.load();
+      addTearDown(planning.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: SettingsPage(repository: planning)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('settings-wide-columns')),
+        wide ? findsOneWidget : findsNothing,
+      );
+      if (wide) {
+        // No 1120 cap: the right column reaches past the old limit.
+        final right = tester.getRect(
+          find.byKey(const Key('settings-expansion-space')),
+        );
+        expect(right.right, greaterThan(1120));
+      }
+      expect(tester.takeException(), isNull);
+    });
   }
 }
