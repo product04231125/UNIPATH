@@ -1,0 +1,34 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "email": {
+      "default": "",
+      "maxLength": 160,
+      "title": "Email",
+      "type": "string"
+    },
+    "phone": {
+      "default": "",
+      "maxLength": 80,
+      "title": "Phone",
+      "type": "string"
+    },
+    "link": {
+      "default": "",
+      "maxLength": 300,
+      "title": "Link",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "title": "ExportProfile",
+  "type": "object"
+}

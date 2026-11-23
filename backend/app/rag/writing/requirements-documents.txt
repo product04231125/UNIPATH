@@ -1,0 +1,2 @@
+# Optional server dependency for editable DOCX export (not needed for draft generation).
+python-docx==1.2.0
