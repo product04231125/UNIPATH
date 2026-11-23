@@ -89,15 +89,22 @@ class LegacyGraduationPage extends StatelessWidget {
       return FeaturePage(
         title: '졸업 요건',
         body: [
-          if (onOpenSettings != null &&
-              !isPlanningProfileReady(
-                planning?.profile,
-                PlanningProfileNeed.configured,
-              )) ...[
-            PlanningProfileGuide(
-              onOpenSettings: onOpenSettings!,
-              message: '학교·학과·입학연도를 등록하면 졸업 요건을 바로 확인할 수 있습니다.',
-            ),
+          if (onOpenSettings != null) ...[
+            // Missing profile: centered guide. Saved profile: the edit link.
+            if (isPlanningProfileReady(
+              planning?.profile,
+              PlanningProfileNeed.configured,
+            ))
+              PlanningProfileSettingsCta(
+                onOpenSettings: onOpenSettings!,
+                need: PlanningProfileNeed.configured,
+                profile: planning?.profile,
+              )
+            else
+              PlanningProfileGuide(
+                onOpenSettings: onOpenSettings!,
+                message: '학교·학과·입학연도를 등록하면 졸업 요건을 바로 확인할 수 있습니다.',
+              ),
             const SizedBox(height: 16),
           ],
           const SurfaceCard(
