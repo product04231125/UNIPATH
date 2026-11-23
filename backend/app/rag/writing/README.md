@@ -1,8 +1,8 @@
 # 편집 가능한 자기소개서와 포트폴리오
 
-선택한 개인 기록·자료로 한국어 초안을 만들고, 학생이 고친 본문을 실제 Word 문단과 표로 내보낸다.
-`create`는 새 초안, `improve`는 붙여 넣은 원문을 다시 쓰고 변경 이유를 돌려준다. 원본 기록과 파일은
-덮어쓰지 않으며 서버에 초안을 저장하지 않는다.
+선택한 개인 기록·자료로 한국어 초안을 만들고, 학생이 고친 본문을 실제 Word 문단과 표 또는 A4 PDF로
+내보낸다. `create`는 새 초안, `improve`는 붙여 넣은 원문을 다시 쓰고 변경 이유를 돌려준다. 원본 기록과
+파일은 덮어쓰지 않는다. 초안은 학생이 저장을 눌렀을 때만 계정에 저장한다(`writing_documents`).
 
 API 계약은 [docs/api/writing.md](../../../../docs/api/writing.md)에 있다. 앱 화면은 `자료 → 자기소개서·포트폴리오`
 (`frontend/lib/features/writing/`)이다.
@@ -14,9 +14,12 @@ API 계약은 [docs/api/writing.md](../../../../docs/api/writing.md)에 있다. 
 | `contracts.py` | 요청, 초안(인용 포함), 내보낼 편집본(인용 없음), 내보내기 프로필 계약 |
 | `service.py` | 동의 검사, 기록 고르기·가림, 모델 호출, 인용·원문 검증(틀린 부분만 제외) |
 | `docx_export.py` | A4·맑은 고딕 DOCX 생성, 외부 통신 없음 |
-| `api.py` | `POST /me/writing-drafts`, `POST /me/writing-exports` |
+| `pdf_export.py` | A4 PDF 생성(ReportLab, 나눔고딕 포함), 외부 통신 없음 |
+| `documents.py` | 저장한 문서 목록·조회·저장·수정·삭제(본인만, 버전 확인) |
+| `api.py` | `POST /me/writing-drafts`, `POST /me/writing-exports`, `/me/writing-documents` |
 
-`python-docx`는 backend 기본 의존성이다(`pyproject.toml`).
+`python-docx`·`reportlab`은 backend 기본 의존성이다(`pyproject.toml`). PDF 글꼴은 이미지에 설치한
+`fonts-nanum`을 쓴다. 글꼴이 없는 개발 환경에서는 PDF 테스트를 건너뛰고, 통합 테스트(이미지 안)에서 확인한다.
 
 ## 검증 원칙
 

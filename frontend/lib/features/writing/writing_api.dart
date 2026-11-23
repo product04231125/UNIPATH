@@ -7,7 +7,7 @@ import '../api/academic_guidance_models.dart';
 import '../api/student_api.dart';
 import '../assistant/ai_record_catalog.dart';
 import '../auth/auth_api.dart';
-import '../auth/word_export_gateway.dart';
+import '../auth/file_export_gateway.dart';
 
 List<T> _rows<T>(Object? value, T Function(Map<String, dynamic>) parse) => [
   for (final v in (value ?? const []) as List)
@@ -139,6 +139,12 @@ class WritingRevision {
       reason = json['reason'] as String;
   final String originalExcerpt, reason;
   final int sectionIndex;
+
+  Map<String, Object?> toJson() => {
+    'original_excerpt': originalExcerpt,
+    'section_index': sectionIndex,
+    'reason': reason,
+  };
 }
 
 class WritingDraft {
@@ -166,6 +172,28 @@ class WritingDraft {
         if (s.paragraphs.isNotEmpty || s.facts.isNotEmpty) s.toJson(),
     ],
   };
+
+  /// What is saved on the server: non-empty sections with their citations, the model's
+  /// questions and revision notes that still point at a kept section.
+  Map<String, Object?> toStoredJson() {
+    final kept = <int, int>{};
+    for (var i = 0; i < sections.length; i++) {
+      final s = sections[i];
+      if (s.paragraphs.isNotEmpty || s.facts.isNotEmpty) kept[i] = kept.length;
+    }
+    return {
+      'sections': [for (final i in kept.keys) sections[i].toJson()],
+      'questions_for_user': questionsForUser,
+      'revisions': [
+        for (final r in revisions)
+          if (kept[r.sectionIndex] case final index?)
+            {...r.toJson(), 'section_index': index},
+      ],
+    };
+  }
+
+  bool get isEmpty =>
+      sections.every((s) => s.paragraphs.isEmpty && s.facts.isEmpty);
 
   String get plainText => [
     for (final s in sections)
@@ -255,25 +283,132 @@ class WritingApi {
     }))!,
   );
 
-  /// The student's edited draft as a Word file. No model call.
-  Future<Uint8List> exportWord(
+  /// The student's edited draft as a Word file or PDF. No model call.
+  Future<Uint8List> exportFile(
     WritingType type,
-    WritingDraft draft, {
+    WritingDraft draft,
+    ExportFormat format, {
     required String name,
     String email = '',
     String phone = '',
     String link = '',
   }) async {
-    if (api.api case final WordExportGateway gateway) {
-      return gateway.exportWord('me/writing-exports', {
+    if (api.api case final FileExportGateway gateway) {
+      return gateway.exportFile('me/writing-exports', {
         'document_type': type.value,
+        'format': format.extension,
         'draft': draft.toExportJson(),
         'profile': {'name': name, 'email': email, 'phone': phone, 'link': link},
         'reviewed': true,
-      });
+      }, format);
     }
-    throw const AuthFailure('Word 파일은 로그인한 뒤 받을 수 있습니다.');
+    throw AuthFailure('${format.label} 파일은 로그인한 뒤 받을 수 있습니다.');
   }
+}
+
+class WritingDocumentSummary {
+  WritingDocumentSummary.fromJson(Map<String, dynamic> json)
+    : id = json['id'] as String,
+      title = json['title'] as String,
+      type = WritingType.parse(json['document_type'] as String?),
+      version = json['version'] as int,
+      updatedAt = DateTime.tryParse(json['updated_at'] as String? ?? '');
+  final String id, title;
+  final WritingType type;
+  final int version;
+  final DateTime? updatedAt;
+}
+
+/// A draft saved on the server: the form, the edited sections and the citation labels.
+class WritingDocument extends WritingDocumentSummary {
+  WritingDocument.fromJson(super.json)
+    : input = WritingInput.fromJson(
+        Map<String, dynamic>.from(json['input'] as Map),
+      ),
+      draft = WritingDraft.fromJson(
+        Map<String, dynamic>.from(json['draft'] as Map),
+      ),
+      labels = Map<String, String>.from(json['labels'] as Map? ?? const {}),
+      super.fromJson();
+  final WritingInput input;
+  final WritingDraft draft;
+  final Map<String, String> labels;
+}
+
+class WritingDocumentApi {
+  const WritingDocumentApi(this.api);
+  final ApiGateway api;
+  static const _path = 'me/writing-documents';
+
+  Future<List<WritingDocumentSummary>> list() async => _rows(
+    (await api.request('GET', _path))!['items'],
+    WritingDocumentSummary.fromJson,
+  );
+
+  Future<WritingDocument> get(String id) async =>
+      WritingDocument.fromJson((await api.request('GET', '$_path/$id'))!);
+
+  Map<String, Object?> _body(
+    String title,
+    WritingInput input,
+    WritingDraft draft,
+    Map<String, String> labels,
+  ) => {
+    'title': title,
+    'input': input.toJson(),
+    'draft': draft.toStoredJson(),
+    'labels': labels,
+  };
+
+  Future<WritingDocument> create(
+    String title,
+    WritingInput input,
+    WritingDraft draft,
+    Map<String, String> labels,
+  ) async => WritingDocument.fromJson(
+    (await api.request('POST', _path, _body(title, input, draft, labels)))!,
+  );
+
+  Future<WritingDocument> update(
+    String id, {
+    required int expectedVersion,
+    required String title,
+    required WritingInput input,
+    required WritingDraft draft,
+    required Map<String, String> labels,
+  }) async => WritingDocument.fromJson(
+    (await api.request('PUT', '$_path/$id', {
+      ..._body(title, input, draft, labels),
+      'expected_version': expectedVersion,
+    }))!,
+  );
+
+  Future<void> delete(String id, {required int expectedVersion}) =>
+      api.request('DELETE', '$_path/$id?expected_version=$expectedVersion');
+}
+
+/// The draft being edited on this device, with the saved document it came from (if any).
+class WritingSession {
+  const WritingSession({
+    required this.input,
+    required this.result,
+    required this.draft,
+    required this.labels,
+    this.title = '',
+    this.documentId,
+    this.documentVersion,
+    this.savedSnapshot,
+  });
+  final WritingInput input;
+  final WritingResult result;
+  final WritingDraft draft;
+  final Map<String, String> labels;
+  final String title;
+  final String? documentId;
+  final int? documentVersion;
+
+  /// The title and sections as last saved on the server, to tell unsaved edits apart.
+  final String? savedSnapshot;
 }
 
 /// The latest draft and its edits, kept only on this device until the student starts another.
@@ -284,42 +419,45 @@ class WritingSessionStore {
   final Future<bool> Function(String key, String value)? writer;
   String get key => 'university_path.writing.$ownerId.v1';
 
-  Future<(WritingInput, WritingResult, WritingDraft, Map<String, String>)?>
-  load() async {
+  Future<WritingSession?> load() async {
     try {
       final value =
           await (reader?.call(key) ??
               SharedPreferences.getInstance().then((p) => p.getString(key)));
       if (value == null) return null;
       final json = Map<String, dynamic>.from(jsonDecode(value) as Map);
-      return (
-        WritingInput.fromJson(Map<String, dynamic>.from(json['input'] as Map)),
-        WritingResult.fromJson(
+      return WritingSession(
+        input: WritingInput.fromJson(
+          Map<String, dynamic>.from(json['input'] as Map),
+        ),
+        result: WritingResult.fromJson(
           Map<String, dynamic>.from(json['result'] as Map),
         ),
-        WritingDraft.fromJson(Map<String, dynamic>.from(json['draft'] as Map)),
-        Map<String, String>.from(json['labels'] as Map? ?? const {}),
+        draft: WritingDraft.fromJson(
+          Map<String, dynamic>.from(json['draft'] as Map),
+        ),
+        labels: Map<String, String>.from(json['labels'] as Map? ?? const {}),
+        title: json['title'] as String? ?? '',
+        documentId: json['document_id'] as String?,
+        documentVersion: json['document_version'] as int?,
+        savedSnapshot: json['saved_snapshot'] as String?,
       );
     } catch (_) {
       return null;
     }
   }
 
-  Future<void> save(
-    WritingInput input,
-    WritingResult result,
-    WritingDraft draft,
-    Map<String, String> labels,
-  ) async {
+  Future<void> save(WritingSession session) async {
     final value = jsonEncode({
-      'input': input.toJson(),
-      'result': result.raw,
-      'draft': {
-        ...draft.toExportJson(),
-        'questions_for_user': draft.questionsForUser,
-      },
+      'input': session.input.toJson(),
+      'result': session.result.raw,
+      'draft': session.draft.toStoredJson(),
       // Record titles for the 근거 list; the records themselves stay on the server.
-      'labels': labels,
+      'labels': session.labels,
+      'title': session.title,
+      'document_id': session.documentId,
+      'document_version': session.documentVersion,
+      'saved_snapshot': session.savedSnapshot,
     });
     try {
       await (writer?.call(key, value) ??
@@ -336,4 +474,11 @@ String writingFailureMessage(Object error) => switch (error) {
   AuthFailure(:final message) => message,
   StateError(:final message) => message,
   _ => '응답을 확인하지 못했습니다. 입력은 그대로 두었습니다. 다시 시도하세요.',
+};
+
+/// Saving or deleting a document someone changed elsewhere (another tab or device).
+String documentFailureMessage(Object error) => switch (error) {
+  AuthFailure(status: 409) => '다른 곳에서 바뀐 문서입니다. 목록에서 다시 열어 주세요.',
+  AuthFailure(status: 404) => '이미 지워진 문서입니다. 다시 저장하면 새 문서로 저장합니다.',
+  _ => writingFailureMessage(error),
 };

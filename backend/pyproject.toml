@@ -16,6 +16,8 @@ dependencies = [
   "requests>=2.32,<3",
   # Editable Word export of 자기소개서·포트폴리오 drafts.
   "python-docx>=1.2,<2",
+  # A4 PDF export with an embedded Korean TrueType font (fonts-nanum in the image).
+  "reportlab>=4.4,<5",
 ]
 
 [dependency-groups]

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'guidance_asset_gateway.dart';
-import 'word_export_gateway.dart';
+import 'file_export_gateway.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -588,14 +588,18 @@ class AuthApi implements AuthGateway, ApiGateway {
 }
 
 class _OwnerGateway
-    implements ApiGateway, GuidanceAssetGateway, WordExportGateway {
+    implements ApiGateway, GuidanceAssetGateway, FileExportGateway {
   const _OwnerGateway(this.auth, this.ownerId, this.epoch);
   final AuthApi auth;
   final String ownerId;
   final int epoch;
 
   @override
-  Future<Uint8List> exportWord(String path, Map<String, Object?> body) async {
+  Future<Uint8List> exportFile(
+    String path,
+    Map<String, Object?> body,
+    ExportFormat format,
+  ) async {
     void check() {
       if (!auth._ownsSession(ownerId, epoch)) {
         throw const AuthFailure('계정이 변경되었습니다. 다시 로그인해 주세요.', status: 403);
@@ -622,26 +626,21 @@ class _OwnerGateway
           401 => '다시 로그인해 주세요.',
           422 => '문서 내용의 길이와 형식을 확인해 주세요.',
           429 => '요청이 많습니다. 잠시 후 다시 시도해 주세요.',
-          _ => 'Word 파일을 만들지 못했습니다. 다시 시도해 주세요.',
+          503 => '${format.label} 파일을 지금 만들 수 없습니다. 다른 형식으로 받아 주세요.',
+          _ => '${format.label} 파일을 만들지 못했습니다. 다시 시도해 주세요.',
         }, status: response.statusCode);
       }
       final type = response.headers['content-type']?.split(';').first;
       final bytes = response.bodyBytes;
-      // A .docx file is a ZIP archive.
-      if (type != wordMime ||
-          bytes.length < 4 ||
-          bytes[0] != 0x50 ||
-          bytes[1] != 0x4B ||
-          bytes[2] != 3 ||
-          bytes[3] != 4) {
-        throw const AuthFailure('Word 파일 형식을 확인하지 못했습니다.');
+      if (type != format.mime || !format.matches(bytes)) {
+        throw AuthFailure('${format.label} 파일 형식을 확인하지 못했습니다.');
       }
       return bytes;
     } on AuthFailure {
       rethrow;
     } catch (_) {
       check();
-      throw const AuthFailure('Word 파일을 받지 못했습니다. 연결을 확인하고 다시 시도해 주세요.');
+      throw AuthFailure('${format.label} 파일을 받지 못했습니다. 연결을 확인하고 다시 시도해 주세요.');
     }
   }
 

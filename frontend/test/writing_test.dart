@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:university_path_frontend/features/api/student_api.dart';
 import 'package:university_path_frontend/features/assistant/ai_record_catalog.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
-import 'package:university_path_frontend/features/auth/word_export_gateway.dart';
+import 'package:university_path_frontend/features/auth/file_export_gateway.dart';
 import 'package:university_path_frontend/features/career/career_goal.dart';
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
 import 'package:university_path_frontend/features/writing/writing_api.dart';
@@ -51,10 +51,25 @@ Map<String, dynamic> ready() => {
   'notice': '초안입니다. 검토 후 내보내세요.',
 };
 
-class WritingGateway extends ApiGateway implements WordExportGateway {
+class WritingGateway extends ApiGateway implements FileExportGateway {
   final posts = <Map<String, Object?>>[];
-  final exports = <Map<String, Object?>>[];
+  final exports = <(ExportFormat, Map<String, Object?>)>[];
   final results = <Map<String, dynamic>>[];
+  final documents = <String, Map<String, dynamic>>{};
+  final saves = <(String, Map<String, Object?>)>[];
+  var _next = 1;
+
+  Map<String, dynamic> _stored(String id, Map<String, Object?> body, int v) => {
+    'id': id,
+    'title': body['title'],
+    'document_type': (body['input'] as Map)['document_type'],
+    'version': v,
+    'created_at': '2026-11-23T01:00:00+00:00',
+    'updated_at': '2026-11-23T01:0$v:00+00:00',
+    'input': body['input'],
+    'draft': body['draft'],
+    'labels': body['labels'],
+  };
 
   @override
   Future<Map<String, dynamic>?> request(
@@ -70,16 +85,73 @@ class WritingGateway extends ApiGateway implements WordExportGateway {
         'category_label': '소프트웨어',
       };
     }
+    if (path == 'me/writing-documents') {
+      if (method == 'GET') {
+        return {
+          'items': [
+            for (final d in documents.values)
+              {
+                for (final k in [
+                  'id',
+                  'title',
+                  'document_type',
+                  'version',
+                  'updated_at',
+                ])
+                  k: d[k],
+              },
+          ],
+        };
+      }
+      expect(method, 'POST');
+      saves.add((method, body!));
+      final id = 'doc-${_next++}';
+      return documents[id] = _stored(id, body, 1);
+    }
+    if (path.startsWith('me/writing-documents/')) {
+      final uri = Uri.parse(path);
+      final id = uri.pathSegments.last;
+      final current = documents[id];
+      if (current == null) throw const AuthFailure('없음', status: 404);
+      switch (method) {
+        case 'GET':
+          return current;
+        case 'PUT':
+          if (body!['expected_version'] != current['version']) {
+            throw const AuthFailure('충돌', status: 409);
+          }
+          saves.add((method, body));
+          return documents[id] = _stored(
+            id,
+            body,
+            (current['version'] as int) + 1,
+          );
+        case 'DELETE':
+          expect(
+            uri.queryParameters['expected_version'],
+            '${current['version']}',
+          );
+          documents.remove(id);
+          return null;
+      }
+    }
     expect((method, path), ('POST', 'me/writing-drafts'));
     posts.add(body!);
     return results.removeAt(0);
   }
 
   @override
-  Future<Uint8List> exportWord(String path, Map<String, Object?> body) async {
+  Future<Uint8List> exportFile(
+    String path,
+    Map<String, Object?> body,
+    ExportFormat format,
+  ) async {
     expect(path, 'me/writing-exports');
-    exports.add(body);
-    return Uint8List.fromList([0x50, 0x4B, 3, 4]);
+    expect(body['format'], format.extension);
+    exports.add((format, body));
+    return Uint8List.fromList(
+      format == ExportFormat.pdf ? '%PDF-1.4'.codeUnits : [0x50, 0x4B, 3, 4],
+    );
   }
 }
 
@@ -88,10 +160,11 @@ Future<(WritingGateway, Map<String, String>, List<String>)> mountWriting(
   List<Map<String, dynamic>> results = const [],
   Map<String, String> saved = const {},
   WritingRequest? request,
+  WritingGateway? gateway,
 }) async {
   await tester.binding.setSurfaceSize(const Size(1280, 2400));
   addTearDown(() => tester.binding.setSurfaceSize(null));
-  final api = WritingGateway()..results.addAll(results);
+  final api = (gateway ?? WritingGateway())..results.addAll(results);
   final consent = AiConsentPreferences(
     ownerId: 'owner',
     reader: (_) async => null,
@@ -122,7 +195,8 @@ Future<(WritingGateway, Map<String, String>, List<String>)> mountWriting(
             },
           ),
           loadRecords: () async => [record],
-          saveFile: (bytes, name) async {
+          saveFile: (bytes, name, format) async {
+            expect(format.matches(bytes), isTrue);
             files.add(name);
             return true;
           },
@@ -227,7 +301,8 @@ void main() {
     await tapKey(tester, 'writing-export-reviewed');
     await tapKey(tester, 'writing-export-confirm');
 
-    final body = api.exports.single;
+    final (format, body) = api.exports.single;
+    expect(format, ExportFormat.docx);
     expect(body['document_type'], 'cover_letter');
     expect(body['reviewed'], true);
     expect((body['profile'] as Map)['name'], '가상 지원자');
@@ -235,6 +310,69 @@ void main() {
     expect(section['heading'], '지원 직무와 관련된 경험을 적어 주세요.');
     expect(files, ['cover-letter.docx']);
     expect(find.text('Word 파일을 저장했습니다.'), findsOneWidget);
+
+    await tapKey(tester, 'writing-export-pdf');
+    expect(find.text('자기소개서 PDF로 받기'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('writing-export-name')),
+      '가상 지원자',
+    );
+    await tapKey(tester, 'writing-export-reviewed');
+    await tapKey(tester, 'writing-export-confirm');
+    expect(api.exports.last.$1, ExportFormat.pdf);
+    expect(files, ['cover-letter.docx', 'cover-letter.pdf']);
+    expect(find.text('PDF 파일을 저장했습니다.'), findsOneWidget);
+  });
+
+  testWidgets('초안을 계정에 저장하고 다른 기기에서 열어 고친 뒤 삭제한다', (tester) async {
+    final (api, storage, _) = await mountWriting(tester, results: [ready()]);
+    expect(find.text('초안을 만든 뒤 저장하면 여기에서 다시 열 수 있습니다.'), findsOneWidget);
+    await tapKey(tester, 'writing-run');
+    expect(find.text('프론트엔드 개발 자기소개서'), findsOneWidget);
+    expect(find.text('아직 저장하지 않은 초안'), findsOneWidget);
+
+    await tapKey(tester, 'writing-save');
+    final (_, created) = api.saves.single;
+    expect(created['title'], '프론트엔드 개발 자기소개서');
+    expect((created['input'] as Map)['target_role'], '프론트엔드 개발');
+    final paragraph =
+        (((created['draft'] as Map)['sections'] as List).single
+                as Map)['paragraphs']
+            as List;
+    expect((paragraph.single as Map)['citations'], hasLength(1));
+    expect(created['labels'], {'exp-id': '경험 · 합성 캡스톤 프로젝트'});
+    expect(find.text('저장됨'), findsOneWidget);
+    expect(find.text('저장한 문서 1개'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('writing-paragraph-0-0')),
+      '고친 문장',
+    );
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('저장하지 않은 변경이 있습니다'), findsOneWidget);
+    await tapKey(tester, 'writing-save');
+    expect(api.saves.last.$1, 'PUT');
+    expect(api.saves.last.$2['expected_version'], 1);
+    expect(api.documents['doc-1']!['version'], 2);
+    expect(find.text('저장됨'), findsOneWidget);
+    expect(storage.values.single, contains('"document_id":"doc-1"'));
+    await tester.pumpWidget(const SizedBox());
+
+    // Another device: nothing on this device, the saved document on the server.
+    await mountWriting(tester, gateway: api);
+    expect(find.text('프론트엔드 개발 자기소개서'), findsOneWidget);
+    await tapKey(tester, 'writing-open-doc-1');
+    expect(find.text('고친 문장'), findsOneWidget);
+    expect(find.text('저장됨'), findsOneWidget);
+    expect(find.text('저장한 문서를 열었습니다.'), findsOneWidget);
+
+    await tapKey(tester, 'writing-delete-doc-1');
+    await tapKey(tester, 'writing-delete-confirm');
+    expect(api.documents, isEmpty);
+    expect(find.text('저장한 문서 0개'), findsOneWidget);
+    // The open copy stays as an unsaved draft.
+    expect(find.text('고친 문장'), findsOneWidget);
+    expect(find.text('아직 저장하지 않은 초안'), findsOneWidget);
   });
 
   testWidgets('근거를 확인하지 못해 실패하면 이유를 보여 주고 입력을 유지한다', (tester) async {
@@ -264,9 +402,10 @@ void main() {
   test('Word 내보내기는 로그인한 계정의 연결에서만 한다', () async {
     final api = StudentApi(_PlainGateway(), ownerId: 'owner');
     await expectLater(
-      WritingApi(api).exportWord(
+      WritingApi(api).exportFile(
         WritingType.portfolio,
         const WritingDraft(sections: []),
+        ExportFormat.pdf,
         name: '가상',
       ),
       throwsA(isA<AuthFailure>()),

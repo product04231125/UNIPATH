@@ -274,3 +274,33 @@ def test_docx_has_edited_content_no_protection_and_no_review_notes(kind):
         assert "record_id" not in xml and "README에 실행 방법을 정리했다." not in xml
         assert b"documentProtection" not in archive.read("word/settings.xml")
         assert not any("vbaProject" in name for name in archive.namelist())
+
+
+def test_pdf_is_a4_with_edited_text_and_no_review_notes():
+    from app.rag.writing import pdf_export
+
+    try:
+        pdf_export.font_files()
+    except pdf_export.FontUnavailable:
+        pytest.skip("fonts-nanum is installed in the backend image; integration tests cover it")
+    pdfplumber = pytest.importorskip("pdfplumber")
+    data = output()
+    data["sections"][0]["paragraphs"][0]["text"] = "사용자가 고친 문장 <b>굵게</b> & 끝"
+    data["sections"][1]["paragraphs"].append({"text": "직접 추가한 문단"})
+    with pytest.raises(ValueError, match="Review"):
+        pdf_export.export_pdf(data, {"name": "가상"}, document_type="portfolio")
+    raw = pdf_export.export_pdf(
+        data,
+        {"name": "가상 지원자", "email": "synthetic@example.test"},
+        document_type="portfolio",
+        reviewed=True,
+    )
+    assert raw.startswith(b"%PDF-")
+    with pdfplumber.open(BytesIO(raw)) as pdf:
+        page = pdf.pages[0]
+        assert (round(page.width), round(page.height)) == (595, 842)
+        text = "\n".join(p.extract_text() or "" for p in pdf.pages)
+    assert "가상 지원자 포트폴리오" in text
+    assert "사용자가 고친 문장 <b>굵게</b> & 끝" in text and "직접 추가한 문단" in text
+    assert "2026년 3월부터 6월" in text  # fact rows become a table
+    assert "지원 동기를 알려주세요" not in text and "README에 실행 방법을 정리했다." not in text

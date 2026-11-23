@@ -4,13 +4,17 @@ import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
 
-import '../auth/word_export_gateway.dart';
+import '../auth/file_export_gateway.dart';
 
 /// Browser download; no token or server URL is placed in the link.
-Future<bool> saveWordFile(Uint8List bytes, String filename) async {
+Future<bool> saveExportFile(
+  Uint8List bytes,
+  String filename,
+  ExportFormat format,
+) async {
   final blob = web.Blob(
     <JSAny>[bytes.toJS].toJS,
-    web.BlobPropertyBag(type: wordMime),
+    web.BlobPropertyBag(type: format.mime),
   );
   final url = web.URL.createObjectURL(blob);
   final anchor = web.HTMLAnchorElement()
