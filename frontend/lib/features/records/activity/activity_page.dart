@@ -21,6 +21,7 @@ import '../personal_record_fields.dart';
 import '../personal_record_form.dart';
 import '../personal_record_repository.dart';
 import '../personal_repository_scope.dart';
+import '../../../shared/widgets/page_actions.dart';
 
 enum _ActivityAddChoice { volunteer, project, intern, club, other }
 
@@ -354,11 +355,9 @@ class _ActivityPageState extends State<ActivityPage> {
   List<Widget> _headerActions(bool serverBacked) {
     final ready = !_loading && !_loadFailed;
     return [
-      PopupMenuButton<void>(
+      PageMoreMenu(
         key: const Key('activity-more'),
-        tooltip: '더보기',
         enabled: ready,
-        icon: const Icon(Icons.more_horiz),
         itemBuilder: (context) => [
           PopupMenuItem<void>(
             key: const Key('activity-load-draft'),
@@ -380,11 +379,7 @@ class _ActivityPageState extends State<ActivityPage> {
             ),
         ],
       ),
-      IconButton(
-        tooltip: '활동 추가',
-        onPressed: ready ? _add : null,
-        icon: const Icon(Icons.add),
-      ),
+      PageAddButton(label: '활동 추가', onPressed: ready ? _add : null),
     ];
   }
 
