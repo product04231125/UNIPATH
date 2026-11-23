@@ -34,17 +34,20 @@ class AppLocation {
   /// Open this tab instead of adding a new profile-edit route.
   static const settingsPath = '/settings';
 
+  /// Same order as [StudentPages]; career pages first, 수강·졸업 under `/academics`.
   static const menuPaths = [
     '/home',
-    '/schedule',
-    '/courses',
-    '/graduation',
+    '/job-postings',
     '/activities',
     '/credentials',
     '/portfolio',
-    '/job-postings',
+    '/schedule',
+    '/academics',
     settingsPath,
   ];
+
+  /// 학사 tab for the old `/courses` and `/graduation` links (0 수강 관리, 1 졸업 요건).
+  int get academicTab => path == '/graduation' ? 1 : 0;
 
   /// Workspace / AppNavigation menu index for [settingsPath].
   static int get settingsMenu => menuPaths.indexOf(settingsPath);
@@ -58,11 +61,12 @@ class AppLocation {
 
   final String path;
   int? get menu {
-    final normalized = path == '/'
-        ? '/home'
-        : path == '/experiences'
-        ? '/activities'
-        : path;
+    final normalized = switch (path) {
+      '/' => '/home',
+      '/experiences' => '/activities',
+      '/courses' || '/graduation' => '/academics',
+      _ => path,
+    };
     final index = menuPaths.indexOf(normalized);
     return index < 0 ? null : index;
   }
@@ -483,6 +487,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
           integratedTitleBar: true,
           assistantFactory: assistantFactory,
           selectedPage: menu ?? 0,
+          academicTab: _location.academicTab,
           onPageChanged: (value) => _select(context, value),
           onSignedOut: () => _signedOut(context),
           beforeSignedOut: authGateway.logout,
@@ -628,6 +633,7 @@ class AppNavigation extends RouterDelegate<AppLocation>
         integratedTitleBar: true,
         assistantFactory: assistantFactory,
         selectedPage: menu!,
+        academicTab: _location.academicTab,
         onPageChanged: (value) => _select(context, value),
         onSignedOut: () => _signedOut(context),
         beforeSignedOut: _identity == null ? null : _auth.logout,

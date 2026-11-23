@@ -12,6 +12,7 @@ import '../../api/guidance_api.dart';
 import '../../api/job_analysis_models.dart';
 import '../../assistant/ai_record_catalog.dart';
 import '../../auth/auth_api.dart';
+import '../../career/career_goal.dart';
 import '../../auth/guest_preview_scope.dart';
 import '../../settings/ai_consent_preferences.dart';
 import '../../settings/ai_consent_section.dart';
@@ -80,6 +81,7 @@ class JobAnalysisPage extends StatefulWidget {
     this.loadRecords,
     this.loadMaterials,
     this.loadDocuments,
+    this.careerGoal,
   });
   final Future<XFile?> Function()? pickFile;
   final StudentApi? api;
@@ -89,6 +91,9 @@ class JobAnalysisPage extends StatefulWidget {
   final Future<List<AssistantMaterial>> Function()? loadMaterials;
   final Future<List<GuidanceDocument>> Function(List<String> ids)?
   loadDocuments;
+
+  /// Saved target job; fills the 공고 찾기 search form.
+  final CareerGoalController? careerGoal;
   @override
   State<JobAnalysisPage> createState() => _JobAnalysisPageState();
 }
@@ -109,8 +114,22 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
       _connected && !GuestPreviewScope.isActive(context) && !_sending;
 
   @override
+  void initState() {
+    super.initState();
+    widget.careerGoal?.addListener(_goalChanged);
+  }
+
+  void _goalChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void didUpdateWidget(covariant JobAnalysisPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.careerGoal, widget.careerGoal)) {
+      oldWidget.careerGoal?.removeListener(_goalChanged);
+      widget.careerGoal?.addListener(_goalChanged);
+    }
     if (oldWidget.api?.ownerId != widget.api?.ownerId ||
         !identical(oldWidget.api?.api, widget.api?.api) ||
         !identical(oldWidget.consent, widget.consent)) {
@@ -128,6 +147,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
 
   @override
   void dispose() {
+    widget.careerGoal?.removeListener(_goalChanged);
     _posting.dispose();
     super.dispose();
   }
@@ -149,9 +169,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
     setState(() => _sending = true);
     var readingRecords = true;
     try {
-      final records =
-          await (widget.loadRecords?.call() ??
-              loadAiRecords(api, includeCourses: false));
+      final records = await (widget.loadRecords?.call() ?? loadAiRecords(api));
       if (!mounted ||
           revision != _revision ||
           GuestPreviewScope.isActive(context)) {
@@ -163,7 +181,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
       if (!mounted || revision != _revision) return;
       if (records.isEmpty && documents.isEmpty) {
         setState(
-          () => _error = '비교할 기록이 없습니다. 활동·경험·자격·성과 기록을 추가하거나 내 자료를 골라 주세요.',
+          () => _error = '비교할 기록이 없습니다. 수강·활동·경험·자격·성과 기록을 추가하거나 내 자료를 골라 주세요.',
         );
         return;
       }
@@ -274,7 +292,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
     'analyzer_not_configured' => '분석 모델이 아직 설정되지 않았습니다. 입력을 유지했습니다.',
     'external_processing_consent_required' =>
       'Google 외부 전송 동의를 확인하고 다시 실행해 주세요.',
-    'personal_records_required' => '비교할 활동·경험·자격·성과 기록을 추가해 주세요.',
+    'personal_records_required' => '비교할 수강·활동·경험·자격·성과 기록을 추가해 주세요.',
     'no_requirements_found' => '공고에서 비교할 요건을 찾지 못했습니다.',
     _ => '분석을 완료하지 못했습니다. 입력을 유지하고 다시 시도할 수 있습니다.',
   };
@@ -309,6 +327,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
       _buildAnalysis(context),
       if (_recommendationsVisited)
         JobRecommendationPage(
+          goal: widget.careerGoal?.goal,
           api: widget.api,
           consent: widget.consent,
           loadRecords: widget.loadRecords,
@@ -326,7 +345,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
 
   Widget _buildAnalysis(BuildContext context) => FeaturePage(
     title: '채용공고 분석',
-    description: '공고 본문을 저장된 활동·경험·자격·성과 기록 전체, 고른 내 자료와 비교합니다.',
+    description: '공고 본문을 저장된 수강·활동·경험·자격·성과 기록 전체, 고른 내 자료와 비교합니다.',
     body: [
       _purposeSelector(),
       SurfaceCard(
