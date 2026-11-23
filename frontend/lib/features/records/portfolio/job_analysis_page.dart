@@ -12,6 +12,9 @@ import '../../api/guidance_api.dart';
 import '../../api/job_analysis_models.dart';
 import '../../assistant/ai_record_catalog.dart';
 import '../../auth/auth_api.dart';
+import '../../../shared/pending_ui_action.dart';
+import '../../career/career_gap.dart';
+import '../../career/career_gap_view.dart';
 import '../../career/career_goal.dart';
 import '../../auth/guest_preview_scope.dart';
 import '../../settings/ai_consent_preferences.dart';
@@ -82,6 +85,10 @@ class JobAnalysisPage extends StatefulWidget {
     this.loadMaterials,
     this.loadDocuments,
     this.careerGoal,
+    this.gapStore,
+    this.onAddPlan,
+    this.onGapReport,
+    this.purposeRequest,
   });
   final Future<XFile?> Function()? pickFile;
   final StudentApi? api;
@@ -91,6 +98,14 @@ class JobAnalysisPage extends StatefulWidget {
   final Future<List<AssistantMaterial>> Function()? loadMaterials;
   final Future<List<GuidanceDocument>> Function(List<String> ids)?
   loadDocuments;
+
+  /// 목표 직무 분석: latest report on this device, 일정 추가 and the 홈 summary.
+  final GapReportStore? gapStore;
+  final AddPreparationPlan? onAddPlan;
+  final ValueChanged<GapReport>? onGapReport;
+
+  /// Opens a purpose once (홈 → 목표 직무 분석).
+  final JobPurposeRequest? purposeRequest;
 
   /// Saved target job; fills the 공고 찾기 search form.
   final CareerGoalController? careerGoal;
@@ -106,7 +121,8 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
   String? _error, _requestId;
   JobAnalysisResponse? _result;
   final _materialIds = <String>{};
-  bool _recommendations = false, _recommendationsVisited = false;
+  var _purpose = JobPurpose.posting;
+  final _visited = <JobPurpose>{JobPurpose.posting};
   bool _recommendationBusy = false;
 
   bool get _connected => widget.api != null && widget.consent != null;
@@ -117,6 +133,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
   void initState() {
     super.initState();
     widget.careerGoal?.addListener(_goalChanged);
+    _consumeRequest();
   }
 
   void _goalChanged() {
@@ -126,6 +143,9 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
   @override
   void didUpdateWidget(covariant JobAnalysisPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.purposeRequest, widget.purposeRequest)) {
+      _consumeRequest();
+    }
     if (!identical(oldWidget.careerGoal, widget.careerGoal)) {
       oldWidget.careerGoal?.removeListener(_goalChanged);
       widget.careerGoal?.addListener(_goalChanged);
@@ -302,30 +322,42 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        for (final entry in const {
-          false: '공고 1개 비교',
-          true: '내 자료로 공고 찾기',
-        }.entries)
+        for (final purpose in JobPurpose.values)
           ChoiceChip(
-            label: Text(entry.value),
-            selected: _recommendations == entry.key,
+            key: ValueKey('job-purpose-${purpose.name}'),
+            label: Text(purpose.label),
+            selected: _purpose == purpose,
             onSelected: _sending || _recommendationBusy
                 ? null
-                : (_) => setState(() {
-                    _recommendations = entry.key;
-                    if (entry.key) _recommendationsVisited = true;
-                  }),
+                : (_) => _select(purpose),
           ),
       ],
     ),
   );
 
+  void _select(JobPurpose purpose) => setState(() {
+    _purpose = purpose;
+    _visited.add(purpose);
+  });
+
+  void _consumeRequest() {
+    final request = widget.purposeRequest;
+    if (request != null && request.consume()) {
+      _purpose = request.purpose;
+      _visited.add(request.purpose);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => IndexedStack(
-    index: _recommendations ? 1 : 0,
+    index: switch (_purpose) {
+      JobPurpose.posting => 0,
+      JobPurpose.search => 1,
+      JobPurpose.gap => 2,
+    },
     children: [
       _buildAnalysis(context),
-      if (_recommendationsVisited)
+      if (_visited.contains(JobPurpose.search))
         JobRecommendationPage(
           goal: widget.careerGoal?.goal,
           api: widget.api,
@@ -337,6 +369,19 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
           onBusyChanged: (busy) {
             if (mounted) setState(() => _recommendationBusy = busy);
           },
+        )
+      else
+        const SizedBox.shrink(),
+      if (_visited.contains(JobPurpose.gap))
+        CareerGapView(
+          api: widget.api,
+          consent: widget.consent,
+          careerGoal: widget.careerGoal,
+          store: widget.gapStore,
+          loadRecords: widget.loadRecords,
+          onAddPlan: widget.onAddPlan,
+          onReport: widget.onGapReport,
+          purposeSelector: _purposeSelector(),
         )
       else
         const SizedBox.shrink(),
@@ -474,4 +519,19 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
       ),
     ],
   );
+}
+
+/// What 채용공고 분석 shows; 공고 1개 비교 stays the default.
+enum JobPurpose {
+  gap('목표 직무 분석'),
+  posting('공고 1개 비교'),
+  search('내 자료로 공고 찾기');
+
+  const JobPurpose(this.label);
+  final String label;
+}
+
+class JobPurposeRequest extends PendingUiAction {
+  JobPurposeRequest(this.purpose);
+  final JobPurpose purpose;
 }

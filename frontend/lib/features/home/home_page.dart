@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app_shell/phone_shell.dart';
@@ -9,6 +10,8 @@ import '../../shared/widgets/surface_card.dart';
 
 import '../auth/guest_preview_scope.dart';
 import '../career/career_goal.dart';
+import '../career/career_gap.dart';
+import '../career/career_gap_summary_card.dart';
 import '../career/career_goal_card.dart';
 import '../planning/planning_dates.dart';
 import '../planning/planning_repository.dart';
@@ -24,11 +27,17 @@ class HomePage extends StatelessWidget {
     required this.onOpenSchedule,
     required this.onAddSchedule,
     this.careerGoal,
+    this.gapReport,
+    this.onOpenCareerGap,
   });
   final PlanningRepository repository;
 
   /// Target job card on top; absent in guest preview and isolated tests.
   final CareerGoalController? careerGoal;
+
+  /// Latest 목표 직무 분석 kept on this device, and how to open the full analysis.
+  final ValueListenable<GapReport?>? gapReport;
+  final VoidCallback? onOpenCareerGap;
   final ValueChanged<int> onOpenPage;
   final VoidCallback onOpenSettings;
   final ValueChanged<DateTime> onOpenSchedule;
@@ -71,6 +80,13 @@ class HomePage extends StatelessWidget {
                   controller: goal,
                   onFindJobs: () => onOpenPage(StudentPages.jobs),
                 ),
+                SizedBox(height: FeatureLine.slotGap(context)),
+              ],
+              if ((gapReport, onOpenCareerGap) case (
+                final report?,
+                final open?,
+              )) ...[
+                CareerGapSummaryCard(report: report, onOpen: open),
                 SizedBox(height: FeatureLine.slotGap(context)),
               ],
               WeeklySchedule(

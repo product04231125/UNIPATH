@@ -42,6 +42,7 @@ from app.core.config import Settings, get_settings
 from app.core.database import create_session_factory
 from app.core.errors import register_error_handlers
 from app.rag.career.api import router as career_recommendation_router
+from app.rag.career.gap import GAP_TIMEOUT_SECONDS
 from app.schemas.common import ErrorResponse
 from app.schemas.health import HealthResponse
 from app.services import gemini
@@ -65,6 +66,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         application.state.job_analyzer = gemini.create_job_analyzer(guidance_model)
         # Posting recommendations share the job-analysis model and settings (D2).
         application.state.portfolio_analyzer = application.state.job_analyzer
+        # Gap analysis reads up to 8 postings in one call: same model, longer timeout.
+        application.state.gap_model = gemini.create_model(
+            config, timeout=max(config.vertex_timeout_seconds, GAP_TIMEOUT_SECONDS)
+        )
         try:
             yield
         finally:

@@ -2,6 +2,7 @@
 
 import base64
 import os
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Request
@@ -20,13 +21,15 @@ from app.services.personalization.context import assemble
 from app.services.personalization.redaction import redact_context
 
 from . import categories
-from .contracts import SearchQuery
+from .contracts import SearchQuery, failure_reason
 from .crawling import Work24Crawler
 from .documents import prepare_documents
+from .gap import COLLECTION_SECONDS, MAX_POSTINGS, analyze_gap
 from .goal import CareerGoalUpdate, CareerGoalView, get_goal, save_goal
 from .greenhouse import Greenhouse
 from .ocr import OcrInputError, OcrUnavailable
 from .recommendations import recommend
+from .service import CareerService
 from .sources import Saramin, Work24
 from .transport import Transport
 
@@ -64,6 +67,127 @@ class RecommendationRequest(PersonalizationRequest):
         if not self.keyword.strip() and not self.category_codes:
             raise ValueError("직무 대분류를 고르거나 세부 검색어를 입력해 주세요.")
         return self
+
+
+class GapAnalysisRequest(PersonalizationRequest):
+    # Every saved record may be sent, like posting recommendations.
+    records: list[PersonalEvidenceSelection] = Field(
+        default_factory=list, max_length=MAX_ANALYSIS_RECORDS
+    )
+    # Empty: use the saved career goal.
+    category_codes: list[OccupationCode] = Field(default_factory=list, max_length=10)
+    keyword: str = Field(default="", max_length=80)
+    external_processing_consent: bool = Field(default=False, strict=True)
+
+    @model_validator(mode="after")
+    def known_codes(self):
+        categories.validate_codes(self.category_codes)
+        return self
+
+
+@router.post("/career-gap-analyses")
+def gap_analyses(
+    payload: GapAnalysisRequest, request: Request, db: Database, identity: CurrentIdentity
+):
+    """What postings for the target job ask for most, compared with all saved records."""
+    if not payload.external_processing_consent:
+        return {"status": "needs_user_input", "missing_fields": ["external_processing_consent"]}
+    codes, keyword = list(payload.category_codes), payload.keyword.strip()
+    if not codes and not keyword:
+        goal = get_goal(db, identity.user.id)
+        codes, keyword = list(goal.category_codes), goal.keyword
+    if not codes and not keyword:
+        return {"status": "needs_user_input", "missing_fields": ["career_goal"]}
+    if not payload.records:
+        return {"status": "needs_user_input", "missing_fields": ["records"]}
+    model_name = request.app.state.settings.vertex_model
+    model = getattr(request.app.state, "gap_model", None)
+    if model is None:
+        return {"status": "not_configured", "model": model_name}
+    try:
+        query = SearchQuery(
+            keyword,
+            "전국",
+            nationwide=True,
+            limit=10,
+            occupation_codes=tuple(codes),
+        )
+    except ValueError as error:
+        raise AuthError(422, ErrorCode.VALIDATION_ERROR, "목표 직무를 확인해 주세요.") from error
+
+    auth.throttle(db, "career-gap:" + str(identity.user.id), limit=10)
+    context = assemble(db, identity, payload.records)
+    records = redact_context(context, identity).model_dump(mode="json")["records"]
+    owner_id = identity.user.id
+    db.rollback()
+    found = CareerService(
+        configured_sources(), None, analysis_limit=0, budget_seconds=COLLECTION_SECONDS
+    ).recommend(query, {"records": records}, rank_by_records=False)
+    postings = [
+        item["posting"]
+        for item in found["items"]
+        if item["posting"]["text_scope"] != "metadata_only"
+    ][:MAX_POSTINGS]
+    result = {
+        "official": False,
+        "goal": {
+            "category_codes": codes,
+            "keyword": keyword,
+            "label": categories.label(codes) if codes else None,
+        },
+        "postings": [
+            {
+                "posting": index + 1,
+                **{
+                    key: posting[key]
+                    for key in (
+                        "source",
+                        "source_id",
+                        "title",
+                        "company",
+                        "location",
+                        "url",
+                        "closing_label",
+                        "expires_at",
+                    )
+                },
+            }
+            for index, posting in enumerate(postings)
+        ],
+        "sources": found["sources"],
+        "search_notice": found.get("search_notice"),
+        "category_browse_available": found.get("category_browse_available", False),
+        "requirements": [],
+        "summary": None,
+        "warnings": [],
+        "model": model_name,
+        "generated_at": datetime.now(UTC).isoformat(),
+    }
+    if not postings:
+        return {**result, "status": "no_postings"}
+    try:
+        gemini.reserve_call(db, request)
+        requirements, summary, notes = analyze_gap(model, postings, records)
+    except AuthError:
+        raise
+    except Exception as error:
+        gemini.log_failure("gap analysis", error)
+        return {**result, "status": "failed", "failure_reason": failure_reason(error)}
+    db.expire_all()
+    current = auth.current_identity(request, db)
+    if current.user.id != owner_id or assemble(db, current, payload.records) != context:
+        raise conflict()
+    if len(postings) < 3:
+        notes.insert(
+            0, f"목표 직무 공고가 {len(postings)}건만 수집되어 공통 요건이 적게 나올 수 있습니다."
+        )
+    return {
+        **result,
+        "status": "completed",
+        "requirements": requirements,
+        "summary": summary,
+        "warnings": notes[:10],
+    }
 
 
 @router.get("/career-goal", response_model=CareerGoalView)
