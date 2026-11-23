@@ -14,9 +14,13 @@ class WorkLayout extends StatelessWidget {
     required this.input,
     this.result,
     this.placeholder,
+    this.resultFirstWhenStacked = false,
   });
 
   final Widget input;
+
+  /// On narrow screens, put the result (e.g. a list) above the input.
+  final bool resultFirstWhenStacked;
   final Widget? result;
 
   /// Shown in the result column on wide screens before there is a result.
@@ -28,13 +32,16 @@ class WorkLayout extends StatelessWidget {
       final scaler = MediaQuery.textScalerOf(context);
       final width = constraints.maxWidth;
       if (width < scaler.scale(LayoutWidths.wide)) {
+        final parts = [input, ?result];
+        final ordered = resultFirstWhenStacked
+            ? parts.reversed.toList()
+            : parts;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            input,
-            if (result case final shown?) ...[
-              const SizedBox(height: 16),
-              shown,
+            for (var i = 0; i < ordered.length; i++) ...[
+              if (i > 0) const SizedBox(height: 16),
+              ordered[i],
             ],
           ],
         );

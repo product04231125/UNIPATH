@@ -18,6 +18,7 @@ import 'materials_test.dart' show MemoryMaterials;
 import 'guidance_api_test.dart' show CapturingGateway;
 
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
+import 'support/record_actions.dart';
 
 class RecordsGateway extends ApiGateway {
   final paths = <String>[];
@@ -270,9 +271,7 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.ensureVisible(find.widgetWithText(OutlinedButton, '수정'));
-      await tester.tap(find.widgetWithText(OutlinedButton, '수정'));
-      await tester.pumpAndSettle();
+      await tapRecordAction(tester, '수정');
       await tester.enterText(
         find.byKey(const ValueKey('material-title')),
         '수정된 이력서',
@@ -285,9 +284,7 @@ void main() {
         find.descendant(of: row, matching: find.text('수정된 이력서')),
         findsOneWidget,
       );
-      await tester.ensureVisible(find.widgetWithText(FilledButton, '삭제'));
-      await tester.tap(find.widgetWithText(FilledButton, '삭제'));
-      await tester.pumpAndSettle();
+      await tapRecordAction(tester, '삭제');
       await tester.tap(
         find.descendant(
           of: find.byType(AlertDialog),
