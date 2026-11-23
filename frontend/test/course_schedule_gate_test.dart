@@ -47,6 +47,36 @@ void main() {
     expect(find.text('수강 과목 추가'), findsOneWidget);
   });
 
+  for (final (size, sideBySide) in [
+    (const Size(1200, 900), true),
+    (const Size(390, 844), false),
+  ]) {
+    testWidgets('event start and end sit side by side=$sideBySide at $size', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(size);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final planning = PlanningRepository();
+      await planning.load();
+      await tester.pumpWidget(
+        MaterialApp(home: Scaffold(body: SchedulePage(repository: planning))),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));
+      await tester.pumpAndSettle();
+      final start = tester.getRect(find.byKey(const Key('event-start')));
+      final end = tester.getRect(find.byKey(const Key('event-end')));
+      if (sideBySide) {
+        expect(end.top, closeTo(start.top, 0.5));
+        expect(end.left, greaterThan(start.right));
+      } else {
+        expect(end.top, greaterThan(start.bottom));
+        expect(end.left, closeTo(start.left, 0.5));
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('personal events do not wait for an academic profile', (
     tester,
   ) async {
