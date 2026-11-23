@@ -19,6 +19,7 @@ import 'features/graduation/graduation_page.dart';
 import 'features/graduation/personal_calculation_controller.dart';
 import 'app_shell/student_pages.dart';
 import 'features/academics/academics_page.dart';
+import 'features/career/career_gap.dart';
 import 'features/career/career_goal.dart';
 import 'features/home/home_page.dart';
 import 'features/planning/planning_repository.dart';
@@ -147,6 +148,34 @@ class _WorkspaceState extends State<Workspace> {
   late final StudentApi? _personalApi = widget.guestPreview
       ? null
       : widget.studentApi;
+  late final GapReportStore? _gapStore = _personalApi == null
+      ? null
+      : GapReportStore(ownerId: _personalApi.ownerId);
+  final _gapReport = ValueNotifier<GapReport?>(null);
+  JobPurposeRequest? _jobPurposeRequest;
+
+  Future<void> _addPreparationPlan(
+    GapAction action,
+    GapRequirement requirement,
+    DateTime date,
+  ) => _planningRepository.saveEvent(
+    PlanningEvent(
+      id: planningClientId(),
+      title: '${action.title} 목표일',
+      start: DateTime(date.year, date.month, date.day, 9),
+      end: DateTime(date.year, date.month, date.day, 10),
+      category: action.type == 'certificate'
+          ? PlanningEventCategory.deadline
+          : PlanningEventCategory.activity,
+      memo: '${requirement.requirement} 준비 · ${action.detail}',
+    ),
+  );
+
+  void _openCareerGap() {
+    setState(() => _jobPurposeRequest = JobPurposeRequest(JobPurpose.gap));
+    _selectPage(StudentPages.jobs);
+  }
+
   late final CareerGoalController? _careerGoal = _personalApi == null
       ? null
       : (CareerGoalController(_personalApi.api)..load());
@@ -181,6 +210,11 @@ class _WorkspaceState extends State<Workspace> {
   void initState() {
     super.initState();
     _page = widget.selectedPage ?? 0;
+    unawaited(
+      _gapStore?.load().then((report) {
+        if (mounted && report != null) _gapReport.value ??= report;
+      }),
+    );
     _sharedSchoolContext = SharedSchoolContext(
       _planningRepository,
       _assistantConversation,
@@ -291,6 +325,7 @@ class _WorkspaceState extends State<Workspace> {
     _personalClosed = true;
     _personalImporter?.dispose();
     _careerGoal?.dispose();
+    _gapReport.dispose();
     _personalCalculations?.dispose();
     unawaited(_releaseSession().catchError((Object _) {}));
     _assistantButtonFocus.dispose();
@@ -411,6 +446,8 @@ class _WorkspaceState extends State<Workspace> {
       switch (index) {
         StudentPages.home => HomePage(
           careerGoal: _careerGoal,
+          gapReport: _gapStore == null ? null : _gapReport,
+          onOpenCareerGap: _openCareerGap,
           repository: _planningRepository,
           onOpenPage: _selectPage,
           onOpenSettings: () => _selectPage(settingsPage - 1),
@@ -426,6 +463,10 @@ class _WorkspaceState extends State<Workspace> {
         ),
         StudentPages.jobs => JobAnalysisPage(
           careerGoal: _careerGoal,
+          gapStore: _gapStore,
+          onAddPlan: _addPreparationPlan,
+          onGapReport: (report) => _gapReport.value = report,
+          purposeRequest: _jobPurposeRequest,
           api: _personalApi,
           consent: _aiConsent,
           loadMaterials: () => loadAssistantMaterials(_materialRepository),

@@ -43987,6 +43987,134 @@
           }
         }
       }
+    },
+    "/api/v1/me/career-gap-analyses": {
+      "post": {
+        "tags": [
+          "career"
+        ],
+        "summary": "Gap Analyses",
+        "description": "What postings for the target job ask for most, compared with all saved records.",
+        "operationId": "gap_analyses_api_v1_me_career_gap_analyses_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GapAnalysisRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -68508,6 +68636,41 @@
           "version"
         ],
         "title": "CareerGoalView"
+      },
+      "GapAnalysisRequest": {
+        "properties": {
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalEvidenceSelection"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Records"
+          },
+          "category_codes": {
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9]{2}[0-9A-Z]?$"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Category Codes"
+          },
+          "keyword": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Keyword",
+            "default": ""
+          },
+          "external_processing_consent": {
+            "type": "boolean",
+            "title": "External Processing Consent",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "GapAnalysisRequest"
       }
     },
     "securitySchemes": {

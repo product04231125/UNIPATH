@@ -51,11 +51,11 @@ class BoundedModel:
         self._slots = BoundedSemaphore(slots)
         self._wait = wait_seconds
 
-    def generate(self, instruction: str, payload: dict) -> dict:
+    def generate(self, instruction: str, payload: dict, **options) -> dict:
         if not self._slots.acquire(timeout=self._wait):
             raise ProviderFailure("Model capacity is busy", "model_busy")
         try:
-            return self._model.generate(instruction, payload)
+            return self._model.generate(instruction, payload, **options)
         finally:
             self._slots.release()
 

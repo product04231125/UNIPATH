@@ -60,7 +60,7 @@ class VertexJSON:
         self.transport = transport or Transport()
         self.sleep = sleep
 
-    def generate(self, instruction, payload):
+    def generate(self, instruction, payload, *, max_output_tokens=8192):
         # Fail before ADC token refresh when network is disabled.
         if isinstance(self.transport, Transport) and not self.transport.allow_network:
             raise NotConfigured("Vertex network disabled")
@@ -71,7 +71,7 @@ class VertexJSON:
             ],
             "generationConfig": {
                 "temperature": 0,
-                "maxOutputTokens": 8192,
+                "maxOutputTokens": max_output_tokens,
                 "responseMimeType": "application/json",
             },
         }

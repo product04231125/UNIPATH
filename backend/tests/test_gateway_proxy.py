@@ -11,7 +11,10 @@ def test_gateway_fixture_keeps_staging_limits_for_both_templates(template):
     assert "server_name staging-unipath.duckdns.org;" in fixture
     assert "client_max_body_size 2m;" in fixture
     assert "client_max_body_size 12m;" in fixture
-    assert "^/api/v1/me/(job-analyses|job-recommendations|personalized-guidance)$" in fixture
+    assert (
+        "^/api/v1/me/(job-analyses|job-recommendations|personalized-guidance|career-gap-analyses|application-drafts)$"
+        in fixture
+    )
     assert "error_page 413 = @staging_payload_too_large;" in fixture
     assert '"code":"HTTP_ERROR"' in fixture
     assert "ssl_certificate" not in fixture
@@ -32,12 +35,18 @@ def test_product_gateway_matches_staging_limits_with_its_own_upstream():
         server_block(source, "missing.example.invalid")
 
 
-def test_windows_demo_raises_limits_only_for_the_file_routes():
+def test_windows_demo_raises_limits_only_for_the_long_model_routes():
     config = (ROOT / "deploy/windows-demo/nginx.conf").read_text()
-    assert config.count("client_max_body_size 12m;") == 3
-    assert config.count("proxy_read_timeout 180s;") == 3
-    for path in ("job-analyses", "job-recommendations", "personalized-guidance"):
+    assert config.count("client_max_body_size 12m;") == 5
+    assert config.count("proxy_read_timeout 180s;") == 5
+    for path in (
+        "job-analyses",
+        "job-recommendations",
+        "personalized-guidance",
+        "career-gap-analyses",
+        "application-drafts",
+    ):
         assert f"location = /api/v1/me/{path} {{" in config
     # Everything else keeps the demo-wide 3m limit and default timeouts.
     assert config.count("client_max_body_size 3m;") == 1
-    assert config.index("/api/v1/me/personalized-guidance") < config.index("location /api/v1/ {")
+    assert config.index("/api/v1/me/application-drafts") < config.index("location /api/v1/ {")

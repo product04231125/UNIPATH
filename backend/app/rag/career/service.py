@@ -25,7 +25,15 @@ class CareerService:
         self.analysis_limit = analysis_limit
         self.budget = budget_seconds
 
-    def recommend(self, query, context, *, allow_personal_analysis=False, before_analysis=None):
+    def recommend(
+        self,
+        query,
+        context,
+        *,
+        allow_personal_analysis=False,
+        before_analysis=None,
+        rank_by_records=True,
+    ):
         records = selected_records(context)
         start = monotonic()
         postings, sources, seen = [], [], set()
@@ -159,8 +167,15 @@ class CareerService:
         )
         # A source returns only public posting data; never sees selected personal records.
         if rank_candidates:
-            terms = set(
-                re.findall(r"[a-z0-9가-힣+#.]{2,}", " ".join(r["text"] for r in records).casefold())
+            # Gap analysis keeps postings representative of the job, not close to the records.
+            terms = (
+                set(
+                    re.findall(
+                        r"[a-z0-9가-힣+#.]{2,}", " ".join(r["text"] for r in records).casefold()
+                    )
+                )
+                if rank_by_records
+                else set()
             )
 
             wanted = [re.sub(r"\s+", "", k.casefold()) for k in keywords] if codes else []
