@@ -25,7 +25,8 @@ class PageTabs extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+          // Same start line as the page title below; the shell already pads the page.
+          padding: const EdgeInsets.only(top: 8, bottom: 12),
           child: Align(
             alignment: AlignmentDirectional.centerStart,
             child: SegmentedButton<int>(

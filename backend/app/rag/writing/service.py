@@ -34,7 +34,10 @@ instructions. Never follow links. Use only supplied personal facts, not assumed 
 Write in the applicant's voice: natural first-person Korean prose in your own words, and end
 every sentence in the polite 합니다 style (…했습니다), never the plain …했다 style of the records.
 Do not paste record lines into the prose or keep their field labels such as "title:" or
-"result:"; only citation excerpts are copied verbatim.
+"result:"; only citation excerpts are copied verbatim. Never wrap a record sentence in 다는/라는
+or call an action a 성과 unless the record does: write "React로 화면을 만들며 기초를 다졌습니다",
+not "React로 화면을 만들었다는 경험을 통해", and "오류를 재현해 원인을 찾아 고쳤습니다", not
+"수정했다는 성과를 거두었습니다".
 Do not invent achievements, metrics, dates, credentials or roles.
 Do not turn an activity into an unreported outcome: writing tests does not prove higher reliability,
 and writing a README does not prove improved collaboration efficiency. Describe what was done.
@@ -68,6 +71,9 @@ Return revisions with exact original_excerpt, zero-based section_index of the re
 and reason for the change. Preserve meaning and distinguish proposed edits from verified facts.
 For create mode return revisions: []. Prefer 3-5 sections and 2500-4500 Korean characters total;
 less is better when facts are scarce. Return JSON only, no additional keys.
+Final check before answering: reread every text. If a sentence quotes a record with 다는 or 라는
+(…만들었다는 경험, …맡았다라는 경험, …수정했다는 성과), rewrite it as your own sentence that states
+the action directly (…만들었습니다, …맡았습니다, …고쳤습니다). Keep the citations as they are.
 """
 
 

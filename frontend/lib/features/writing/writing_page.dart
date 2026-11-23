@@ -633,6 +633,7 @@ class _WritingPageState extends State<WritingPage> {
           if (widget.loadMaterials != null && _connected) ...[
             MaterialSelection(
               keyPrefix: 'writing',
+              title: '함께 쓸 내 자료 (선택)',
               load: widget.loadMaterials!,
               selected: _materialIds,
               enabled: enabled,
@@ -894,7 +895,7 @@ class _ExportDialogState extends State<_ExportDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text('이름과 연락처는 문서에만 들어가며 AI에 보내지 않습니다.'),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             TextField(
               key: const ValueKey('writing-export-name'),
               controller: _name,
@@ -904,6 +905,7 @@ class _ExportDialogState extends State<_ExportDialog> {
                 counterText: '',
               ),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _email,
               maxLength: 160,
@@ -912,6 +914,7 @@ class _ExportDialogState extends State<_ExportDialog> {
                 counterText: '',
               ),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _phone,
               maxLength: 80,
@@ -920,6 +923,7 @@ class _ExportDialogState extends State<_ExportDialog> {
                 counterText: '',
               ),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _link,
               maxLength: 300,
