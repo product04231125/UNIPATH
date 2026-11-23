@@ -305,28 +305,29 @@ class _ActivityPageState extends State<ActivityPage> {
       icon: icon,
       tone: tone,
       title: record.value('title'),
-      chips: [
+      badges: [
         ToneChip(
           label: experience ? (type.isEmpty ? '경험' : type) : '활동',
           tone: tone,
         ),
-        if (period != null)
-          ToneChip(label: period, icon: Icons.calendar_today_outlined),
-        if (hours.isNotEmpty)
-          ToneChip(label: '${recordNumber(hours)}시간', icon: Icons.schedule),
-        if (value('organization') case final org when org.isNotEmpty)
-          ToneChip(label: org, icon: Icons.apartment_outlined),
-        if (value('role') case final role when role.isNotEmpty)
-          ToneChip(label: role, icon: Icons.person_outline),
         if (value('status') case final status when status.isNotEmpty)
           ToneChip(label: status),
+      ],
+      facts: [
+        if (period != null) RecordFact(Icons.calendar_today_outlined, period),
+        if (hours.isNotEmpty)
+          RecordFact(Icons.schedule, '${recordNumber(hours)}시간'),
+        if (value('organization') case final org when org.isNotEmpty)
+          RecordFact(Icons.apartment_outlined, org),
+        if (value('role') case final role when role.isNotEmpty)
+          RecordFact(Icons.person_outline, role),
       ],
       lines: [
         if (value('result') case final result when result.isNotEmpty) result,
         if (value('detail') case final detail when detail.isNotEmpty) detail,
       ],
       onTap: () => _edit(kind, record: record),
-      trailing: [
+      footer: [
         for (final field in fields.where(
           (f) =>
               f.type == PersonalFieldType.url && record.value(f.key).isNotEmpty,

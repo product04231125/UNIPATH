@@ -17,38 +17,53 @@ class RecordAction {
   final bool destructive;
 }
 
-/// Saved record row: kind icon, title, chips, short summary, and a ⋮ menu.
-/// Tapping the row runs [onTap] (usually edit) so the menu stays secondary.
+/// One labelled fact on a record card, shown on its own line with an icon.
+class RecordFact {
+  const RecordFact(this.icon, this.text);
+  final IconData icon;
+  final String text;
+}
+
+/// Near-square record card for grids: kind icon with badges and ⋮ menu on
+/// top, the title, one fact per line, then a short summary. Tapping the card
+/// runs [onTap] (usually edit) so the menu stays secondary.
 class RecordTile extends StatelessWidget {
   const RecordTile({
     super.key,
     required this.icon,
     required this.title,
     this.tone = AppTone.accent,
-    this.chips = const [],
+    this.badges = const [],
+    this.facts = const [],
     this.lines = const [],
     this.onTap,
     this.actions = const [],
-    this.trailing = const [],
+    this.footer = const [],
   });
 
   final IconData icon;
   final AppTone tone;
   final String title;
-  final List<Widget> chips;
+
+  /// Short status or type chips beside the kind icon.
+  final List<Widget> badges;
+  final List<RecordFact> facts;
 
   /// Summary lines, each cut to two lines.
   final List<String> lines;
   final VoidCallback? onTap;
   final List<RecordAction> actions;
 
-  /// Extra compact widgets before the menu, such as an evidence link.
-  final List<Widget> trailing;
+  /// Extra compact widgets at the bottom, such as an evidence link.
+  final List<Widget> footer;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: colors.onSurfaceVariant,
+    );
     return Material(
       color: colors.surfaceContainerLow,
       borderRadius: BorderRadius.circular(16),
@@ -56,38 +71,63 @@ class RecordTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 4, 14),
+          padding: const EdgeInsets.fromLTRB(16, 12, 4, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 children: [
-                  IconBadge(icon: icon, tone: tone, size: 34),
-                  const SizedBox(width: 10),
+                  IconBadge(icon: icon, tone: tone, size: 36),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall,
-                    ),
+                    child: Wrap(spacing: 6, runSpacing: 6, children: badges),
                   ),
-                  ...trailing,
                   if (actions.isNotEmpty)
                     _menu(colors)
                   else
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                 ],
               ),
-              // Details use the card's full width under the title row.
               Padding(
-                padding: const EdgeInsets.only(right: 10),
+                padding: const EdgeInsets.only(right: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (chips.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (facts.isNotEmpty) const SizedBox(height: 10),
+                    for (final fact in facts)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Row(
+                          children: [
+                            Icon(
+                              fact.icon,
+                              size: 16,
+                              color: colors.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                fact.text,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (lines.isNotEmpty) ...[
                       const SizedBox(height: 10),
-                      Wrap(spacing: 6, runSpacing: 6, children: chips),
+                      Divider(height: 1, color: colors.outlineVariant),
                     ],
                     for (final line in lines) ...[
                       const SizedBox(height: 8),
@@ -95,10 +135,12 @@ class RecordTile extends StatelessWidget {
                         line,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
+                        style: muted,
                       ),
+                    ],
+                    if (footer.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Wrap(spacing: 6, runSpacing: 6, children: footer),
                     ],
                   ],
                 ),

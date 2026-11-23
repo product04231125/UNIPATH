@@ -46,40 +46,47 @@ void main() {
     );
   }
 
-  for (final (size, columns) in [(_qhd, 5), (_fhd, 3), (_fhd125, 3)]) {
-    testWidgets('activity cards fill $columns columns at $size', (
-      tester,
-    ) async {
-      await tester.binding.setSurfaceSize(size);
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      final repo = PersonalRecordRepository(PersonalRecordKind.activity);
-      await repo.load();
-      for (var i = 0; i < 6; i++) {
-        await repo.save(
-          PersonalRecord(
-            id: 'wide-$i',
-            values: {'title': '합성 활동 $i', 'reportedHours': '4'},
-          ),
+  for (final (size, columns) in [(_qhd, 6), (_fhd, 5), (_fhd125, 4)]) {
+    testWidgets(
+      'activity cards are near-square tiles in $columns columns at $size',
+      (tester) async {
+        await tester.binding.setSurfaceSize(size);
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final repo = PersonalRecordRepository(PersonalRecordKind.activity);
+        await repo.load();
+        for (var i = 0; i < 7; i++) {
+          await repo.save(
+            PersonalRecord(
+              id: 'wide-$i',
+              values: {'title': '합성 활동 $i', 'reportedHours': '4'},
+            ),
+          );
+        }
+        // Inside the real shell so the sidebar takes its share of the width.
+        await tester.pumpWidget(
+          const UniversityPathApp(startAuthenticated: true),
         );
-      }
-      // Inside the real shell so the sidebar takes its share of the width.
-      await tester.pumpWidget(
-        const UniversityPathApp(startAuthenticated: true),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('활동').first);
-      await tester.pumpAndSettle();
-      expect(find.byType(ActivityPage), findsOneWidget);
-      final tops = [
-        for (var i = 0; i < 6; i++)
-          tester.getRect(find.byKey(ValueKey('record-activity-wide-$i'))).top,
-      ];
-      expect(
-        tops.where((t) => (t - tops.first).abs() < .5),
-        hasLength(columns),
-      );
-      expect(tester.takeException(), isNull);
-    });
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('활동').first);
+        await tester.pumpAndSettle();
+        expect(find.byType(ActivityPage), findsOneWidget);
+        final tops = [
+          for (var i = 0; i < 7; i++)
+            tester.getRect(find.byKey(ValueKey('record-activity-wide-$i'))).top,
+        ];
+        expect(
+          tops.where((t) => (t - tops.first).abs() < .5),
+          hasLength(columns),
+        );
+        // Tiles, not long strips: never much wider than tall.
+        final card = tester.getSize(
+          find.byKey(const ValueKey('record-activity-wide-0')),
+        );
+        expect(card.width, lessThan(380));
+        expect(card.height / card.width, inInclusiveRange(.78, 1.4));
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
   testWidgets('FHD month cells list event titles, not just dots', (
