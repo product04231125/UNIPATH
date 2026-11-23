@@ -4,6 +4,7 @@ import 'content_scroll_view.dart';
 import 'feature_actions.dart';
 import 'feature_line.dart';
 import 'page_header.dart';
+import 'page_tabs.dart';
 
 /// Shared feature frame: title + one line, body rows, then primary actions.
 class FeaturePage extends StatelessWidget {
@@ -54,14 +55,23 @@ class FeaturePage extends StatelessWidget {
             description: description,
             actions: trailing,
           ),
-          if (headerActions.isNotEmpty) ...[
-            Wrap(spacing: 8, runSpacing: 8, children: headerActions),
-            const SizedBox(height: 16),
-          ],
-          ...body,
-          if (actions.isNotEmpty) FeatureActions(children: actions),
-          if (below.isNotEmpty) SizedBox(height: FeatureLine.slotGap(context)),
-          ...below,
+          // Pages nested in the body keep their own titles.
+          PageTabsScope.cleared(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (headerActions.isNotEmpty) ...[
+                  Wrap(spacing: 8, runSpacing: 8, children: headerActions),
+                  const SizedBox(height: 16),
+                ],
+                ...body,
+                if (actions.isNotEmpty) FeatureActions(children: actions),
+                if (below.isNotEmpty)
+                  SizedBox(height: FeatureLine.slotGap(context)),
+                ...below,
+              ],
+            ),
+          ),
         ],
       ),
     );

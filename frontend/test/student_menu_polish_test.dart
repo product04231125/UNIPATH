@@ -116,9 +116,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       await tester.ensureVisible(
-        find.widgetWithText(ChoiceChip, '내 자료로 공고 찾기'),
+        find.byKey(const ValueKey('job-purpose-search')),
       );
-      await tester.tap(find.widgetWithText(ChoiceChip, '내 자료로 공고 찾기'));
+      await tester.tap(find.byKey(const ValueKey('job-purpose-search')));
       await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const ValueKey('recommend-keyword')),
@@ -135,25 +135,25 @@ void main() {
       expect(transport.calls, 1);
       expect(
         tester
-            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '공고 1개 비교'))
-            .onSelected,
+            .widget<InkWell>(find.byKey(const ValueKey('job-purpose-posting')))
+            .onTap,
         isNull,
       );
       transport.pending.complete(recommendation.responseFixture());
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '공고 1개 비교'))
-            .onSelected,
+            .widget<InkWell>(find.byKey(const ValueKey('job-purpose-posting')))
+            .onTap,
         isNotNull,
       );
-      await tester.ensureVisible(find.widgetWithText(ChoiceChip, '공고 1개 비교'));
-      await tester.tap(find.widgetWithText(ChoiceChip, '공고 1개 비교'));
+      await tester.ensureVisible(find.byKey(const ValueKey('job-purpose-posting')));
+      await tester.tap(find.byKey(const ValueKey('job-purpose-posting')));
       await tester.pumpAndSettle();
       await tester.ensureVisible(
-        find.widgetWithText(ChoiceChip, '내 자료로 공고 찾기'),
+        find.byKey(const ValueKey('job-purpose-search')),
       );
-      await tester.tap(find.widgetWithText(ChoiceChip, '내 자료로 공고 찾기'));
+      await tester.tap(find.byKey(const ValueKey('job-purpose-search')));
       await tester.pumpAndSettle();
       expect(transport.calls, 1);
       expect(

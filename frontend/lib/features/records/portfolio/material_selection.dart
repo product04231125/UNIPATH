@@ -64,37 +64,63 @@ class _MaterialSelectionState extends State<MaterialSelection> {
   }
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(widget.title),
-      const Text(
-        '고른 자료의 설명·PDF를 서버에서 읽고, 추출한 내용을 Google 외부 AI로 전송합니다. '
-        '스캔 PDF는 OCR 처리하며 원본 대조가 필요합니다. 설명과 PDF는 합계 5개·8MiB까지 보낼 수 있습니다.',
-      ),
-      TextButton(
-        key: ValueKey('${widget.keyPrefix}-materials-refresh'),
-        onPressed: _loading ? null : _refresh,
-        child: const Text('내 자료 다시 읽기'),
-      ),
-      if (_loading) const LinearProgressIndicator(),
-      if (_error != null) Text(_error!),
-      if (!_loading && _error == null && _materials.isEmpty)
-        const Text('이 기기에 등록한 자료가 없습니다. 자료 메뉴에서 등록해 주세요.'),
-      for (final material in _materials)
-        Material(
-          color: Colors.transparent,
-          child: CheckboxListTile(
-            key: ValueKey('${widget.keyPrefix}-material-${material.id}'),
-            contentPadding: EdgeInsets.zero,
-            title: Text(material.title),
-            subtitle: Text(material.type),
-            value: widget.selected.contains(material.id),
-            onChanged: widget.enabled
-                ? (value) => widget.onChanged(material.id, value ?? false)
-                : null,
-          ),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            // The title is short; the refresh button stays at the right edge.
+            Text(widget.title, style: theme.textTheme.titleSmall),
+            const SizedBox(width: 4),
+            Tooltip(
+              message:
+                  '고른 자료의 설명·PDF를 서버에서 읽고, 추출한 내용을 Google 외부 AI로 전송합니다. '
+                  '스캔 PDF는 OCR 처리하며 원본 대조가 필요합니다. 설명과 PDF는 합계 5개·8MiB까지 보낼 수 있습니다.',
+              triggerMode: TooltipTriggerMode.tap,
+              child: Icon(
+                Icons.info_outline,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const Spacer(),
+            IconButton(
+              key: ValueKey('${widget.keyPrefix}-materials-refresh'),
+              tooltip: '내 자료 다시 읽기',
+              visualDensity: VisualDensity.compact,
+              onPressed: _loading ? null : _refresh,
+              icon: const Icon(Icons.refresh, size: 20),
+            ),
+          ],
         ),
-    ],
-  );
+        if (_loading) const LinearProgressIndicator(),
+        if (_error != null) Text(_error!),
+        if (!_loading && _error == null && _materials.isEmpty)
+          Text(
+            '이 기기에 등록한 자료가 없습니다. 자료 메뉴에서 등록해 주세요.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        for (final material in _materials)
+          Material(
+            color: Colors.transparent,
+            child: CheckboxListTile(
+              key: ValueKey('${widget.keyPrefix}-material-${material.id}'),
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(material.title),
+              subtitle: Text(material.type),
+              value: widget.selected.contains(material.id),
+              onChanged: widget.enabled
+                  ? (value) => widget.onChanged(material.id, value ?? false)
+                  : null,
+            ),
+          ),
+      ],
+    );
+  }
 }

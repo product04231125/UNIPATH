@@ -88,14 +88,25 @@ class LegacyGraduationPage extends StatelessWidget {
     if (session == null) {
       return FeaturePage(
         title: '졸업 요건',
-        description: '설정한 학업 기준으로 요건을 확인합니다.',
         body: [
-          if (onOpenSettings != null)
-            PlanningProfileSettingsCta(
-              onOpenSettings: onOpenSettings!,
-              need: PlanningProfileNeed.configured,
-              profile: planning?.profile,
-            ),
+          if (onOpenSettings != null) ...[
+            // Missing profile: centered guide. Saved profile: the edit link.
+            if (isPlanningProfileReady(
+              planning?.profile,
+              PlanningProfileNeed.configured,
+            ))
+              PlanningProfileSettingsCta(
+                onOpenSettings: onOpenSettings!,
+                need: PlanningProfileNeed.configured,
+                profile: planning?.profile,
+              )
+            else
+              PlanningProfileGuide(
+                onOpenSettings: onOpenSettings!,
+                message: '학교·학과·입학연도를 등록하면 졸업 요건을 바로 확인할 수 있습니다.',
+              ),
+            const SizedBox(height: 16),
+          ],
           const SurfaceCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,7 +144,6 @@ class LegacyGraduationPage extends StatelessWidget {
         if (repo.isLoading) {
           return const FeaturePage(
             title: '졸업 요건',
-            description: '설정한 학업 기준으로 요건을 확인합니다.',
             body: [LinearProgressIndicator()],
           );
         }
@@ -141,7 +151,6 @@ class LegacyGraduationPage extends StatelessWidget {
         if (failed) {
           return FeaturePage(
             title: '졸업 요건',
-            description: '설정한 학업 기준으로 요건을 확인합니다.',
             body: [
               const Text('학업 프로필을 읽지 못했습니다. 다시 불러오거나 설정에서 확인하세요.'),
               TextButton(
@@ -174,7 +183,6 @@ class LegacyGraduationPage extends StatelessWidget {
           if (calculations == null) {
             return FeaturePage(
               title: '졸업 요건',
-              description: '설정한 개인 기준으로 계산합니다.',
               body: [
                 const Text('개인 기준 계산을 열려면 로그인된 학생 작업 공간이 필요합니다.'),
                 if (onOpenSettings != null) ...[
@@ -192,19 +200,16 @@ class LegacyGraduationPage extends StatelessWidget {
             key: ValueKey((session.identity.id, 'personal-calc')),
             controller: calculations,
             title: '졸업 요건',
-            description: '설정한 개인 기준으로 계산합니다.',
             onOpenSettings: onOpenSettings,
           );
         }
         return FeaturePage(
           title: '졸업 요건',
-          description: '설정한 학업 기준으로 요건을 확인합니다.',
           body: [
             if (onOpenSettings != null)
-              PlanningProfileSettingsCta(
+              PlanningProfileGuide(
                 onOpenSettings: onOpenSettings!,
-                need: PlanningProfileNeed.configured,
-                profile: profile,
+                message: '학교·학과·입학연도를 등록하면 졸업 요건을 바로 확인할 수 있습니다.',
               )
             else
               const Text('설정에서 학업 프로필을 등록하면 이 화면에서 사용합니다.'),

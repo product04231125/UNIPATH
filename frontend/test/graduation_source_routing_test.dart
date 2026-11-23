@@ -223,7 +223,8 @@ void main() {
     expect(find.byType(FeaturePage), findsOneWidget);
     expect(find.text('졸업 요건'), findsOneWidget);
     expect(find.text('개인 기준 계산'), findsNothing);
-    expect(find.text('설정한 개인 기준으로 계산합니다.'), findsOneWidget);
+    // The tab title is enough; no description under it.
+    expect(find.text('설정한 개인 기준으로 계산합니다.'), findsNothing);
     expect(find.textContaining('설정 · 개인 교육과정 작업에서 먼저 등록하세요'), findsOneWidget);
   });
 

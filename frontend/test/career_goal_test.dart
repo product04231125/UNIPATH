@@ -6,6 +6,7 @@ import 'package:university_path_frontend/features/career/career_goal.dart';
 import 'package:university_path_frontend/features/career/career_goal_card.dart';
 
 import 'job_recommendation_test.dart' show categoryFixture, selectOption;
+import 'package:university_path_frontend/shared/widgets/feature_page.dart';
 
 class GoalGateway extends ApiGateway {
   Map<String, dynamic> goal = {
@@ -120,8 +121,15 @@ void main() {
             builder: (context, setState) => AcademicsPage(
               tab: tab,
               onTabChanged: (value) => setState(() => tab = value),
-              courses: const Text('수강 화면'),
-              graduation: const Text('졸업 화면'),
+              // Tab pages draw the tabs in their own header.
+              courses: const FeaturePage(
+                title: '수강 관리',
+                body: [Text('수강 화면')],
+              ),
+              graduation: const FeaturePage(
+                title: '졸업 요건',
+                body: [Text('졸업 화면')],
+              ),
             ),
           ),
         ),

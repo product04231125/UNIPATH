@@ -35,7 +35,9 @@ class SurfaceCard extends StatelessWidget {
                 ),
               ],
       ),
-      child: child,
+      // List tiles and ink inside the card paint on this layer, not behind
+      // the card's background.
+      child: Material(type: MaterialType.transparency, child: child),
     );
   }
 }
