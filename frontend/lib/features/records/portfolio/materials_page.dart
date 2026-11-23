@@ -4,8 +4,6 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../../../shared/app_style.dart';
-import '../../../shared/app_typography.dart';
-import '../../../shared/widgets/feature_actions.dart';
 import '../../../shared/widgets/feature_line.dart';
 import '../../../shared/widgets/anchored_select_field.dart';
 import '../../../shared/widgets/feature_page.dart';
@@ -13,7 +11,12 @@ import '../../../shared/widgets/field_label.dart';
 import '../../../shared/widgets/field_requirement.dart';
 import '../../../shared/widgets/surface_card.dart';
 import '../../../shared/widgets/input_dialog.dart';
-import '../../../shared/widgets/responsive_columns.dart';
+import '../../../shared/app_tones.dart';
+import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/record_tile.dart';
+import '../../../shared/widgets/responsive_grid.dart';
+import '../../../shared/widgets/tone_chip.dart';
+import '../../../shared/widgets/work_layout.dart';
 import '../../auth/guest_preview_scope.dart';
 import 'material_repository.dart';
 
@@ -40,7 +43,6 @@ class MaterialsPageState extends State<MaterialsPage> {
       _description = TextEditingController(),
       _query = TextEditingController();
   final _form = GlobalKey<FormState>();
-  final _listScroll = ScrollController();
   List<PersonalMaterial> _records = [];
   PersonalMaterial? _editing;
   Uint8List? _pdf;
@@ -67,7 +69,6 @@ class MaterialsPageState extends State<MaterialsPage> {
     _type.dispose();
     _description.dispose();
     _query.dispose();
-    _listScroll.dispose();
     super.dispose();
   }
 
@@ -222,16 +223,6 @@ class MaterialsPageState extends State<MaterialsPage> {
     }
   }
 
-  static const _rowHeight = 64.0;
-  static const _actionHeight = 36.0;
-
-  double get _rowExtent {
-    final scaled = MediaQuery.textScalerOf(context).scale(_rowHeight);
-    return scaled < _rowHeight ? _rowHeight : scaled;
-  }
-
-  static const _visibleRows = 3;
-
   List<PersonalMaterial> get _filtered {
     final query = _query.text.trim().toLowerCase();
     if (query.isEmpty) return _records;
@@ -244,144 +235,128 @@ class MaterialsPageState extends State<MaterialsPage> {
         .toList();
   }
 
-  Widget _cappedList() {
-    final rows = _filtered;
-    final visible = rows.length < _visibleRows ? rows.length : _visibleRows;
-    final overflowing = rows.length > _visibleRows;
-    final extent = _rowExtent;
-    return SizedBox(
-      key: const ValueKey('material-catalog'),
-      height: extent * visible,
-      child: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-        child: Scrollbar(
-          controller: _listScroll,
-          thumbVisibility: overflowing,
-          interactive: true,
-          child: ListView.builder(
-            controller: _listScroll,
-            padding: overflowing
-                ? const EdgeInsetsDirectional.only(end: 16)
-                : EdgeInsets.zero,
-            primary: false,
-            itemCount: rows.length,
-            itemExtent: extent,
-            itemBuilder: (context, index) => _materialRow(rows[index]),
-          ),
-        ),
-      ),
-    );
+  Future<void> _export(PersonalMaterial r) async {
+    setState(() => _busy = true);
+    try {
+      await (widget.exportPdf ?? exportMaterialPdf)(r);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'PDF를 내보내지 못했습니다. 보관 자료는 유지했습니다.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
-  ButtonStyle _rowActionStyle({bool danger = false}) {
-    final base = danger
-        ? destructiveButtonStyle(context)
-        : OutlinedButton.styleFrom();
-    return base.copyWith(
-      visualDensity: VisualDensity.compact,
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      minimumSize: WidgetStatePropertyAll(
-        Size(
-          0,
-          _actionHeight +
-              (MediaQuery.textScalerOf(context).scale(14) - 14).clamp(
-                0,
-                double.infinity,
-              ),
-        ),
-      ),
-      padding: const WidgetStatePropertyAll(
-        EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-      ),
-    );
+  Future<void> _edit(PersonalMaterial r) async {
+    if (_busy) return;
+    if (await allowLeave() && mounted) _reset(r);
   }
 
-  Widget _materialRow(PersonalMaterial r) {
-    final subtitle = [
-      if (r.description.isNotEmpty) r.description,
-      if (r.pdf != null)
-        '${r.fileName} · ${(r.pdf!.length / 1024).ceil()}KB · 기기 보관'
-      else
-        '내용 설명 기록',
-    ].join(' · ');
-    final colors = Theme.of(context).colorScheme;
-    return DecoratedBox(
+  Widget _materialTile(PersonalMaterial r) {
+    final pdf = r.pdf;
+    final tone = pdf != null ? AppTone.danger : AppTone.accent;
+    return RecordTile(
       key: ValueKey('material-row-${r.id}'),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: colors.outlineVariant)),
+      icon: pdf != null
+          ? Icons.picture_as_pdf_outlined
+          : Icons.sticky_note_2_outlined,
+      tone: tone,
+      title: r.title,
+      badges: [if (r.type.isNotEmpty) ToneChip(label: r.type, tone: tone)],
+      facts: [
+        if (pdf != null)
+          RecordFact(
+            Icons.attach_file,
+            '${r.fileName} · ${(pdf.length / 1024).ceil()}KB',
+          )
+        else
+          const RecordFact(Icons.edit_note, '내용 설명 기록'),
+        const RecordFact(Icons.smartphone_outlined, '이 기기에 보관'),
+      ],
+      lines: [if (r.description.isNotEmpty) r.description],
+      onTap: _busy ? null : () => _edit(r),
+      actions: [
+        RecordAction('수정', Icons.edit_outlined, () => _edit(r)),
+        if (pdf != null)
+          RecordAction('PDF 내보내기', Icons.download_outlined, () {
+            if (!_busy) _export(r);
+          }),
+        RecordAction(
+          '삭제',
+          Icons.delete_outline,
+          () => _delete(r),
+          destructive: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _list(BuildContext context) {
+    final theme = Theme.of(context);
+    final rows = _filtered;
+    final search = SizedBox(
+      width: 320,
+      child: TextFormField(
+        key: const ValueKey('material-search'),
+        controller: _query,
+        enabled: !_busy,
+        decoration: const InputDecoration(
+          prefixIcon: Icon(Icons.search),
+          hintText: '제목·종류·설명 검색',
+        ),
+        onChanged: (_) => setState(() {}),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
+    );
+    return SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    r.type.isEmpty ? r.title : '${r.type} · ${r.title}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  if (subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
+                  Text('자료 목록', style: theme.textTheme.titleMedium),
+                  const SizedBox(width: 8),
+                  ToneChip(label: '${_records.length}개'),
                 ],
               ),
-            ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton(
-                  style: _rowActionStyle(),
-                  onPressed: _busy
-                      ? null
-                      : () async {
-                          if (await allowLeave() && mounted) _reset(r);
-                        },
-                  child: const Text('수정'),
-                ),
-                if (r.pdf != null)
-                  OutlinedButton.icon(
-                    style: _rowActionStyle(),
-                    onPressed: _busy
-                        ? null
-                        : () async {
-                            setState(() => _busy = true);
-                            try {
-                              await (widget.exportPdf ?? exportMaterialPdf)(r);
-                            } catch (_) {
-                              if (mounted) {
-                                setState(
-                                  () => _error =
-                                      'PDF를 내보내지 못했습니다. 보관 자료는 유지했습니다.',
-                                );
-                              }
-                            } finally {
-                              if (mounted) setState(() => _busy = false);
-                            }
-                          },
-                    icon: const Icon(Icons.download_outlined, size: 18),
-                    label: const Text('PDF 내보내기'),
-                  ),
-                FilledButton(
-                  style: _rowActionStyle(danger: true),
-                  onPressed: _busy ? null : () => _delete(r),
-                  child: const Text('삭제'),
-                ),
-              ],
+              if (_records.isNotEmpty) search,
+            ],
+          ),
+          if (_records.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              '${rows.length}개 표시 / ${_records.length}개',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
-        ),
+          const SizedBox(height: 12),
+          if (_records.isEmpty)
+            const EmptyState(
+              icon: Icons.folder_open_outlined,
+              title: '등록한 자료가 없습니다',
+              message: '설명만 기록하거나 PDF를 선택해 등록하세요.',
+            )
+          else if (rows.isEmpty)
+            const EmptyState(
+              icon: Icons.search_off,
+              title: '검색에 맞는 자료가 없습니다',
+              message: '검색어를 바꿔 보세요.',
+            )
+          else
+            ResponsiveGrid(
+              key: const ValueKey('material-catalog'),
+              children: [for (final r in rows) _materialTile(r)],
+            ),
+        ],
       ),
     );
   }
@@ -417,7 +392,6 @@ class MaterialsPageState extends State<MaterialsPage> {
   @override
   Widget build(BuildContext context) => FeaturePage(
     title: '내 자료',
-    description: 'PDF와 설명을 이 기기에 보관합니다.',
     body: [
       if (_loading)
         const LinearProgressIndicator()
@@ -425,64 +399,21 @@ class MaterialsPageState extends State<MaterialsPage> {
         const FeatureLine.one(text: '자료 목록을 읽지 못했습니다. 저장된 자료를 덮어쓰지 않습니다.'),
         FeatureLine.reload(onPressed: _busy ? null : _load),
       ] else
-        ResponsiveColumns(
-          enabled: true,
-          stretch: true,
-          first: SurfaceCard(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      '자료 목록',
-                      style: Theme.of(context).textTheme.titleLarge
-                          ?.merge(AppTypography.sectionStyle),
-                    ),
-                    const SizedBox(width: 8),
-                    Text('${_records.length}개'),
-                  ],
-                ),
-                SizedBox(height: FeatureLine.slotGap(context)),
-                FieldLabel(
-                  label: '제목·종류·설명 검색',
-                  child: TextFormField(
-                    key: const ValueKey('material-search'),
-                    controller: _query,
-                    enabled: !_busy,
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text('${_filtered.length}개 표시 / ${_records.length}개'),
-                ),
-                if (_records.isEmpty)
-                  const FeatureLine.one(
-                    text: '등록한 자료가 없습니다. 설명만 기록하거나 PDF를 선택해 등록하세요.',
-                  )
-                else if (_filtered.isEmpty)
-                  const FeatureLine.one(text: '검색에 맞는 자료가 없습니다. 검색어를 바꿔보세요.')
-                else
-                  _cappedList(),
-              ],
-            ),
-          ),
-          second: SurfaceCard(
+        WorkLayout(
+          // The list is what students look for first on a narrow screen.
+          resultFirstWhenStacked: true,
+          input: SurfaceCard(
             child: Form(
               key: _form,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  FeatureLine.section(
-                    text: _editing == null ? '자료 등록' : '자료 수정',
-                    padTop: false,
+                  Text(
+                    _editing == null ? '자료 등록' : '자료 수정',
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
+                  const SizedBox(height: 16),
                   _field('title', '자료 이름', _title, required: true),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
@@ -538,10 +469,16 @@ class MaterialsPageState extends State<MaterialsPage> {
                     _description,
                     lines: 4,
                   ),
-                  const FeatureLine.one(
+                  const NoteLine(
+                    icon: Icons.info_outline,
                     text: '파일을 첨부하지 않을 때는 어떤 내용인지 설명을 입력하세요.',
                   ),
-                  const FeatureLine.one(text: 'PDF 최대 10MB · 전체 50MB.'),
+                  const SizedBox(height: 4),
+                  const NoteLine(
+                    icon: Icons.picture_as_pdf_outlined,
+                    text: 'PDF 최대 10MB · 전체 50MB.',
+                  ),
+                  const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -580,7 +517,11 @@ class MaterialsPageState extends State<MaterialsPage> {
                     ),
                   if (_message != null)
                     Semantics(liveRegion: true, child: Text(_message!)),
-                  FeatureActions(
+                  const SizedBox(height: 8),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       TextButton(
                         onPressed: _busy
@@ -606,6 +547,7 @@ class MaterialsPageState extends State<MaterialsPage> {
               ),
             ),
           ),
+          result: _list(context),
         ),
     ],
   );

@@ -20,6 +20,7 @@ import '../settings/ai_consent_section.dart';
 import '../auth/file_export_gateway.dart';
 import 'export_file_save.dart';
 import 'writing_api.dart';
+import '../../shared/widgets/work_layout.dart';
 
 /// 채용공고 분석 → 자기소개서: opens this page once with the posting filled in.
 class WritingRequest extends PendingUiAction {
@@ -708,17 +709,24 @@ class _WritingPageState extends State<WritingPage> {
   @override
   Widget build(BuildContext context) => FeaturePage(
     title: '자기소개서·포트폴리오',
-    description: '저장된 수강·활동·경험·자격·성과 기록과 고른 내 자료에서 근거를 확인한 문장만으로 초안을 만들고, 고친 뒤 저장하거나 Word·PDF로 받습니다.',
     body: [
-      if (_documentApi != null) ...[
-        _savedDocuments(context),
-        const SizedBox(height: 16),
-      ],
-      _form(context),
-      if (_sections.isNotEmpty) ...[
-        const SizedBox(height: 16),
-        _editor(context),
-      ],
+      WorkLayout(
+        input: _form(context),
+        result: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_documentApi != null) _savedDocuments(context),
+            if (_documentApi != null) const SizedBox(height: 16),
+            if (_sections.isNotEmpty)
+              _editor(context)
+            else
+              const ResultPlaceholder(
+                icon: Icons.edit_note_outlined,
+                title: '초안을 만들면 여기에서 고치고 Word·PDF로 받을 수 있습니다',
+              ),
+          ],
+        ),
+      ),
     ],
   );
 
@@ -745,10 +753,12 @@ class _WritingPageState extends State<WritingPage> {
                   style: theme.textTheme.titleSmall,
                 ),
               ),
-              TextButton(
+              IconButton(
                 key: const ValueKey('writing-documents-refresh'),
+                tooltip: '다시 읽기',
+                visualDensity: VisualDensity.compact,
                 onPressed: _documentsLoading ? null : _loadDocuments,
-                child: const Text('다시 읽기'),
+                icon: const Icon(Icons.refresh, size: 20),
               ),
             ],
           ),
@@ -767,6 +777,14 @@ class _WritingPageState extends State<WritingPage> {
               padding: const EdgeInsets.only(top: 8),
               child: Row(
                 children: [
+                  Icon(
+                    d.type == WritingType.coverLetter
+                        ? Icons.description_outlined
+                        : Icons.collections_bookmark_outlined,
+                    size: 20,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -955,8 +973,13 @@ class _WritingPageState extends State<WritingPage> {
             ),
           ],
           const SizedBox(height: 12),
-          if (!_connected)
-            const Text('로그인하면 저장된 기록으로 초안을 만들 수 있습니다. 아직 아무것도 전송하지 않았습니다.'),
+          if (!_connected) ...[
+            const NoteLine(
+              icon: Icons.lock_outline,
+              text: '로그인하면 저장된 기록으로 초안을 만들 수 있습니다. 아직 아무것도 전송하지 않았습니다.',
+            ),
+            const SizedBox(height: 8),
+          ],
           if (widget.loadMaterials != null && _connected) ...[
             MaterialSelection(
               keyPrefix: 'writing',
@@ -973,19 +996,23 @@ class _WritingPageState extends State<WritingPage> {
           if (widget.consent != null)
             AnimatedBuilder(
               animation: widget.consent!,
-              builder: (context, _) => Text(
-                widget.consent!.allows(AiConsentFeature.writing)
+              builder: (context, _) => NoteLine(
+                icon: Icons.cloud_upload_outlined,
+                text: widget.consent!.allows(AiConsentFeature.writing)
                     ? 'Google 외부 AI 전송 허용 중 · 설정에서 변경'
                     : 'Google 외부 AI 전송 · 실행 전 동의 확인',
+                detail:
+                    '저장된 수강·활동·경험·자격·성과 기록과 고른 내 자료에서 근거를 확인한 문장만으로 초안을 만듭니다.',
               ),
             ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: FilledButton(
+            alignment: AlignmentDirectional.centerEnd,
+            child: FilledButton.icon(
               key: const ValueKey('writing-run'),
               onPressed: _canRun ? _run : null,
-              child: Text(_sending ? '작성 중… (20초 안팎)' : '초안 만들기'),
+              icon: const Icon(Icons.auto_awesome_outlined),
+              label: Text(_sending ? '작성 중… (20초 안팎)' : '초안 만들기'),
             ),
           ),
           if (_sending) ...[

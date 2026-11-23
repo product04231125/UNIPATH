@@ -11,6 +11,8 @@ import 'package:university_path_frontend/features/records/portfolio/material_rep
 import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
 import 'package:university_path_frontend/features/auth/local_data_owner.dart';
 import 'package:university_path_frontend/shared/widgets/surface_card.dart';
+import 'support/record_actions.dart';
+import 'package:university_path_frontend/shared/widgets/record_tile.dart';
 
 class MemoryMaterials extends MaterialRepository {
   final records = <String, PersonalMaterial>{};
@@ -254,15 +256,16 @@ void main() {
         await tap(save);
         expect((await repo.load()).single.pdf, pdf);
         expect((await repo.load()).single.type, '이력서');
-        expect(find.text('이력서 · 내 이력서'), findsOneWidget);
+        expect(find.text('내 이력서'), findsOneWidget);
+        expect(find.text('이력서'), findsWidgets);
         expect(find.text('1개 표시 / 1개'), findsOneWidget);
-        await tap(find.text('수정'));
+        await tapRecordAction(tester, '수정');
         await fill('description', '수정된 설명');
         await tap(find.widgetWithText(FilledButton, '저장'));
         expect((await repo.load()).single.description, '수정된 설명');
-        await tap(find.text('PDF 내보내기'));
+        await tapRecordAction(tester, 'PDF 내보내기');
         expect(exported!.pdf, pdf);
-        await tap(find.text('삭제'));
+        await tapRecordAction(tester, '삭제');
         await tester.tap(find.widgetWithText(FilledButton, '삭제').last);
         await tester.pumpAndSettle();
         expect(await repo.load(), isEmpty);
@@ -352,16 +355,17 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('자유 입력 종류 · 옛 자료'), findsOneWidget);
-    await tester.tap(find.text('수정'));
-    await tester.pumpAndSettle();
+    expect(find.text('옛 자료'), findsOneWidget);
+    expect(find.text('자유 입력 종류'), findsOneWidget);
+    await tapRecordAction(tester, '수정');
     final save = find.widgetWithText(FilledButton, '저장');
     await tester.ensureVisible(save);
     await tester.pumpAndSettle();
     await tester.tap(save);
     await tester.pumpAndSettle();
     expect(find.text('자료 종류를 선택하세요.'), findsOneWidget);
-    expect(find.text('자유 입력 종류 · 옛 자료'), findsOneWidget);
+    // The saved tile keeps the old type until a valid kind is saved.
+    expect(find.text('자유 입력 종류'), findsOneWidget);
     await tester.ensureVisible(find.byKey(const ValueKey('material-type')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('material-type')));
@@ -373,8 +377,14 @@ void main() {
     await tester.tap(save);
     await tester.pumpAndSettle();
     expect((await repo.load()).single.type, '증빙·기타');
-    expect(find.text('증빙·기타 · 옛 자료'), findsOneWidget);
-    expect(find.text('자유 입력 종류 · 옛 자료'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(RecordTile),
+        matching: find.text('증빙·기타'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('자유 입력 종류'), findsNothing);
   });
 
   testWidgets(
@@ -466,14 +476,18 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('4개 표시 / 4개'), findsOneWidget);
+      // Every material is a tile in the grid, each with its own ⋮ menu.
       expect(
-        tester.getSize(find.byKey(const ValueKey('material-catalog'))).height,
-        64 * 3,
+        find.descendant(
+          of: find.byKey(const ValueKey('material-catalog')),
+          matching: find.byType(RecordTile),
+        ),
+        findsNWidgets(4),
       );
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('material-row-a')),
-          matching: find.widgetWithText(OutlinedButton, '수정'),
+          matching: find.byIcon(Icons.more_vert),
         ),
         findsOneWidget,
       );
@@ -483,21 +497,21 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('1개 표시 / 4개'), findsOneWidget);
-      expect(find.text('포트폴리오 · 둘째 자료'), findsOneWidget);
-      expect(find.text('이력서 · 첫 자료'), findsNothing);
-      expect(find.text('검색에 맞는 자료가 없습니다. 검색어를 바꿔보세요.'), findsNothing);
+      expect(find.text('둘째 자료'), findsOneWidget);
+      expect(find.text('첫 자료'), findsNothing);
+      expect(find.text('검색에 맞는 자료가 없습니다'), findsNothing);
       await tester.enterText(
         find.byKey(const ValueKey('material-search')),
         '없는검색어',
       );
       await tester.pumpAndSettle();
       expect(find.text('0개 표시 / 4개'), findsOneWidget);
-      expect(find.text('검색에 맞는 자료가 없습니다. 검색어를 바꿔보세요.'), findsOneWidget);
+      expect(find.text('검색에 맞는 자료가 없습니다'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
 
-  testWidgets('wide materials list card matches the registration form', (
+  testWidgets('wide materials put the form left and the list right', (
     tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -515,16 +529,13 @@ void main() {
     await pump(const Size(1440, 900));
     expect(find.text('자료 목록'), findsOneWidget);
     expect(find.text('0개'), findsOneWidget);
-    expect(
-      find.text('등록한 자료가 없습니다. 설명만 기록하거나 PDF를 선택해 등록하세요.'),
-      findsOneWidget,
-    );
+    expect(find.text('등록한 자료가 없습니다'), findsOneWidget);
     final cards = find.byType(SurfaceCard);
     expect(cards, findsNWidgets(2));
-    final list = tester.getSize(cards.at(0));
-    final form = tester.getSize(cards.at(1));
-    expect(list.height, form.height);
-    expect(list.width, form.width);
+    final form = tester.getRect(cards.at(0));
+    final list = tester.getRect(cards.at(1));
+    expect(list.left, greaterThan(form.right));
+    expect(form.width, lessThanOrEqualTo(600));
     expect(tester.takeException(), isNull);
   });
 }
