@@ -92,6 +92,7 @@ class _WorkspaceState extends State<Workspace> {
   ];
 
   var _page = 0;
+  late var _academicTab = widget.academicTab;
   final _visitedPages = <int>{};
   final _materials = GlobalKey<MaterialsPageState>();
   late final _materialRepository = MaterialRepository(
@@ -276,6 +277,9 @@ class _WorkspaceState extends State<Workspace> {
   @override
   void didUpdateWidget(covariant Workspace oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.academicTab != oldWidget.academicTab) {
+      _academicTab = widget.academicTab;
+    }
     if (widget.selectedPage != null && widget.selectedPage != _page) {
       _scheduleAddRequest = null;
       _page = widget.selectedPage!;
@@ -442,7 +446,8 @@ class _WorkspaceState extends State<Workspace> {
           onOpenSettings: () => _selectPage(settingsPage - 1),
         ),
         StudentPages.academics => AcademicsPage(
-          initialTab: widget.academicTab,
+          tab: _academicTab,
+          onTabChanged: (tab) => setState(() => _academicTab = tab),
           courses: CoursePage(
             studentApi: widget.studentApi,
             planning: _planningRepository,

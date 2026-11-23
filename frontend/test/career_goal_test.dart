@@ -112,13 +112,17 @@ void main() {
   });
 
   testWidgets('학사는 수강 관리와 졸업 요건을 탭으로 연다', (tester) async {
+    var tab = 1;
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
-          body: AcademicsPage(
-            initialTab: 1,
-            courses: Text('수강 화면'),
-            graduation: Text('졸업 화면'),
+          body: StatefulBuilder(
+            builder: (context, setState) => AcademicsPage(
+              tab: tab,
+              onTabChanged: (value) => setState(() => tab = value),
+              courses: const Text('수강 화면'),
+              graduation: const Text('졸업 화면'),
+            ),
           ),
         ),
       ),
