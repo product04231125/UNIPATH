@@ -26,6 +26,8 @@ import 'account_settings_section.dart';
 import 'chat_preferences.dart';
 import 'chat_settings_section.dart';
 import 'appearance_settings_section.dart';
+import '../../shared/widgets/responsive_grid.dart';
+import '../../shared/widgets/work_layout.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({
@@ -87,8 +89,6 @@ class _SettingsPageState extends State<SettingsPage> {
     _profileInitialized =
         !widget.repository.isLoading && !widget.repository.loadFailed;
   }
-
-  bool get _canUseCatalog => widget.studentApi != null;
 
   /// Saved academic profile source for the settings card.
   /// Catalog UUID → 등록된 학교; name-only personal profile → 개인 설정.
@@ -178,7 +178,6 @@ class _SettingsPageState extends State<SettingsPage> {
         if (widget.repository.isLoading || widget.repository.loadFailed) {
           return FeaturePage(
             title: '설정',
-            description: '학업 프로필과 화면을 관리합니다.',
             body: [
               PlanningStorageState(repository: widget.repository),
               const AppearanceSettingsSection(),
@@ -209,317 +208,283 @@ class _SettingsPageState extends State<SettingsPage> {
           _profileInitialized = true;
         }
         final suggestedYear = _suggestedYear();
-        return Align(
-          alignment: Alignment.topLeft,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 1120),
-            child: FeaturePage(
-              padding: const EdgeInsets.only(bottom: 28),
-              title: '설정',
-              description: '학업 프로필과 화면을 관리합니다.',
-              body: [
-                Form(
-                  key: _formKey,
-                  child: ResponsiveColumns(
-                    enabled: true,
-                    first: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SurfaceCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              FeatureLine.section(
-                                text: '학업과 계획',
-                                padTop: false,
-                                trailing: FilledButton(
-                                  onPressed:
-                                      _saving ||
-                                          GuestPreviewScope.isActive(context)
-                                      ? null
-                                      : _save,
-                                  child: Text(_saving ? '저장 중…' : '저장'),
-                                ),
-                              ),
-                              if (_saved)
-                                FeatureLine.two(
-                                  primary: '저장되었습니다.',
-                                  secondary: '학업 프로필과 개인 계획을 이어서 사용합니다.',
-                                  leading: Icon(
-                                    Icons.check_circle_outline,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .primary,
-                                  ),
-                                ),
-                              if (_error != null)
-                                Text(
-                                  _error!,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
-                                ),
-                              const FeatureLine.section(
-                                text: '학업 프로필',
-                                padTop: false,
-                              ),
-                              ExcludeFocus(
-                                excluding: _saving,
-                                child: IgnorePointer(
-                                  ignoring: _saving,
-                                  child: ResponsiveColumns(
-                                    enabled: false,
-                                    first: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        if (_canUseCatalog) ...[
-                                          const FeatureLine.one(
-                                            text: '등록된 학교는 목록에서 고릅니다. 목록에 없으면 만들지 않습니다.',
-                                          ),
-                                        ],
-                                        if (_academicSourceLabel != null)
-                                          FeatureLine.one(
-                                            text: _academicSourceLabel!,
-                                          ),
-                                        if (_useCatalog &&
-                                            widget.studentApi != null)
-                                          SchoolContextForm(
-                                            key: _schoolForm,
-                                            api: widget.studentApi!.api,
-                                            disabled: _saving,
-                                            showStudy: false,
-                                            showDate: false,
-                                            showCurriculum: false,
-                                            initialInstitutionId:
-                                                _pendingInstitutionId,
-                                            initialDepartmentId:
-                                                _pendingDepartmentId,
-                                            initialCurriculumId:
-                                                _pendingCurriculumId,
-                                            onChanged: _captureCatalogSelection,
-                                          )
-                                        else ...[
-                                          const Text(
-                                            '등록된 학교·학과·교육과정 목록은 서버 연결 전입니다. 아래 입력은 개인 설정입니다.',
-                                          ),
-                                          const OutlinedButton(
-                                            onPressed: null,
-                                            child: Text('등록된 학교·학과·교육과정 선택'),
-                                          ),
-                                          TextFormField(
-                                            controller: _school,
-                                            maxLength: 128,
-                                            onChanged: (_) => setState(() {
-                                              _saved = false;
-                                              _dirty = true;
-                                            }),
-                                            decoration: const InputDecoration(
-                                              labelText: '학교',
-                                              hintText: '예: 경동대학교',
-                                            ),
-                                            textInputAction:
-                                                TextInputAction.next,
-                                          ),
-                                          const SizedBox(height: 14),
-                                          TextFormField(
-                                            controller: _department,
-                                            maxLength: 128,
-                                            onChanged: (_) => setState(() {
-                                              _saved = false;
-                                              _dirty = true;
-                                            }),
-                                            decoration: const InputDecoration(
-                                              labelText: '학과',
-                                              hintText: '예: 컴퓨터공학과',
-                                            ),
-                                            textInputAction:
-                                                TextInputAction.next,
-                                          ),
-                                        ],
-                                        const SizedBox(height: 14),
-                                        AnchoredSelectField<int?>(
-                                          key: const Key(
-                                            'settings-admission-year-select',
-                                          ),
-                                          searchable: true,
-                                          searchLabel: '입학연도 검색',
-                                          value: _admissionYear,
-                                          label: '입학연도',
-                                          options: [
-                                            const SelectOption<int?>(
-                                              null,
-                                              '미입력',
-                                            ),
-                                            for (final year in yearOptions(
-                                              maxYear: DateTime.now().year,
-                                              include: _admissionYear,
-                                            ))
-                                              SelectOption<int?>(
-                                                year,
-                                                '$year년',
-                                              ),
-                                          ],
-                                          onChanged: (value) => setState(() {
-                                            _admissionYear = value;
-                                            _saved = false;
-                                            _dirty = true;
-                                          }),
-                                        ),
-                                        const SizedBox(height: 14),
-                                        _schoolTrackField(context),
-                                      ],
-                                    ),
-                                    second: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        const FeatureLine.section(
-                                          text: '개인 계획',
-                                        ),
-                                        AnchoredSelectField<int?>(
-                                          value: _academicYearOverride,
-                                          label: '개인 계획 학년',
-                                          options: [
-                                            SelectOption<int?>(
-                                              null,
-                                              suggestedYear == null
-                                                  ? '자동 계산 (입학연도 필요)'
-                                                  : '자동 계산 ($suggestedYear학년 제안)',
-                                            ),
-                                            for (
-                                              var year = 1;
-                                              year <= 4;
-                                              year++
-                                            )
-                                              SelectOption<int?>(
-                                                year,
-                                                '$year학년으로 직접 설정',
-                                              ),
-                                          ],
-                                          onChanged: (value) => setState(() {
-                                            _academicYearOverride = value;
-                                            _saved = false;
-                                            _dirty = true;
-                                          }),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        const FeatureLine.one(
-                                          text: '개인 계획을 위한 안내값입니다.',
-                                        ),
-                                        const SizedBox(height: 18),
-                                        AnchoredSelectField<WeekStartDay>(
-                                          key: const Key('week-start-select'),
-                                          value: _weekStartsOn,
-                                          label: '주 시작 요일',
-                                          options: [
-                                            for (final day
-                                                in WeekStartDay.values)
-                                              SelectOption(day, day.label),
-                                          ],
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _weekStartsOn = value;
-                                              _saved = false;
-                                              _dirty = true;
-                                            });
-                                          },
-                                        ),
-                                        const SizedBox(height: 8),
-                                        const FeatureLine.one(
-                                          text: '홈과 일정의 7일 표 시작 요일입니다.',
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const FeatureLine.two(
-                                primary: '개인 교육과정·규칙',
-                                secondary:
-                                    '등록 학교 목록에 없으면 여기서 교육과정·규칙을 직접 만듭니다.',
-                                divided: false,
-                              ),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: FilledButton.tonal(
-                                  onPressed: _saving
-                                      ? null
-                                      : () {
-                                          if (GuestPreviewScope.isActive(
-                                            context,
-                                          )) {
-                                            GuestPreviewScope.showBlockedMessage(
-                                              context,
-                                            );
-                                            return;
-                                          }
-                                          setState(() => _personal = true);
-                                        },
-                                  child: const Text('개인 교육과정 작업'),
-                                ),
-                              ),
-                              const FeatureLine.section(text: '기기 자료 이전'),
-                              if (widget.repository.isServerBacked &&
-                                  !GuestPreviewScope.isActive(context))
-                                PlanningImportSection(
-                                  repository: widget.repository,
-                                )
-                              else if (!GuestPreviewScope.isActive(
-                                context,
-                              )) ...[
-                                const Text(
-                                  '기기 학업 정보·일정 이전은 계정 서버 연결 후 사용할 수 있습니다.',
-                                ),
-                                const OutlinedButton(
-                                  onPressed: null,
-                                  child: Text('기기 학업 정보·일정 이전'),
-                                ),
-                              ],
-                              if (!GuestPreviewScope.isActive(context)) ...[
-                                if (PersonalRepositoryScope.read(context)
-                                        ?.importer
-                                    case final importer?)
-                                  PersonalWorkspaceImportSection(
-                                    importer: importer,
-                                  )
-                                else ...[
-                                  const Text(
-                                    '수강·활동·포트폴리오 자료 이전은 계정 서버 연결 후 사용할 수 있습니다.',
-                                  ),
-                                  const OutlinedButton(
-                                    onPressed: null,
-                                    child: Text('기기 개인 기록 이전'),
-                                  ),
-                                ],
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    second: SizedBox(
-                      key: const Key('settings-expansion-space'),
-                      width: double.infinity,
+        return FeaturePage(
+          padding: const EdgeInsets.only(bottom: 28),
+          title: '설정',
+          body: [
+            Form(
+              key: _formKey,
+              child: _SettingsColumns(
+                first: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SurfaceCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const AppearanceSettingsSection(),
-                          if (widget.aiConsent != null)
-                            AiConsentSection(preferences: widget.aiConsent!),
-                          const AccountSettingsSection(),
-                          if (widget.chatPreferences != null)
-                            ChatSettingsSection(
-                              preferences: widget.chatPreferences!,
+                          FeatureLine.section(
+                            text: '학업과 계획',
+                            padTop: false,
+                            trailing: FilledButton(
+                              onPressed:
+                                  _saving || GuestPreviewScope.isActive(context)
+                                  ? null
+                                  : _save,
+                              child: Text(_saving ? '저장 중…' : '저장'),
                             ),
+                          ),
+                          if (_saved)
+                            FeatureLine.two(
+                              primary: '저장되었습니다.',
+                              secondary: '학업 프로필과 개인 계획을 이어서 사용합니다.',
+                              leading: Icon(
+                                Icons.check_circle_outline,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          if (_error != null)
+                            Text(
+                              _error!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          const FeatureLine.section(
+                            text: '학업 프로필',
+                            padTop: false,
+                          ),
+                          ExcludeFocus(
+                            excluding: _saving,
+                            child: IgnorePointer(
+                              ignoring: _saving,
+                              child: ResponsiveColumns(
+                                enabled: true,
+                                first: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (widget.studentApi != null) ...[
+                                      const NoteLine(
+                                        icon: Icons.info_outline,
+                                        text: '등록된 학교는 목록에서 고릅니다. 목록에 없으면 만들지 않습니다.',
+                                      ),
+                                      const SizedBox(height: 12),
+                                    ],
+                                    if (_academicSourceLabel != null)
+                                      FeatureLine.one(
+                                        text: _academicSourceLabel!,
+                                      ),
+                                    if (_useCatalog &&
+                                        widget.studentApi != null)
+                                      SchoolContextForm(
+                                        key: _schoolForm,
+                                        api: widget.studentApi!.api,
+                                        disabled: _saving,
+                                        showStudy: false,
+                                        showDate: false,
+                                        showCurriculum: false,
+                                        initialInstitutionId:
+                                            _pendingInstitutionId,
+                                        initialDepartmentId:
+                                            _pendingDepartmentId,
+                                        initialCurriculumId:
+                                            _pendingCurriculumId,
+                                        onChanged: _captureCatalogSelection,
+                                      )
+                                    else ...[
+                                      const Text(
+                                        '등록된 학교·학과·교육과정 목록은 서버 연결 전입니다. 아래 입력은 개인 설정입니다.',
+                                      ),
+                                      const OutlinedButton(
+                                        onPressed: null,
+                                        child: Text('등록된 학교·학과·교육과정 선택'),
+                                      ),
+                                      TextFormField(
+                                        controller: _school,
+                                        maxLength: 128,
+                                        onChanged: (_) => setState(() {
+                                          _saved = false;
+                                          _dirty = true;
+                                        }),
+                                        decoration: const InputDecoration(
+                                          labelText: '학교',
+                                          hintText: '예: 경동대학교',
+                                        ),
+                                        textInputAction: TextInputAction.next,
+                                      ),
+                                      const SizedBox(height: 14),
+                                      TextFormField(
+                                        controller: _department,
+                                        maxLength: 128,
+                                        onChanged: (_) => setState(() {
+                                          _saved = false;
+                                          _dirty = true;
+                                        }),
+                                        decoration: const InputDecoration(
+                                          labelText: '학과',
+                                          hintText: '예: 컴퓨터공학과',
+                                        ),
+                                        textInputAction: TextInputAction.next,
+                                      ),
+                                    ],
+                                    const SizedBox(height: 14),
+                                    AnchoredSelectField<int?>(
+                                      key: const Key(
+                                        'settings-admission-year-select',
+                                      ),
+                                      searchable: true,
+                                      searchLabel: '입학연도 검색',
+                                      value: _admissionYear,
+                                      label: '입학연도',
+                                      options: [
+                                        const SelectOption<int?>(null, '미입력'),
+                                        for (final year in yearOptions(
+                                          maxYear: DateTime.now().year,
+                                          include: _admissionYear,
+                                        ))
+                                          SelectOption<int?>(year, '$year년'),
+                                      ],
+                                      onChanged: (value) => setState(() {
+                                        _admissionYear = value;
+                                        _saved = false;
+                                        _dirty = true;
+                                      }),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    _schoolTrackField(context),
+                                  ],
+                                ),
+                                second: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    const FeatureLine.section(text: '개인 계획'),
+                                    AnchoredSelectField<int?>(
+                                      value: _academicYearOverride,
+                                      label: '개인 계획 학년',
+                                      options: [
+                                        SelectOption<int?>(
+                                          null,
+                                          suggestedYear == null
+                                              ? '자동 계산 (입학연도 필요)'
+                                              : '자동 계산 ($suggestedYear학년 제안)',
+                                        ),
+                                        for (var year = 1; year <= 4; year++)
+                                          SelectOption<int?>(
+                                            year,
+                                            '$year학년으로 직접 설정',
+                                          ),
+                                      ],
+                                      onChanged: (value) => setState(() {
+                                        _academicYearOverride = value;
+                                        _saved = false;
+                                        _dirty = true;
+                                      }),
+                                    ),
+                                    const SizedBox(height: 18),
+                                    AnchoredSelectField<WeekStartDay>(
+                                      key: const Key('week-start-select'),
+                                      value: _weekStartsOn,
+                                      label: '주 시작 요일',
+                                      options: [
+                                        for (final day in WeekStartDay.values)
+                                          SelectOption(day, day.label),
+                                      ],
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _weekStartsOn = value;
+                                          _saved = false;
+                                          _dirty = true;
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    SurfaceCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const FeatureLine.two(
+                            primary: '개인 교육과정·규칙',
+                            secondary: '등록 학교 목록에 없으면 여기서 교육과정·규칙을 직접 만듭니다.',
+                            divided: false,
+                          ),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: FilledButton.tonal(
+                              onPressed: _saving
+                                  ? null
+                                  : () {
+                                      if (GuestPreviewScope.isActive(context)) {
+                                        GuestPreviewScope.showBlockedMessage(
+                                          context,
+                                        );
+                                        return;
+                                      }
+                                      setState(() => _personal = true);
+                                    },
+                              child: const Text('개인 교육과정 작업'),
+                            ),
+                          ),
+                          const FeatureLine.section(text: '기기 자료 이전'),
+                          if (widget.repository.isServerBacked &&
+                              !GuestPreviewScope.isActive(context))
+                            PlanningImportSection(repository: widget.repository)
+                          else if (!GuestPreviewScope.isActive(context)) ...[
+                            const Text(
+                              '기기 학업 정보·일정 이전은 계정 서버 연결 후 사용할 수 있습니다.',
+                            ),
+                            const OutlinedButton(
+                              onPressed: null,
+                              child: Text('기기 학업 정보·일정 이전'),
+                            ),
+                          ],
+                          if (!GuestPreviewScope.isActive(context)) ...[
+                            if (PersonalRepositoryScope.read(context)?.importer
+                                case final importer?)
+                              PersonalWorkspaceImportSection(importer: importer)
+                            else ...[
+                              const Text(
+                                '수강·활동·포트폴리오 자료 이전은 계정 서버 연결 후 사용할 수 있습니다.',
+                              ),
+                              const OutlinedButton(
+                                onPressed: null,
+                                child: Text('기기 개인 기록 이전'),
+                              ),
+                            ],
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                second: SizedBox(
+                  key: const Key('settings-expansion-space'),
+                  width: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const AppearanceSettingsSection(),
+                      if (widget.aiConsent != null)
+                        AiConsentSection(preferences: widget.aiConsent!),
+                      const AccountSettingsSection(),
+                      if (widget.chatPreferences != null)
+                        ChatSettingsSection(
+                          preferences: widget.chatPreferences!,
+                        ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         );
       },
     );
@@ -615,4 +580,32 @@ class _SettingsPageState extends State<SettingsPage> {
       if (mounted) setState(() => _saving = false);
     }
   }
+}
+
+/// Settings body: on wide PC screens the academic card takes 3/5 and the
+/// appearance·AI·account column 2/5; narrower screens keep two equal
+/// columns, then one.
+class _SettingsColumns extends StatelessWidget {
+  const _SettingsColumns({required this.first, required this.second});
+
+  final Widget first, second;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      if (constraints.maxWidth <
+          MediaQuery.textScalerOf(context).scale(LayoutWidths.wide)) {
+        return ResponsiveColumns(enabled: true, first: first, second: second);
+      }
+      return Row(
+        key: const ValueKey('settings-wide-columns'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: 3, child: first),
+          const SizedBox(width: 24),
+          Expanded(flex: 2, child: second),
+        ],
+      );
+    },
+  );
 }
