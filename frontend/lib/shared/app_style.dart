@@ -157,7 +157,7 @@ enum AppPalette {
     false,
     0xfff9f4ef,
     0xff020826,
-    0xff716040,
+    0xff645d52,
     0xff8c7851,
     0xffeaddcf,
   ),

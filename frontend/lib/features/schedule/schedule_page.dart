@@ -1,4 +1,7 @@
 import '../../shared/app_style.dart';
+import '../../shared/app_tones.dart';
+import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/tone_chip.dart';
 
 import 'package:flutter/material.dart';
 
@@ -11,11 +14,11 @@ import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/surface_card.dart';
 import '../../shared/pending_ui_action.dart';
-import '../planning/planning_profile_cta.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import '../planning/planning_dates.dart';
+import '../planning/event_category_tone.dart';
 import '../planning/remote_planning_repository.dart';
 import '../auth/auth_api.dart';
 import '../auth/guest_preview_scope.dart';
@@ -28,13 +31,11 @@ class SchedulePage extends StatefulWidget {
     required this.repository,
     this.initialDay,
     this.addRequest,
-    this.onOpenSettings,
   });
 
   final PlanningRepository repository;
   final DateTime? initialDay;
   final PendingUiAction? addRequest;
-  final VoidCallback? onOpenSettings;
 
   @override
   State<SchedulePage> createState() => _SchedulePageState();
@@ -59,7 +60,6 @@ class _SchedulePageState extends State<SchedulePage> {
       if (widget.repository.isLoading || widget.repository.loadFailed) {
         return FeaturePage(
           title: '일정',
-          description: '월간 달력에서 날짜별 개인 일정을 확인하고 추가합니다.',
           body: [PlanningStorageState(repository: widget.repository)],
         );
       }
@@ -75,9 +75,7 @@ class _SchedulePageState extends State<SchedulePage> {
               widget.repository.loadFailed) {
             return;
           }
-          if (request!.consume() && widget.repository.profile.isConfigured) {
-            _editEvent();
-          }
+          if (request!.consume()) _editEvent();
         });
       }
       return LayoutBuilder(
@@ -88,7 +86,29 @@ class _SchedulePageState extends State<SchedulePage> {
                 : (constraints.maxHeight < 620 ? 28 : 8),
           ),
           title: '일정',
-          description: '월간 달력에서 날짜별 개인 일정을 확인하고 추가합니다.',
+          trailing: [
+            PopupMenuButton<void>(
+              key: const Key('schedule-more'),
+              tooltip: '더보기',
+              icon: const Icon(Icons.more_horiz),
+              itemBuilder: (context) => [
+                PopupMenuItem<void>(
+                  key: const Key('schedule-load-draft'),
+                  onTap: _loadDraft,
+                  child: const ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.inventory_2_outlined),
+                    title: Text('임시저장 불러오기'),
+                  ),
+                ),
+              ],
+            ),
+            FilledButton.icon(
+              onPressed: () => _editEvent(),
+              icon: const Icon(Icons.add),
+              label: const Text('일정 추가'),
+            ),
+          ],
           body: [
             Align(
               alignment: Alignment.topLeft,
@@ -97,9 +117,9 @@ class _SchedulePageState extends State<SchedulePage> {
                 child: constraints.maxWidth >= 1000
                     ? EqualHeightRow(
                         children: [
-                          Expanded(child: _calendar()),
+                          Expanded(flex: 3, child: _calendar()),
                           const SizedBox(width: 16),
-                          Expanded(child: _dayList(selectedEvents)),
+                          Expanded(flex: 2, child: _dayList(selectedEvents)),
                         ],
                       )
                     : Column(
@@ -118,128 +138,168 @@ class _SchedulePageState extends State<SchedulePage> {
     },
   );
 
-  Widget _calendar() => SurfaceCard(
-    child: Column(
-      children: [
-        Row(
-          children: [
-            IconButton.filledTonal(
-              tooltip: '이전 달',
-              onPressed: () => setState(
-                () => _month = DateTime(_month.year, _month.month - 1),
-              ),
-              icon: const Icon(Icons.chevron_left),
-            ),
-            Expanded(
-              child: Text(
-                '${_month.year}년 ${_month.month}월',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ),
-            IconButton.filledTonal(
-              tooltip: '다음 달',
-              onPressed: () => setState(
-                () => _month = DateTime(_month.year, _month.month + 1),
-              ),
-              icon: const Icon(Icons.chevron_right),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            for (final day in planningWeek(
-              DateTime.now(),
-              widget.repository.profile.weekStartsOn,
-            ))
+  Widget _calendar() {
+    final theme = Theme.of(context);
+    final now = DateTime.now();
+    final showingToday =
+        _month.year == now.year &&
+        _month.month == now.month &&
+        _sameDay(_selectedDay, now);
+    return SurfaceCard(
+      child: Column(
+        children: [
+          Row(
+            children: [
               Expanded(
-                child: Center(
+                child: Semantics(
+                  header: true,
                   child: Text(
-                    weekdayLabel(day.weekday),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                    '${_month.year}년 ${_month.month}월',
+                    style: theme.textTheme.titleLarge,
                   ),
                 ),
               ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: 42,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 7,
-            mainAxisExtent: MediaQuery.textScalerOf(context).scale(14) * 3 + 24,
-          ),
-          itemBuilder: (context, index) {
-            final first = DateTime(_month.year, _month.month);
-            final day = first.add(
-              Duration(
-                days:
-                    index -
-                    (first.weekday -
-                            widget.repository.profile.weekStartsOn.weekday +
-                            7) %
-                        7,
+              if (!showingToday) ...[
+                TextButton(
+                  onPressed: () => setState(() {
+                    _selectedDay = _dateOnly(now);
+                    _month = DateTime(now.year, now.month);
+                  }),
+                  child: const Text('오늘'),
+                ),
+                const SizedBox(width: 4),
+              ],
+              IconButton(
+                tooltip: '이전 달',
+                onPressed: () => setState(
+                  () => _month = DateTime(_month.year, _month.month - 1),
+                ),
+                icon: const Icon(Icons.chevron_left),
               ),
-            );
-            return _dayCell(day);
-          },
-        ),
-      ],
-    ),
-  );
+              IconButton(
+                tooltip: '다음 달',
+                onPressed: () => setState(
+                  () => _month = DateTime(_month.year, _month.month + 1),
+                ),
+                icon: const Icon(Icons.chevron_right),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (final day in planningWeek(
+                DateTime.now(),
+                widget.repository.profile.weekStartsOn,
+              ))
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      weekdayLabel(day.weekday),
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: _weekdayColor(day.weekday),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: 42,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              mainAxisExtent:
+                  MediaQuery.textScalerOf(context).scale(14) * 3 + 20,
+            ),
+            itemBuilder: (context, index) {
+              final first = DateTime(_month.year, _month.month);
+              final day = first.add(
+                Duration(
+                  days:
+                      index -
+                      (first.weekday -
+                              widget.repository.profile.weekStartsOn.weekday +
+                              7) %
+                          7,
+                ),
+              );
+              return _dayCell(day);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _weekdayColor(int weekday) => switch (weekday) {
+    DateTime.sunday => AppTone.danger.color(context),
+    DateTime.saturday => AppTone.info.color(context),
+    _ => Theme.of(context).colorScheme.onSurfaceVariant,
+  };
 
   Widget _dayCell(DateTime day) {
+    final colors = Theme.of(context).colorScheme;
     final events = _eventsForDay(day);
     final selected = _sameDay(day, _selectedDay);
     final today = _sameDay(day, DateTime.now());
     final inMonth = day.month == _month.month;
+    final number = Container(
+      width: 30,
+      height: 30,
+      alignment: Alignment.center,
+      decoration: today
+          ? BoxDecoration(color: colors.primary, shape: BoxShape.circle)
+          : null,
+      child: Text(
+        '${day.day}',
+        style: TextStyle(
+          fontWeight: selected || today ? FontWeight.w800 : FontWeight.w500,
+          color: today
+              ? colors.onPrimary
+              : inMonth
+              ? colors.onSurface
+              : colors.onSurfaceVariant.withValues(alpha: .45),
+        ),
+      ),
+    );
     return Semantics(
       button: true,
-      label: '${day.month}월 ${day.day}일, 일정 ${events.length}개',
+      selected: selected,
+      label:
+          '${day.month}월 ${day.day}일${today ? ', 오늘' : ''}, 일정 ${events.length}개',
       child: InkWell(
-        onTap: () => setState(() => _selectedDay = _dateOnly(day)),
-        borderRadius: BorderRadius.circular(20),
+        onTap: () => setState(() {
+          _selectedDay = _dateOnly(day);
+          if (!inMonth) _month = DateTime(day.year, day.month);
+        }),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
           margin: const EdgeInsets.all(2),
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.only(top: 4),
           decoration: BoxDecoration(
-            color: selected
-                ? Theme.of(context).colorScheme.primaryContainer
-                : null,
-            border: today
-                ? Border.all(color: Theme.of(context).colorScheme.outline)
-                : null,
-            borderRadius: BorderRadius.circular(20),
+            color: selected ? colors.primaryContainer : null,
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
             children: [
-              Text(
-                '${day.day}',
-                style: TextStyle(
-                  fontWeight: selected || today
-                      ? FontWeight.w800
-                      : FontWeight.w500,
-                  color: inMonth
-                      ? null
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Wrap(
-                spacing: 2,
+              number,
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   for (final event in events.take(3))
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: _categoryColor(event.category),
-                        shape: BoxShape.circle,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 1.5),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: event.category.tone.color(context),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const SizedBox(width: 6, height: 6),
                       ),
-                      child: const SizedBox(width: 6, height: 6),
                     ),
                 ],
               ),
@@ -251,73 +311,133 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 
   Widget _dayList(List<PlanningEvent> events) {
-    final canAdd = widget.repository.profile.isConfigured;
+    final theme = Theme.of(context);
+    final day = _selectedDay;
+    final today = _sameDay(day, DateTime.now());
     return SurfaceCard(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Wrap(
-            spacing: 16,
-            runSpacing: 12,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
             children: [
-              Text(
-                '${_selectedDay.month}월 ${_selectedDay.day}일 일정',
-                style: Theme.of(context).textTheme.titleLarge,
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    '${day.month}월 ${day.day}일 ${weekdayLabel(day.weekday)}요일',
+                    style: theme.textTheme.titleLarge,
+                  ),
+                ),
               ),
-              if (canAdd) ...[
-                FilledButton.icon(
-                  onPressed: () => _editEvent(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('일정 추가'),
-                ),
-                OutlinedButton(
-                  key: const Key('schedule-load-draft'),
-                  onPressed: _loadDraft,
-                  child: const Text('임시저장 불러오기'),
-                ),
+              if (today) const ToneChip(label: '오늘', tone: AppTone.accent),
+              if (events.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                ToneChip(label: '${events.length}개'),
               ],
             ],
           ),
-          const SizedBox(height: 16),
-          if (!canAdd && widget.onOpenSettings != null) ...[
-            const SizedBox(height: 12),
-            PlanningProfileSettingsCta(
-              need: PlanningProfileNeed.configured,
-              profile: widget.repository.profile,
-              onOpenSettings: widget.onOpenSettings!,
-            ),
-          ],
+          const SizedBox(height: 12),
           if (events.isEmpty)
-            const FeatureLine.one(text: '등록된 개인 일정이 없습니다.')
+            EmptyState(
+              icon: Icons.event_available_outlined,
+              title: '일정이 없습니다',
+              action: OutlinedButton.icon(
+                onPressed: () => _editEvent(),
+                icon: const Icon(Icons.add),
+                label: const Text('이 날에 추가'),
+              ),
+            )
           else
-            for (final event in events) _eventTile(event),
+            for (final event in events) ...[
+              _eventTile(event, day),
+              const SizedBox(height: 8),
+            ],
         ],
       ),
     );
   }
 
-  Widget _eventTile(
-    PlanningEvent event, {
-    bool showDate = false,
-  }) => FeatureLine.two(
-    primary: event.title,
-    secondary:
-        '${showDate ? '${event.start.month}.${event.start.day} · ' : ''}${_time(event.start)}–${_time(event.end)} · ${event.category.label}${event.memo.isEmpty ? '' : '\n${event.memo}'}',
-    leading: Container(
-      width: 4,
-      height: 42,
-      decoration: BoxDecoration(
-        color: _categoryColor(event.category),
-        borderRadius: BorderRadius.circular(4),
+  Widget _eventTile(PlanningEvent event, DateTime day) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final tone = event.category.tone;
+    final continued = !_sameDay(event.start, day);
+    return Material(
+      color: colors.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _editEvent(existing: event),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 4, color: tone.color(context)),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 52,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        continued ? '계속' : _time(event.start),
+                        style: theme.textTheme.titleSmall,
+                      ),
+                      Text(
+                        _sameDay(event.end, day) ? _time(event.end) : '다음 날',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        event.title,
+                        style: theme.textTheme.titleSmall,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (event.memo.isNotEmpty)
+                        Text(
+                          event.memo,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      const SizedBox(height: 6),
+                      ToneChip(
+                        label: event.category.label,
+                        tone: tone,
+                        dot: true,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: '${event.title} 수정',
+                icon: const Icon(Icons.edit_outlined, size: 20),
+                onPressed: () => _editEvent(existing: event),
+              ),
+              const SizedBox(width: 4),
+            ],
+          ),
+        ),
       ),
-    ),
-    trailing: IconButton(
-      tooltip: '${event.title} 수정',
-      icon: const Icon(Icons.edit_outlined),
-      onPressed: () => _editEvent(existing: event),
-    ),
-  );
+    );
+  }
 
   List<PlanningEvent> _eventsForDay(DateTime day) =>
       eventsOnDay(widget.repository.events, day);
@@ -328,7 +448,6 @@ class _SchedulePageState extends State<SchedulePage> {
     String? appliedDraftId,
   }) async {
     if (!_allowWrite()) return;
-    if (existing == null && !widget.repository.profile.isConfigured) return;
     await showInputDialog<void>(
       context: context,
       builder: (context) => _EventEditor(
@@ -344,7 +463,6 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Future<void> _loadDraft() async {
     if (!_allowWrite()) return;
-    if (!widget.repository.profile.isConfigured) return;
     final entry = await showFormDraftPicker(
       context: context,
       collectionKey: formDraftCollectionKey(_scheduleDraftScreenId),
@@ -543,8 +661,6 @@ class _EventEditorState extends State<_EventEditor> {
             _end,
             (value) => setState(() => _end = value),
           ),
-          if (widget.repository.isServerBacked)
-            const Text('일시는 이 기기의 시간대로 입력·표시하고 서버에는 UTC 시각으로 저장합니다.'),
           const SizedBox(height: 12),
           AnchoredSelectField<PlanningEventCategory>(
             value: _category,
@@ -717,9 +833,3 @@ bool _sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 String _time(DateTime value) =>
     '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
-Color _categoryColor(PlanningEventCategory category) => switch (category) {
-  PlanningEventCategory.academic => const Color(0xff315a77),
-  PlanningEventCategory.personal => const Color(0xff6c7a37),
-  PlanningEventCategory.activity => const Color(0xff8f5a3c),
-  PlanningEventCategory.deadline => const Color(0xffa4414d),
-};

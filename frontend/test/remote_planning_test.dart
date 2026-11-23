@@ -471,7 +471,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.textContaining('월간 달력에서 날짜별 개인 일정을 확인하고 추가합니다.'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, '일정 추가'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       local.dispose();

@@ -11,14 +11,31 @@ class SurfaceCard extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: padding ?? phoneAwarePadding(context),
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-    ),
-    child: child,
-  );
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final dark = colors.brightness == Brightness.dark;
+    return Container(
+      width: double.infinity,
+      padding: padding ?? phoneAwarePadding(context),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: dark
+              ? colors.outlineVariant
+              : colors.outlineVariant.withValues(alpha: .55),
+        ),
+        boxShadow: dark
+            ? null
+            : [
+                BoxShadow(
+                  color: colors.onSurface.withValues(alpha: .05),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+      ),
+      child: child,
+    );
+  }
 }

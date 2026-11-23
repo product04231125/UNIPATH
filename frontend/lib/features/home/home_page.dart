@@ -6,13 +6,17 @@ import '../../app_shell/student_pages.dart';
 import '../../shared/widgets/equal_height_row.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/feature_page.dart';
+import '../../shared/app_tones.dart';
+import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/surface_card.dart';
+import '../../shared/widgets/tone_chip.dart';
 
 import '../auth/guest_preview_scope.dart';
 import '../career/career_goal.dart';
 import '../career/career_gap.dart';
 import '../career/career_gap_summary_card.dart';
 import '../career/career_goal_card.dart';
+import '../planning/event_category_tone.dart';
 import '../planning/planning_dates.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
@@ -55,7 +59,7 @@ class HomePage extends StatelessWidget {
       final year = profile.academicYearFor(now);
       final upcoming = repository.events
           .where((e) => e.end.isAfter(now))
-          .take(3)
+          .take(4)
           .toList();
       return LayoutBuilder(
         builder: (context, viewport) {
@@ -63,6 +67,9 @@ class HomePage extends StatelessWidget {
           final compact =
               viewport.maxWidth >= 1000 &&
               MediaQuery.textScalerOf(context).scale(14) <= 16.8;
+          final gap = FeatureLine.slotGap(context);
+          final prepareDone =
+              profile.isConfigured && repository.events.isNotEmpty;
           return FeaturePage(
             scrollKey: const Key('home-scroll'),
             padding: EdgeInsets.only(
@@ -70,24 +77,13 @@ class HomePage extends StatelessWidget {
             ),
             eyebrow: '${now.month}월 ${now.day}일 ${weekdayLabel(now.weekday)}요일',
             title: '나의 대학생활 경로',
-            description: '오늘 일정과 다음 기록을 한눈에 봅니다.',
             contextLabel: phone && profile.isConfigured
                 ? (profile.hasCatalogSchool ? '등록' : '개인 설정')
                 : null,
             body: [
-              if (careerGoal case final goal?) ...[
-                CareerGoalCard(
-                  controller: goal,
-                  onFindJobs: () => onOpenPage(StudentPages.jobs),
-                ),
-                SizedBox(height: FeatureLine.slotGap(context)),
-              ],
-              if ((gapReport, onOpenCareerGap) case (
-                final report?,
-                final open?,
-              )) ...[
-                CareerGapSummaryCard(report: report, onOpen: open),
-                SizedBox(height: FeatureLine.slotGap(context)),
+              if (_career(context) case final career?) ...[
+                career,
+                SizedBox(height: gap),
               ],
               WeeklySchedule(
                 compact: compact,
@@ -95,7 +91,7 @@ class HomePage extends StatelessWidget {
                 startsOn: profile.weekStartsOn,
                 onSelectDay: onOpenSchedule,
               ),
-              SizedBox(height: FeatureLine.slotGap(context)),
+              SizedBox(height: gap),
               LayoutBuilder(
                 builder: (context, constraints) {
                   final upcomingCard = _upcoming(
@@ -103,39 +99,78 @@ class HomePage extends StatelessWidget {
                     upcoming,
                     compact: compact,
                   );
-                  final prepare = _prepare(context, profile);
+                  final side = Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (!prepareDone) ...[
+                        _prepare(context, profile),
+                        SizedBox(height: gap),
+                      ],
+                      _nextSteps(context, year),
+                    ],
+                  );
                   if (constraints.maxWidth < 820) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         upcomingCard,
-                        SizedBox(height: FeatureLine.slotGap(context)),
-                        prepare,
+                        SizedBox(height: gap),
+                        side,
                       ],
                     );
                   }
-                  final children = <Widget>[
-                    Expanded(flex: compact ? 1 : 3, child: upcomingCard),
-                    const SizedBox(width: 16),
-                    Expanded(flex: compact ? 1 : 2, child: prepare),
-                  ];
-                  if (profile.isConfigured && repository.events.isNotEmpty) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: children,
-                    );
-                  }
-                  return EqualHeightRow(children: children);
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: upcomingCard),
+                      const SizedBox(width: 16),
+                      Expanded(flex: 2, child: side),
+                    ],
+                  );
                 },
               ),
-              SizedBox(height: FeatureLine.slotGap(context)),
-              _nextSteps(context, year, compact: true),
             ],
           );
         },
       );
     },
   );
+
+  /// Target job and its readiness side by side on wide screens.
+  Widget? _career(BuildContext context) {
+    final goal = careerGoal;
+    if (goal == null) return null;
+    final goalCard = CareerGoalCard(
+      controller: goal,
+      onFindJobs: () => onOpenPage(StudentPages.jobs),
+    );
+    final gap = switch ((gapReport, onOpenCareerGap)) {
+      (final report?, final open?) => CareerGapSummaryCard(
+        report: report,
+        onOpen: open,
+      ),
+      _ => null,
+    };
+    if (gap == null) return goalCard;
+    return LayoutBuilder(
+      builder: (context, constraints) => constraints.maxWidth < 820
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                goalCard,
+                SizedBox(height: FeatureLine.slotGap(context)),
+                gap,
+              ],
+            )
+          : EqualHeightRow(
+              children: [
+                Expanded(flex: 2, child: goalCard),
+                const SizedBox(width: 16),
+                Expanded(flex: 3, child: gap),
+              ],
+            ),
+    );
+  }
 
   Widget _card(
     BuildContext context,
@@ -153,6 +188,7 @@ class HomePage extends StatelessWidget {
           padTop: false,
           padBottom: false,
         ),
+        const SizedBox(height: 8),
         child,
       ],
     ),
@@ -166,21 +202,21 @@ class HomePage extends StatelessWidget {
     context,
     '다가오는 일정',
     events.isEmpty
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('앞으로 예정된 개인 일정이 없습니다.'),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => onOpenPage(StudentPages.schedule),
-                child: const Text('전체 일정 보기 →'),
-              ),
-            ],
+        ? EmptyState(
+            compact: true,
+            icon: Icons.event_note_outlined,
+            title: '앞으로 예정된 개인 일정이 없습니다.',
+            action: TextButton(
+              onPressed: () => onOpenPage(StudentPages.schedule),
+              child: const Text('전체 일정 보기 →'),
+            ),
           )
         : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (final event in events)
-                _upcomingEvent(event, compact: compact),
+                _upcomingEvent(context, event, compact: compact),
+              const SizedBox(height: 4),
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton(
@@ -203,19 +239,94 @@ class HomePage extends StatelessWidget {
     ),
   );
 
-  Widget _upcomingEvent(PlanningEvent event, {required bool compact}) {
+  Widget _upcomingEvent(
+    BuildContext context,
+    PlanningEvent event, {
+    required bool compact,
+  }) {
+    final theme = Theme.of(context);
+    final tone = event.category.tone;
+    final start = event.start;
+    final today = DateTime.now();
+    final days = DateTime(
+      start.year,
+      start.month,
+      start.day,
+    ).difference(DateTime(today.year, today.month, today.day)).inDays;
     final details =
-        '${event.start.month}.${event.start.day} · ${planningTime(event.start)} · ${event.category.label}';
+        '${weekdayLabel(start.weekday)} ${planningTime(start)} · ${event.category.label}';
     return Tooltip(
-      message: '${event.title}\n$details',
+      message:
+          '${event.title}\n${start.month}.${start.day} · ${planningTime(start)} · ${event.category.label}',
       child: InkWell(
-        onTap: () => onOpenSchedule(event.start),
-        child: FeatureLine.two(
-          primary: event.title,
-          secondary: details,
-          maxLines: compact ? 1 : null,
-          leading: const Icon(Icons.event_outlined),
-          trailing: const Icon(Icons.chevron_right),
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => onOpenSchedule(start),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: tone.container(context),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      '${start.month}월',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 11,
+                        color: tone.color(context),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      '${start.day}',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        height: 1.1,
+                        color: tone.color(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      event.title,
+                      maxLines: compact ? 1 : null,
+                      overflow: compact ? TextOverflow.ellipsis : null,
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      details,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (days >= 0 && days <= 7)
+                ToneChip(
+                  label: days == 0 ? '오늘' : 'D-$days',
+                  tone:
+                      days <= 2 ||
+                          event.category == PlanningEventCategory.deadline
+                      ? AppTone.danger
+                      : AppTone.warning,
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -224,55 +335,25 @@ class HomePage extends StatelessWidget {
   Widget _prepare(BuildContext context, PlanningProfile profile) {
     final configured = profile.isConfigured;
     final hasEvents = repository.events.isNotEmpty;
-    if (configured && hasEvents) {
-      return _card(
-        context,
-        '준비 목록',
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('기본 준비 2/2 · 완료'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                TextButton(
-                  onPressed: onOpenSettings,
-                  child: const Text('학업과 계획 정보'),
-                ),
-                TextButton(
-                  onPressed: () => onOpenSchedule(DateTime.now()),
-                  child: Text('개인 일정 ${repository.events.length}개 저장됨'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    }
+    final done = (configured ? 1 : 0) + (hasEvents ? 1 : 0);
     return _card(
       context,
       '준비 목록',
       Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            '기본 준비 ${(configured ? 1 : 0) + (hasEvents ? 1 : 0)}/2',
-            style: Theme.of(context).textTheme.bodySmall,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(minHeight: 6, value: done / 2),
           ),
           const SizedBox(height: 8),
-          LinearProgressIndicator(
-            value: ((configured ? 1 : 0) + (hasEvents ? 1 : 0)) / 2,
-          ),
-          const SizedBox(height: 12),
           _prepareItem(
             context,
             configured,
             '학업과 계획 정보',
-            configured ? '학교·학과·입학연도 입력 완료' : '학교·학과·입학연도를 설정하세요.',
+            configured ? '입력 완료' : '학교·학과·입학연도를 설정하세요.',
             onOpenSettings,
           ),
-          const Divider(),
           _prepareItem(
             context,
             hasEvents,
@@ -284,6 +365,7 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
+      trailing: ToneChip(label: '$done/2', tone: AppTone.accent),
     );
   }
 
@@ -293,30 +375,56 @@ class HomePage extends StatelessWidget {
     String title,
     String description,
     VoidCallback action,
-  ) => InkWell(
-    onTap: action,
-    child: FeatureLine.two(
-      primary: title,
-      secondary: description,
-      leading: Icon(
-        done ? Icons.check_circle_outline : Icons.radio_button_unchecked,
+  ) {
+    final theme = Theme.of(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: action,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Row(
+          children: [
+            Icon(
+              done ? Icons.check_circle : Icons.radio_button_unchecked,
+              color: done
+                  ? AppTone.success.color(context)
+                  : theme.colorScheme.outline,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: theme.textTheme.titleSmall),
+                  Text(
+                    description,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
       ),
-      trailing: const Icon(Icons.chevron_right),
-    ),
-  );
+    );
+  }
 
-  Widget _nextSteps(BuildContext context, int? year, {bool compact = false}) {
+  Widget _nextSteps(BuildContext context, int? year) {
+    final theme = Theme.of(context);
     final steps = switch (year) {
       1 || 2 => const [
         _PlanLink(
           '수강 계획 정리',
-          '학기별 과목과 개인 수강 계획을 확인하세요.',
+          '학기별 과목과 수강 계획',
           Icons.menu_book_outlined,
           StudentPages.academics,
         ),
         _PlanLink(
           '활동 기록 시작',
-          '참여한 활동과 준비 중인 활동을 정리하세요.',
+          '참여한 활동과 준비 중인 활동',
           Icons.volunteer_activism_outlined,
           StudentPages.activity,
         ),
@@ -324,13 +432,13 @@ class HomePage extends StatelessWidget {
       3 => const [
         _PlanLink(
           '활동 정리',
-          '프로젝트와 경험을 내 기록으로 남기세요.',
+          '프로젝트와 경험 기록',
           Icons.volunteer_activism_outlined,
           StudentPages.activity,
         ),
         _PlanLink(
           '수강 계획 확인',
-          '과목과 학기 계획을 이어서 정리하세요.',
+          '과목과 학기 계획',
           Icons.menu_book_outlined,
           StudentPages.academics,
         ),
@@ -338,13 +446,13 @@ class HomePage extends StatelessWidget {
       4 => const [
         _PlanLink(
           '졸업 요건 확인',
-          '개인 기준으로 졸업 요건을 확인하세요.',
+          '개인 기준 졸업 요건',
           Icons.school_outlined,
           StudentPages.academics,
         ),
         _PlanLink(
           '자료 정리',
-          '기록한 경험과 자료를 정리하세요.',
+          '경험과 자료 정리',
           Icons.collections_bookmark_outlined,
           StudentPages.materials,
         ),
@@ -352,13 +460,13 @@ class HomePage extends StatelessWidget {
       _ => const [
         _PlanLink(
           '수강 관리',
-          '수강 과목과 학기 계획을 정리하세요.',
+          '수강 과목과 학기 계획',
           Icons.menu_book_outlined,
           StudentPages.academics,
         ),
         _PlanLink(
           '활동 기록',
-          '참여한 활동을 내 기록으로 남기세요.',
+          '참여한 활동 기록',
           Icons.volunteer_activism_outlined,
           StudentPages.activity,
         ),
@@ -366,28 +474,40 @@ class HomePage extends StatelessWidget {
     };
     return SurfaceCard(
       key: const ValueKey('home-card-다음에 이어갈 기록'),
-      // Dense padding so the Windows default client size still fits without scroll.
-      padding: EdgeInsets.symmetric(horizontal: 18, vertical: compact ? 4 : 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('다음에 이어갈 기록', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 12,
-            runSpacing: 4,
-            children: [
-              for (final step in steps)
-                Tooltip(
-                  message: step.description,
-                  child: TextButton.icon(
-                    onPressed: () => onOpenPage(step.page),
-                    icon: Icon(step.icon, size: 18),
-                    label: Text(step.label),
-                  ),
+          Text('다음에 이어갈 기록', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          for (final step in steps)
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => onOpenPage(step.page),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                child: Row(
+                  children: [
+                    IconBadge(icon: step.icon, size: 36),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(step.label, style: theme.textTheme.titleSmall),
+                          Text(
+                            step.description,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right),
+                  ],
                 ),
-            ],
-          ),
+              ),
+            ),
         ],
       ),
     );

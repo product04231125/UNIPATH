@@ -169,7 +169,7 @@ void main() {
           expect(find.byType(WeeklySchedule), findsNothing);
           expect(find.text('이번 주 일정'), findsNothing);
           expect(find.text('2026년 10월'), findsOneWidget);
-          expect(find.text('10월 6일 일정'), findsOneWidget);
+          expect(find.text('10월 6일 화요일'), findsOneWidget);
           expect(find.byType(GridView), findsOneWidget);
           final weekdays = ['화', '수', '목', '금', '토', '일', '월'];
           for (var i = 1; i < weekdays.length; i++) {
@@ -187,7 +187,7 @@ void main() {
           await tester.pumpAndSettle();
           await tester.tap(targetCell);
           await tester.pumpAndSettle();
-          expect(find.text('10월 7일 일정'), findsOneWidget);
+          expect(find.text('10월 7일 수요일'), findsOneWidget);
           final title = find.text('월간 달력 개인 일정');
           await tester.ensureVisible(title);
           await tester.pumpAndSettle();
@@ -273,9 +273,10 @@ void main() {
           );
           expect(find.widgetWithText(FilledButton, '일정 추가'), findsOneWidget);
           if (width >= 820) {
+            // Upcoming on the left; setup and shortcuts stack on the right.
             expect(upcoming.top, closeTo(prepare.top, 0.01));
-            expect(upcoming.bottom, closeTo(prepare.bottom, 0.01));
             expect(next.top, greaterThan(prepare.bottom));
+            expect(next.left, closeTo(prepare.left, 0.5));
             expect(weekly.right, closeTo(prepare.right, 0.5));
           } else {
             expect(prepare.top, greaterThan(upcoming.bottom));
@@ -323,7 +324,7 @@ void main() {
       .where((state) => state.widget.axisDirection == AxisDirection.right)
       .fold(0.0, (total, state) => total + state.position.maxScrollExtent);
 
-  testWidgets('responsive order collapses navigation before weekly scrolling', (
+  testWidgets('responsive order collapses navigation; the week never scrolls', (
     tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -345,12 +346,13 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     }
+    // Narrower than the detailed strip: all seven days stay visible as dots.
     await tester.binding.setSurfaceSize(const Size(847, 900));
     await tester.pumpAndSettle();
     expect(find.byTooltip('홈'), findsOneWidget);
     expect(
       horizontalExtent(tester, find.byType(WeeklySchedule)),
-      greaterThan(0),
+      closeTo(0, 1e-6),
     );
     await tester.binding.setSurfaceSize(const Size(1024, 900));
     await tester.pumpAndSettle();
@@ -646,7 +648,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('개인 프로젝트 마감'), findsWidgets);
-    expect(find.text('기본 준비 2/2 · 완료'), findsOneWidget);
+    // A finished setup checklist leaves the home screen.
+    expect(find.byKey(const ValueKey('home-card-준비 목록')), findsNothing);
     final first = planningWeek(now, WeekStartDay.tuesday).first;
     final day = find.byKey(ValueKey('week-day-${first.toIso8601String()}'));
     await tester.tap(day);
@@ -689,7 +692,14 @@ void main() {
           );
           await tester.pumpAndSettle();
           expect(find.byType(WeeklySchedule), findsOneWidget);
-          expect(find.text('일정 없음'), findsNWidgets(7));
+          expect(
+            find.byWidgetPredicate(
+              (w) =>
+                  w.key is ValueKey<String> &&
+                  (w.key! as ValueKey<String>).value.startsWith('week-day-'),
+            ),
+            findsNWidgets(7),
+          );
           if (size.width >= 1440 && scale == 1.0) {
             for (final element
                 in find
