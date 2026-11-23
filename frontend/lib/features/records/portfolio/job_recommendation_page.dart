@@ -8,6 +8,8 @@ import '../../../shared/widgets/field_label.dart';
 import '../../../shared/widgets/surface_card.dart';
 import '../../api/job_analysis_models.dart';
 import '../../api/job_recommendation_api.dart';
+import '../../career/career_goal.dart';
+import '../../career/job_category_fields.dart';
 import '../../api/student_api.dart';
 import '../../assistant/ai_record_catalog.dart';
 import '../../auth/auth_api.dart';
@@ -51,8 +53,12 @@ class JobRecommendationPage extends StatefulWidget {
     this.purposeSelector,
     this.loadMaterials,
     this.loadDocuments,
+    this.goal,
   });
   final StudentApi? api;
+
+  /// The saved target job; fills an untouched search form.
+  final CareerGoal? goal;
   final AiConsentPreferences? consent;
   final Future<List<AiRecordOption>> Function()? loadRecords;
   final Future<List<XFile>> Function()? pickFiles;
@@ -85,9 +91,33 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
   List<String> _fields = const [];
 
   @override
+  void initState() {
+    super.initState();
+    _applyGoal();
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _updateCategoryAccess();
+  }
+
+  // The goal values last put into the form; the form counts as untouched while it still has them.
+  (String, String, String)? _goalValues;
+  var _goalRevision = 0;
+
+  void _applyGoal() {
+    final goal = widget.goal;
+    if (goal == null || !goal.isSet) return;
+    final current = (_categoryCode, _subcategoryCode, _keyword.text.trim());
+    final untouched = current == ('', '', '') || current == _goalValues;
+    final next = (goal.topCode, goal.subCode, goal.keyword);
+    if (!untouched || next == current) return;
+    _categoryCode = goal.topCode;
+    _subcategoryCode = goal.subCode;
+    _keyword.text = goal.keyword;
+    _goalValues = next;
+    _goalRevision++;
   }
 
   void _updateCategoryAccess() {
@@ -124,6 +154,10 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
       _error = null;
       _requestId = null;
       _fields = [];
+      _goalValues = null;
+      _applyGoal();
+    } else if (widget.goal != oldWidget.goal) {
+      _applyGoal();
     }
   }
 
@@ -205,9 +239,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
     widget.onBusyChanged?.call(true);
     var readingRecords = true;
     try {
-      final records =
-          await (widget.loadRecords?.call() ??
-              loadAiRecords(api, includeCourses: false));
+      final records = await (widget.loadRecords?.call() ?? loadAiRecords(api));
       if (!mounted ||
           revision != _revision ||
           GuestPreviewScope.isActive(context)) {
@@ -228,7 +260,9 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
         return;
       }
       if (documents.isEmpty && records.isEmpty) {
-        setState(() => _error = '기기 파일이나 내 자료를 고르거나 활동·경험·자격·성과 기록을 등록해 주세요.');
+        setState(
+          () => _error = '기기 파일이나 내 자료를 고르거나 수강·활동·경험·자격·성과 기록을 등록해 주세요.',
+        );
         return;
       }
       readingRecords = false;
@@ -336,97 +370,6 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
         : null;
   }
 
-  Widget _categoryField({
-    required String label,
-    required Key key,
-    required String value,
-    required String emptyLabel,
-    required List<JobCategory> options,
-    required ValueChanged<String> onChanged,
-    String? error,
-  }) => FieldLabel(
-    label: label,
-    child: Semantics(
-      label: label,
-      child: DropdownButtonFormField<String>(
-        key: key,
-        initialValue: value,
-        isExpanded: true,
-        itemHeight: null,
-        decoration: InputDecoration(errorText: error, errorMaxLines: 2),
-        items: [
-          DropdownMenuItem(value: '', child: Text(emptyLabel)),
-          for (final option in options)
-            DropdownMenuItem(value: option.code, child: Text(option.name)),
-        ],
-        onChanged: _busy || options.isEmpty
-            ? null
-            : (code) => onChanged(code ?? ''),
-      ),
-    ),
-  );
-
-  Widget _categoryFields(Future<List<JobCategory>> future) =>
-      FutureBuilder<List<JobCategory>>(
-        key: ObjectKey(future),
-        future: future,
-        builder: (context, snapshot) {
-          final categories = snapshot.data ?? const <JobCategory>[];
-          final subcategories =
-              categories
-                  .where((category) => category.code == _categoryCode)
-                  .firstOrNull
-                  ?.children ??
-              const <JobCategory>[];
-          final loading = snapshot.connectionState != ConnectionState.done;
-          final error = _hasField('category_codes') ? '선택한 직종을 확인하세요.' : null;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _categoryField(
-                label: '직종',
-                key: const ValueKey('recommend-category'),
-                value: _categoryCode,
-                emptyLabel: loading ? '직종 목록 불러오는 중…' : '선택 안 함',
-                options: categories,
-                error: _subcategoryCode.isEmpty ? error : null,
-                onChanged: (value) => setState(() {
-                  _categoryCode = value;
-                  _subcategoryCode = '';
-                }),
-              ),
-              if (subcategories.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                _categoryField(
-                  label: '세부 직종 (선택)',
-                  key: ValueKey('recommend-subcategory-$_categoryCode'),
-                  value: _subcategoryCode,
-                  emptyLabel: '선택한 직종 전체',
-                  options: subcategories,
-                  error: _subcategoryCode.isEmpty ? null : error,
-                  onChanged: (value) =>
-                      setState(() => _subcategoryCode = value),
-                ),
-              ],
-              if (!loading && categories.isEmpty)
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: TextButton(
-                    onPressed: _busy
-                        ? null
-                        : () => setState(() {
-                            _categories = JobRecommendationApi(widget.api!.api)
-                                .loadCategories();
-                          }),
-                    child: const Text('직종 목록을 불러오지 못했습니다. 다시 시도'),
-                  ),
-                ),
-              const SizedBox(height: 16),
-            ],
-          );
-        },
-      );
-
   @override
   Widget build(BuildContext context) => FeaturePage(
     title: '내 자료로 공고 찾기',
@@ -448,7 +391,23 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (_categories case final future?) _categoryFields(future),
+              if (_categories case final future?)
+                JobCategoryFields(
+                  key: ValueKey('recommend-goal-$_goalRevision'),
+                  future: future,
+                  categoryCode: _categoryCode,
+                  subcategoryCode: _subcategoryCode,
+                  enabled: !_busy,
+                  error: _hasField('category_codes') ? '선택한 직종을 확인하세요.' : null,
+                  onChanged: (category, subcategory) => setState(() {
+                    _categoryCode = category;
+                    _subcategoryCode = subcategory;
+                  }),
+                  onRetry: () => setState(() {
+                    _categories = JobRecommendationApi(widget.api!.api)
+                        .loadCategories();
+                  }),
+                ),
               FieldLabel(
                 label: '세부 검색어',
                 child: TextFormField(
@@ -603,7 +562,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              '저장된 활동·경험·자격·성과 기록과 첨부 파일의 텍스트를 외부 Gemini에 보내 공고와 비교합니다. 다른 사람의 이름이나 민감한 정보가 없는지 확인하세요.',
+              '저장된 수강·활동·경험·자격·성과 기록과 첨부 파일의 텍스트를 외부 Gemini에 보내 공고와 비교합니다. 다른 사람의 이름이나 민감한 정보가 없는지 확인하세요.',
             ),
             if (widget.api == null || widget.consent == null)
               const Text('로그인 후 이용할 수 있습니다.'),

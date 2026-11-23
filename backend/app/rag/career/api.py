@@ -23,6 +23,7 @@ from . import categories
 from .contracts import SearchQuery
 from .crawling import Work24Crawler
 from .documents import prepare_documents
+from .goal import CareerGoalUpdate, CareerGoalView, get_goal, save_goal
 from .greenhouse import Greenhouse
 from .ocr import OcrInputError, OcrUnavailable
 from .recommendations import recommend
@@ -63,6 +64,19 @@ class RecommendationRequest(PersonalizationRequest):
         if not self.keyword.strip() and not self.category_codes:
             raise ValueError("직무 대분류를 고르거나 세부 검색어를 입력해 주세요.")
         return self
+
+
+@router.get("/career-goal", response_model=CareerGoalView)
+def career_goal(db: Database, identity: CurrentIdentity):
+    """The student's target job (Work24 occupation codes and detail words); version 0 if unset."""
+    return get_goal(db, identity.user.id)
+
+
+@router.put("/career-goal", response_model=CareerGoalView)
+def put_career_goal(
+    payload: CareerGoalUpdate, request: Request, db: Database, identity: CurrentIdentity
+):
+    return save_goal(db, request, payload)
 
 
 @router.get("/job-categories")

@@ -390,6 +390,7 @@ university-path/
 │  ├─ architecture-erd.md
 │  ├─ database-erd.md
 │  ├─ initial-plan-comparison.md
+│  ├─ career-feature-plan.md
 │  ├─ specialized-ai-and-supporting-tools-proposal.md
 │  ├─ job-matching-decision-layer-proposal.md
 │  └─ frontend/

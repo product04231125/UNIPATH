@@ -17,6 +17,9 @@ import 'features/assistant/conversation_bridge.dart';
 import 'chat_window.dart' as native;
 import 'features/graduation/graduation_page.dart';
 import 'features/graduation/personal_calculation_controller.dart';
+import 'app_shell/student_pages.dart';
+import 'features/academics/academics_page.dart';
+import 'features/career/career_goal.dart';
 import 'features/home/home_page.dart';
 import 'features/planning/planning_repository.dart';
 import 'features/planning/remote_planning_repository.dart';
@@ -46,6 +49,7 @@ class Workspace extends StatefulWidget {
     this.windowHost = const AssistantWindowHost(),
     this.chatPreferences,
     this.selectedPage,
+    this.academicTab = 0,
     this.onPageChanged,
     this.assistantFactory,
     this.sidebarVisible = true,
@@ -62,6 +66,9 @@ class Workspace extends StatefulWidget {
   final AssistantWindowHost windowHost;
   final ChatPreferences? chatPreferences;
   final int? selectedPage;
+
+  /// 학사 tab: 0 수강 관리, 1 졸업 요건 (`/courses`, `/graduation` links).
+  final int academicTab;
   final ValueChanged<int>? onPageChanged;
   final AssistantGateway Function()? assistantFactory;
   final bool sidebarVisible, integratedTitleBar;
@@ -73,28 +80,19 @@ class Workspace extends StatefulWidget {
 }
 
 class _WorkspaceState extends State<Workspace> {
-  static const _labels = [
-    '홈',
-    '일정',
-    '수강 관리',
-    '졸업 요건',
-    '활동',
-    '자격',
-    '자료',
-    '채용공고 분석',
-  ];
+  static const _labels = StudentPages.labels;
   static const _icons = [
     Icons.home_outlined,
-    Icons.calendar_month_outlined,
-    Icons.menu_book_outlined,
-    Icons.school_outlined,
+    Icons.work_outline,
     Icons.volunteer_activism_outlined,
     Icons.workspace_premium_outlined,
     Icons.collections_bookmark_outlined,
-    Icons.work_outline,
+    Icons.calendar_month_outlined,
+    Icons.school_outlined,
   ];
 
   var _page = 0;
+  late var _academicTab = widget.academicTab;
   final _visitedPages = <int>{};
   final _materials = GlobalKey<MaterialsPageState>();
   late final _materialRepository = MaterialRepository(
@@ -149,6 +147,9 @@ class _WorkspaceState extends State<Workspace> {
   late final StudentApi? _personalApi = widget.guestPreview
       ? null
       : widget.studentApi;
+  late final CareerGoalController? _careerGoal = _personalApi == null
+      ? null
+      : (CareerGoalController(_personalApi.api)..load());
   late final PersonalCalculationController? _personalCalculations =
       _personalApi == null
       ? null
@@ -276,6 +277,9 @@ class _WorkspaceState extends State<Workspace> {
   @override
   void didUpdateWidget(covariant Workspace oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.academicTab != oldWidget.academicTab) {
+      _academicTab = widget.academicTab;
+    }
     if (widget.selectedPage != null && widget.selectedPage != _page) {
       _scheduleAddRequest = null;
       _page = widget.selectedPage!;
@@ -286,6 +290,7 @@ class _WorkspaceState extends State<Workspace> {
   void dispose() {
     _personalClosed = true;
     _personalImporter?.dispose();
+    _careerGoal?.dispose();
     _personalCalculations?.dispose();
     unawaited(_releaseSession().catchError((Object _) {}));
     _assistantButtonFocus.dispose();
@@ -404,48 +409,54 @@ class _WorkspaceState extends State<Workspace> {
 
   Widget _pageFor(int index, int settingsPage, WorkspaceShellLayout layout) =>
       switch (index) {
-        0 => HomePage(
+        StudentPages.home => HomePage(
+          careerGoal: _careerGoal,
           repository: _planningRepository,
           onOpenPage: _selectPage,
           onOpenSettings: () => _selectPage(settingsPage - 1),
           onOpenSchedule: (day) {
             _scheduleAddRequest = null;
             _scheduleInitialDay = day;
-            _selectPage(1);
+            _selectPage(StudentPages.schedule);
           },
           onAddSchedule: () {
             _scheduleInitialDay = DateTime.now();
-            _selectPage(1, addRequest: PendingUiAction());
+            _selectPage(StudentPages.schedule, addRequest: PendingUiAction());
           },
         ),
-        1 => SchedulePage(
-          repository: _planningRepository,
-          initialDay: _scheduleInitialDay,
-          addRequest: _scheduleAddRequest,
-          onOpenSettings: () => _selectPage(settingsPage - 1),
-        ),
-        2 => CoursePage(
-          studentApi: widget.studentApi,
-          planning: _planningRepository,
-          onOpenSettings: () => _selectPage(settingsPage - 1),
-        ),
-        3 => GraduationPage(
-          planning: _planningRepository,
-          onOpenSettings: () => _selectPage(settingsPage - 1),
-        ),
-        4 => const ActivityPage(),
-        5 => const CredentialPage(),
-        6 => MaterialsPage(
-          key: _materials,
-          repository: _materialRepository,
-          onChanged: () => unawaited(_assistantConversation.refreshMaterials()),
-        ),
-        7 => JobAnalysisPage(
+        StudentPages.jobs => JobAnalysisPage(
+          careerGoal: _careerGoal,
           api: _personalApi,
           consent: _aiConsent,
           loadMaterials: () => loadAssistantMaterials(_materialRepository),
           loadDocuments: (ids) =>
               loadGuidanceDocuments(_materialRepository, ids),
+        ),
+        StudentPages.activity => const ActivityPage(),
+        StudentPages.credential => const CredentialPage(),
+        StudentPages.materials => MaterialsPage(
+          key: _materials,
+          repository: _materialRepository,
+          onChanged: () => unawaited(_assistantConversation.refreshMaterials()),
+        ),
+        StudentPages.schedule => SchedulePage(
+          repository: _planningRepository,
+          initialDay: _scheduleInitialDay,
+          addRequest: _scheduleAddRequest,
+          onOpenSettings: () => _selectPage(settingsPage - 1),
+        ),
+        StudentPages.academics => AcademicsPage(
+          tab: _academicTab,
+          onTabChanged: (tab) => setState(() => _academicTab = tab),
+          courses: CoursePage(
+            studentApi: widget.studentApi,
+            planning: _planningRepository,
+            onOpenSettings: () => _selectPage(settingsPage - 1),
+          ),
+          graduation: GraduationPage(
+            planning: _planningRepository,
+            onOpenSettings: () => _selectPage(settingsPage - 1),
+          ),
         ),
         _ when index == settingsPage - 1 => SettingsPage(
           repository: _planningRepository,

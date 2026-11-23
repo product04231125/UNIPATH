@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../app_shell/phone_shell.dart';
+import '../../app_shell/student_pages.dart';
 import '../../shared/widgets/equal_height_row.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/surface_card.dart';
 
 import '../auth/guest_preview_scope.dart';
+import '../career/career_goal.dart';
+import '../career/career_goal_card.dart';
 import '../planning/planning_dates.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
@@ -20,8 +23,12 @@ class HomePage extends StatelessWidget {
     required this.onOpenSettings,
     required this.onOpenSchedule,
     required this.onAddSchedule,
+    this.careerGoal,
   });
   final PlanningRepository repository;
+
+  /// Target job card on top; absent in guest preview and isolated tests.
+  final CareerGoalController? careerGoal;
   final ValueChanged<int> onOpenPage;
   final VoidCallback onOpenSettings;
   final ValueChanged<DateTime> onOpenSchedule;
@@ -59,6 +66,13 @@ class HomePage extends StatelessWidget {
                 ? (profile.hasCatalogSchool ? '등록' : '개인 설정')
                 : null,
             body: [
+              if (careerGoal case final goal?) ...[
+                CareerGoalCard(
+                  controller: goal,
+                  onFindJobs: () => onOpenPage(StudentPages.jobs),
+                ),
+                SizedBox(height: FeatureLine.slotGap(context)),
+              ],
               WeeklySchedule(
                 compact: compact,
                 events: repository.events,
@@ -142,7 +156,7 @@ class HomePage extends StatelessWidget {
               const Text('앞으로 예정된 개인 일정이 없습니다.'),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () => onOpenPage(1),
+                onPressed: () => onOpenPage(StudentPages.schedule),
                 child: const Text('전체 일정 보기 →'),
               ),
             ],
@@ -154,7 +168,7 @@ class HomePage extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton(
-                  onPressed: () => onOpenPage(1),
+                  onPressed: () => onOpenPage(StudentPages.schedule),
                   child: const Text('전체 일정 보기 →'),
                 ),
               ),
@@ -282,13 +296,13 @@ class HomePage extends StatelessWidget {
           '수강 계획 정리',
           '학기별 과목과 개인 수강 계획을 확인하세요.',
           Icons.menu_book_outlined,
-          2,
+          StudentPages.academics,
         ),
         _PlanLink(
           '활동 기록 시작',
           '참여한 활동과 준비 중인 활동을 정리하세요.',
           Icons.volunteer_activism_outlined,
-          4,
+          StudentPages.activity,
         ),
       ],
       3 => const [
@@ -296,13 +310,13 @@ class HomePage extends StatelessWidget {
           '활동 정리',
           '프로젝트와 경험을 내 기록으로 남기세요.',
           Icons.volunteer_activism_outlined,
-          4,
+          StudentPages.activity,
         ),
         _PlanLink(
           '수강 계획 확인',
           '과목과 학기 계획을 이어서 정리하세요.',
           Icons.menu_book_outlined,
-          2,
+          StudentPages.academics,
         ),
       ],
       4 => const [
@@ -310,22 +324,27 @@ class HomePage extends StatelessWidget {
           '졸업 요건 확인',
           '개인 기준으로 졸업 요건을 확인하세요.',
           Icons.school_outlined,
-          3,
+          StudentPages.academics,
         ),
         _PlanLink(
           '자료 정리',
           '기록한 경험과 자료를 정리하세요.',
           Icons.collections_bookmark_outlined,
-          6,
+          StudentPages.materials,
         ),
       ],
       _ => const [
-        _PlanLink('수강 관리', '수강 과목과 학기 계획을 정리하세요.', Icons.menu_book_outlined, 2),
+        _PlanLink(
+          '수강 관리',
+          '수강 과목과 학기 계획을 정리하세요.',
+          Icons.menu_book_outlined,
+          StudentPages.academics,
+        ),
         _PlanLink(
           '활동 기록',
           '참여한 활동을 내 기록으로 남기세요.',
           Icons.volunteer_activism_outlined,
-          4,
+          StudentPages.activity,
         ),
       ],
     };

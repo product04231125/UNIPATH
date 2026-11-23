@@ -252,7 +252,7 @@ void main() {
     );
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('수강 관리').first);
+    await tester.tap(find.text('학사').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('수강 과목 추가'));
     await tester.pumpAndSettle();
@@ -275,7 +275,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
 
-    await tester.tap(find.text('수강 관리'));
+    await tester.tap(find.text('학사'));
     await tester.pumpAndSettle();
     expect(find.text('자료구조'), findsNothing);
     expect(find.byKey(const Key('mock-data-toggle')), findsNothing);
@@ -290,9 +290,10 @@ void main() {
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
 
     for (final menu in [
-      ('수강 관리', '내 수강 과목'),
-      ('일정', '월간 달력에서 날짜별 개인 일정을 확인하고 추가합니다.'),
+      ('학사', '내 수강 과목'),
+      // 학사 tabs.
       ('졸업 요건', '학업 프로필'),
+      ('일정', '월간 달력에서 날짜별 개인 일정을 확인하고 추가합니다.'),
       ('활동', '등록한 활동'),
       ('자격', '등록한 자격'),
       ('자료', '내 자료'),

@@ -11,20 +11,21 @@ enum AiConsentFeature {
   ),
   jobAnalysis(
     '채용 분석',
-    '공고 본문, 저장된 활동·경험·자격·성과 기록 전체와 직접 고른 내 자료의 설명·PDF에서 추출한 텍스트(OCR 포함)',
+    '공고 본문, 저장된 수강·활동·경험·자격·성과 기록 전체와 직접 고른 내 자료의 설명·PDF에서 추출한 텍스트(OCR 포함)',
   ),
   jobRecommendation(
     '내 자료로 공고 찾기',
-    '첨부 파일·직접 고른 내 자료에서 추출한 텍스트(OCR 포함)와 저장된 활동·경험·자격·성과 기록 전체',
+    '첨부 파일·직접 고른 내 자료에서 추출한 텍스트(OCR 포함)와 저장된 수강·활동·경험·자격·성과 기록 전체',
   );
 
   const AiConsentFeature(this.label, this.transferredData);
   final String label, transferredData;
 
   String? get _allRecordsConsentKey => switch (this) {
-    // Bumped when 채용 분석 started sending selected 내 자료: earlier consent did not cover it.
-    jobAnalysis => 'job_analysis_all_records_materials',
-    jobRecommendation => 'job_recommendation_all_records',
+    // Bumped whenever the transferred data widens (내 자료, then 수강 기록): earlier consent
+    // did not cover it.
+    jobAnalysis => 'job_analysis_all_records_courses_materials',
+    jobRecommendation => 'job_recommendation_all_records_courses',
     _ => null,
   };
 }
