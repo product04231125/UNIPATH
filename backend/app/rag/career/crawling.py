@@ -204,23 +204,26 @@ class Work24Crawler:
 
     def search(self, query):
         codes = query.occupation_codes
-        key = query.keyword.strip().casefold() + ("|" + ",".join(codes) if codes else "")
+        # Work24 searches the chosen regions itself (comma-joined codes); None is nationwide.
+        region = query.region(self.name)
+        key = (
+            query.keyword.strip().casefold()
+            + ("|" + ",".join(codes) if codes else "")
+            + ("@" + region if region else "")
+        )
         rows = _cached(key)
         if rows is None:
-            rows = self.collect_once(key, query.keyword.strip(), codes)
-        region = query.region_label.strip()
-        alias = {"서울": "서울", "경기": "경기", "부산": "부산"}.get(region, region)
+            rows = self.collect_once(key, query.keyword.strip(), codes, region)
         now = datetime.now(UTC)
         filtered = [
             p
             for p in rows
             if p.active is not False
             and (p.expires_at is None or datetime.fromisoformat(p.expires_at) > now)
-            and (query.nationwide or alias in p.location)
         ][: query.limit]
         return CrawlBatch(filtered, detail_failures=getattr(rows, "detail_failures", {}))
 
-    def collect_once(self, key, keyword, codes=()):
+    def collect_once(self, key, keyword, codes=(), region=None):
         deadline = monotonic() + FETCH_WAIT_SECONDS
         with _LOCK:
             key_lock = _KEY_LOCKS.setdefault(key, Lock())
@@ -234,7 +237,12 @@ class Work24Crawler:
             if not _FETCH_SLOTS.acquire(timeout=max(0.0, deadline - monotonic())):
                 raise ProviderFailure("Collector busy; retry shortly", "crawl_busy")
             try:
-                rows = self.collect(keyword, codes) if codes else self.collect(keyword)
+                extra = {"region": region} if region else {}
+                rows = (
+                    self.collect(keyword, codes, **extra)
+                    if codes
+                    else self.collect(keyword, **extra)
+                )
             finally:
                 _FETCH_SLOTS.release()
             with _LOCK:
@@ -251,7 +259,7 @@ class Work24Crawler:
                         if not lock.locked():
                             del _KEY_LOCKS[name]
 
-    def collect(self, keyword, codes=()):
+    def collect(self, keyword, codes=(), region=None):
         def fetch(url):
             return self.transport.request(url, headers={"User-Agent": AGENT})
 
@@ -268,6 +276,8 @@ class Work24Crawler:
                 params["occupation"] = ",".join(codes)
             else:
                 params["keywordWantedTitle"] = "Y"
+            if region:
+                params["region"] = region
             params.update(currentPageNo=page, pageIndex=page, recordCountPerPage=10)
             page_url = BASE + LIST + "?" + urlencode(params)
             raw = fetch(page_url)

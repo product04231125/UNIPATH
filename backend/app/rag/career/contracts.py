@@ -89,7 +89,7 @@ class SearchQuery:
         if self.nationwide:
             return None
         code = self.region_codes.get(provider)
-        if not isinstance(code, str) or not re.fullmatch(r"\d{2,6}", code):
+        if not isinstance(code, str) or not re.fullmatch(r"\d{2,6}(,\d{2,6}){0,15}", code):
             raise ValueError("Provider region mapping required; never silently search nationwide")
         return code
 

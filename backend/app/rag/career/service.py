@@ -65,6 +65,20 @@ class CareerService:
                     }
                 )
                 return
+            if (
+                not search_query.nationwide
+                and not getattr(source, "filters_region_by_label", False)
+                and source.name not in search_query.region_codes
+            ):
+                sources.append(
+                    {
+                        "source": source.name,
+                        "keyword": search_query.keyword,
+                        "status": "skipped",
+                        "reason": "region_unsupported",
+                    }
+                )
+                return
             if monotonic() - start >= self.budget:
                 sources.append(
                     {

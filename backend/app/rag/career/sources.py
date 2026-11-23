@@ -103,7 +103,7 @@ class Work24:
             "keyword": query.keyword,
         }
         if region:
-            params["region"] = region
+            params["region"] = region.replace(",", "|")
         if query.occupation_codes:
             params["occupation"] = "|".join(query.occupation_codes)
         raw = self.transport.request(

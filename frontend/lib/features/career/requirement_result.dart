@@ -207,6 +207,64 @@ class ReadinessSummary extends StatelessWidget {
   }
 }
 
+/// Compact readiness for a card: `준비 N / M · 필수 r / t` over a thin bar.
+class ReadinessBar extends StatelessWidget {
+  const ReadinessBar({super.key, required this.statuses, this.required});
+  final List<RequirementStatus> statuses;
+  final (int, int)? required;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    int count(RequirementStatus s) => statuses.where((v) => v == s).length;
+    final ready = count(RequirementStatus.supported);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '준비 $ready / ${statuses.length}',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (required case (final r, final t) when t > 0)
+                TextSpan(
+                  text: '  ·  필수 $r / $t',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: SizedBox(
+            height: 6,
+            child: Row(
+              children: [
+                for (final s in RequirementStatus.values)
+                  if (count(s) > 0)
+                    Expanded(
+                      flex: count(s),
+                      child: ColoredBox(
+                        color: s.tone.color(context),
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// One requirement: status icon, name, chips, how the student's records
 /// cover it, the evidence, a highlighted next step and, folded, what the
 /// requirement means in this job.

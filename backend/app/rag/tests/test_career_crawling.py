@@ -58,13 +58,23 @@ class CrawlingTests(unittest.TestCase):
         p = crawling.parse_detail(DETAIL, ID)
         with patch.object(source, "collect", return_value=[p, replace(p, active=False)]) as collect:
             self.assertEqual(len(source.search(QUERY)), 1)
-            self.assertEqual(
-                source.search(replace(QUERY, nationwide=False, region_label="부산")), []
-            )
             collect.assert_called_once_with("Python")
+            # Chosen regions are searched (codes in the query), cached apart from nationwide.
+            busan = replace(
+                QUERY,
+                nationwide=False,
+                region_label="부산·경남",
+                region_codes={"work24": "26000,48000"},
+            )
+            self.assertEqual(len(source.search(busan)), 1)
+            collect.assert_called_with("Python", region="26000,48000")
+            # A region without a code is never searched nationwide.
+            with self.assertRaises(ValueError):
+                source.search(replace(QUERY, nationwide=False, region_label="부산"))
+            collect.reset_mock()
             crawling._CACHE["python"] = (crawling.monotonic() - 301, [p])
             source.search(QUERY)
-            self.assertEqual(collect.call_count, 2)
+            self.assertEqual(collect.call_count, 1)
 
     def test_robots_denial_and_busy(self):
         source = crawling.Work24Crawler(
