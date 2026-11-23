@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
+import '../../../shared/app_tones.dart';
 import '../../../shared/widgets/feature_page.dart';
 import '../../../shared/widgets/field_label.dart';
 import '../../../shared/widgets/surface_card.dart';
@@ -478,9 +479,25 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
                 for (final name in [nationwideRegion, ...recommendationRegions])
                   FilterChip(
                     key: ValueKey('recommend-region-$name'),
-                    label: Text(name),
+                    label: Text(
+                      name,
+                      style: _regions.contains(name)
+                          ? TextStyle(
+                              color: AppTone.accent.color(context),
+                              fontWeight: FontWeight.w700,
+                            )
+                          : null,
+                    ),
                     selected: _regions.contains(name),
-                    showCheckmark: false,
+                    // A check and the accent fill make the chosen regions obvious.
+                    showCheckmark: true,
+                    checkmarkColor: AppTone.accent.color(context),
+                    selectedColor: AppTone.accent.container(context),
+                    side: BorderSide(
+                      color: _regions.contains(name)
+                          ? AppTone.accent.color(context)
+                          : theme.colorScheme.outlineVariant,
+                    ),
                     visualDensity: VisualDensity.compact,
                     onSelected: _busy
                         ? null
