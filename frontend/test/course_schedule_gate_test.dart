@@ -47,40 +47,25 @@ void main() {
     expect(find.text('수강 과목 추가'), findsOneWidget);
   });
 
-  testWidgets('schedule add is gated until academic profile is configured', (
+  testWidgets('personal events do not wait for an academic profile', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final planning = PlanningRepository();
     await planning.load();
-    var openedSettings = false;
+    expect(planning.profile.isConfigured, isFalse);
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SchedulePage(
-            repository: planning,
-            onOpenSettings: () => openedSettings = true,
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.widgetWithText(FilledButton, '일정 추가'), findsNothing);
-    expect(find.byKey(planningProfileSettingsCtaKey), findsOneWidget);
-    await tester.tap(find.text('설정에서 학업 프로필 등록'));
-    expect(openedSettings, isTrue);
-
-    await planning.saveProfile(
-      const PlanningProfile(
-        school: '게이트 대학',
-        department: '게이트 학과',
-        admissionYear: 2024,
-      ),
+      MaterialApp(home: Scaffold(body: SchedulePage(repository: planning))),
     );
     await tester.pumpAndSettle();
     expect(find.byKey(planningProfileSettingsCtaKey), findsNothing);
-    expect(find.widgetWithText(FilledButton, '일정 추가'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, '프로필 없이 추가');
+    await tester.tap(find.widgetWithText(FilledButton, '저장'));
+    await tester.pumpAndSettle();
+    expect(planning.events.single.title, '프로필 없이 추가');
   });
 
   testWidgets('schedule guest preview blocks add and edit with an explanation', (
@@ -133,7 +118,7 @@ void main() {
     );
     addTearDown(planning.dispose);
     await _showSchedule(tester, planning);
-    expect(find.text('등록된 개인 일정이 없습니다.'), findsOneWidget);
+    expect(find.text('일정이 없습니다'), findsOneWidget);
     await tester.tap(find.widgetWithText(FilledButton, '일정 추가'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, '재시도 일정');
@@ -182,7 +167,7 @@ void main() {
       find.text('개인 계획을 읽지 못했습니다. 기존 저장 내용은 덮어쓰지 않습니다.'),
       findsOneWidget,
     );
-    expect(find.text('등록된 개인 일정이 없습니다.'), findsNothing);
+    expect(find.text('일정이 없습니다'), findsNothing);
     expect(find.widgetWithText(FilledButton, '일정 추가'), findsNothing);
 
     await preferences.setString(key, original);

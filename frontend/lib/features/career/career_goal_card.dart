@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/surface_card.dart';
+import '../../shared/widgets/tone_chip.dart';
 import '../auth/auth_api.dart';
 import 'career_goal.dart';
 import 'job_category_fields.dart';
@@ -38,10 +39,13 @@ class CareerGoalCard extends StatelessWidget {
         body = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '목표 직무를 정하면 그 직무 공고가 요구하는 조건과 내 기록을 비교해 준비할 일을 알려 드립니다.',
+            Text(
+              '목표 직무를 정하면 공고 요건과 내 기록을 비교해 드립니다.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             FilledButton.icon(
               key: const ValueKey('career-goal-set'),
               onPressed: () => showCareerGoalDialog(context, controller),
@@ -57,26 +61,15 @@ class CareerGoalCard extends StatelessWidget {
             Text(
               goal.summary,
               key: const ValueKey('career-goal-summary'),
-              style: theme.textTheme.titleLarge,
+              style: theme.textTheme.headlineSmall?.copyWith(fontSize: 22),
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (onFindJobs != null)
-                  FilledButton.icon(
-                    onPressed: onFindJobs,
-                    icon: const Icon(Icons.search),
-                    label: const Text('맞는 공고 찾기'),
-                  ),
-                OutlinedButton(
-                  key: const ValueKey('career-goal-change'),
-                  onPressed: () => showCareerGoalDialog(context, controller),
-                  child: const Text('목표 직무 바꾸기'),
-                ),
-              ],
-            ),
+            const SizedBox(height: 16),
+            if (onFindJobs != null)
+              FilledButton.icon(
+                onPressed: onFindJobs,
+                icon: const Icon(Icons.search),
+                label: const Text('맞는 공고 찾기'),
+              ),
           ],
         );
       }
@@ -85,8 +78,23 @@ class CareerGoalCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('목표 직무', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
+            Row(
+              children: [
+                const IconBadge(icon: Icons.flag_outlined, size: 36),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text('목표 직무', style: theme.textTheme.titleMedium),
+                ),
+                if (controller.loaded && goal.isSet)
+                  IconButton(
+                    key: const ValueKey('career-goal-change'),
+                    tooltip: '목표 직무 바꾸기',
+                    onPressed: () => showCareerGoalDialog(context, controller),
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
             body,
           ],
         ),

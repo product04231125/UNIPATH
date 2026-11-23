@@ -523,7 +523,6 @@ class _WorkspaceState extends State<Workspace> {
           repository: _planningRepository,
           initialDay: _scheduleInitialDay,
           addRequest: _scheduleAddRequest,
-          onOpenSettings: () => _selectPage(settingsPage - 1),
         ),
         StudentPages.academics => AcademicsPage(
           tab: _academicTab,

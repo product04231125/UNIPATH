@@ -240,7 +240,8 @@ void main() {
         ),
       ),
     );
-    expect(find.text('· 정보처리기사 (공고 2건 중 2건)'), findsOneWidget);
+    expect(find.text('정보처리기사'), findsOneWidget);
+    expect(find.byTooltip('공고 2건 중 2건이 요구'), findsOneWidget);
     expect(find.text('요건 2개 중 준비됨 1 · 일부 0 · 준비 필요 1'), findsOneWidget);
     await tester.tap(find.text('자세히 보기'));
     expect(opened, isTrue);

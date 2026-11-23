@@ -37,10 +37,16 @@ class PageHeader extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final stacked =
-              constraints.maxWidth < 600 ||
+              constraints.maxWidth < 300 ||
               MediaQuery.textScalerOf(context).scale(AppTypography.body) >
                   AppTypography.body * 1.2;
-          final controls = Wrap(spacing: 8, runSpacing: 8, children: actions);
+          final controls = Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: actions,
+          );
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,11 +59,18 @@ class PageHeader extends StatelessWidget {
                 controls,
               ] else
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(child: heading),
                     const SizedBox(width: 12),
-                    Flexible(child: controls),
+                    // Actions keep their own width at the right edge and
+                    // wrap only when they would take most of the row.
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: constraints.maxWidth * .7,
+                      ),
+                      child: controls,
+                    ),
                   ],
                 ),
               if (contextLabel?.trim().isNotEmpty ?? false) ...[

@@ -16,6 +16,7 @@ class FeaturePage extends StatelessWidget {
     this.body = const [],
     this.actions = const [],
     this.headerActions = const [],
+    this.trailing = const [],
     this.below = const [],
     this.padding = EdgeInsets.zero,
     this.scrollKey,
@@ -28,6 +29,9 @@ class FeaturePage extends StatelessWidget {
   final List<Widget> body;
   final List<Widget> actions;
   final List<Widget> headerActions;
+
+  /// Page-level actions on the title's right edge (add, settings, more).
+  final List<Widget> trailing;
   final List<Widget> below;
   final EdgeInsetsGeometry padding;
   final Key? scrollKey;
@@ -48,6 +52,7 @@ class FeaturePage extends StatelessWidget {
             title: title,
             contextLabel: contextLabel,
             description: description,
+            actions: trailing,
           ),
           if (headerActions.isNotEmpty) ...[
             Wrap(spacing: 8, runSpacing: 8, children: headerActions),

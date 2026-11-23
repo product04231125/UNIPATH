@@ -208,10 +208,19 @@ void main() {
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     await tester.pumpAndSettle();
 
-    expect(find.text('일정 없음'), findsNWidgets(7));
+    // Empty days show only their date; no repeated "no events" filler.
+    expect(find.text('일정 없음'), findsNothing);
+    expect(find.byWidgetPredicate(
+      (w) =>
+          w.key is ValueKey<String> &&
+          (w.key! as ValueKey<String>).value.startsWith('week-day-'),
+    ), findsNWidgets(7));
     final now = DateTime.now();
-    final sunday = now.subtract(Duration(days: now.weekday % 7));
-    expect(find.text('일 ${sunday.month}/${sunday.day}'), findsOneWidget);
+    final sunday = DateTime(now.year, now.month, now.day - now.weekday % 7);
+    expect(
+      find.byKey(ValueKey('week-day-${sunday.toIso8601String()}')),
+      findsOneWidget,
+    );
     await tester.binding.setSurfaceSize(null);
   });
 
@@ -293,7 +302,7 @@ void main() {
       ('학사', '내 수강 과목'),
       // 학사 tabs.
       ('졸업 요건', '학업 프로필'),
-      ('일정', '월간 달력에서 날짜별 개인 일정을 확인하고 추가합니다.'),
+      ('일정', '일정이 없습니다'),
       ('활동', '등록한 활동'),
       ('자격', '등록한 자격'),
       ('자료', '내 자료'),
