@@ -34,7 +34,6 @@ class ActivityRecommendationResult {
       missingFields = List<String>.from(raw['missing_fields'] as List? ?? []),
       goalLabel = _map(raw['goal'])['label'] as String?,
       goalKeyword = _map(raw['goal'])['keyword'] as String? ?? '',
-      regionLabel = raw['region_label'] as String?,
       gapCount = _map(raw['gap_basis'])['gaps'] as int? ?? 0,
       gapAnalyzedAt = DateTime.tryParse(
         _map(raw['gap_basis'])['analyzed_at'] as String? ?? '',
@@ -44,14 +43,6 @@ class ActivityRecommendationResult {
           ActivityRecommendation.fromJson(_map(value)),
       ],
       summary = raw['summary'] as String?,
-      internships = [
-        for (final value in raw['internships'] as List? ?? const [])
-          RecommendationPosting.fromJson(_map(value)),
-      ],
-      internshipSources = [
-        for (final value in raw['internship_sources'] as List? ?? const [])
-          RecommendationSource.fromJson(_map(value)),
-      ],
       sites = {
         for (final entry in _map(raw['sites']).entries)
           entry.key: ActivitySite.fromJson(_map(entry.value)),
@@ -64,13 +55,11 @@ class ActivityRecommendationResult {
   final Map<String, dynamic> raw;
   final String status;
   final List<String> missingFields;
-  final String? goalLabel, regionLabel, summary, failureReason;
+  final String? goalLabel, summary, failureReason;
   final String goalKeyword;
   final int gapCount;
   final DateTime? gapAnalyzedAt;
   final List<ActivityRecommendation> recommendations;
-  final List<RecommendationPosting> internships;
-  final List<RecommendationSource> internshipSources;
   final Map<String, ActivitySite> sites;
 
   String get goalSummary =>
@@ -83,7 +72,6 @@ class ActivityRecommendationApi {
 
   Future<ActivityRecommendationResult> recommend({
     required List<AiRecordOption> records,
-    List<String> regions = const [],
     RecommendationAcademicStage? academicStage,
   }) async => ActivityRecommendationResult.fromJson(
     (await api.api.request('POST', 'me/activity-recommendations', {
@@ -95,7 +83,6 @@ class ActivityRecommendationApi {
             expectedVersion: r.version,
           ).toJson(),
       ],
-      if (regions.isNotEmpty) 'regions': regions,
       if (academicStage != null) 'academic_stage': academicStage.name,
       'external_processing_consent': true,
     }))!,

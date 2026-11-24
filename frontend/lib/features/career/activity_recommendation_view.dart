@@ -20,7 +20,6 @@ import '../settings/ai_consent_section.dart';
 import 'activity_recommendation.dart';
 import 'career_goal.dart';
 import 'career_goal_card.dart';
-import 'region_chips.dart';
 import 'saved_analyses.dart';
 
 typedef AddActivityPlan = Future<void> Function(
@@ -58,7 +57,6 @@ class ActivityRecommendationView extends StatefulWidget {
 
 class _ActivityRecommendationViewState
     extends State<ActivityRecommendationView> {
-  final _regions = <String>{};
   RecommendationAcademicStage? _stage;
   ActivityRecommendationResult? _result;
   bool _busy = false;
@@ -88,7 +86,6 @@ class _ActivityRecommendationViewState
       _result = null;
       _error = null;
       _busy = false;
-      _regions.clear();
       _stage = null;
     }
   }
@@ -129,11 +126,8 @@ class _ActivityRecommendationViewState
           revision != _revision) {
         return;
       }
-      final result = await ActivityRecommendationApi(api).recommend(
-        records: records,
-        regions: RegionChips.ordered(_regions),
-        academicStage: _stage,
-      );
+      final result = await ActivityRecommendationApi(api)
+          .recommend(records: records, academicStage: _stage);
       if (!mounted || revision != _revision) return;
       setState(() => _result = result);
     } on AuthFailure catch (e) {
@@ -173,20 +167,6 @@ class _ActivityRecommendationViewState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    FieldLabel(
-                      label: '인턴 공고 지역 (선택 안 하면 전국)',
-                      child: RegionChips(
-                        keyPrefix: 'activity-region',
-                        selected: _regions,
-                        enabled: !_busy,
-                        onChanged: (next) => setState(
-                          () => _regions
-                            ..clear()
-                            ..addAll(next),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
                     Align(
                       alignment: AlignmentDirectional.centerStart,
                       child: ConstrainedBox(
@@ -229,7 +209,7 @@ class _ActivityRecommendationViewState
                         detail:
                             '최근 목표 직무 분석의 부족 요건과 저장된 기록 전체를 Google 외부 AI로 보냅니다. '
                             '대외활동·공모전 사이트는 이용약관상 자동 수집을 허용하지 않아, '
-                            '찾을 곳과 검색어만 알려 드립니다. 인턴 공고는 고용24에서 가져옵니다.',
+                            '찾을 곳과 검색어만 알려 드립니다. 실제 채용 공고는 채용공고 분석의 공고 찾기에서 찾을 수 있습니다.',
                       ),
                     if (_error != null) ...[
                       const SizedBox(height: 8),
@@ -309,11 +289,6 @@ class _ActivityRecommendationViewState
                       icon: Icons.work_outline,
                       tone: AppTone.accent,
                     ),
-                  if (r.regionLabel case final label?)
-                    ToneChip(
-                      label: '인턴 지역 · $label',
-                      icon: Icons.place_outlined,
-                    ),
                   if (r.gapAnalyzedAt != null)
                     ToneChip(
                       key: const ValueKey('activity-gap-basis'),
@@ -366,8 +341,6 @@ class _ActivityRecommendationViewState
               _activityCard(context, r, item, i),
           ],
         ),
-        const SizedBox(height: 16),
-        _internships(context, r),
       ],
     );
   }
@@ -493,92 +466,6 @@ class _ActivityRecommendationViewState
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _internships(BuildContext context, ActivityRecommendationResult r) {
-    final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall?.copyWith(
-      color: theme.colorScheme.onSurfaceVariant,
-    );
-    final failed = r.internshipSources.where(
-      (s) => s.status == 'failed' && s.failureReason != null,
-    );
-    return SurfaceCard(
-      key: const ValueKey('activity-internships'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Text('인턴·일경험 모집 공고', style: theme.textTheme.titleMedium),
-              const SizedBox(width: 8),
-              ToneChip(label: '고용24 · ${r.internships.length}건'),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text('목표 직무 직종에서 제목에 인턴·일경험·체험형·현장실습이 있는 공고입니다.', style: muted),
-          for (final source in failed)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: NoteLine(
-                icon: Icons.error_outline,
-                text: recommendationFailureLabel(source.failureReason!),
-              ),
-            ),
-          const SizedBox(height: 8),
-          if (r.internships.isEmpty)
-            Text(
-              '조건에 맞는 인턴 공고를 찾지 못했습니다. 공공기관 체험형 인턴은 잡알리오에서 찾아보세요.',
-              style: muted,
-            ),
-          for (final posting in r.internships)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          posting.title,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          '${posting.company} · ${posting.location} · ${postingDeadlineLabel(posting)}',
-                          style: muted,
-                        ),
-                      ],
-                    ),
-                  ),
-                  ExternalLinkButton(
-                    url: posting.url,
-                    label: '원 공고',
-                    description: '최신 모집 조건과 마감은 원 공고에서 확인하세요.',
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 2,
-            children: [
-              for (final id in ['jobalio', 'work24'])
-                if (r.sites[id] case final site?)
-                  ExternalLinkButton(
-                    url: site.url,
-                    label: id == 'jobalio'
-                        ? '${site.name} 공공기관 체험형 인턴'
-                        : '${site.name}에서 더 찾기',
-                  ),
-            ],
-          ),
         ],
       ),
     );

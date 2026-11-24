@@ -22,7 +22,6 @@ Map<String, dynamic> completed({bool withGap = true}) => {
     'keyword': '프론트엔드',
     'label': '소프트웨어',
   },
-  'region_label': '서울·경기',
   'gap_basis': {
     'analyzed_at': withGap ? '2026-11-24T02:13:00+09:00' : null,
     'gaps': withGap ? 2 : 0,
@@ -41,25 +40,8 @@ Map<String, dynamic> completed({bool withGap = true}) => {
       'weeks': 2,
     },
   ],
-  'internships': [
-    {
-      'source': 'work24',
-      'source_id': 'K000000000001',
-      'title': '합성 웹 개발 인턴 채용',
-      'company': '합성 회사',
-      'location': '서울특별시 마포구',
-      'url': 'https://www.work24.go.kr/synthetic/1',
-      'closing_label': '채용시까지',
-      'expires_at': null,
-    },
-  ],
-  'internship_sources': [
-    {'source': 'work24', 'status': 'completed'},
-  ],
   'sites': {
     'devpost': {'name': 'Devpost', 'url': 'https://devpost.com'},
-    'jobalio': {'name': '잡알리오', 'url': 'https://job.alio.go.kr'},
-    'work24': {'name': '고용24', 'url': 'https://www.work24.go.kr'},
   },
 };
 
@@ -123,19 +105,11 @@ Future<void> run(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('sends all records, regions and stage and shows the plan', (
-    tester,
-  ) async {
+  testWidgets('sends all records and stage and shows the plan', (tester) async {
     final api = ActivityGateway();
     final p = await consent();
     final added = <(ActivityRecommendation, DateTime)>[];
     await mount(tester, api, p, onAddPlan: (a, d) async => added.add((a, d)));
-    for (final name in ['경기', '서울']) {
-      final chip = find.byKey(ValueKey('activity-region-$name'));
-      await tester.ensureVisible(chip);
-      await tester.tap(chip);
-      await tester.pump();
-    }
     await tester.tap(find.byKey(const ValueKey('activity-academic-stage')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('졸업예정').last);
@@ -145,7 +119,6 @@ void main() {
       'records': [
         {'kind': 'experience', 'record_id': 'record-id', 'expected_version': 1},
       ],
-      'regions': ['서울', '경기'],
       'academic_stage': 'graduating',
       'external_processing_consent': true,
     });
@@ -154,8 +127,9 @@ void main() {
     expect(find.text('기록할 결과 · 배포한 서비스 주소와 맡은 역할'), findsOneWidget);
     expect(find.text('Devpost · 외부 열기'), findsOneWidget);
     expect(find.byKey(const ValueKey('activity-gap-basis')), findsOneWidget);
-    expect(find.text('합성 웹 개발 인턴 채용'), findsOneWidget);
-    expect(find.text('잡알리오 공공기관 체험형 인턴 · 외부 열기'), findsOneWidget);
+    // No region input and no posting list: real postings live in 공고 찾기.
+    expect(find.byKey(const ValueKey('activity-region-서울')), findsNothing);
+    expect(find.textContaining('인턴·일경험 모집 공고'), findsNothing);
 
     final add = find.byKey(const ValueKey('activity-add-plan-0'));
     await tester.ensureVisible(add);

@@ -205,18 +205,10 @@ class ActivityRecommendationRequest(PersonalizationRequest):
     records: list[PersonalEvidenceSelection] = Field(
         default_factory=list, max_length=MAX_ANALYSIS_RECORDS
     )
-    # Empty: nationwide internships.
-    regions: list[RegionName] = Field(default_factory=list, max_length=16)
     academic_stage: Literal["year1", "year2", "year3", "year4", "graduating", "graduate"] | None = (
         None
     )
     external_processing_consent: bool = Field(default=False, strict=True)
-
-    @model_validator(mode="after")
-    def unique_regions(self):
-        if len(set(self.regions)) != len(self.regions):
-            raise ValueError("근무 지역을 한 번씩만 골라 주세요.")
-        return self
 
 
 def latest_gap(db, owner_id):
@@ -236,7 +228,11 @@ def activity_recommendations(
     db: Database,
     identity: CurrentIdentity,
 ):
-    """Kinds of external activities for the target job's gaps, places to look and internships."""
+    """Kinds of external activities for the target job's gaps and where to look for them.
+
+    Real postings, internships included, are found by 공고 찾기 (job-recommendations); listing
+    sites for 대외활동·공모전 do not allow collection, so only links and search words are given.
+    """
     if not payload.external_processing_consent:
         return {"status": "needs_user_input", "missing_fields": ["external_processing_consent"]}
     goal_view = get_goal(db, identity.user.id)
@@ -260,31 +256,14 @@ def activity_recommendations(
     context = assemble(db, identity, payload.records)
     records = redact_context(context, identity).model_dump(mode="json")["records"]
     owner_id = identity.user.id
-    ordered = [name for name in regions.WORK24 if name in payload.regions]
-    region = regions.label(ordered) if ordered else "전국"
     db.rollback()
-    # Internships in the target job's occupation and the chosen regions (no model call).
-    query = SearchQuery(
-        "인턴" if codes else keyword,
-        region,
-        nationwide=not ordered,
-        region_codes=regions.provider_codes(ordered) if ordered else {},
-        limit=10,
-        occupation_codes=tuple(codes),
-    )
-    found = CareerService(
-        configured_sources(), None, analysis_limit=0, budget_seconds=COLLECTION_SECONDS
-    ).recommend(query, {"records": records})
     result = {
         "official": False,
         "goal": goal,
-        "region_label": region,
         "gap_basis": {
             "analyzed_at": saved.created_at.isoformat() if saved is not None else None,
             "gaps": len(gaps),
         },
-        "internships": activities.internship_postings(found["items"]),
-        "internship_sources": found["sources"],
         "recommendations": [],
         "summary": None,
         "sites": activities.site_table([]),
@@ -299,7 +278,6 @@ def activity_recommendations(
             gaps,
             records,
             academic_stage=payload.academic_stage,
-            region=region,
         )
     except AuthError:
         raise
