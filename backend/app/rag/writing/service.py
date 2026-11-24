@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 RECORD_BUDGET = 40_000
 POSTING_CHARS = 12_000
 ORIGINAL_CHUNK = 8000
-MAX_OUTPUT_TOKENS = 16_384
+# Up to six answers of 5,000 characters plus the model's thinking tokens.
+MAX_OUTPUT_TOKENS = 32_768
 # Model timeout for one draft; long portfolios with many records take tens of seconds.
 WRITING_TIMEOUT_SECONDS = 90
 ORIGINAL_LABEL = "붙여 넣은 원문"

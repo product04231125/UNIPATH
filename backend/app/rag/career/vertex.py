@@ -30,7 +30,33 @@ RETRY_REASON = "http_429"
 MAX_RETRIES = 2
 RETRY_BUDGET_SECONDS = 7
 RETRY_DELAY_SECONDS = ((1.0, 2.0), (1.5, 3.0))
+# Gemini thinking models spend output tokens on thoughts before the answer: a 25-record job
+# analysis used ~4.4k thought + ~3.5k answer tokens (2026-11-24), so 8,192 cut answers off
+# (model_incomplete_max_tokens) or left requirements out. The cap only bounds a runaway reply;
+# billing follows the tokens actually produced.
+DEFAULT_MAX_OUTPUT_TOKENS = 24_576
 logger = logging.getLogger(__name__)
+
+
+def log_usage(raw, code, limit):
+    """Token counts of an unfinished reply: where the output budget went. Never any content."""
+    try:
+        usage = json.loads(raw).get("usageMetadata") or {}
+        counts = {
+            key: int(usage[key])
+            for key in ("promptTokenCount", "thoughtsTokenCount", "candidatesTokenCount")
+            if isinstance(usage.get(key), int)
+        }
+    except Exception:
+        counts = {}
+    logger.warning(
+        "Vertex reply incomplete (%s): limit=%d prompt=%s thoughts=%s answer=%s",
+        code,
+        limit,
+        counts.get("promptTokenCount", "?"),
+        counts.get("thoughtsTokenCount", "?"),
+        counts.get("candidatesTokenCount", "?"),
+    )
 
 
 class VertexJSON:
@@ -60,7 +86,7 @@ class VertexJSON:
         self.transport = transport or Transport()
         self.sleep = sleep
 
-    def generate(self, instruction, payload, *, max_output_tokens=8192):
+    def generate(self, instruction, payload, *, max_output_tokens=DEFAULT_MAX_OUTPUT_TOKENS):
         # Fail before ADC token refresh when network is disabled.
         if isinstance(self.transport, Transport) and not self.transport.allow_network:
             raise NotConfigured("Vertex network disabled")
@@ -87,6 +113,7 @@ class VertexJSON:
             code = (
                 finish.lower() if isinstance(finish, str) and FINISH.fullmatch(finish) else "other"
             )
+            log_usage(raw, code, max_output_tokens)
             raise ProviderFailure(UNAVAILABLE, "model_incomplete_" + code)
         try:
             text = "".join(
