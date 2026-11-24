@@ -4,13 +4,13 @@ import 'dart:convert';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
-import '../../../shared/app_tones.dart';
 import '../../../shared/widgets/feature_page.dart';
 import '../../../shared/widgets/field_label.dart';
 import '../../../shared/widgets/surface_card.dart';
 import '../../api/job_analysis_models.dart';
 import '../../api/job_recommendation_api.dart';
 import '../../career/career_goal.dart';
+import '../../career/region_chips.dart';
 import '../../career/saved_analyses.dart';
 import '../../career/job_category_fields.dart';
 import '../../api/student_api.dart';
@@ -82,13 +82,8 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
 
   /// `전국` alone, or one or more regions searched together.
   final _regions = <String>{};
-  List<String> get _orderedRegions => [
-    for (final name in recommendationRegions)
-      if (_regions.contains(name)) name,
-  ];
-  String get _regionLabel => _regions.contains(nationwideRegion)
-      ? nationwideRegion
-      : _orderedRegions.join('·');
+  List<String> get _orderedRegions => RegionChips.ordered(_regions);
+  String get _regionLabel => RegionChips.label(_regions);
   Future<List<JobCategory>>? _categories;
   String _categoryCode = '', _subcategoryCode = '';
   String get _selectedCode =>
@@ -472,49 +467,17 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final name in [nationwideRegion, ...recommendationRegions])
-                  FilterChip(
-                    key: ValueKey('recommend-region-$name'),
-                    label: Text(
-                      name,
-                      style: _regions.contains(name)
-                          ? TextStyle(
-                              color: AppTone.accent.color(context),
-                              fontWeight: FontWeight.w700,
-                            )
-                          : null,
-                    ),
-                    selected: _regions.contains(name),
-                    // A check and the accent fill make the chosen regions obvious.
-                    showCheckmark: true,
-                    checkmarkColor: AppTone.accent.color(context),
-                    selectedColor: AppTone.accent.container(context),
-                    side: BorderSide(
-                      color: _regions.contains(name)
-                          ? AppTone.accent.color(context)
-                          : theme.colorScheme.outlineVariant,
-                    ),
-                    visualDensity: VisualDensity.compact,
-                    onSelected: _busy
-                        ? null
-                        : (on) {
-                            setState(() {
-                              // 전국 and individual regions exclude each other.
-                              if (name == nationwideRegion) {
-                                _regions.clear();
-                              } else {
-                                _regions.remove(nationwideRegion);
-                              }
-                              on ? _regions.add(name) : _regions.remove(name);
-                            });
-                            state.didChange(_regions);
-                          },
-                  ),
-              ],
+            RegionChips(
+              selected: _regions,
+              enabled: !_busy,
+              onChanged: (next) {
+                setState(
+                  () => _regions
+                    ..clear()
+                    ..addAll(next),
+                );
+                state.didChange(_regions);
+              },
             ),
             if (state.errorText != null || _hasField('region'))
               Padding(

@@ -7,9 +7,11 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from sqlalchemy import select
 
 from app.api.auth import CurrentIdentity, Database
 from app.core.auth_errors import AuthError, conflict
+from app.models.personal import AnalysisResult
 from app.schemas.common import ErrorCode
 from app.schemas.personalization import (
     MAX_ANALYSIS_RECORDS,
@@ -20,7 +22,7 @@ from app.services import auth, gemini
 from app.services.personalization.context import assemble
 from app.services.personalization.redaction import redact_context
 
-from . import categories, regions
+from . import activities, categories, regions
 from .contracts import SearchQuery, failure_reason
 from .crawling import Work24Crawler
 from .documents import prepare_documents
@@ -196,6 +198,124 @@ def gap_analyses(
         "requirements": requirements,
         "summary": summary,
         "warnings": notes[:10],
+    }
+
+
+class ActivityRecommendationRequest(PersonalizationRequest):
+    records: list[PersonalEvidenceSelection] = Field(
+        default_factory=list, max_length=MAX_ANALYSIS_RECORDS
+    )
+    # Empty: nationwide internships.
+    regions: list[RegionName] = Field(default_factory=list, max_length=16)
+    academic_stage: Literal["year1", "year2", "year3", "year4", "graduating", "graduate"] | None = (
+        None
+    )
+    external_processing_consent: bool = Field(default=False, strict=True)
+
+    @model_validator(mode="after")
+    def unique_regions(self):
+        if len(set(self.regions)) != len(self.regions):
+            raise ValueError("근무 지역을 한 번씩만 골라 주세요.")
+        return self
+
+
+def latest_gap(db, owner_id):
+    """The newest saved 목표 직무 분석 result, or None."""
+    return db.scalar(
+        select(AnalysisResult)
+        .where(AnalysisResult.owner_id == owner_id, AnalysisResult.kind == "gap")
+        .order_by(AnalysisResult.created_at.desc())
+        .limit(1)
+    )
+
+
+@router.post("/activity-recommendations")
+def activity_recommendations(
+    payload: ActivityRecommendationRequest,
+    request: Request,
+    db: Database,
+    identity: CurrentIdentity,
+):
+    """Kinds of external activities for the target job's gaps, places to look and internships."""
+    if not payload.external_processing_consent:
+        return {"status": "needs_user_input", "missing_fields": ["external_processing_consent"]}
+    goal_view = get_goal(db, identity.user.id)
+    codes, keyword = list(goal_view.category_codes), goal_view.keyword
+    if not codes and not keyword:
+        return {"status": "needs_user_input", "missing_fields": ["career_goal"]}
+    if not payload.records:
+        return {"status": "needs_user_input", "missing_fields": ["records"]}
+    model_name = request.app.state.settings.vertex_model
+    model = getattr(request.app.state, "gap_model", None)
+    if model is None:
+        return {"status": "not_configured", "model": model_name}
+    auth.throttle(db, "activity-recommendation:" + str(identity.user.id), limit=10)
+    goal = {
+        "category_codes": codes,
+        "keyword": keyword,
+        "label": categories.label(codes) if codes else None,
+    }
+    saved = latest_gap(db, identity.user.id)
+    gaps = activities.gaps_from(saved.result) if saved is not None else []
+    context = assemble(db, identity, payload.records)
+    records = redact_context(context, identity).model_dump(mode="json")["records"]
+    owner_id = identity.user.id
+    ordered = [name for name in regions.WORK24 if name in payload.regions]
+    region = regions.label(ordered) if ordered else "전국"
+    db.rollback()
+    # Internships in the target job's occupation and the chosen regions (no model call).
+    query = SearchQuery(
+        "인턴" if codes else keyword,
+        region,
+        nationwide=not ordered,
+        region_codes=regions.provider_codes(ordered) if ordered else {},
+        limit=10,
+        occupation_codes=tuple(codes),
+    )
+    found = CareerService(
+        configured_sources(), None, analysis_limit=0, budget_seconds=COLLECTION_SECONDS
+    ).recommend(query, {"records": records})
+    result = {
+        "official": False,
+        "goal": goal,
+        "region_label": region,
+        "gap_basis": {
+            "analyzed_at": saved.created_at.isoformat() if saved is not None else None,
+            "gaps": len(gaps),
+        },
+        "internships": activities.internship_postings(found["items"]),
+        "internship_sources": found["sources"],
+        "recommendations": [],
+        "summary": None,
+        "sites": activities.site_table([]),
+        "model": model_name,
+        "generated_at": datetime.now(UTC).isoformat(),
+    }
+    try:
+        gemini.reserve_call(db, request)
+        recommendations, summary = activities.recommend_activities(
+            model,
+            goal,
+            gaps,
+            records,
+            academic_stage=payload.academic_stage,
+            region=region,
+        )
+    except AuthError:
+        raise
+    except Exception as error:
+        gemini.log_failure("activity recommendation", error)
+        return {**result, "status": "failed", "failure_reason": failure_reason(error)}
+    db.expire_all()
+    current = auth.current_identity(request, db)
+    if current.user.id != owner_id or assemble(db, current, payload.records) != context:
+        raise conflict()
+    return {
+        **result,
+        "status": "completed",
+        "recommendations": recommendations,
+        "summary": summary,
+        "sites": activities.site_table(recommendations),
     }
 
 

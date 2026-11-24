@@ -21,6 +21,10 @@ enum AiConsentFeature {
   jobRecommendation(
     '내 자료로 공고 찾기',
     '첨부 파일·직접 고른 내 자료에서 추출한 텍스트(OCR 포함)와 저장된 수강·활동·경험·자격·성과 기록 전체',
+  ),
+  activityRecommendation(
+    '활동 추천',
+    '목표 직무, 최근 목표 직무 분석의 부족 요건과 저장된 수강·활동·경험·자격·성과 기록 전체',
   );
 
   const AiConsentFeature(this.label, this.transferredData);
@@ -32,6 +36,7 @@ enum AiConsentFeature {
     jobAnalysis => 'job_analysis_all_records_courses_materials',
     jobRecommendation => 'job_recommendation_all_records_courses',
     careerGap => 'career_gap_all_records',
+    activityRecommendation => 'activity_recommendation_all_records',
     writing => 'writing_all_records_materials',
     _ => null,
   };
