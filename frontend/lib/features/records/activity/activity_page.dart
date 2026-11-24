@@ -27,7 +27,10 @@ enum _ActivityAddChoice { volunteer, project, intern, club, other }
 
 /// Unified student menu for activity and experience personal records.
 class ActivityPage extends StatefulWidget {
-  const ActivityPage({super.key});
+  const ActivityPage({super.key, this.changes});
+
+  /// Fires when records were added elsewhere (e.g. from 활동 추천) so the list reloads.
+  final Listenable? changes;
 
   @override
   State<ActivityPage> createState() => _ActivityPageState();
@@ -62,7 +65,17 @@ class _ActivityPageState extends State<ActivityPage> {
         PersonalRecordRepository(PersonalRecordKind.experience);
     _importChanges = scope?.importer?.importedRevision;
     _importChanges?.addListener(_reloadAfterImport);
+    widget.changes?.addListener(_reloadAfterImport);
     _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant ActivityPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.changes, widget.changes)) {
+      oldWidget.changes?.removeListener(_reloadAfterImport);
+      widget.changes?.addListener(_reloadAfterImport);
+    }
   }
 
   void _reloadAfterImport() => _load();
@@ -70,6 +83,7 @@ class _ActivityPageState extends State<ActivityPage> {
   @override
   void dispose() {
     _importChanges?.removeListener(_reloadAfterImport);
+    widget.changes?.removeListener(_reloadAfterImport);
     _loadRevision++;
     super.dispose();
   }

@@ -5,7 +5,11 @@ import 'package:university_path_frontend/features/assistant/ai_record_catalog.da
 import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/career/activity_recommendation.dart';
 import 'package:university_path_frontend/features/career/activity_recommendation_view.dart';
+import 'package:university_path_frontend/features/records/activity/activity_page.dart';
+import 'package:university_path_frontend/features/records/personal_record_repository.dart';
+import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 const record = AiRecordOption(
   kind: 'experience',
@@ -142,6 +146,102 @@ void main() {
     expect(added.single.$2, DateTime(2026, 12, 8));
     await tester.pumpWidget(const SizedBox());
     p.dispose();
+  });
+
+  test('recommendations map to the 내 활동 form they belong in', () {
+    ActivityRecommendation item(String kind, String label) =>
+        ActivityRecommendation.fromJson({
+          'kind': kind,
+          'kind_label': label,
+          'title': '합성 $label',
+          'reason': '합성 이유',
+        });
+    final volunteer = activityRecordDraft(item('volunteer', '봉사'));
+    expect(volunteer.kind, PersonalRecordKind.activity);
+    expect(volunteer.values, {'title': '합성 봉사'});
+    final intern = activityRecordDraft(item('internship', '인턴·일경험'));
+    expect(intern.kind, PersonalRecordKind.experience);
+    expect(intern.values['type'], '인턴');
+    expect(intern.values['status'], '참여 예정');
+    // Only the name and kind: the result is the student's to write later.
+    expect(intern.values.containsKey('result'), isFalse);
+    expect(activityRecordDraft(item('contest', '공모전')).values['type'], '공모전');
+  });
+
+  testWidgets('a recommendation opens a prefilled 내 활동 form and saves it', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final api = ActivityGateway();
+    final p = await consent();
+    final experience = PersonalRecordRepository(PersonalRecordKind.experience);
+    var saved = 0;
+    await tester.binding.setSurfaceSize(const Size(1600, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PersonalRepositoryScope(
+          records: (kind) => kind == PersonalRecordKind.experience
+              ? experience
+              : PersonalRecordRepository(kind),
+          portfolio: () => throw UnimplementedError(),
+          child: Scaffold(
+            body: ActivityRecommendationView(
+              api: StudentApi(api, ownerId: 'owner'),
+              consent: p,
+              loadRecords: () async => [record],
+              onRecordSaved: () => saved++,
+              now: () => DateTime(2026, 11, 24),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await run(tester);
+    final add = find.byKey(const ValueKey('activity-add-record-0'));
+    await tester.ensureVisible(add);
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+    expect(find.text('경험 추가'), findsWidgets);
+    expect(find.widgetWithText(TextFormField, '웹 서비스 해커톤 참가'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, '해커톤'), findsOneWidget);
+    await tester.tap(find.byType(FilledButton).last);
+    await tester.pumpAndSettle();
+    expect(saved, 1);
+    expect(experience.records.single.value('title'), '웹 서비스 해커톤 참가');
+    expect(experience.records.single.value('type'), '해커톤');
+    expect(find.textContaining('내 활동에 추가했습니다'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    p.dispose();
+  });
+
+  testWidgets('내 활동 kept in its tab reloads when a record is added elsewhere', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final changes = ValueNotifier(0);
+    addTearDown(changes.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: ActivityPage(changes: changes)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('합성 공모전 참가'), findsNothing);
+    final other = PersonalRecordRepository(PersonalRecordKind.experience);
+    await other.load();
+    await other.save(
+      PersonalRecord(
+        id: 'added',
+        values: {'title': '합성 공모전 참가', 'type': '공모전'},
+      ),
+    );
+    changes.value++;
+    await tester.pumpAndSettle();
+    expect(find.text('합성 공모전 참가'), findsOneWidget);
   });
 
   testWidgets('without a gap analysis it offers to run one first', (

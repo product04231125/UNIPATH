@@ -508,7 +508,15 @@ class _SchedulePageState extends State<SchedulePage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Container(width: 4, color: tone.color(context)),
-              const SizedBox(width: 12),
+              const SizedBox(width: 4),
+              Center(
+                child: Checkbox(
+                  key: ValueKey('schedule-done-${event.id}'),
+                  value: event.done,
+                  semanticLabel: '${event.title} 완료',
+                  onChanged: (value) => _setDone(event, value ?? false),
+                ),
+              ),
               SizedBox(
                 width: 52,
                 child: Padding(
@@ -538,7 +546,12 @@ class _SchedulePageState extends State<SchedulePage> {
                     children: [
                       Text(
                         event.title,
-                        style: theme.textTheme.titleSmall,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          decoration: event.done
+                              ? TextDecoration.lineThrough
+                              : null,
+                          color: event.done ? colors.onSurfaceVariant : null,
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -572,6 +585,23 @@ class _SchedulePageState extends State<SchedulePage> {
         ),
       ),
     );
+  }
+
+  /// Checks an event off (or reopens it) without opening the editor.
+  Future<void> _setDone(PlanningEvent event, bool done) async {
+    if (!_allowWrite()) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    try {
+      await widget.repository.saveEvent(
+        event.withCompletion(done ? DateTime.now() : null),
+      );
+    } catch (e) {
+      messenger?.showSnackBar(
+        SnackBar(
+          content: Text(e is AuthFailure ? e.message : '완료 표시를 저장하지 못했습니다.'),
+        ),
+      );
+    }
   }
 
   List<PlanningEvent> _eventsForDay(DateTime day) =>
@@ -989,6 +1019,7 @@ class _EventEditorState extends State<_EventEditor> {
       end: _end,
       category: _category,
       memo: _memo.text.trim(),
+      completedAt: widget.event?.completedAt,
     );
     await _persist(() async {
       await widget.repository.saveEvent(event);

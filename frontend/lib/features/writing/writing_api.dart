@@ -35,6 +35,7 @@ class WritingInput {
     this.questions = const [],
     this.charLimit,
     this.originalText = '',
+    this.composition = const [],
   });
 
   WritingInput.fromJson(Map<String, dynamic> json)
@@ -45,13 +46,20 @@ class WritingInput {
       postingText = json['posting_text'] as String? ?? '',
       questions = List<String>.from(json['questions'] as List? ?? const []),
       charLimit = json['char_limit'] as int?,
-      originalText = json['original_text'] as String? ?? '';
+      originalText = json['original_text'] as String? ?? '',
+      composition = [
+        for (final g in json['composition'] as List? ?? const [])
+          Map<String, Object?>.from(g as Map),
+      ];
 
   final WritingType type;
   final bool improve;
   final String targetRole, targetCompany, postingText, originalText;
   final List<String> questions;
   final int? charLimit;
+
+  /// 포트폴리오 구성: `{requirement, records: [{kind, record_id}]}` groups in order.
+  final List<Map<String, Object?>> composition;
 
   Map<String, Object?> toJson() => {
     'document_type': type.value,
@@ -62,6 +70,8 @@ class WritingInput {
     'questions': questions,
     'char_limit': charLimit,
     'original_text': improve ? originalText : '',
+    if (type == WritingType.portfolio && composition.isNotEmpty)
+      'composition': composition,
   };
 }
 
@@ -264,6 +274,17 @@ class WritingApi {
   const WritingApi(this.api);
   final StudentApi api;
 
+  static List<Object?> _kept(
+    Map<String, Object?> group,
+    List<AiRecordOption> records,
+  ) {
+    final ids = {for (final r in records) '${r.kind}/${r.id}'};
+    return [
+      for (final r in (group['records'] as List? ?? const []).cast<Map>())
+        if (ids.contains('${r['kind']}/${r['record_id']}')) r,
+    ];
+  }
+
   Future<WritingResult> generate(
     WritingInput input, {
     required List<AiRecordOption> records,
@@ -271,6 +292,13 @@ class WritingApi {
   }) async => WritingResult.fromJson(
     (await api.api.request('POST', 'me/writing-drafts', {
       ...input.toJson(),
+      // Only records that are sent may be arranged (a record deleted since composing drops out).
+      if (input.toJson()['composition'] case final List groups)
+        'composition': [
+          for (final g in groups.cast<Map<String, Object?>>())
+            if (_kept(g, records) case final kept when kept.isNotEmpty)
+              {...g, 'records': kept},
+        ],
       'records': [
         for (final r in records)
           {'kind': r.kind, 'record_id': r.id, 'expected_version': r.version},

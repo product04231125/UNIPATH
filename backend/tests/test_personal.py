@@ -435,6 +435,22 @@ def test_profile_creation_version_partial_updates_and_calendar_window(auth_clien
     assert [x["id"] for x in window.json()["items"]] == [event["id"]]
     assert datetime.fromisoformat(event["starts_at"]).astimezone(UTC).hour == 15
     assert event["time_zone"] == "Asia/Seoul"
+    # Checking an event off and undoing it; other fields stay as they were.
+    assert event["completed_at"] is None
+    done = c.patch(
+        f"/api/v1/me/events/{event['id']}",
+        headers=h,
+        json={"expected_version": 1, "completed_at": "2026-10-19T10:30:00+09:00"},
+    )
+    assert done.status_code == 200, done.text
+    assert datetime.fromisoformat(done.json()["completed_at"]).astimezone(UTC).hour == 1
+    assert done.json()["category"] == "deadline"
+    undone = c.patch(
+        f"/api/v1/me/events/{event['id']}",
+        headers=h,
+        json={"expected_version": 2, "completed_at": None},
+    )
+    assert undone.json()["completed_at"] is None and undone.json()["version"] == 3
 
 
 @integration

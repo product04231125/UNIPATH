@@ -48,6 +48,14 @@ class WritingDraftRequest(WritingRequest):
         keys = [(item.kind, item.record_id) for item in self.records]
         if len(keys) != len(set(keys)):
             raise ValueError("Select each personal record once")
+        # A composition may only arrange records that are sent (and so ownership-checked).
+        chosen = set(keys)
+        if any(
+            (record.kind, record.record_id) not in chosen
+            for group in self.composition
+            for record in group.records
+        ):
+            raise ValueError("Composition records must be among the selected records")
         return self
 
 

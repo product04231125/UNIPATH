@@ -63,7 +63,11 @@ for the missing details in questions_for_user instead of padding.
 Do not invent motivation, career goals or company knowledge. Ask when these are missing.
 For portfolio, organize a concise overview and relevant projects with goal, contribution, method,
 result and learning where records support them. Use facts rows for period, role and technologies,
-and paragraphs for explanations. Distinguish team accomplishments from the applicant's contribution.
+and paragraphs for explanations. composition, when supplied, lists the target job's requirements
+in priority order with the record_ids that show each: present the projects in that order, say
+briefly which requirement each project shows (only as far as its records support), and leave out
+records that are not in it unless they are needed for the overview.
+Distinguish team accomplishments from the applicant's contribution.
 If a fact is missing, omit it from the document and ask a specific question in questions_for_user
 (each at most 100 characters).
 Never put placeholders, evidence audit messages or invented practice into the applicant's prose.
@@ -161,10 +165,32 @@ def generate_draft(request, records, generator, *, names=()):
         raise ValueError("Select records or paste an original document")
     posting = redact_text(request.posting_text, names=names)[:POSTING_CHARS]
     questions = [redact_text(q, names=names) for q in request.questions]
-    focus = "\n".join([request.target_role, request.target_company, posting, *questions])
+    groups = [
+        {
+            "requirement": redact_text(group.requirement, names=names),
+            "records": [str(record.record_id) for record in group.records],
+        }
+        for group in request.composition
+    ]
+    focus = "\n".join(
+        [request.target_role, request.target_company, posting, *questions]
+        + [group["requirement"] for group in groups]
+    )
     # The original is always sent whole; other records fit the rest, most relevant first.
     budget = max(0, RECORD_BUDGET - sum(len(r["text"]) for r in originals))
-    fitted = fit_records(saved, focus, budget=budget)
+    composed = {record_id for group in groups for record_id in group["records"]}
+    # Records the composition names come first so the budget never drops them.
+    first = fit_records([r for r in saved if r["record_id"] in composed], focus, budget=budget)
+    rest = [r for r in saved if r["record_id"] not in composed]
+    fitted = first + fit_records(
+        rest, focus, budget=max(0, budget - sum(len(r["text"]) for r in first))
+    )
+    if groups:
+        kept = {r["record_id"] for r in fitted}
+        groups = [
+            {**group, "records": [i for i in group["records"] if i in kept]} for group in groups
+        ]
+        groups = [group for group in groups if group["records"]]
     warnings = []
     if len(fitted) < len(saved):
         warnings.append(
@@ -183,6 +209,7 @@ def generate_draft(request, records, generator, *, names=()):
         "questions": questions,
         "char_limit": request.char_limit,
         "original_text": original,
+        "composition": groups,
         "records": chosen,
         "output_schema": Draft.model_json_schema(),
     }

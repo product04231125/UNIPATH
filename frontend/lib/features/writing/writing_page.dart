@@ -20,6 +20,7 @@ import '../settings/ai_consent_section.dart';
 import '../auth/file_export_gateway.dart';
 import 'export_file_save.dart';
 import 'writing_api.dart';
+import 'portfolio_composition.dart';
 import '../../shared/widgets/work_layout.dart';
 
 /// 채용공고 분석 → 자기소개서: opens this page once with the posting filled in.
@@ -131,6 +132,7 @@ class _WritingPageState extends State<WritingPage> {
   final _questions = <TextEditingController>[TextEditingController()];
   final _materialIds = <String>{};
   final _title = TextEditingController();
+  List<CompositionGroup> _composition = const [];
 
   WritingInput? _input;
   WritingResult? _result;
@@ -175,6 +177,7 @@ class _WritingPageState extends State<WritingPage> {
       _revision++;
       _sending = _exporting = false;
       _materialIds.clear();
+      _composition = const [];
       _clearDraft();
       _documents = const [];
       _restored = false;
@@ -402,6 +405,9 @@ class _WritingPageState extends State<WritingPage> {
       questions: cover ? questions : const [],
       charLimit: cover ? limit : null,
       originalText: _improve ? _original.text.trim() : '',
+      composition: !cover && !_improve
+          ? [for (final g in _composition) g.toJson()]
+          : const [],
     );
   }
 
@@ -892,6 +898,16 @@ class _WritingPageState extends State<WritingPage> {
               ),
             ),
           ),
+          if (!cover && !_improve && widget.api != null) ...[
+            const SizedBox(height: 12),
+            PortfolioCompositionCard(
+              api: widget.api!,
+              groups: _composition,
+              enabled: enabled,
+              loadRecords: widget.loadRecords,
+              onChanged: (groups) => setState(() => _composition = groups),
+            ),
+          ],
           if (cover) ...[
             const SizedBox(height: 12),
             for (var i = 0; i < _questions.length; i++)

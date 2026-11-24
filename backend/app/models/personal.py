@@ -173,6 +173,8 @@ class PersonalEvent(OwnedRecord, Base):
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     time_zone: Mapped[str] = mapped_column(String(64))
     category: Mapped[str] = mapped_column(String(16))
+    # Checked off by the student (a weekly study goal, an exam step); null while open.
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = (
         CheckConstraint("ends_at > starts_at", name="period"),
         CheckConstraint(

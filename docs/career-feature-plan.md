@@ -51,11 +51,9 @@ UniversityPath AI는 학생의 취업을 돕는 서비스다. 그런데 지금�
 - **연결점:**
   - D의 근거 있는 지원서 초안.
   - 기존 지원 문서·포트폴리오 구성 저장(`application_documents`, `portfolio_compositions`).
-  - 아직 메뉴에 연결되지 않은 초안 화면(`PortfolioDraftsPage`).
+- **2026-11-24:** 포트폴리오 구성(최근 목표 직무 분석의 요건 순서로 근거 기록 묶기, 초안 요청 `composition`)을 구현했다. 메뉴에 없던 예전 `PortfolioDraftsPage`를 지웠다.
 - **필요한 것:**
-  - 포트폴리오 구성 생성: 프로젝트·성과 기록을 직무 요건 순서로 정리한다.
   - 문서 내보내기: 필요하면 Google Docs(DOCX·PDF는 구현).
-  - 포트폴리오 구성 생성과 기존 `application_documents`·`portfolio_compositions` 화면 정리.
 - **고려 사항:** 확인되지 않은 경력·성과를 만들어 넣지 않는다. 문서에는 학생이 확인한 내용만 남긴다.
 
 ### 3. 목표 직무 맞춤 자격증 추천
