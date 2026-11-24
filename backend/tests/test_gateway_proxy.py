@@ -12,7 +12,7 @@ def test_gateway_fixture_keeps_staging_limits_for_both_templates(template):
     assert "client_max_body_size 2m;" in fixture
     assert "client_max_body_size 12m;" in fixture
     assert (
-        "^/api/v1/me/(job-analyses|job-recommendations|personalized-guidance|career-gap-analyses|activity-recommendations|certificate-recommendations|writing-drafts|materials(?:/[0-9a-f-]+)?)$"
+        "^/api/v1/me/(job-analyses|job-recommendations|personalized-guidance|career-gap-analyses|activity-recommendations|certificate-recommendations|certificate-study-plans|writing-drafts|materials(?:/[0-9a-f-]+)?)$"
         in fixture
     )
     assert "error_page 413 = @staging_payload_too_large;" in fixture
@@ -38,9 +38,9 @@ def test_product_gateway_matches_staging_limits_with_its_own_upstream():
 def test_windows_demo_raises_limits_only_for_the_long_model_routes():
     config = (ROOT / "deploy/windows-demo/nginx.conf").read_text()
     # The five model routes and 내 자료 uploads (one PDF of up to 8 MiB).
-    assert config.count("client_max_body_size 12m;") == 8
+    assert config.count("client_max_body_size 12m;") == 9
     assert "location ^~ /api/v1/me/materials {" in config
-    assert config.count("proxy_read_timeout 180s;") == 7
+    assert config.count("proxy_read_timeout 180s;") == 8
     for path in (
         "job-analyses",
         "job-recommendations",
@@ -48,6 +48,7 @@ def test_windows_demo_raises_limits_only_for_the_long_model_routes():
         "career-gap-analyses",
         "activity-recommendations",
         "certificate-recommendations",
+        "certificate-study-plans",
         "writing-drafts",
     ):
         assert f"location = /api/v1/me/{path} {{" in config

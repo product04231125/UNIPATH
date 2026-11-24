@@ -5,6 +5,7 @@ import 'package:university_path_frontend/features/assistant/ai_record_catalog.da
 import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/career/certificate_lookup_view.dart';
 import 'package:university_path_frontend/features/career/certificate_recommendation_view.dart';
+import 'package:university_path_frontend/features/career/certificate_study_plan.dart';
 import 'package:university_path_frontend/features/career/certificates.dart';
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
 
@@ -94,6 +95,29 @@ class CertificateGateway extends ApiGateway {
         'subjects': [],
         'eligibility_note': null,
         'schedule': schedule(),
+      };
+    }
+    if (path == 'me/certificate-study-plans') {
+      return {
+        'status': 'completed',
+        'exam_date': '2027-01-16',
+        'scope': {
+          'subjects': ['사회복지기초'],
+          'source': 'Q-Net 공개 API(한국산업인력공단)',
+        },
+        'advice': '마지막 2주는 기출 위주로 복습합니다.',
+        'weeks': [
+          {
+            'week': 1,
+            'start': '2026-11-24',
+            'end': '2026-11-30',
+            'focus': '사회복지기초 개념 잡기',
+            'subjects': ['사회복지기초'],
+            'tasks': ['인간행동과 사회환경 정리'],
+            'hours': 8,
+            'related_records': ['합성 사회복지 실습'],
+          },
+        ],
       };
     }
     expect(path, 'me/certificate-recommendations');
@@ -251,12 +275,72 @@ void main() {
       expect(find.text('보유 자격 제외 · 정보처리기사'), findsOneWidget);
       expect(find.text('도움 되는 기록 · 합성 사회복지 실습'), findsOneWidget);
       expect(find.text('다음 필기 접수 12월 7일 ~ 12월 11일 (D-13)'), findsOneWidget);
-      expect(find.text('다음 접수 일정 공개 전 · 올해 일정을 참고하세요'), findsOneWidget);
+      expect(find.text('다음 접수 일정 공개 전 · 지난 회차를 참고하세요'), findsOneWidget);
       final open = find.byKey(const ValueKey('certificate-open-schedule-1'));
       await tester.ensureVisible(open);
       await tester.tap(open);
       expect(opened, ['qnet-1320']);
       await tester.pumpWidget(const SizedBox());
+      consent.dispose();
+    },
+  );
+
+  testWidgets(
+    'study plan targets the next official exam and adds weekly goals',
+    (tester) async {
+      await wide(tester);
+      final api = CertificateGateway();
+      final consent = AiConsentPreferences(
+        ownerId: 'owner',
+        reader: (_) async => null,
+        writer: (_, _) async => true,
+      );
+      await consent.load();
+      await consent.setAllowed(AiConsentFeature.certificateStudyPlan, true);
+      final selection = CertificateSelection();
+      final added = <(String, List<StudyWeek>)>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CertificateLookupView(
+              api: StudentApi(api, ownerId: 'owner'),
+              selection: selection,
+              consent: consent,
+              loadRecords: () async => const [
+                AiRecordOption(
+                  kind: 'course',
+                  id: 'record-id',
+                  version: 1,
+                  title: '합성 사회복지 실습',
+                ),
+              ],
+              onAddStudyPlan: (name, weeks) async => added.add((name, weeks)),
+              now: () => DateTime(2026, 11, 24),
+            ),
+          ),
+        ),
+      );
+      selection.select(CertificateSummary.fromJson(summary));
+      await tester.pumpAndSettle();
+      expect(find.text('2027. 1. 16. (D-53)'), findsOneWidget);
+      final run = find.byKey(const ValueKey('study-plan-run'));
+      await tester.ensureVisible(run);
+      await tester.tap(run);
+      await tester.pumpAndSettle();
+      final body = api.calls.last.$3!;
+      expect(body['certificate_id'], 'qnet-9738');
+      expect(body['exam_date'], '2027-01-16');
+      expect(body['hours_per_week'], 8);
+      expect(find.text('사회복지기초 개념 잡기'), findsOneWidget);
+      expect(find.text('참고할 내 기록 · 합성 사회복지 실습'), findsOneWidget);
+      final add = find.byKey(const ValueKey('study-plan-add'));
+      await tester.ensureVisible(add);
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+      expect(added.single.$1, '사회복지사 1급');
+      expect(added.single.$2.single.week, 1);
+      await tester.pumpWidget(const SizedBox());
+      selection.dispose();
       consent.dispose();
     },
   );

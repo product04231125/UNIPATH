@@ -41,12 +41,14 @@ class NextRegistrationLine extends StatelessWidget {
       icon: switch (schedule.status) {
         'always' => Icons.all_inclusive,
         'unavailable' => Icons.cloud_off_outlined,
+        'unconfirmed' => Icons.help_outline,
         _ => Icons.hourglass_empty,
       },
       text: switch (schedule.status) {
         'always' => '상시 시험 · 원하는 날짜를 골라 접수합니다',
         'unavailable' => '공식 일정을 불러오지 못했습니다',
-        _ => '다음 접수 일정 공개 전 · 올해 일정을 참고하세요',
+        'unconfirmed' => '다음 일정을 확인하지 못했습니다 · 공식 사이트에서 확인하세요',
+        _ => '다음 접수 일정 공개 전 · 지난 회차를 참고하세요',
       },
     );
   }
@@ -97,14 +99,18 @@ class CertificateScheduleView extends StatelessWidget {
           const SizedBox(height: 6),
           Text(note, style: muted),
         ],
-        if (reference && schedule.status == 'unpublished' && rounds.isNotEmpty)
+        if (reference && schedule.rounds.isNotEmpty) ...[
           Padding(
             padding: const EdgeInsets.only(top: 10),
-            child: Text('올해 일정 (참고)', style: theme.textTheme.labelLarge),
+            child: Text('진행 중인 회차', style: theme.textTheme.labelLarge),
           ),
-        if (!reference && schedule.status == 'upcoming')
-          // Rounds still running (e.g. 최종 발표) before the next registration.
-          const SizedBox(height: 4),
+          for (final round in schedule.rounds) _round(context, round, false),
+        ],
+        if (reference && schedule.referenceRounds.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text('지난 회차 (참고)', style: theme.textTheme.labelLarge),
+          ),
         for (final round in rounds) _round(context, round, reference),
         if (schedule.source != null) ...[
           const SizedBox(height: 8),

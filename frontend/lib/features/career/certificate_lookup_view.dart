@@ -9,9 +9,12 @@ import '../../shared/widgets/surface_card.dart';
 import '../../shared/widgets/tone_chip.dart';
 import '../../shared/widgets/work_layout.dart';
 import '../api/student_api.dart';
+import '../assistant/ai_record_catalog.dart';
 import '../auth/auth_api.dart';
 import '../auth/guest_preview_scope.dart';
+import '../settings/ai_consent_preferences.dart';
 import 'certificate_schedule.dart';
+import 'certificate_study_plan.dart';
 import 'certificates.dart';
 
 /// 시험 일정: search any certificate and see its official schedule, fee and exam method.
@@ -20,12 +23,18 @@ class CertificateLookupView extends StatefulWidget {
     super.key,
     required this.api,
     required this.selection,
+    this.consent,
     this.onAddEvents,
+    this.onAddStudyPlan,
+    this.loadRecords,
     this.now,
   });
   final StudentApi? api;
   final CertificateSelection selection;
+  final AiConsentPreferences? consent;
   final AddCertificateEvents? onAddEvents;
+  final AddStudyPlan? onAddStudyPlan;
+  final Future<List<AiRecordOption>> Function()? loadRecords;
   final DateTime Function()? now;
 
   @override
@@ -310,7 +319,21 @@ class _CertificateLookupViewState extends State<CertificateLookupView> {
             ],
           ),
         ),
+        if (widget.api case final api? when widget.consent != null) ...[
+          const SizedBox(height: 16),
+          CertificateStudyPlanCard(
+            api: api,
+            consent: widget.consent,
+            certificate: s,
+            schedule: d.schedule,
+            loadRecords: widget.loadRecords,
+            onAddPlan: widget.onAddStudyPlan,
+            now: widget.now,
+          ),
+        ],
         if (d.method != null ||
+            d.subjectsText != null ||
+            d.eligibility != null ||
             d.subjects.isNotEmpty ||
             d.passCriteria != null ||
             d.trend != null) ...[
@@ -321,6 +344,10 @@ class _CertificateLookupViewState extends State<CertificateLookupView> {
               children: [
                 Text('시험 과목·방법', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),
+                if (d.subjectsText case final text?) ...[
+                  SelectableText(text),
+                  const SizedBox(height: 8),
+                ],
                 if (d.method case final method?) SelectableText(method),
                 if (d.subjects.isNotEmpty) ...[
                   for (final subject in d.subjects) Text('· $subject'),
@@ -329,6 +356,18 @@ class _CertificateLookupViewState extends State<CertificateLookupView> {
                   const SizedBox(height: 8),
                   Text('합격 기준 · $pass'),
                 ],
+                if (d.eligibility case final text?)
+                  ExpansionTile(
+                    key: const ValueKey('certificate-eligibility'),
+                    tilePadding: EdgeInsets.zero,
+                    title: const Text('응시자격 (Q-Net)'),
+                    children: [
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: SelectableText(text),
+                      ),
+                    ],
+                  ),
                 if (d.trend case final trend?)
                   ExpansionTile(
                     key: const ValueKey('certificate-trend'),

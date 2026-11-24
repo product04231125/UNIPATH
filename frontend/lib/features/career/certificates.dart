@@ -106,6 +106,8 @@ class CertificateDetail {
       eligibilityNote = json['eligibility_note'] as String?,
       fee = json['fee'] as String?,
       method = json['method'] as String?,
+      subjectsText = json['subjects_text'] as String?,
+      eligibility = json['eligibility'] as String?,
       trend = json['trend'] as String?,
       subjects = List<String>.from(json['subjects'] as List? ?? const []),
       passCriteria = json['pass_criteria'] as String?,
@@ -116,6 +118,8 @@ class CertificateDetail {
       eligibilityNote,
       fee,
       method,
+      subjectsText,
+      eligibility,
       trend,
       passCriteria,
       infoFailureReason;

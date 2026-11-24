@@ -27,6 +27,7 @@ import 'features/career/activity_recommendation.dart';
 import 'features/career/activity_recommendation_view.dart';
 import 'features/career/certificate_lookup_view.dart';
 import 'features/career/certificate_recommendation_view.dart';
+import 'features/career/certificate_study_plan.dart';
 import 'features/career/certificates.dart';
 import 'features/career/career_goal.dart';
 import 'features/home/home_page.dart';
@@ -238,6 +239,22 @@ class _WorkspaceState extends State<Workspace> {
           ),
         );
       }
+    }
+  }
+
+  /// Weekly study goals as calendar entries on each week's first day.
+  Future<void> _addStudyPlan(String certificate, List<StudyWeek> weeks) async {
+    for (final w in weeks) {
+      await _planningRepository.saveEvent(
+        PlanningEvent(
+          id: planningClientId(),
+          title: '$certificate ${w.week}주차 · ${w.focus}',
+          start: DateTime(w.start.year, w.start.month, w.start.day, 9),
+          end: DateTime(w.start.year, w.start.month, w.start.day, 10),
+          category: PlanningEventCategory.academic,
+          memo: w.tasks.join(' / '),
+        ),
+      );
     }
   }
 
@@ -581,7 +598,9 @@ class _WorkspaceState extends State<Workspace> {
             CertificateLookupView(
               api: _personalApi,
               selection: _certificateSelection,
+              consent: _aiConsent,
               onAddEvents: _personalApi == null ? null : _addCertificateEvents,
+              onAddStudyPlan: _personalApi == null ? null : _addStudyPlan,
             ),
           ],
         ),

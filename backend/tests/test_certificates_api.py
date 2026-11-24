@@ -30,7 +30,7 @@ class FakeQNet:
         self.fail = fail
         self.calls = []
 
-    def technical_schedule(self, jmcd):
+    def technical_schedule(self, jmcd, second="실기"):
         self.calls.append(("technical", jmcd))
         if self.fail:
             raise ProviderFailure("down", "network")
@@ -44,6 +44,8 @@ class FakeQNet:
         return "1차 : 19400, 2차 : 22600"
 
     def info(self, jmcd):
+        if self.fail:
+            raise ProviderFailure("down", "network")
         return {"취득방법": "시험과목\n- 필기 1. 소프트웨어설계", "출제경향": "SQL 응용"}
 
 
@@ -87,6 +89,25 @@ def private(monkeypatch):
                 "subjects": ["데이터 모델링의 이해", "SQL 기본 및 활용"],
             },
             {
+                "id": "network",
+                "name": "합성 네트워크관리사",
+                "issuer": "합성 협회",
+                "kind": "national_certified_private",
+                "mode": "scheduled",
+                "schedule_status": "source_unreadable",
+                "rounds": [],
+                "reference_rounds": [
+                    {
+                        "name": "지난 회차",
+                        "registration_start": "2026-03-02",
+                        "registration_end": "2026-03-06",
+                        "exams": [
+                            {"label": "시험", "date": "2026-04-05", "date_end": "2026-04-06"}
+                        ],
+                    }
+                ],
+            },
+            {
                 "id": "opic",
                 "name": "OPIc",
                 "issuer": "합성 평가원",
@@ -96,6 +117,8 @@ def private(monkeypatch):
         ],
     }
     monkeypatch.setattr(certificates, "_private", data)
+    # Tests that need the ministry plan set their own.
+    monkeypatch.setattr(certificates, "_plan", {})
     return data
 
 
@@ -140,7 +163,8 @@ def test_schedule_status_uses_the_next_registration(private):
     rounds = qnet.technical_round(qnet.parse_items(TECHNICAL)[0])
     view = certificates.schedule(item, today, FakeQNet([rounds]))
     assert view["status"] == "unpublished" and view["next_registration"] is None
-    assert view["reference_rounds"][0]["name"] == "2026년 정기 기사 3회"
+    # The running round (final results ahead) is not a past round.
+    assert view["rounds"][0]["name"] == "2026년 정기 기사 3회" and view["reference_rounds"] == []
     assert view["next_event"]["label"] == "최종 합격 발표"
     upcoming = [
         round_("1회", "2026-12-07", "2027-01-16"),
@@ -157,6 +181,9 @@ def test_schedule_status_uses_the_next_registration(private):
     assert sqld["status"] == "upcoming" and sqld["checked_at"] == "2026-11-24"
     assert [e["label"] for e in sqld["rounds"][0]["events"]] == ["접수", "시험", "결과 발표"]
     assert certificates.schedule(certificates.find("private-opic"), today)["status"] == "always"
+    network = certificates.schedule(certificates.find("private-network"), today)
+    assert network["status"] == "unconfirmed"
+    assert network["reference_rounds"][0]["events"][1]["end"] == "2026-04-06"
 
 
 def test_search_resolve_and_detail(private):
@@ -279,3 +306,152 @@ def test_certificate_api(auth_client, monkeypatch, private):
     assert first["evidence"] == [{"requirement": "SQL 활용 능력", "frequency": 3}]
     assert first["schedule"]["status"] == "upcoming"
     assert model.payloads[0]["academic_stage"] == "year3"
+
+
+METHOD = (
+    "시험과목\n- 필기 1. 소프트웨어설계 2. 데이터베이스구축\n- 실기 : 정보처리 실무\n"
+    "\n검정방법\n- 필기 : 객관식"
+)
+
+
+def test_official_subjects_come_only_from_the_subject_section():
+    assert certificates.official_subjects(METHOD, []) == [
+        "소프트웨어설계",
+        "데이터베이스구축",
+        "정보처리 실무",
+    ]
+    assert certificates.official_subjects("", ["A", " ", 3]) == ["A"]
+
+
+class StudyModel:
+    def __init__(self, weeks):
+        self.weeks = weeks
+        self.payloads = []
+
+    def generate(self, instruction, payload, **options):
+        self.payloads.append(payload)
+        return {"weeks": self.weeks, "advice": "매주 기출을 풉니다."}
+
+
+def week(n, subjects=(), hours=5):
+    return {
+        "week": n,
+        "focus": f"{n}주차 목표",
+        "subjects": list(subjects),
+        "tasks": ["개념 정리", "문제 풀이"],
+        "hours": hours,
+        "related_records": ["합성 데이터베이스", "없는 기록"],
+    }
+
+
+def test_study_plan_keeps_official_subjects_and_rejects_short_plans(private):
+    item = certificates.find("qnet-1320")
+    scope = {"subjects": ["소프트웨어설계", "데이터베이스구축"], "text": "공식 원문: 정보처리 실무"}
+    records = [{"kind": "course", "title": "합성 데이터베이스", "text": "SQL"}]
+    model = StudyModel(
+        [week(1, ["소프트웨어설계", "지어낸 과목"]), week(2, ["정보처리 실무"], hours=99), week(3)]
+    )
+    plan, advice = certificates.plan_study(model, item, scope, 3, 6, records)
+    assert [w["subjects"] for w in plan] == [["소프트웨어설계"], ["정보처리 실무"], []]
+    assert plan[1]["hours"] == 6 and plan[0]["related_records"] == ["합성 데이터베이스"]
+    assert advice == "매주 기출을 풉니다."
+    assert model.payloads[0]["weeks"] == 3
+    with pytest.raises(AnalysisRejected):
+        certificates.plan_study(StudyModel([week(1)]), item, scope, 8, 6, records)
+    # Scope from Q-Net texts; a failed call leaves an empty scope instead of failing.
+    assert certificates.study_scope(item, FakeQNet([]))["subjects"] == ["소프트웨어설계"]
+    assert certificates.study_scope(item, FakeQNet(fail=True)) == {
+        "subjects": [],
+        "text": "",
+        "source": None,
+    }
+    sqld = certificates.study_scope(certificates.find("private-sqld"))
+    assert sqld["subjects"] == ["데이터 모델링의 이해", "SQL 기본 및 활용"]
+
+
+@pytest.mark.integration
+def test_study_plan_api(auth_client, monkeypatch, private):
+    from datetime import timedelta
+
+    from app.rag.career import api as career_api
+
+    c = auth_client
+    owner = authorization(register(c))
+    monkeypatch.setattr(certificates.qnet, "QNet", lambda: FakeQNet([]))
+    today = date(2026, 11, 24)
+    monkeypatch.setattr(career_api, "seoul_today", lambda: today)
+    record = post(
+        c,
+        owner,
+        "experience-records",
+        {"title": "합성 데이터베이스", "experience_type": "프로젝트", "result": "SQL"},
+    )
+    selection = {"kind": "experience", "record_id": record["id"], "expected_version": 1}
+    path = "/api/v1/me/certificate-study-plans"
+    body = {
+        "certificate_id": "qnet-1320",
+        "exam_date": "2026-12-10",
+        "hours_per_week": 6,
+        "records": [selection],
+        "external_processing_consent": True,
+    }
+    assert c.post(path, headers=owner, json={**body, "exam_date": "2026-11-24"}).status_code == 422
+    assert (
+        c.post(path, headers=owner, json={**body, "certificate_id": "qnet-0000"}).status_code == 404
+    )
+    assert c.post(path, headers=owner, json={**body, "external_processing_consent": False}).json()[
+        "missing_fields"
+    ] == ["external_processing_consent"]
+    c.app.state.gap_model = StudyModel([week(1, ["소프트웨어설계"]), week(2), week(3)])
+    value = c.post(path, headers=owner, json=body).json()
+    assert value["status"] == "completed", value
+    # 16 days: three weeks counted back from the exam, never before today or on the exam day.
+    assert [(w["start"], w["end"]) for w in value["weeks"]] == [
+        ("2026-11-24", "2026-11-30"),
+        ("2026-12-01", "2026-12-07"),
+        ("2026-12-08", "2026-12-09"),
+    ]
+    assert value["scope"]["subjects"] == ["소프트웨어설계"]
+    assert value["weeks"][0]["related_records"] == ["합성 데이터베이스"]
+    far = (today + timedelta(days=400)).isoformat()
+    c.app.state.gap_model = StudyModel([week(n) for n in range(1, 27)])
+    value = c.post(path, headers=owner, json={**body, "exam_date": far}).json()
+    assert len(value["weeks"]) == 26
+    assert value["weeks"][-1]["end"] == (today + timedelta(days=399)).isoformat()
+
+
+def test_ministry_plan_fills_in_until_qnet_lists_next_year(private, monkeypatch):
+    plan = {
+        "notice": "합성 시행계획 공고",
+        "source_url": "https://example.test/plan",
+        "checked_at": "2026-11-24",
+        "series": {
+            "기사": [
+                {
+                    "name": "2027년 정기 기사 1회",
+                    "doc_reg_start": "2027-01-12",
+                    "doc_reg_end": "2027-01-15",
+                    "doc_exam_start": "2027-02-07",
+                    "doc_exam_end": "2027-03-04",
+                    "prac_pass_start": None,
+                }
+            ]
+        },
+    }
+    monkeypatch.setattr(certificates, "_plan", plan)
+    item = certificates.find("qnet-1320")
+    today = date(2026, 11, 24)
+    rounds = [qnet.technical_round(qnet.parse_items(TECHNICAL)[0])]
+    view = certificates.schedule(item, today, FakeQNet(rounds))
+    assert view["status"] == "upcoming"
+    assert view["source"] == "합성 시행계획 공고" and view["note"]
+    assert [r["name"] for r in view["rounds"]] == ["2026년 정기 기사 3회", "2027년 정기 기사 1회"]
+    assert view["next_registration"]["start"] == "2027-01-12"
+    # Q-Net down: the plan still answers.
+    assert certificates.schedule(item, today, FakeQNet(fail=True))["status"] == "upcoming"
+    # Once Q-Net lists a registration ahead, its own rounds win.
+    ahead = [round_("2027년 정기 기사 1회", "2027-01-13", "2027-02-08")]
+    view = certificates.schedule(item, today, FakeQNet(ahead))
+    assert view["source"].startswith("Q-Net") and view["note"] is None
+    # 국가전문자격 have no plan.
+    assert certificates.plan_rounds("사회복지사 1급") == []

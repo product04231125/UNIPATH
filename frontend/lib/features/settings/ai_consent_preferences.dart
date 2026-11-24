@@ -29,6 +29,10 @@ enum AiConsentFeature {
   certificateRecommendation(
     '자격증 추천',
     '목표 직무, 최근 목표 직무 분석의 부족 요건과 저장된 수강·활동·경험·자격·성과 기록 전체',
+  ),
+  certificateStudyPlan(
+    '자격증 학습 계획',
+    '고른 자격증과 공식 시험 과목, 저장된 수강·활동·경험·자격·성과 기록 전체',
   );
 
   const AiConsentFeature(this.label, this.transferredData);
@@ -42,6 +46,7 @@ enum AiConsentFeature {
     careerGap => 'career_gap_all_records',
     activityRecommendation => 'activity_recommendation_all_records',
     certificateRecommendation => 'certificate_recommendation_all_records',
+    certificateStudyPlan => 'certificate_study_plan_all_records',
     writing => 'writing_all_records_materials',
     _ => null,
   };

@@ -2,7 +2,7 @@
 
 import base64
 import os
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Literal
 from zoneinfo import ZoneInfo
 
@@ -415,6 +415,81 @@ def certificate_recommendations(
         "held": held,
         "summary": summary,
     }
+
+
+class StudyPlanRequest(PersonalizationRequest):
+    certificate_id: str = Field(pattern=r"^(qnet|private)-[A-Za-z0-9_]{1,40}$")
+    exam_date: date
+    hours_per_week: int = Field(ge=1, le=40, strict=True)
+    records: list[PersonalEvidenceSelection] = Field(
+        default_factory=list, max_length=MAX_ANALYSIS_RECORDS
+    )
+    external_processing_consent: bool = Field(default=False, strict=True)
+
+
+@router.post("/certificate-study-plans")
+def certificate_study_plan(
+    payload: StudyPlanRequest,
+    request: Request,
+    db: Database,
+    identity: CurrentIdentity,
+):
+    """Weekly study plan up to the exam date over the official exam scope."""
+    item = certificates.find(payload.certificate_id)
+    if item is None:
+        raise AuthError(404, ErrorCode.NOT_FOUND, "자격증을 찾을 수 없습니다.")
+    today = seoul_today()
+    days = (payload.exam_date - today).days
+    if not 1 <= days <= 730:
+        raise AuthError(
+            422, ErrorCode.VALIDATION_ERROR, "시험일은 내일부터 2년 안의 날짜로 골라 주세요."
+        )
+    if not payload.external_processing_consent:
+        return {"status": "needs_user_input", "missing_fields": ["external_processing_consent"]}
+    model_name = request.app.state.settings.vertex_model
+    model = getattr(request.app.state, "gap_model", None)
+    if model is None:
+        return {"status": "not_configured", "model": model_name}
+    auth.throttle(db, "certificate-study-plan:" + str(identity.user.id), limit=10)
+    context = assemble(db, identity, payload.records)
+    records = redact_context(context, identity).model_dump(mode="json")["records"]
+    owner_id = identity.user.id
+    db.rollback()
+    weeks = min(-(-days // 7), certificates.MAX_STUDY_WEEKS)
+    start = payload.exam_date - timedelta(days=7 * weeks)
+    start = max(start, today)
+    scope = certificates.study_scope(item)
+    result = {
+        "official": False,
+        "certificate": public(item),
+        "exam_date": payload.exam_date.isoformat(),
+        "hours_per_week": payload.hours_per_week,
+        "scope": {"subjects": scope["subjects"], "source": scope["source"]},
+        "weeks": [],
+        "advice": None,
+        "model": model_name,
+        "generated_at": datetime.now(UTC).isoformat(),
+    }
+    try:
+        gemini.reserve_call(db, request)
+        plan, advice = certificates.plan_study(
+            model, item, scope, weeks, payload.hours_per_week, records
+        )
+    except AuthError:
+        raise
+    except Exception as error:
+        gemini.log_failure("certificate study plan", error)
+        return {**result, "status": "failed", "failure_reason": failure_reason(error)}
+    db.expire_all()
+    current = auth.current_identity(request, db)
+    if current.user.id != owner_id or assemble(db, current, payload.records) != context:
+        raise conflict()
+    last = payload.exam_date - timedelta(days=1)
+    for entry in plan:
+        begin = start + timedelta(days=7 * (entry["week"] - 1))
+        entry["start"] = min(begin, last).isoformat()
+        entry["end"] = min(begin + timedelta(days=6), last).isoformat()
+    return {**result, "status": "completed", "weeks": plan, "advice": advice}
 
 
 @router.get("/career-goal", response_model=CareerGoalView)

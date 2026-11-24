@@ -29,6 +29,7 @@ DETAIL_URL = "https://www.q-net.or.kr/crf005.do?id=crf00503&jmCd={jmcd}"
 HOME_URL = "https://www.q-net.or.kr"
 # Grades with education or career eligibility (기능사 has none).
 RESTRICTED_SERIES = {"기술사", "기능장", "기사"}
+INFO_LABELS = ("시험과목 및 배점", "취득방법", "응시자격", "출제경향")
 
 _cache = {}
 _lock = threading.Lock()
@@ -84,10 +85,10 @@ class QNet:
             _cache[cache_key] = (now + ttl, items)
         return items
 
-    def technical_schedule(self, jmcd):
+    def technical_schedule(self, jmcd, second="실기"):
         """Rounds of one 국가기술자격 종목 (this exam year only)."""
         rows = self._items("InquiryTestInformationNTQSVC/getJMList", {"jmCd": jmcd}, SCHEDULE_TTL)
-        return [technical_round(row) for row in rows]
+        return [technical_round(row, second) for row in rows]
 
     def professional_schedule(self, series_code):
         """Rounds of one 국가전문자격 계열 (this exam year only)."""
@@ -103,15 +104,15 @@ class QNet:
         return next((clean(r.get("contents")) for r in rows if r.get("contents")), None)
 
     def info(self, jmcd):
-        """취득방법(시험 과목·검정 방법·합격 기준) and 출제경향 texts."""
+        """Official texts: 취득방법, 시험과목 및 배점, 응시자격 and 출제경향 (whichever exist)."""
         rows = self._items("InquiryInformationTradeNTQSVC/getList", {"jmCd": jmcd}, INFO_TTL)
         texts = {}
         for row in rows:
             label, text = row.get("infogb"), clean(row.get("contents"))
-            if label in {"취득방법", "출제경향"} and text:
+            if label in INFO_LABELS and text:
                 # The first line repeats '<종목> 취득방법'.
                 lines = text.split("\n")
-                if lines and lines[0].endswith(label):
+                if lines and lines[0].replace(" ", "").endswith(label.replace(" ", "")):
                     lines = lines[1:]
                 texts[label] = "\n".join(lines).strip()[:4000]
         return texts
@@ -157,8 +158,8 @@ def event(kind, label, start, end=None):
     return {"kind": kind, "label": label, "start": start or end, "end": end or start}
 
 
-def technical_round(row):
-    """One 국가기술자격 round with 필기·실기 dates."""
+def technical_round(row, second="실기"):
+    """One 국가기술자격 round with 필기 and 실기 (기술사: 면접) dates."""
     events = [
         event("registration", "필기 접수", row.get("docregstartdt"), row.get("docregenddt")),
         event("exam", "필기 시험", row.get("docexamstartdt"), row.get("docexamenddt")),
@@ -169,8 +170,8 @@ def technical_round(row):
             row.get("docsubmitstartdt"),
             row.get("docsubmitenddt") or row.get("docsubmitentdt"),
         ),
-        event("registration", "실기 접수", row.get("pracregstartdt"), row.get("pracregenddt")),
-        event("exam", "실기 시험", row.get("pracexamstartdt"), row.get("pracexamenddt")),
+        event("registration", f"{second} 접수", row.get("pracregstartdt"), row.get("pracregenddt")),
+        event("exam", f"{second} 시험", row.get("pracexamstartdt"), row.get("pracexamenddt")),
         event("result", "최종 합격 발표", row.get("pracpassstartdt"), row.get("pracpassenddt")),
     ]
     return {
