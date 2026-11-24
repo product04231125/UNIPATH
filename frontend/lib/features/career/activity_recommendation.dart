@@ -2,6 +2,7 @@ import '../api/job_analysis_models.dart';
 import '../api/job_recommendation_api.dart';
 import '../api/student_api.dart';
 import '../assistant/ai_record_catalog.dart';
+import '../records/personal_record_repository.dart';
 
 /// One kind of activity the server suggests for the target job's gaps.
 class ActivityRecommendation {
@@ -20,6 +21,31 @@ class ActivityRecommendation {
   final String? deliverable;
   final int? weeks;
 }
+
+/// Where a recommended activity is recorded in 내 활동, and what the form starts with.
+/// Only the name and kind are filled: what was done and its result are the student's to write
+/// once it happens, since records are evidence for later analyses.
+({PersonalRecordKind kind, Map<String, String> values}) activityRecordDraft(
+  ActivityRecommendation item,
+) => switch (item.kind) {
+  // Hours-based activities (봉사·교육) use the 활동 form.
+  'volunteer' || 'education' => (
+    kind: PersonalRecordKind.activity,
+    values: {'title': item.title},
+  ),
+  _ => (
+    kind: PersonalRecordKind.experience,
+    values: {
+      'title': item.title,
+      'type': switch (item.kind) {
+        'internship' => '인턴',
+        'project' => '프로젝트',
+        _ => item.kindLabel,
+      },
+      'status': '참여 예정',
+    },
+  ),
+};
 
 class ActivitySite {
   ActivitySite.fromJson(Map<String, dynamic> json)

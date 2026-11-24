@@ -51976,6 +51976,18 @@
               "deadline"
             ],
             "title": "Category"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
           }
         },
         "additionalProperties": false,
@@ -52102,6 +52114,18 @@
               }
             ],
             "title": "Category"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
           }
         },
         "additionalProperties": false,
@@ -52198,6 +52222,18 @@
               "deadline"
             ],
             "title": "Category"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
           }
         },
         "additionalProperties": false,
@@ -53444,6 +53480,18 @@
               "deadline"
             ],
             "title": "Category"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
           }
         },
         "additionalProperties": false,
@@ -71738,6 +71786,14 @@
             "type": "array",
             "maxItems": 5,
             "title": "Documents"
+          },
+          "composition": {
+            "items": {
+              "$ref": "#/components/schemas/CompositionGroup"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Composition"
           }
         },
         "additionalProperties": false,
@@ -72247,6 +72303,14 @@
             "type": "boolean",
             "title": "External Processing Consent",
             "default": false
+          },
+          "composition": {
+            "items": {
+              "$ref": "#/components/schemas/CompositionGroup"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Composition"
           }
         },
         "additionalProperties": false,
@@ -72785,6 +72849,60 @@
           "hours_per_week"
         ],
         "title": "StudyPlanRequest"
+      },
+      "CompositionGroup": {
+        "properties": {
+          "requirement": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Requirement"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/CompositionRecord"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Records"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "requirement",
+          "records"
+        ],
+        "title": "CompositionGroup",
+        "description": "One target-job requirement and the student's records that show it."
+      },
+      "CompositionRecord": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "course",
+              "activity",
+              "experience",
+              "credential",
+              "achievement"
+            ],
+            "title": "Kind"
+          },
+          "record_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Record Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "record_id"
+        ],
+        "title": "CompositionRecord"
       }
     },
     "securitySchemes": {

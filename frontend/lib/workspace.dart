@@ -168,6 +168,8 @@ class _WorkspaceState extends State<Workspace> {
   var _activityTab = 0;
   var _credentialTab = 0;
   final _certificateSelection = CertificateSelection();
+  // Bumped when 활동 추천 saves a record, so 내 활동 (kept alive in its tab) reloads.
+  final _activityRecordsChanged = ValueNotifier(0);
   late final WritingSessionStore? _writingStore = _personalApi == null
       ? null
       : WritingSessionStore(ownerId: _personalApi.ownerId);
@@ -414,6 +416,7 @@ class _WorkspaceState extends State<Workspace> {
     _careerGoal?.dispose();
     _gapReport.dispose();
     _certificateSelection.dispose();
+    _activityRecordsChanged.dispose();
     _personalCalculations?.dispose();
     unawaited(_releaseSession().catchError((Object _) {}));
     _assistantButtonFocus.dispose();
@@ -568,12 +571,13 @@ class _WorkspaceState extends State<Workspace> {
           tab: _activityTab,
           onTabChanged: (tab) => setState(() => _activityTab = tab),
           children: [
-            const ActivityPage(),
+            ActivityPage(changes: _activityRecordsChanged),
             ActivityRecommendationView(
               api: _personalApi,
               consent: _aiConsent,
               careerGoal: _careerGoal,
               onAddPlan: _personalApi == null ? null : _addActivityPlan,
+              onRecordSaved: () => _activityRecordsChanged.value++,
               onOpenCareerGap: _openCareerGap,
             ),
           ],

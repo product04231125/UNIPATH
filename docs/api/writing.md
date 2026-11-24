@@ -19,6 +19,7 @@
   "original_text": "",
   "records": [{"kind": "experience", "record_id": "UUID", "expected_version": 1}],
   "documents": [{"filename": "portfolio.pdf", "content_base64": "…"}],
+  "composition": [],
   "external_processing_consent": true
 }
 ```
@@ -31,6 +32,11 @@
   문항별 글자 수(공백 포함)다.
 - `records`: 저장 기록 전체(최대 200개, D6). `documents`: 내 자료에서 고른 파일(최대 5개, 합계 8MiB).
   추출·OCR 방식은 채용공고 분석과 같다.
+- `composition`(포트폴리오만, 선택, 최대 12묶음): 포트폴리오 구성. 목표 직무 요건과 그 요건을 보여 주는 기록을
+  우선순위대로 보낸다.
+  `[{"requirement": "REST API 개발 경험", "records": [{"kind": "experience", "record_id": "UUID"}]}]`
+  (묶음당 기록 1~10개). 묶음의 기록은 `records`에 함께 보낸 것만 쓸 수 있다. 아니면 422다. 자기소개서에 보내도 422다.
+  초안은 이 순서로 프로젝트를 소개하고, 각 프로젝트가 어떤 요건을 보여 주는지 기록이 뒷받침하는 만큼만 적는다.
 - 동의 없음 → `needs_user_input`(`external_processing_consent`). 기록·자료·원문이 모두 없음 → `records`.
   모델이 설정되지 않으면 `not_configured`.
 - 사용자당 15분 20회, 모델 호출은 전체 호출 상한(`llm:global`)을 함께 쓴다.
@@ -39,6 +45,7 @@
 
 1. 기록은 이름·연락처를 가린 뒤 보낸다. 기록 합계가 40,000자를 넘으면 목표 직무·지원처·공고·문항과 겹치는
    단어가 많은 기록부터 담고, 몇 개를 썼는지 `warnings`에 알린다. 다듬을 원문은 항상 전부 보낸다.
+   `composition`에 있는 기록은 다른 기록보다 먼저 담는다. 한도 때문에 빠진 기록은 묶음에서도 뺀다.
 2. 모델 호출 1회(제한 90초, 출력 32,768토큰: 생각 토큰도 출력 한도를 쓴다). 문단과 표 항목(포트폴리오의 기간·역할·기술)마다 근거 기록의
    문장을 그대로 인용하게 한다. 기록에 없는 효과·성과(안정성, 성능, 효율 등)를 덧붙이지 않게 한다.
    빠진 사실은 지어내지 않고 `questions_for_user`로 묻는다.

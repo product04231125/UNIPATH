@@ -108,6 +108,8 @@ class EventCreate(PersonalCreate):
     ends_at: Instant
     time_zone: Annotated[str, StringConstraints(min_length=1, max_length=64)]
     category: Literal["academic", "personal", "activity", "deadline"]
+    # When the student checked it off; null while open.
+    completed_at: Instant | None = None
 
     @field_validator("time_zone")
     @classmethod

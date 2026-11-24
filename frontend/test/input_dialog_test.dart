@@ -10,11 +10,9 @@ import 'package:university_path_frontend/features/records/record_menu_page.dart'
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_drafts_page.dart';
 import 'package:university_path_frontend/features/assistant/assistant_context_dialog.dart';
 import 'package:university_path_frontend/features/assistant/assistant_api.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_editor_dialog.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
+
 import 'support/record_actions.dart';
 
 Widget host(Widget child, {double scale = 1}) => MaterialApp(
@@ -28,76 +26,6 @@ Widget host(Widget child, {double scale = 1}) => MaterialApp(
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
-
-  for (final document in [false, true]) {
-    testWidgets(
-      'portfolio edited order survives continue and restore avoids confirmation document=$document',
-      (tester) async {
-        final repo = PortfolioWorkspaceRepository();
-        await repo.load();
-        final sources = ['portfolio/one', 'portfolio/two'];
-        await tester.pumpWidget(
-          host(
-            Builder(
-              builder: (context) => TextButton(
-                onPressed: () => showInputDialog<bool>(
-                  context: context,
-                  builder: (context) => PortfolioEditorDialog(
-                    repository: repo,
-                    isDocument: document,
-                    composition: document
-                        ? null
-                        : PortfolioComposition(
-                            id: 'c',
-                            title: '원본',
-                            sources: sources,
-                          ),
-                    document: document
-                        ? ApplicationDocument(
-                            id: 'd',
-                            title: '원본',
-                            target: '',
-                            role: '',
-                            type: '이력서',
-                            sources: sources,
-                          )
-                        : null,
-                  ),
-                ),
-                child: const Text('열기'),
-              ),
-            ),
-          ),
-        );
-        await tester.tap(find.text('열기'));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('취소'));
-        await tester.pumpAndSettle();
-        expect(find.byType(InputDialog), findsNothing);
-        await tester.tap(find.text('열기'));
-        await tester.pumpAndSettle();
-        final down = find.byKey(const ValueKey('portfolio-down-portfolio/one'));
-        await tester.ensureVisible(down);
-        await tester.tap(down);
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('취소'));
-        await tester.pumpAndSettle();
-        expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-        await tester.tap(find.byKey(const Key('input-discard-cancel')));
-        await tester.pumpAndSettle();
-        final up = find.byKey(const ValueKey('portfolio-up-portfolio/one'));
-        expect(tester.widget<IconButton>(up).onPressed, isNotNull);
-        await tester.ensureVisible(up);
-        await tester.tap(up);
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('취소'));
-        await tester.pumpAndSettle();
-        expect(find.byType(InputDialog), findsNothing);
-        expect(find.text('작성한 내용을 폐기할까요?'), findsNothing);
-        expect(tester.takeException(), isNull);
-      },
-    );
-  }
 
   testWidgets('inline school form confirms only changed values', (
     tester,
@@ -183,8 +111,14 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('취소'));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('input-discard-cancel')).hitTestable(), findsOneWidget);
-      expect(find.byKey(const Key('input-discard-delete')).hitTestable(), findsOneWidget);
+      expect(
+        find.byKey(const Key('input-discard-cancel')).hitTestable(),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('input-discard-delete')).hitTestable(),
+        findsOneWidget,
+      );
       expect(
         tester
             .widget<TextButton>(find.byKey(const Key('input-discard-cancel')))
@@ -218,8 +152,7 @@ void main() {
     'home add navigates and opens once while ordinary navigation does not',
     (tester) async {
       SharedPreferences.setMockInitialValues({
-        'university_path.personal_planning.v1':
-            '{"profile":{"school":"합성대학","department":"합성학과","admissionYear":2024},"events":[]}',
+        'university_path.personal_planning.v1': '{"profile":{"school":"합성대학","department":"합성학과","admissionYear":2024},"events":[]}',
       });
       await tester.binding.setSurfaceSize(const Size(1440, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -287,56 +220,6 @@ void main() {
     },
   );
 
-  for (final document in [false, true]) {
-    testWidgets(
-      'portfolio defaults dismiss but text protects document=$document',
-      (tester) async {
-        await tester.pumpWidget(
-          host(PortfolioDraftsPage(isDocument: document)),
-        );
-        await tester.pumpAndSettle();
-        final add = find.widgetWithText(
-          FilledButton,
-          document ? '지원 문서 초안 추가' : '포트폴리오 구성 추가',
-        );
-        await tester.tap(add);
-        await tester.pumpAndSettle();
-        await tester.tapAt(const Offset(5, 5));
-        await tester.pumpAndSettle();
-        expect(find.byType(InputDialog), findsNothing);
-        await tester.tap(add);
-        await tester.pumpAndSettle();
-        await tester.enterText(
-          find.byKey(const ValueKey('portfolio-title')),
-          '작성 중',
-        );
-        await tester.tapAt(const Offset(5, 5));
-        await tester.pumpAndSettle();
-        expect(find.byType(InputDialog), findsOneWidget);
-        await tester.tap(find.text('취소'));
-        await tester.pumpAndSettle();
-        expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-        await tester.tap(find.byKey(const Key('input-discard-cancel')));
-        await tester.pumpAndSettle();
-        expect(
-          tester
-              .widget<TextFormField>(
-                find.byKey(const ValueKey('portfolio-title')),
-              )
-              .controller!
-              .text,
-          '작성 중',
-        );
-        await tester.tap(find.text('취소'));
-        await tester.pumpAndSettle();
-        await tester.tap(find.byKey(const Key('input-discard-delete')));
-        await tester.pumpAndSettle();
-        expect(find.byType(InputDialog), findsNothing);
-        expect(tester.takeException(), isNull);
-      },
-    );
-  }
-
   testWidgets('all record input kinds protect content and dismiss whitespace', (
     tester,
   ) async {
@@ -371,10 +254,12 @@ void main() {
       final field =
           find.byKey(const ValueKey('record-field-grade')).evaluate().isNotEmpty
           ? find.byKey(const ValueKey('record-field-grade'))
-          : find.descendant(
-              of: find.byType(InputDialog),
-              matching: find.byType(TextFormField),
-            ).first;
+          : find
+                .descendant(
+                  of: find.byType(InputDialog),
+                  matching: find.byType(TextFormField),
+                )
+                .first;
       await tester.enterText(field, '작성 중');
       await tester.tapAt(const Offset(5, 5));
       await tester.pumpAndSettle();

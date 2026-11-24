@@ -45,6 +45,21 @@ class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+RecordKind = Literal["course", "activity", "experience", "credential", "achievement"]
+
+
+class CompositionRecord(Strict):
+    kind: RecordKind
+    record_id: UUID
+
+
+class CompositionGroup(Strict):
+    """One target-job requirement and the student's records that show it."""
+
+    requirement: Label
+    records: list[CompositionRecord] = Field(min_length=1, max_length=10)
+
+
 class WritingRequest(Strict):
     document_type: Literal["cover_letter", "portfolio"]
     mode: Literal["create", "improve"] = "create"
@@ -56,12 +71,17 @@ class WritingRequest(Strict):
     # Characters (spaces included) per question, as application forms count them.
     char_limit: int | None = Field(default=None, ge=200, le=5000, strict=True)
     original_text: LongText = ""
+    # Portfolio only: requirements in priority order with the records that show each
+    # (포트폴리오 구성, e.g. from the latest 목표 직무 분석).
+    composition: list[CompositionGroup] = Field(default_factory=list, max_length=12)
     external_processing_consent: bool = Field(default=False, strict=True)
 
     @model_validator(mode="after")
     def original_mode(self):
         if self.mode == "create" and self.original_text:
             raise ValueError("Use improve mode for an existing draft")
+        if self.composition and self.document_type != "portfolio":
+            raise ValueError("Composition is for portfolios")
         return self
 
 

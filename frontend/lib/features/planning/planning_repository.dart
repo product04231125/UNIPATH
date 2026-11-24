@@ -350,6 +350,7 @@ class PlanningEvent {
     required this.category,
     this.memo = '',
     this.version,
+    this.completedAt,
   });
 
   final String id;
@@ -360,6 +361,22 @@ class PlanningEvent {
   final String memo;
   final int? version;
 
+  /// When the student checked it off (a study goal, an exam step); null while open.
+  final DateTime? completedAt;
+  bool get done => completedAt != null;
+
+  /// The same event checked off at [at], or reopened when [at] is null.
+  PlanningEvent withCompletion(DateTime? at) => PlanningEvent(
+    id: id,
+    title: title,
+    start: start,
+    end: end,
+    category: category,
+    memo: memo,
+    version: version,
+    completedAt: at,
+  );
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'title': title,
@@ -367,6 +384,7 @@ class PlanningEvent {
     'end': end.toIso8601String(),
     'category': category.storageValue,
     'memo': memo,
+    if (completedAt != null) 'completed_at': completedAt!.toIso8601String(),
   };
 
   factory PlanningEvent.fromJson(Map<String, dynamic> json) => PlanningEvent(
@@ -376,5 +394,6 @@ class PlanningEvent {
     end: DateTime.parse(json['end'] as String),
     category: PlanningEventCategoryText.fromStorage(json['category']),
     memo: json['memo'] as String? ?? '',
+    completedAt: DateTime.tryParse(json['completed_at'] as String? ?? ''),
   );
 }

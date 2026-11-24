@@ -90,6 +90,22 @@ def test_writing_draft_uses_owned_records_and_drops_unverified_paragraphs(auth_c
     # Another student's record is never assembled into the request.
     other = authorization(register(c, "other@example.test"))
     assert c.post(path, headers=other, json=body).status_code in (403, 404)
+    # 포트폴리오 구성 may only arrange records that are sent with the request.
+    stray = {"kind": "experience", "record_id": "00000000-0000-4000-8000-000000000999"}
+    portfolio = {**body, "document_type": "portfolio", "questions": [], "char_limit": None}
+    group = {"requirement": "React 화면 개발", "records": [stray]}
+    assert (
+        c.post(path, headers=owner, json={**portfolio, "composition": [group]}).status_code == 422
+    )
+    group = {
+        "requirement": "React 화면 개발",
+        "records": [{"kind": "experience", "record_id": record["id"]}],
+    }
+    composed = c.post(path, headers=owner, json={**portfolio, "composition": [group]})
+    assert composed.status_code == 200, composed.text
+    assert model.payloads[-1]["composition"] == [
+        {"requirement": "React 화면 개발", "records": [record["id"]]}
+    ]
 
 
 @pytest.mark.integration

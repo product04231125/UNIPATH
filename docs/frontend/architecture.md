@@ -103,8 +103,8 @@
 - 개인 졸업 작업 공간도 같은 저장소의 학교·학과·교육과정·과목·규칙 다섯 종류를 사용한다. `personal_graduation_fields.dart`는
   저장된 개인 교육과정·과목·기록의 선택 목록과 관계 검증을 소유하며 규칙을 실행하지 않는다.
 - 사이드바 `목업용`/`예시 데이터 표시` 토글과 제품 화면의 예시 행은 제거했다. 개인 기록은 메뉴 전환·재시작 뒤에도 유지한다.
-- `portfolio_workspace_repository.dart`는 debug/기기 원본을 별도 v1 키에 저장한다. 실제 계정은 서버 구성·지원 문서·성과/경험 UUID를 사용하며 소유자와 버전·참조를 서버에서 확인한다. `portfolio_editor_dialog.dart`는 입력·선택·정렬,
-  `portfolio_drafts_page.dart`는 읽기·실패·목록·미리보기·삭제 UI를 소유한다.
+- `portfolio_workspace_repository.dart`는 debug/기기 원본을 별도 v1 키에 저장한다. 실제 계정은 서버 구성·지원 문서·성과/경험 UUID를 사용하며 소유자와 버전·참조를 서버에서 확인한다. 이 저장소는 기기 자료 가져오기에만 쓴다.
+  예전 구성·지원 문서 화면은 2026-11-24에 지웠다. 포트폴리오 구성은 `features/writing/portfolio_composition.dart`가 맡는다.
 - OpenAPI 계약이 확정되면 feature별 fixture와 로컬 상태를 repository/adapter로 교체한다.
   클라이언트는 OpenAPI에 없는 필드·상태·판정을 제품 계약으로 만들지 않는다.
 

@@ -17,6 +17,9 @@ import '../auth/guest_preview_scope.dart';
 import '../records/portfolio/job_recommendation_result.dart';
 import '../settings/ai_consent_preferences.dart';
 import '../settings/ai_consent_section.dart';
+import '../records/personal_record_form.dart';
+import '../records/personal_record_repository.dart';
+import '../records/personal_repository_scope.dart';
 import 'activity_recommendation.dart';
 import 'career_goal.dart';
 import 'career_goal_card.dart';
@@ -37,6 +40,7 @@ class ActivityRecommendationView extends StatefulWidget {
     this.careerGoal,
     this.loadRecords,
     this.onAddPlan,
+    this.onRecordSaved,
     this.onOpenCareerGap,
     this.now,
   });
@@ -45,6 +49,9 @@ class ActivityRecommendationView extends StatefulWidget {
   final CareerGoalController? careerGoal;
   final Future<List<AiRecordOption>> Function()? loadRecords;
   final AddActivityPlan? onAddPlan;
+
+  /// Called after a recommendation was saved as a 내 활동 record.
+  final VoidCallback? onRecordSaved;
 
   /// Opens 목표 직무 분석 so its gaps can steer the recommendations.
   final VoidCallback? onOpenCareerGap;
@@ -57,6 +64,7 @@ class ActivityRecommendationView extends StatefulWidget {
 
 class _ActivityRecommendationViewState
     extends State<ActivityRecommendationView> {
+  var _recordFormOpen = false;
   RecommendationAcademicStage? _stage;
   ActivityRecommendationResult? _result;
   bool _busy = false;
@@ -454,20 +462,77 @@ class _ActivityRecommendationViewState
               ],
             ),
           ],
-          if (widget.onAddPlan != null) ...[
+          if (widget.onAddPlan != null || _records != null) ...[
             const SizedBox(height: 8),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
-                key: ValueKey('activity-add-plan-$index'),
-                onPressed: () => _addPlan(item),
-                icon: const Icon(Icons.event_available_outlined),
-                label: const Text('일정에 추가'),
-              ),
+            Wrap(
+              spacing: 4,
+              children: [
+                if (widget.onAddPlan != null)
+                  TextButton.icon(
+                    key: ValueKey('activity-add-plan-$index'),
+                    onPressed: () => _addPlan(item),
+                    icon: const Icon(Icons.event_available_outlined),
+                    label: const Text('일정에 추가'),
+                  ),
+                if (_records != null)
+                  TextButton.icon(
+                    key: ValueKey('activity-add-record-$index'),
+                    onPressed: () => _addRecord(item),
+                    icon: const Icon(Icons.post_add_outlined),
+                    label: const Text('활동 기록으로 추가'),
+                  ),
+              ],
             ),
           ],
         ],
       ),
+    );
+  }
+
+  /// The 내 활동 repositories, when this view sits under the signed-in workspace.
+  PersonalRepositoryScope? get _records =>
+      widget.api == null ? null : PersonalRepositoryScope.read(context);
+
+  Future<void> _addRecord(ActivityRecommendation item) async {
+    final scope = _records;
+    if (scope == null || _recordFormOpen) return;
+    final draft = activityRecordDraft(item);
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    var saved = false;
+    _recordFormOpen = true;
+    try {
+      // Repositories refuse writes until they have read the current records.
+      final repository = scope.records(draft.kind);
+      try {
+        await repository.load();
+      } catch (e) {
+        messenger?.showSnackBar(
+          SnackBar(
+            content: Text(
+              e is AuthFailure ? e.message : '내 활동 기록을 읽지 못했습니다. 다시 시도하세요.',
+            ),
+          ),
+        );
+        return;
+      }
+      if (!mounted) return;
+      await showPersonalRecordForm(
+        context: context,
+        kind: draft.kind,
+        repository: repository,
+        addLabel: draft.kind == PersonalRecordKind.experience
+            ? '경험 추가'
+            : '활동 추가',
+        draftValues: draft.values,
+        onSaved: () => saved = true,
+      );
+    } finally {
+      _recordFormOpen = false;
+    }
+    if (!saved) return;
+    widget.onRecordSaved?.call();
+    messenger?.showSnackBar(
+      const SnackBar(content: Text('내 활동에 추가했습니다. 참여한 뒤 역할과 결과를 채워 주세요.')),
     );
   }
 

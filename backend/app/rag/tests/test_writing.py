@@ -109,6 +109,41 @@ def test_generation_redacts_and_sends_posting_questions_and_limit():
     assert records == before
 
 
+def test_portfolio_composition_orders_by_requirement_and_keeps_its_records():
+    other = "00000000-0000-4000-8000-000000000102"
+    records = copy.deepcopy(RECORDS) + [
+        dict(kind="achievement", record_id=other, version=1, text="합성 수상 기록 " * 20)
+    ]
+    generator = model()
+    generate_draft(
+        request(
+            document_type="portfolio",
+            composition=[
+                {
+                    "requirement": "REST API 개발 경험",
+                    "records": [{"kind": "experience", "record_id": RID}],
+                }
+            ],
+        ),
+        records,
+        generator,
+    )
+    payload = generator.generate.call_args.args[1]
+    assert payload["composition"] == [{"requirement": "REST API 개발 경험", "records": [RID]}]
+    assert [r["record_id"] for r in payload["records"]][0] == RID
+    with pytest.raises(ValueError):
+        generate_draft(
+            request(
+                document_type="cover_letter",
+                composition=[
+                    {"requirement": "x", "records": [{"kind": "experience", "record_id": RID}]}
+                ],
+            ),
+            records,
+            generator,
+        )
+
+
 @pytest.mark.parametrize(
     "change",
     [

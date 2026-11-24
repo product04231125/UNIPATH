@@ -179,6 +179,7 @@ class StudentEventCreate implements StudentPayload {
     required this.endsAt,
     required this.timeZone,
     required this.category,
+    this.completedAt,
   });
   final String title;
   final String detail;
@@ -187,6 +188,7 @@ class StudentEventCreate implements StudentPayload {
   final DateTime endsAt;
   final String timeZone;
   final String category;
+  final DateTime? completedAt;
   factory StudentEventCreate.fromJson(Map<String, dynamic> value) =>
       StudentEventCreate(
         title: value['title'] as String,
@@ -198,6 +200,9 @@ class StudentEventCreate implements StudentPayload {
         endsAt: DateTime.parse(value['ends_at'] as String),
         timeZone: value['time_zone'] as String,
         category: value['category'] as String,
+        completedAt: value['completed_at'] == null
+            ? null
+            : DateTime.parse(value['completed_at'] as String),
       );
   @override
   Map<String, Object?> toJson() => {
@@ -208,6 +213,7 @@ class StudentEventCreate implements StudentPayload {
     'ends_at': endsAt.toUtc().toIso8601String(),
     'time_zone': timeZone,
     'category': category,
+    'completed_at': completedAt?.toUtc().toIso8601String(),
   };
 }
 

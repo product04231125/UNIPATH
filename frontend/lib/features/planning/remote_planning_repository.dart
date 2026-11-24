@@ -224,6 +224,7 @@ class RemotePlanningRepository extends PlanningRepository {
                   item.data.category,
                 ),
                 version: item.version,
+                completedAt: item.data.completedAt?.toLocal(),
               ),
             )
             .toList()
@@ -279,6 +280,7 @@ class RemotePlanningRepository extends PlanningRepository {
       endsAt: event.end.toUtc(),
       timeZone: previous?.data.timeZone ?? 'UTC',
       category: event.category.storageValue,
+      completedAt: event.completedAt?.toUtc(),
     );
     final StudentRecord<StudentEventCreate> saved;
     if (event.version != null) {

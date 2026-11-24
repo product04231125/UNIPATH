@@ -22,6 +22,7 @@ import '../planning/planning_dates.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../planning/weekly_schedule.dart';
+import 'week_progress_card.dart';
 import '../../shared/widgets/page_actions.dart';
 
 class HomePage extends StatelessWidget {
@@ -59,10 +60,24 @@ class HomePage extends StatelessWidget {
       final profile = repository.profile;
       final now = DateTime.now();
       final year = profile.academicYearFor(now);
-      final upcoming = repository.events
-          .where((e) => e.end.isAfter(now))
-          .take(4)
-          .toList();
+      final ahead =
+          repository.events.where((e) => e.end.isAfter(now) && !e.done).toList()
+            ..sort((a, b) => a.start.compareTo(b.start));
+      final upcoming = ahead.take(4).toList();
+      // The nearest open deadline (e.g. 접수 마감) even when it is weeks away.
+      final deadline = ahead
+          .where(
+            (e) =>
+                e.category == PlanningEventCategory.deadline &&
+                !upcoming.contains(e),
+          )
+          .firstOrNull;
+      // 이번 주 할 일 only when this week has events: an empty card would only push content down.
+      final hasWeek = WeekProgressCard.thisWeek(
+        repository.events,
+        now,
+        profile.weekStartsOn,
+      ).isNotEmpty;
       return LayoutBuilder(
         builder: (context, viewport) {
           final phone = PhoneChromeScope.of(context);
@@ -87,7 +102,15 @@ class HomePage extends StatelessWidget {
                 ? (profile.hasCatalogSchool ? '등록' : '개인 설정')
                 : null,
             body: wide
-                ? _dashboard(context, upcoming, profile, year, prepareDone)
+                ? _dashboard(
+                    context,
+                    upcoming,
+                    deadline,
+                    hasWeek,
+                    profile,
+                    year,
+                    prepareDone,
+                  )
                 : [
                     if (_career(context) case final career?) ...[
                       career,
@@ -102,10 +125,20 @@ class HomePage extends StatelessWidget {
                     SizedBox(height: gap),
                     LayoutBuilder(
                       builder: (context, constraints) {
-                        final upcomingCard = _upcoming(
-                          context,
-                          upcoming,
-                          compact: compact,
+                        final upcomingCard = Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _upcoming(
+                              context,
+                              upcoming,
+                              deadline: deadline,
+                              compact: compact,
+                            ),
+                            if (hasWeek) ...[
+                              SizedBox(height: gap),
+                              _week(profile),
+                            ],
+                          ],
                         );
                         final side = Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -149,6 +182,8 @@ class HomePage extends StatelessWidget {
   List<Widget> _dashboard(
     BuildContext context,
     List<PlanningEvent> upcoming,
+    PlanningEvent? deadline,
+    bool hasWeek,
     PlanningProfile profile,
     int? year,
     bool prepareDone,
@@ -174,7 +209,10 @@ class HomePage extends StatelessWidget {
     ];
     final columns = [
       if (career.isNotEmpty) stack(career),
-      _upcoming(context, upcoming),
+      stack([
+        _upcoming(context, upcoming, deadline: deadline),
+        if (hasWeek) _week(profile),
+      ]),
       stack([
         if (!prepareDone) _prepare(context, profile),
         _nextSteps(context, year),
@@ -258,14 +296,72 @@ class HomePage extends StatelessWidget {
     ),
   );
 
+  Widget _week(PlanningProfile profile) => WeekProgressCard(
+    repository: repository,
+    startsOn: profile.weekStartsOn,
+    onOpenSchedule: onOpenSchedule,
+  );
+
+  Widget _nextDeadline(BuildContext context, PlanningEvent event) {
+    final theme = Theme.of(context);
+    final today = dateOnly(DateTime.now());
+    final days = dateOnly(event.start).difference(today).inDays;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        key: const ValueKey('home-next-deadline'),
+        color: AppTone.danger.container(context),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => onOpenSchedule(event.start),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.flag_outlined,
+                  size: 18,
+                  color: AppTone.danger.color(context),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '가장 가까운 마감 · ${event.title}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${event.start.month}월 ${event.start.day}일',
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(width: 6),
+                ToneChip(
+                  label: days <= 0 ? '오늘' : 'D-$days',
+                  tone: AppTone.danger,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _upcoming(
     BuildContext context,
     List<PlanningEvent> events, {
+    PlanningEvent? deadline,
     bool compact = false,
   }) => _card(
     context,
     '다가오는 일정',
-    events.isEmpty
+    events.isEmpty && deadline == null
         ? EmptyState(
             compact: true,
             icon: Icons.event_note_outlined,
@@ -278,6 +374,7 @@ class HomePage extends StatelessWidget {
         : Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (deadline != null) _nextDeadline(context, deadline),
               for (final event in events)
                 _upcomingEvent(context, event, compact: compact),
               const SizedBox(height: 4),
