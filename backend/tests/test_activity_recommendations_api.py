@@ -1,6 +1,4 @@
-"""Activity recommendations with a synthetic posting source and model; no network, no real data."""
-
-from datetime import UTC, datetime
+"""Activity recommendations with a synthetic model; no network, no real data."""
 
 import pytest
 from test_auth import auth_client as auth_client
@@ -10,33 +8,7 @@ from test_personal import post
 
 from app.rag.career import activities
 from app.rag.career import api as career_api
-from app.rag.career.contracts import AnalysisRejected, Posting
-
-
-class Source:
-    name = "work24"
-    collection_method = "crawl"
-    supports_occupation = True
-
-    def __init__(self):
-        self.queries = []
-
-    def search(self, query):
-        self.queries.append(query)
-        return [
-            Posting(
-                "work24",
-                f"K00000000000{index}",
-                title,
-                "합성 회사",
-                "서울특별시 마포구",
-                f"https://www.work24.go.kr/synthetic/{index}",
-                "자격요건: 웹 개발 관심",
-                datetime.now(UTC).isoformat(),
-                text_scope="full_text",
-            )
-            for index, title in enumerate(["합성 웹 개발 인턴 채용", "합성 경력 개발자 채용"])
-        ]
+from app.rag.career.contracts import AnalysisRejected
 
 
 class Model:
@@ -91,8 +63,11 @@ def test_model_output_is_checked_against_gaps_kinds_and_sites():
     with pytest.raises(AnalysisRejected):
         activities.recommend_activities(Model({"recommendations": []}), goal, gaps, [])
     table = activities.site_table(values)
-    assert table["devpost"]["url"] == "https://devpost.com"
-    assert "jobalio" in table
+    assert table == {
+        "devpost": {"name": "Devpost", "url": "https://devpost.com"},
+        "1365": {"name": "1365 자원봉사포털", "url": "https://www.1365.go.kr"},
+        "vms": {"name": "VMS 사회복지자원봉사", "url": "https://www.vms.or.kr"},
+    }
 
 
 def test_gaps_come_from_unmet_requirements():
@@ -115,7 +90,7 @@ def test_gaps_come_from_unmet_requirements():
 
 
 @pytest.mark.integration
-def test_activity_recommendations_use_goal_gaps_records_and_internships(auth_client, monkeypatch):
+def test_activity_recommendations_use_goal_gaps_and_records(auth_client, monkeypatch):
     c = auth_client
     owner = authorization(register(c))
     record = post(
@@ -152,25 +127,23 @@ def test_activity_recommendations_use_goal_gaps_records_and_internships(auth_cli
         },
     }
     assert c.post("/api/v1/me/analysis-results", headers=owner, json=saved).status_code == 201
-    source, model = Source(), Model()
-    monkeypatch.setattr(career_api, "configured_sources", lambda: [source])
+    model = Model()
+
+    def no_collection():
+        raise AssertionError("activity recommendations must not collect postings")
+
+    monkeypatch.setattr(career_api, "configured_sources", no_collection)
     c.app.state.gap_model = model
-    response = c.post(path, headers=owner, json={**body, "regions": ["경기", "서울"]})
+    response = c.post(path, headers=owner, json={**body, "academic_stage": "graduating"})
     assert response.status_code == 200, response.text
     value = response.json()
     assert value["status"] == "completed"
-    assert value["region_label"] == "서울·경기"
     assert value["gap_basis"]["gaps"] == 1
     assert model.payloads[0]["gaps"][0]["requirement"] == "Docker 배포 경험"
     assert model.payloads[0]["records"][0]["record_id"] == record["id"]
-    query = source.queries[0]
-    assert query.keyword == "인턴" and query.occupation_codes == ("024",)
-    assert query.region_codes == {"work24": "11000,41000"}
-    # Only internship titles are listed, without posting text.
-    assert [p["title"] for p in value["internships"]] == ["합성 웹 개발 인턴 채용"]
-    assert "text" not in value["internships"][0]
+    assert model.payloads[0]["academic_stage"] == "graduating"
+    assert "internships" not in value and "region_label" not in value
     assert value["recommendations"][0]["requirements"] == ["Docker 배포 경험"]
     assert value["sites"]["devpost"]["name"] == "Devpost"
-    assert (
-        c.post(path, headers=owner, json={**body, "regions": ["서울", "서울"]}).status_code == 422
-    )
+    # Regions are no longer an input (internships are found by 공고 찾기).
+    assert c.post(path, headers=owner, json={**body, "regions": ["서울"]}).status_code == 422

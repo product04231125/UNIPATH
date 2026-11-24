@@ -46316,7 +46316,7 @@
           "career"
         ],
         "summary": "Activity Recommendations",
-        "description": "Kinds of external activities for the target job's gaps, places to look and internships.",
+        "description": "Kinds of external activities for the target job's gaps and where to look for them.\n\nReal postings, internships included, are found by 공고 찾기 (job-recommendations); listing\nsites for 대외활동·공모전 do not allow collection, so only links and search words are given.",
         "operationId": "activity_recommendations_api_v1_me_activity_recommendations_post",
         "security": [
           {
@@ -72163,32 +72163,6 @@
             "type": "array",
             "maxItems": 200,
             "title": "Records"
-          },
-          "regions": {
-            "items": {
-              "type": "string",
-              "enum": [
-                "서울",
-                "경기",
-                "인천",
-                "부산",
-                "대구",
-                "광주·전남",
-                "대전",
-                "울산",
-                "세종",
-                "강원",
-                "충북",
-                "충남",
-                "전북",
-                "경북",
-                "경남",
-                "제주"
-              ]
-            },
-            "type": "array",
-            "maxItems": 16,
-            "title": "Regions"
           },
           "academic_stage": {
             "anyOf": [
