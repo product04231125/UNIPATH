@@ -158,7 +158,9 @@ void main() {
     await p.load();
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: AiConsentSection(preferences: p)),
+        home: Scaffold(
+          body: SingleChildScrollView(child: AiConsentSection(preferences: p)),
+        ),
       ),
     );
     // Every feature except 학교 질문, which never sends personal data.

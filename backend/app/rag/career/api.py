@@ -4,8 +4,9 @@ import base64
 import os
 from datetime import UTC, datetime
 from typing import Annotated, Literal
+from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Path, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 
@@ -22,7 +23,7 @@ from app.services import auth, gemini
 from app.services.personalization.context import assemble
 from app.services.personalization.redaction import redact_context
 
-from . import activities, categories, regions
+from . import activities, categories, certificates, regions
 from .contracts import SearchQuery, failure_reason
 from .crawling import Work24Crawler
 from .documents import prepare_documents
@@ -294,6 +295,125 @@ def activity_recommendations(
         "recommendations": recommendations,
         "summary": summary,
         "sites": activities.site_table(recommendations),
+    }
+
+
+def seoul_today():
+    return datetime.now(ZoneInfo("Asia/Seoul")).date()
+
+
+def public(item):
+    return {k: v for k, v in item.items() if k != "aliases"}
+
+
+@router.get("/certificates")
+def certificate_search(
+    identity: CurrentIdentity,
+    query: Annotated[str, Query(min_length=1, max_length=40)],
+):
+    """Catalog names matching the query (Q-Net national qualifications and common others)."""
+    return {"items": [public(item) for item in certificates.search(query)]}
+
+
+@router.get("/certificates/{certificate_id}")
+def certificate_detail(
+    certificate_id: Annotated[str, Path(pattern=r"^(qnet|private)-[A-Za-z0-9_]{1,40}$")],
+    identity: CurrentIdentity,
+):
+    """Official schedule (rounds still ahead), fee, exam method and trends of one certificate."""
+    item = certificates.find(certificate_id)
+    if item is None:
+        raise AuthError(404, ErrorCode.NOT_FOUND, "자격증을 찾을 수 없습니다.")
+    return {"official": False, **certificates.detail(item, seoul_today())}
+
+
+class CertificateRecommendationRequest(PersonalizationRequest):
+    records: list[PersonalEvidenceSelection] = Field(
+        default_factory=list, max_length=MAX_ANALYSIS_RECORDS
+    )
+    academic_stage: Literal["year1", "year2", "year3", "year4", "graduating", "graduate"] | None = (
+        None
+    )
+    external_processing_consent: bool = Field(default=False, strict=True)
+
+
+@router.post("/certificate-recommendations")
+def certificate_recommendations(
+    payload: CertificateRecommendationRequest,
+    request: Request,
+    db: Database,
+    identity: CurrentIdentity,
+):
+    """Certificates for the target job's gaps, with official schedules attached afterwards."""
+    if not payload.external_processing_consent:
+        return {"status": "needs_user_input", "missing_fields": ["external_processing_consent"]}
+    goal_view = get_goal(db, identity.user.id)
+    codes, keyword = list(goal_view.category_codes), goal_view.keyword
+    if not codes and not keyword:
+        return {"status": "needs_user_input", "missing_fields": ["career_goal"]}
+    if not payload.records:
+        return {"status": "needs_user_input", "missing_fields": ["records"]}
+    model_name = request.app.state.settings.vertex_model
+    model = getattr(request.app.state, "gap_model", None)
+    if model is None:
+        return {"status": "not_configured", "model": model_name}
+    auth.throttle(db, "certificate-recommendation:" + str(identity.user.id), limit=10)
+    goal = {
+        "category_codes": codes,
+        "keyword": keyword,
+        "label": categories.label(codes) if codes else None,
+    }
+    saved = latest_gap(db, identity.user.id)
+    report = saved.result if saved is not None else {}
+    gaps = activities.gaps_from(report)
+    postings = report.get("postings") if isinstance(report, dict) else None
+    context = assemble(db, identity, payload.records)
+    records = redact_context(context, identity).model_dump(mode="json")["records"]
+    owner_id = identity.user.id
+    db.rollback()
+    result = {
+        "official": False,
+        "goal": goal,
+        "gap_basis": {
+            "analyzed_at": saved.created_at.isoformat() if saved is not None else None,
+            "gaps": len(gaps),
+            "postings": len(postings) if isinstance(postings, list) else 0,
+        },
+        "recommendations": [],
+        "held": [],
+        "summary": None,
+        "model": model_name,
+        "generated_at": datetime.now(UTC).isoformat(),
+    }
+    try:
+        gemini.reserve_call(db, request)
+        recommendations, summary, held = certificates.recommend_certificates(
+            model, goal, gaps, records, academic_stage=payload.academic_stage
+        )
+    except AuthError:
+        raise
+    except Exception as error:
+        gemini.log_failure("certificate recommendation", error)
+        return {**result, "status": "failed", "failure_reason": failure_reason(error)}
+    db.expire_all()
+    current = auth.current_identity(request, db)
+    if current.user.id != owner_id or assemble(db, current, payload.records) != context:
+        raise conflict()
+    # Official schedules and how often postings asked, never from the model.
+    today = seoul_today()
+    frequency = {g["requirement"]: g.get("frequency") for g in gaps}
+    for entry in recommendations:
+        entry["schedule"] = certificates.schedule(entry["certificate"], today)
+        entry["evidence"] = [
+            {"requirement": text, "frequency": frequency.get(text)}
+            for text in entry["requirements"]
+        ]
+    return {
+        **result,
+        "status": "completed",
+        "recommendations": recommendations,
+        "held": held,
+        "summary": summary,
     }
 
 

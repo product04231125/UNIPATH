@@ -380,6 +380,7 @@ class AuthApi implements AuthGateway, ApiGateway {
                         'me/job-recommendations',
                         'me/career-gap-analyses',
                         'me/activity-recommendations',
+                        'me/certificate-recommendations',
                         'me/writing-drafts',
                       }.contains(path) ||
                       (path == 'me/personalized-guidance' &&
