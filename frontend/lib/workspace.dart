@@ -25,6 +25,10 @@ import 'features/writing/writing_page.dart';
 import 'features/career/career_gap.dart';
 import 'features/career/activity_recommendation.dart';
 import 'features/career/activity_recommendation_view.dart';
+import 'features/career/certificate_lookup_view.dart';
+import 'features/career/certificate_recommendation_view.dart';
+import 'features/career/certificate_study_plan.dart';
+import 'features/career/certificates.dart';
 import 'features/career/career_goal.dart';
 import 'features/home/home_page.dart';
 import 'features/planning/planning_repository.dart';
@@ -162,6 +166,8 @@ class _WorkspaceState extends State<Workspace> {
   /// 자료 tab: 0 내 자료, 1 자기소개서·포트폴리오.
   var _materialsTab = 0;
   var _activityTab = 0;
+  var _credentialTab = 0;
+  final _certificateSelection = CertificateSelection();
   late final WritingSessionStore? _writingStore = _personalApi == null
       ? null
       : WritingSessionStore(ownerId: _personalApi.ownerId);
@@ -206,6 +212,51 @@ class _WorkspaceState extends State<Workspace> {
       memo: '${activity.kindLabel} · ${activity.reason}',
     ),
   );
+
+  /// Official exam events as calendar entries: registration periods get a start and an end.
+  Future<void> _addCertificateEvents(
+    String certificate,
+    List<ScheduleEvent> events,
+  ) async {
+    for (final e in events) {
+      final days = e.kind == ScheduleEventKind.registration && e.isRange
+          ? [(e.start, '${e.label} 시작'), (e.end, '${e.label} 마감')]
+          : [(e.start, e.label)];
+      for (final (day, label) in days) {
+        await _planningRepository.saveEvent(
+          PlanningEvent(
+            id: planningClientId(),
+            title: '$certificate $label',
+            start: DateTime(day.year, day.month, day.day, 9),
+            end: DateTime(day.year, day.month, day.day, 10),
+            category: switch (e.kind) {
+              ScheduleEventKind.registration ||
+              ScheduleEventKind.document => PlanningEventCategory.deadline,
+              ScheduleEventKind.exam => PlanningEventCategory.activity,
+              ScheduleEventKind.result => PlanningEventCategory.personal,
+            },
+            memo: '${e.label} ${eventPeriod(e)} · 공식 일정은 바뀔 수 있습니다',
+          ),
+        );
+      }
+    }
+  }
+
+  /// Weekly study goals as calendar entries on each week's first day.
+  Future<void> _addStudyPlan(String certificate, List<StudyWeek> weeks) async {
+    for (final w in weeks) {
+      await _planningRepository.saveEvent(
+        PlanningEvent(
+          id: planningClientId(),
+          title: '$certificate ${w.week}주차 · ${w.focus}',
+          start: DateTime(w.start.year, w.start.month, w.start.day, 9),
+          end: DateTime(w.start.year, w.start.month, w.start.day, 10),
+          category: PlanningEventCategory.academic,
+          memo: w.tasks.join(' / '),
+        ),
+      );
+    }
+  }
 
   void _openCareerGap() {
     setState(() => _jobPurposeRequest = JobPurposeRequest(JobPurpose.gap));
@@ -362,6 +413,7 @@ class _WorkspaceState extends State<Workspace> {
     _personalImporter?.dispose();
     _careerGoal?.dispose();
     _gapReport.dispose();
+    _certificateSelection.dispose();
     _personalCalculations?.dispose();
     unawaited(_releaseSession().catchError((Object _) {}));
     _assistantButtonFocus.dispose();
@@ -526,7 +578,32 @@ class _WorkspaceState extends State<Workspace> {
             ),
           ],
         ),
-        StudentPages.credential => const CredentialPage(),
+        StudentPages.credential => PageTabs(
+          tabsKey: const ValueKey('credential-tabs'),
+          labels: const ['내 자격', '자격증 추천', '시험 일정'],
+          tab: _credentialTab,
+          onTabChanged: (tab) => setState(() => _credentialTab = tab),
+          children: [
+            const CredentialPage(),
+            CertificateRecommendationView(
+              api: _personalApi,
+              consent: _aiConsent,
+              careerGoal: _careerGoal,
+              onOpenSchedule: (certificate) {
+                _certificateSelection.select(certificate);
+                setState(() => _credentialTab = 2);
+              },
+              onOpenCareerGap: _openCareerGap,
+            ),
+            CertificateLookupView(
+              api: _personalApi,
+              selection: _certificateSelection,
+              consent: _aiConsent,
+              onAddEvents: _personalApi == null ? null : _addCertificateEvents,
+              onAddStudyPlan: _personalApi == null ? null : _addStudyPlan,
+            ),
+          ],
+        ),
         StudentPages.materials => PageTabs(
           tabsKey: const ValueKey('materials-tabs'),
           labels: const ['내 자료', '자기소개서·포트폴리오'],

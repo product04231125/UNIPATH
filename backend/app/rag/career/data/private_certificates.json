@@ -1,0 +1,3159 @@
+{
+ "checked_at": "2026-11-24",
+ "about": "Q-Net 공개 API에 없는 자주 찾는 자격. 날짜는 시행 기관 공식 공지(또는 고용노동부 2027년도 국가기술자격 검정시행계획 공고, 기관이 공공데이터포털에 올린 파일)를 사람이 확인해 옮겼다. robots.txt로 막힌 페이지는 쓰지 않았다. 각 회차의 source_url·checked_at이 출처다.",
+ "certificates": [
+  {
+   "id": "sqld",
+   "name": "SQL 개발자(SQLD)",
+   "aliases": [
+    "SQLD",
+    "SQL 개발자",
+    "SQL개발자"
+   ],
+   "issuer": "한국데이터산업진흥원",
+   "kind": "national_certified_private",
+   "official_url": "https://www.dataq.or.kr/",
+   "schedule_source_url": "https://www.data.go.kr/data/15062838/fileData.do",
+   "mode": "scheduled",
+   "schedule_status": "source_unreadable",
+   "checked_at": "2026-11-24",
+   "rounds": [],
+   "reference_rounds": [
+    {
+     "name": "제60회",
+     "registration_start": "2026-02-02",
+     "registration_end": "2026-02-06",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-03-07"
+      }
+     ],
+     "result_date": "2026-03-27",
+     "source_url": "https://www.data.go.kr/data/15062838/fileData.do",
+     "checked_at": "2026-11-24",
+     "note": "시험 시작 10:00(공공데이터 파일 표기)"
+    },
+    {
+     "name": "제61회",
+     "registration_start": "2026-04-27",
+     "registration_end": "2026-05-01",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-05-31"
+      }
+     ],
+     "result_date": "2026-06-19",
+     "source_url": "https://www.data.go.kr/data/15062838/fileData.do",
+     "checked_at": "2026-11-24",
+     "note": "시험 시작 10:00(공공데이터 파일 표기)"
+    },
+    {
+     "name": "제62회",
+     "registration_start": "2026-07-20",
+     "registration_end": "2026-07-24",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-08-22"
+      }
+     ],
+     "result_date": "2026-09-11",
+     "source_url": "https://www.data.go.kr/data/15062838/fileData.do",
+     "checked_at": "2026-11-24",
+     "note": "시험 시작 10:00(공공데이터 파일 표기)"
+    },
+    {
+     "name": "제63회",
+     "registration_start": "2026-10-12",
+     "registration_end": "2026-10-16",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-11-14"
+      }
+     ],
+     "result_date": "2026-12-04",
+     "source_url": "https://www.data.go.kr/data/15062838/fileData.do",
+     "checked_at": "2026-11-24",
+     "note": "시험 시작 10:00(공공데이터 파일 표기); 발표일은 2026-01-06 기준 파일 값이며, 이후 변경 여부는 dataq 접근 불가로 확인 못함"
+    }
+   ],
+   "subjects": [
+    "데이터 모델링의 이해(20점)",
+    "SQL 기본 및 활용(80점)"
+   ],
+   "pass_criteria": "합격점수 60점(100점 만점), 과락점수 40 — 한국데이터산업진흥원 공공데이터 '데이터 자격 검정 상세정보' 값 그대로. 과락 산정 방식(과목별 만점 대비 비율 등)의 원문 설명은 dataq 접근 불가로 확인 못함.",
+   "fee": null,
+   "fee_detail": null,
+   "eligibility_note": null,
+   "info_source_url": "https://www.data.go.kr/data/15148115/fileData.do",
+   "provenance": "시행 기관 사이트(dataq.or.kr)는 robots.txt가 루트(/) 외 모든 경로를 막고(Disallow: /), curl 요청은 'Request Blocked'(400)로 막혀 직접 읽지 않았습니다. 대신 한국데이터산업진흥원이 공공데이터포털에 직접 등록한 파일데이터 '한국데이터산업진흥원_데이터 자격검정 시험 정보_20260106'(CSV, 2026-01-06 기준, 다음 갱신 예정 2027-01-22)을 출처로 썼습니다. 이 파일에는 2026년 회차까지만 있고 2027년 회차는 없습니다. 2026년 중 일정 변경이 있었다면 반영되지 않았을 수 있습니다. dataq.or.kr에 2027년 일정이 이미 올라왔는지는 확인하지 못했으므로, 앱에 넣기 전에 사람이 dataq.or.kr 공지를 직접 확인해야 합니다. 응시료는 공식 출처를 읽지 못해 비워 둡니다. 같은 공공데이터 파일의 '합격_유효개월' 값이 24로 되어 있으나 의미(자격 유효기간 여부)는 원문으로 확인하지 못했습니다. 2026년에는 연 4회(3·5·8·11월) 시행됐습니다.",
+   "kind_note": null
+  },
+  {
+   "id": "adsp",
+   "name": "데이터분석 준전문가(ADsP)",
+   "aliases": [
+    "ADsP",
+    "데이터분석 준전문가",
+    "데이터분석준전문가"
+   ],
+   "issuer": "한국데이터산업진흥원",
+   "kind": "national_certified_private",
+   "official_url": "https://www.dataq.or.kr/",
+   "schedule_source_url": "https://www.data.go.kr/data/15062838/fileData.do",
+   "mode": "scheduled",
+   "schedule_status": "source_unreadable",
+   "checked_at": "2026-11-24",
+   "rounds": [],
+   "reference_rounds": [
+    {
+     "name": "제48회",
+     "registration_start": "2026-01-05",
+     "registration_end": "2026-01-09",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-02-07"
+      }
+     ],
+     "result_date": "2026-03-06",
+     "source_url": "https://www.data.go.kr/data/15062838/fileData.do",
+     "checked_at": "2026-11-24",
+     "note": "시험 시작 10:00(공공데이터 파일 표기)"
+    },
+    {
+     "name": "제49회",
+     "registration_start": "2026-04-13",
+     "registration_end": "2026-04-17",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-05-17"
+      }
+     ],
+     "result_date": "2026-06-05",
+     "source_url": "https://www.data.go.kr/data/15062838/fileData.do",
+     "checked_at": "2026-11-24",
+     "note": "시험 시작 10:00(공공데이터 파일 표기)"
+    },
+    {
+     "name": "제50회",
+     "registration_start": "2026-07-06",
+     "registration_end": "2026-07-10",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-08-08"
+      }
+     ],
+     "result_date": "2026-08-28",
+     "source_url": "https://www.data.go.kr/data/15062838/fileData.do",
+     "checked_at": "2026-11-24",
+     "note": "시험 시작 10:00(공공데이터 파일 표기)"
+    },
+    {
+     "name": "제51회",
+     "registration_start": "2026-09-28",
+     "registration_end": "2026-10-02",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-10-31"
+      }
+     ],
+     "result_date": "2026-11-20",
+     "source_url": "https://www.data.go.kr/data/15062838/fileData.do",
+     "checked_at": "2026-11-24",
+     "note": "시험 시작 10:00(공공데이터 파일 표기)"
+    }
+   ],
+   "subjects": [
+    "데이터 이해(20점)",
+    "데이터 분석 기획(20점)",
+    "데이터 분석(60점)"
+   ],
+   "pass_criteria": "합격점수 60점(100점 만점), 과락점수 40 — 한국데이터산업진흥원 공공데이터 '데이터 자격 검정 상세정보' 값 그대로. 과락 산정 방식의 원문 설명은 dataq 접근 불가로 확인 못함.",
+   "fee": null,
+   "fee_detail": null,
+   "eligibility_note": null,
+   "info_source_url": "https://www.data.go.kr/data/15148115/fileData.do",
+   "provenance": "시행 기관 사이트(dataq.or.kr)는 robots.txt가 루트(/) 외 모든 경로를 막고(Disallow: /), curl 요청은 'Request Blocked'(400)로 막혀 직접 읽지 않았습니다. 대신 한국데이터산업진흥원이 공공데이터포털에 직접 등록한 파일데이터 '한국데이터산업진흥원_데이터 자격검정 시험 정보_20260106'(CSV, 2026-01-06 기준, 다음 갱신 예정 2027-01-22)을 출처로 썼습니다. 이 파일에는 2026년 회차까지만 있고 2027년 회차는 없습니다. 2026년 중 일정 변경이 있었다면 반영되지 않았을 수 있습니다. dataq.or.kr에 2027년 일정이 이미 올라왔는지는 확인하지 못했으므로, 앱에 넣기 전에 사람이 dataq.or.kr 공지를 직접 확인해야 합니다. 응시료는 공식 출처를 읽지 못해 비워 둡니다. 2026년에는 연 4회(2·5·8·10월) 시행됐습니다.",
+   "kind_note": null
+  },
+  {
+   "id": "bigdata_engineer",
+   "name": "빅데이터분석기사",
+   "aliases": [
+    "빅분기"
+   ],
+   "issuer": "한국데이터산업진흥원",
+   "kind": "national_technical",
+   "official_url": "https://www.dataq.or.kr/",
+   "schedule_source_url": "https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752",
+   "mode": "scheduled",
+   "schedule_status": "confirmed",
+   "checked_at": "2026-11-24",
+   "rounds": [
+    {
+     "name": "제14회 필기",
+     "registration_start": "2027-03-08",
+     "registration_end": "2027-03-12",
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2027-04-10"
+      }
+     ],
+     "result_date": "2027-04-30",
+     "source_url": "https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752",
+     "checked_at": "2026-11-24",
+     "note": "원서접수(인터넷) 첫날 10:00 ~ 마지막 날 18:00. 필기 10:00~12:00. 발표일은 필기시험 합격예정자 발표(10:00)."
+    },
+    {
+     "name": "제14회 실기",
+     "registration_start": "2027-05-24",
+     "registration_end": "2027-05-28",
+     "exams": [
+      {
+       "label": "실기",
+       "date": "2027-06-26"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752",
+     "checked_at": "2026-11-24",
+     "note": "원서접수(인터넷) 첫날 10:00 ~ 마지막 날 18:00. 실기 10:00~13:00. 최종 합격자 발표일이 공고 원문에 '’26.7.16'으로 적혀 있어(연도 오기로 보임) 비워 둠. 2027-07-16일 가능성이 높지만 시행 기관 공고로 확인 필요."
+    },
+    {
+     "name": "제15회 필기",
+     "registration_start": "2027-08-02",
+     "registration_end": "2027-08-06",
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2027-09-04"
+      }
+     ],
+     "result_date": "2027-09-24",
+     "source_url": "https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752",
+     "checked_at": "2026-11-24",
+     "note": "원서접수(인터넷) 첫날 10:00 ~ 마지막 날 18:00. 필기 10:00~12:00. 발표일은 필기시험 합격예정자 발표(10:00)."
+    },
+    {
+     "name": "제15회 실기",
+     "registration_start": "2027-10-25",
+     "registration_end": "2027-10-29",
+     "exams": [
+      {
+       "label": "실기",
+       "date": "2027-11-27"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752",
+     "checked_at": "2026-11-24",
+     "note": "원서접수(인터넷) 첫날 10:00 ~ 마지막 날 18:00. 실기 10:00~13:00. 최종 합격자 발표일이 공고 원문에 '’26.12.17'로 적혀 있어(연도 오기로 보임) 비워 둠. 2027-12-17일 가능성이 높지만 시행 기관 공고로 확인 필요."
+    }
+   ],
+   "reference_rounds": [],
+   "subjects": [
+    "필기: 빅데이터 분석기획",
+    "필기: 빅데이터 탐색",
+    "필기: 빅데이터 모델링",
+    "필기: 빅데이터 결과 해석",
+    "실기: 제1유형(30점)",
+    "실기: 제2유형(40점)",
+    "실기: 제3유형(30점)"
+   ],
+   "pass_criteria": "필기: 합격점수 60, 과락점수 40 / 실기: 합격점수 60(100점 만점) — 한국데이터산업진흥원 공공데이터 '데이터 자격 검정 상세정보' 값 그대로(필기 과목별 배점 표기는 각 25). 세부 산정 방식의 원문 설명은 dataq 접근 불가로 확인 못함.",
+   "fee": "필기 17,800원, 실기 40,800원",
+   "fee_detail": "필기 17,800원, 실기 40,800원(고용노동부 공고 제2026-518호 「2027년도 국가기술자격 검정시행계획」 한국데이터산업진흥원 편)",
+   "eligibility_note": "학력·경력 응시자격이 있는 기사 등급입니다. 시행 기관 안내에서 응시 가능 여부를 확인하세요.",
+   "info_source_url": "https://www.data.go.kr/data/15148115/fileData.do",
+   "provenance": "국가기술자격이지만 한국산업인력공단이 아닌 한국데이터산업진흥원이 시행합니다. 필기·실기 접수가 따로라 회차를 나눴습니다. 2027년 일정·응시료는 고용노동부 공고 제2026-518호 「2027년도 국가기술자격 검정시행계획」(2026-11-20 작성, 고용노동부 누리집 공지 첨부 PDF, https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752)의 한국데이터산업진흥원 편에서 확인했습니다. 공고에는 '상기 시행일정은 검정시험 일정에 따라 조정될 수 있음'이라고 적혀 있습니다. 시행 기관 사이트(dataq.or.kr)는 robots.txt가 첫 화면 외 모든 경로를 막고 요청도 'Request Blocked'로 거부해 읽지 않았습니다. 그래서 세부 시행 공고(고사장·응시자격 서류 등)는 확인하지 못했습니다. 과목·합격 기준은 한국데이터산업진흥원이 공공데이터포털에 올린 파일데이터('데이터 자격검정 상세정보')의 값입니다. 기사 등급이라 응시자격 제한이 있습니다(세부 요건은 원문 확인 못함). 시행 지역(공고): 서울, 경기, 인천, 춘천, 대전, 광주, 대구, 울산, 부산, 제주 등 10개 지역.",
+   "kind_note": null
+  },
+  {
+   "id": "computer_skills",
+   "name": "컴퓨터활용능력 1급·2급",
+   "aliases": [
+    "컴활",
+    "컴퓨터활용능력",
+    "컴퓨터활용능력 1급",
+    "컴퓨터활용능력 2급"
+   ],
+   "issuer": "대한상공회의소(자격평가사업단)",
+   "kind": "national_technical",
+   "official_url": "https://license.korcham.net/",
+   "schedule_source_url": "https://license.korcham.net/co/examguide.do?mm=21&cd=0103",
+   "mode": "always",
+   "schedule_status": "always",
+   "checked_at": "2026-11-24",
+   "rounds": [],
+   "reference_rounds": [],
+   "subjects": [
+    "1급 필기: 컴퓨터 일반, 스프레드시트 일반, 데이터베이스 일반 (객관식 60문항, 60분)",
+    "1급 실기: 스프레드시트 실무, 데이터베이스 실무 (컴퓨터 작업형, 90분·과목별 45분)",
+    "2급 필기: 컴퓨터 일반, 스프레드시트 일반 (객관식 40문항, 40분)",
+    "2급 실기: 스프레드시트 실무 (컴퓨터 작업형, 40분)"
+   ],
+   "pass_criteria": "필기: 매과목 100점 만점에 과목당 40점 이상이고 평균 60점 이상 / 실기: 100점 만점에 70점 이상(1급은 두 과목 모두 70점 이상)",
+   "fee": "필기 20,500원, 실기 25,000원",
+   "fee_detail": "필기 20,500원, 실기 25,000원",
+   "eligibility_note": null,
+   "info_source_url": "https://license.korcham.net/co/examguide.do?mm=21&cd=0103",
+   "provenance": "정기 회차 없이 상시검정만 시행함. 고용노동부 공고 제2026-518호 「2027년도 국가기술자격 검정시행계획」(2026-11-23)에서 컴퓨터활용능력(1·2급)은 2026년·2027년 모두 정기검정 없이 '상시'로 시행하며, 시행일정은 '상시검정 시행상공회의소가 정하는 일자'로 되어 있음(https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752). 대한상공회의소 시험일정 안내(https://license.korcham.net/co/examguide03.do?cd=0103&mm=21): 접수기간은 개설일로부터 시험일 4일 전까지, 시험일자는 상시(시험 개설 여부는 시험장 상황에 따라 다름), 합격발표는 필기는 시험일 다음날 오전 10시, 실기는 매주 수요일~그다음 주 화요일 응시분을 그로부터 2주 후 화요일 오전 10시. 2026년 연말 종료 일정(공지 2026-10-27, https://license.korcham.net/customer/noticeview.do?num=265546): 필기 접수마감 2026-12-25, 최종시험 2026-12-29, 합격발표 2026-12-30 / 실기 접수마감 2026-12-11, 최종시험 2026-12-15, 합격발표 2026-12-29. 2026년 상시시험 접수자는 2027년 시험일로 변경할 수 없음. 2027년 상시시험 시작일정 공지는 2026-11-24 현재 아직 없음(참고: 2026년은 2025-11-24 공지로 접수시작 2026-01-01, 최초 시험일 2026-01-05였음, https://license.korcham.net/customer/noticeview.do?num=252526). 2027-01-01부터 새 출제기준(2027~2029년)이 적용됨(공지 https://license.korcham.net/customer/noticeview.do?num=261766). 위 과목·시간은 현재 시험안내 페이지 기준이며, 새 출제기준 PDF는 robots.txt가 막은 /kor/ 경로에 있어 내용을 직접 확인하지 못함.",
+   "kind_note": null
+  },
+  {
+   "id": "info_security_engineer",
+   "name": "정보보안기사",
+   "aliases": [],
+   "issuer": "한국방송통신전파진흥원(KCA)",
+   "kind": "national_technical",
+   "official_url": "https://www.cq.or.kr/",
+   "schedule_source_url": "https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752",
+   "mode": "scheduled",
+   "schedule_status": "confirmed",
+   "checked_at": "2026-11-24",
+   "rounds": [
+    {
+     "name": "2027년 제1회 필기",
+     "registration_start": "2027-01-25",
+     "registration_end": "2027-01-28",
+     "exams": [
+      {
+       "label": "필기(CBT) 시험 기간",
+       "date": "2027-02-10",
+       "date_end": "2027-03-05"
+      }
+     ],
+     "result_date": "2027-03-12",
+     "source_url": "https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752",
+     "checked_at": "2026-11-24",
+     "note": "필기는 CBT로 기간 중 평일에 시행하며 세부 시행일자는 시행 기관 홈페이지에 별도 공지(공고 원문). 발표일은 필기합격(예정자) 발표. 응시자격 서류제출 2027-02-10~2027-03-12."
+    },
+    {
+     "name": "2027년 제1회 실기",
+     "registration_start": "2027-03-15",
+     "registration_end": "2027-03-18",
+     "exams": [
+      {
+       "label": "실기(필답형) 시험 기간",
+       "date": "2027-04-10",
+       "date_end": "2027-04-25"
+      }
+     ],
+     "result_date": "2027-05-07",
+     "source_url": "https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752",
+     "checked_at": "2026-11-24",
+     "note": "실기(필답형)는 표시된 기간 안에서 시행. 정확한 시험일은 시행 기관(KCA) 세부 공고로 확인 필요. 발표일은 최종 합격자 발표. "
+    },
+    {
+     "name": "2027년 제2회 필기",
+     "registration_start": "2027-05-10",
+     "registration_end": "2027-05-14",
+     "exams": [
+      {
+       "label": "필기(CBT) 시험 기간",
+       "date": "2027-05-24",
+       "date_end": "2027-06-14"
+      }
+     ],
+     "result_date": "2027-06-18",
+     "source_url": "https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752",
+     "checked_at": "2026-11-24",
+     "note": "필기는 CBT로 기간 중 평일에 시행하며 세부 시행일자는 시행 기관 홈페이지에 별도 공지(공고 원문). 발표일은 필기합격(예정자) 발표. 응시자격 서류제출 2027-05-24~2027-06-18."
+    },
+    {
+     "name": "2027년 제2회 실기",
+     "registration_start": "2027-06-21",
+     "registration_end": "2027-06-24",
+     "exams": [
+      {
+       "label": "실기(필답형) 시험 기간",
+       "date": "2027-07-24",
+       "date_end": "2027-08-06"
+      }
+     ],
+     "result_date": "2027-08-27",
+     "source_url": "https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752",
+     "checked_at": "2026-11-24",
+     "note": "실기(필답형)는 표시된 기간 안에서 시행. 정확한 시험일은 시행 기관(KCA) 세부 공고로 확인 필요. 발표일은 최종 합격자 발표. "
+    },
+    {
+     "name": "2027년 제4회 필기",
+     "registration_start": "2027-08-30",
+     "registration_end": "2027-09-02",
+     "exams": [
+      {
+       "label": "필기(CBT) 시험 기간",
+       "date": "2027-09-13",
+       "date_end": "2027-10-08"
+      }
+     ],
+     "result_date": "2027-10-15",
+     "source_url": "https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752",
+     "checked_at": "2026-11-24",
+     "note": "필기는 CBT로 기간 중 평일에 시행하며 세부 시행일자는 시행 기관 홈페이지에 별도 공지(공고 원문). 발표일은 필기합격(예정자) 발표. 응시자격 서류제출 2027-09-13~2027-10-15."
+    },
+    {
+     "name": "2027년 제4회 실기",
+     "registration_start": "2027-10-18",
+     "registration_end": "2027-10-21",
+     "exams": [
+      {
+       "label": "실기(필답형) 시험 기간",
+       "date": "2027-11-13",
+       "date_end": "2027-11-28"
+      }
+     ],
+     "result_date": "2027-12-10",
+     "source_url": "https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752",
+     "checked_at": "2026-11-24",
+     "note": "실기(필답형)는 표시된 기간 안에서 시행. 정확한 시험일은 시행 기관(KCA) 세부 공고로 확인 필요. 발표일은 최종 합격자 발표. "
+    }
+   ],
+   "reference_rounds": [],
+   "subjects": [],
+   "pass_criteria": null,
+   "fee": null,
+   "fee_detail": null,
+   "eligibility_note": "학력·경력 응시자격이 있는 기사 등급입니다. 시행 기관 안내에서 응시 가능 여부를 확인하세요.",
+   "info_source_url": "https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752",
+   "provenance": "시행 기관은 한국방송통신전파진흥원(KCA)입니다(고용노동부 「2027년도 국가기술자격 검정시행계획」의 KCA 편 검정시행 종목과 KCA 누리집 ICT자격본부 소개 https://www.kca.kr/contentsView.do?pageId=www25 로 확인). 2027년 일정은 고용노동부 공고 제2026-518호 「2027년도 국가기술자격 검정시행계획」(2026-11-20 작성, https://www.moel.go.kr/news/notice/noticeView.do?bbs_seq=20261100752 첨부 PDF)의 KCA 편 '정보보안 분야' 일정입니다. 2027년 기사 정기검정은 제1·2·4회(제3회는 특성화고 등 필기 면제자 검정으로 정보보안 분야 해당 없음). 실기는 필답형, 전국 13개소. KCA 자격검정 사이트(cq.or.kr)는 robots.txt가 전체 경로를 막고 있어(User-Agent: * / Disallow: /) 내용을 쓰지 않았습니다. 그래서 시험 과목·합격 기준·응시료·세부 시행 공고(실기 정확한 시험일 등)는 공식 출처로 확인하지 못해 비워 둡니다. 기사 등급이라 응시자격 제한이 있습니다.",
+   "kind_note": null
+  },
+  {
+   "id": "linux_master",
+   "name": "리눅스마스터 1급·2급",
+   "aliases": [
+    "리눅스마스터",
+    "리눅스마스터 1급",
+    "리눅스마스터 2급"
+   ],
+   "issuer": "한국정보통신진흥협회(KAIT)",
+   "kind": "national_certified_private",
+   "official_url": "https://www.ihd.or.kr/",
+   "schedule_source_url": "https://www.ihd.or.kr/guidecert1.do",
+   "mode": "scheduled",
+   "schedule_status": "confirmed",
+   "checked_at": "2026-11-24",
+   "rounds": [
+    {
+     "name": "2604회 2급 2차",
+     "registration_start": "2026-10-27",
+     "registration_end": "2026-11-06",
+     "exams": [
+      {
+       "label": "2급 2차 필기",
+       "date": "2026-12-12"
+      }
+     ],
+     "result_date": "2026-12-31",
+     "source_url": "https://www.ihd.or.kr/guidecert1.do",
+     "checked_at": "2026-11-24",
+     "note": "2026년 마지막 회차. 접수는 이미 끝남(2026-11-06)."
+    },
+    {
+     "name": "2701회 1급 1차",
+     "registration_start": "2027-01-25",
+     "registration_end": "2027-02-05",
+     "exams": [
+      {
+       "label": "1급 1차 필기",
+       "date": "2027-03-13"
+      }
+     ],
+     "result_date": "2027-04-02",
+     "source_url": "https://www.ihd.or.kr/noticeview.do?board_no=6144",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2701회 1급 2차",
+     "registration_start": "2027-04-05",
+     "registration_end": "2027-04-16",
+     "exams": [
+      {
+       "label": "1급 2차 필기·실기",
+       "date": "2027-05-08"
+      }
+     ],
+     "result_date": "2027-05-28",
+     "source_url": "https://www.ihd.or.kr/noticeview.do?board_no=6144",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2702회 1급 1차",
+     "registration_start": "2027-08-02",
+     "registration_end": "2027-08-13",
+     "exams": [
+      {
+       "label": "1급 1차 필기",
+       "date": "2027-09-04"
+      }
+     ],
+     "result_date": "2027-10-01",
+     "source_url": "https://www.ihd.or.kr/noticeview.do?board_no=6144",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2702회 1급 2차",
+     "registration_start": "2027-10-04",
+     "registration_end": "2027-10-15",
+     "exams": [
+      {
+       "label": "1급 2차 필기·실기",
+       "date": "2027-11-13"
+      }
+     ],
+     "result_date": "2027-12-03",
+     "source_url": "https://www.ihd.or.kr/noticeview.do?board_no=6144",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2701회 2급 1차",
+     "registration_start": "2026-12-28",
+     "registration_end": "2027-01-08",
+     "exams": [
+      {
+       "label": "2급 1차 온라인시험",
+       "date": "2027-01-30"
+      }
+     ],
+     "result_date": "2027-02-03",
+     "source_url": "https://www.ihd.or.kr/noticeview.do?board_no=6144",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2701회 2급 2차",
+     "registration_start": "2027-02-01",
+     "registration_end": "2027-02-12",
+     "exams": [
+      {
+       "label": "2급 2차 필기",
+       "date": "2027-03-13"
+      }
+     ],
+     "result_date": "2027-04-02",
+     "source_url": "https://www.ihd.or.kr/noticeview.do?board_no=6144",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2702회 2급 1차",
+     "registration_start": "2027-04-05",
+     "registration_end": "2027-04-16",
+     "exams": [
+      {
+       "label": "2급 1차 온라인시험",
+       "date": "2027-05-01"
+      }
+     ],
+     "result_date": "2027-05-05",
+     "source_url": "https://www.ihd.or.kr/noticeview.do?board_no=6144",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2702회 2급 2차",
+     "registration_start": "2027-05-03",
+     "registration_end": "2027-05-14",
+     "exams": [
+      {
+       "label": "2급 2차 필기",
+       "date": "2027-06-12"
+      }
+     ],
+     "result_date": "2027-07-02",
+     "source_url": "https://www.ihd.or.kr/noticeview.do?board_no=6144",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2703회 2급 1차",
+     "registration_start": "2027-07-05",
+     "registration_end": "2027-07-16",
+     "exams": [
+      {
+       "label": "2급 1차 온라인시험",
+       "date": "2027-07-31"
+      }
+     ],
+     "result_date": "2027-08-04",
+     "source_url": "https://www.ihd.or.kr/noticeview.do?board_no=6144",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2703회 2급 2차",
+     "registration_start": "2027-08-02",
+     "registration_end": "2027-08-13",
+     "exams": [
+      {
+       "label": "2급 2차 필기",
+       "date": "2027-09-04"
+      }
+     ],
+     "result_date": "2027-10-01",
+     "source_url": "https://www.ihd.or.kr/noticeview.do?board_no=6144",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2704회 2급 1차",
+     "registration_start": "2027-10-04",
+     "registration_end": "2027-10-15",
+     "exams": [
+      {
+       "label": "2급 1차 온라인시험",
+       "date": "2027-10-30"
+      }
+     ],
+     "result_date": "2027-11-03",
+     "source_url": "https://www.ihd.or.kr/noticeview.do?board_no=6144",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2704회 2급 2차",
+     "registration_start": "2027-11-01",
+     "registration_end": "2027-11-12",
+     "exams": [
+      {
+       "label": "2급 2차 필기",
+       "date": "2027-12-11"
+      }
+     ],
+     "result_date": "2027-12-31",
+     "source_url": "https://www.ihd.or.kr/noticeview.do?board_no=6144",
+     "checked_at": "2026-11-24"
+    }
+   ],
+   "reference_rounds": [],
+   "subjects": [
+    "1급 1차: 필기(사지선다) 100문항, 100분 — 리눅스 실무의 이해, 리눅스 시스템 관리, 네트워크 및 서비스의 활용",
+    "1급 2차: 필기(단답·서술식, 40%) 10문항 + 실기(작업식, 60%) 5~7문항, 100분",
+    "2급 1차: 온라인시험(객관식 사지선다) 50문항, 60분",
+    "2급 2차: 필기(사지선다) 80문항, 100분 — 리눅스 일반, 리눅스 운영 및 관리, 리눅스 활용"
+   ],
+   "pass_criteria": "각 차수 100점 만점에 60점 이상. 1급 1차와 2급 2차는 과목당 40% 미만이면 과락. 2차는 1차 합격자만 응시 가능(성적공개일 기준 2년 이내).",
+   "fee": "1급 1차 55,000원, 1급 2차 77,000원, 2급 1차 22,000원, 2급 2차 44,000원",
+   "fee_detail": "1급 1차 55,000원, 1급 2차 77,000원, 2급 1차 22,000원, 2급 2차 44,000원(정보이용료 별도: 신용카드/계좌이체 650원, 가상계좌 300원). 자격증 발급 6,300원",
+   "eligibility_note": null,
+   "info_source_url": "https://www.ihd.or.kr/introducesubject1.do",
+   "provenance": "1차·2차 접수가 따로라 차수마다 한 항목으로 나눴다. 2027년 일정은 KAIT 공지 '2027년 KAIT AI·디지털기술자격검정 일정안내'(2026-11-02)의 본문 이미지에서 읽었다(첨부 PDF는 POST 방식 다운로드라 받지 않음). 2026년 12월 회차(2604회 2급 2차)는 시험일정 페이지에서 확인했다. 2027년 정기검정부터 출제 리눅스 버전이 바뀐다: 필기 커널 5.x 이상(RHEL/Rocky Linux 9, Ubuntu 22.04 이상), 실기 Rocky Linux 9.7 이상(https://www.ihd.or.kr/noticeview.do?board_no=6052). 2급 1차는 온라인(비대면) 시험이다. 수험표 출력은 시험일 5일 전부터.",
+   "kind_note": "국가공인 민간자격(등록번호 2008-0268, 공인번호 과학기술정보통신부 제2022-02호). 1급·2급 모두 공인."
+  },
+  {
+   "id": "network_admin",
+   "name": "네트워크관리사 2급",
+   "aliases": [
+    "네트워크관리사"
+   ],
+   "issuer": "한국정보통신자격협회(ICQA)",
+   "kind": "national_certified_private",
+   "official_url": "https://www.icqa.or.kr/",
+   "schedule_source_url": "https://www.icqa.or.kr/",
+   "mode": "scheduled",
+   "schedule_status": "source_unreadable",
+   "checked_at": "2026-11-24",
+   "rounds": [],
+   "reference_rounds": [],
+   "subjects": [],
+   "pass_criteria": null,
+   "fee": null,
+   "fee_detail": null,
+   "eligibility_note": null,
+   "info_source_url": null,
+   "provenance": "공식 출처를 읽지 못함. 시행 기관은 한국정보통신진흥협회(KAIT)가 아니라 한국정보통신자격협회(ICQA)다. icqa.or.kr(www·exam 하위 도메인 포함)은 이 환경과 WebFetch 모두에서 연결 시간 초과·연결 거부로 열리지 않았다(해외 접속 차단으로 보임). 우회하지 않았고, 공공데이터포털 등 같은 기관의 다른 공식 자료도 찾지 못해 날짜·과목·합격 기준·응시료를 모두 비워 둔다. mode는 정기검정이 있는 자격으로 알려진 바에 따라 넣었고 공식 확인은 안 됐다.",
+   "kind_note": "2급은 국가공인 민간자격으로 알려져 있으나, 시행 기관 공식 사이트에 접속하지 못해 이번 조사에서 공식 확인은 하지 못했다."
+  },
+  {
+   "id": "toeic",
+   "name": "TOEIC",
+   "aliases": [
+    "토익"
+   ],
+   "issuer": "ETS(개발) / 국내 시행: ㈜와이비엠 한국TOEIC위원회",
+   "kind": "language",
+   "official_url": "https://exam.toeic.co.kr/",
+   "schedule_source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+   "mode": "scheduled",
+   "schedule_status": "confirmed",
+   "checked_at": "2026-11-24",
+   "rounds": [
+    {
+     "name": "제585회 TOEIC 정기시험",
+     "registration_start": "2026-10-26",
+     "registration_end": "2026-11-30",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-12-13"
+      }
+     ],
+     "result_date": "2026-12-22",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2026-11-30 10:00. 특별추가접수 2026-12-02 10:00 ~ 2026-12-10 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제586회 TOEIC 정기시험",
+     "registration_start": "2026-11-09",
+     "registration_end": "2026-12-14",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-12-27"
+      }
+     ],
+     "result_date": "2027-01-06",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2026-12-14 10:00. 특별추가접수 2026-12-16 10:00 ~ 2026-12-23 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제587회 TOEIC 정기시험",
+     "registration_start": "2026-11-30",
+     "registration_end": "2027-01-04",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-01-16"
+      }
+     ],
+     "result_date": "2027-01-26",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-01-04 10:00. 특별추가접수 2027-01-06 10:00 ~ 2027-01-13 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제588회 TOEIC 정기시험",
+     "registration_start": "2026-12-14",
+     "registration_end": "2027-01-18",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-01-31"
+      }
+     ],
+     "result_date": "2027-02-09",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-01-18 10:00. 특별추가접수 2027-01-20 10:00 ~ 2027-01-28 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제589회 TOEIC 정기시험",
+     "registration_start": "2026-12-28",
+     "registration_end": "2027-02-01",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-02-14"
+      }
+     ],
+     "result_date": "2027-02-25",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-02-01 10:00. 특별추가접수 2027-02-03 10:00 ~ 2027-02-11 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00. 공식 일정표에 ★ 표시: 차기 시험 접수 마감 후 성적이 발표되는 회차."
+    },
+    {
+     "name": "제590회 TOEIC 정기시험",
+     "registration_start": "2027-01-04",
+     "registration_end": "2027-02-08",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-02-21"
+      }
+     ],
+     "result_date": "2027-03-02",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-02-08 10:00. 특별추가접수 2027-02-10 10:00 ~ 2027-02-18 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00. 공식 일정표에 ★ 표시: 차기 시험 접수 마감 후 성적이 발표되는 회차."
+    },
+    {
+     "name": "제591회 TOEIC 정기시험",
+     "registration_start": "2027-01-11",
+     "registration_end": "2027-02-15",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-02-28"
+      }
+     ],
+     "result_date": "2027-03-09",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-02-15 10:00. 특별추가접수 2027-02-17 10:00 ~ 2027-02-25 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제592회 TOEIC 정기시험",
+     "registration_start": "2027-01-25",
+     "registration_end": "2027-03-01",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-03-14"
+      }
+     ],
+     "result_date": "2027-03-23",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-03-01 10:00. 특별추가접수 2027-03-03 10:00 ~ 2027-03-11 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제593회 TOEIC 정기시험",
+     "registration_start": "2027-02-08",
+     "registration_end": "2027-03-15",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-03-28"
+      }
+     ],
+     "result_date": "2027-04-06",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-03-15 10:00. 특별추가접수 2027-03-17 10:00 ~ 2027-03-25 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제594회 TOEIC 정기시험",
+     "registration_start": "2027-02-22",
+     "registration_end": "2027-03-29",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-04-11"
+      }
+     ],
+     "result_date": "2027-04-20",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-03-29 10:00. 특별추가접수 2027-03-31 10:00 ~ 2027-04-08 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제595회 TOEIC 정기시험",
+     "registration_start": "2027-03-08",
+     "registration_end": "2027-04-12",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-04-25"
+      }
+     ],
+     "result_date": "2027-05-04",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-04-12 10:00. 특별추가접수 2027-04-14 10:00 ~ 2027-04-22 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제596회 TOEIC 정기시험",
+     "registration_start": "2027-03-22",
+     "registration_end": "2027-04-26",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-05-09"
+      }
+     ],
+     "result_date": "2027-05-18",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-04-26 10:00. 특별추가접수 2027-04-28 10:00 ~ 2027-05-06 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제597회 TOEIC 정기시험",
+     "registration_start": "2027-04-12",
+     "registration_end": "2027-05-17",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-05-30"
+      }
+     ],
+     "result_date": "2027-06-08",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-05-17 10:00. 특별추가접수 2027-05-19 10:00 ~ 2027-05-27 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제598회 TOEIC 정기시험",
+     "registration_start": "2027-04-26",
+     "registration_end": "2027-05-31",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-06-12"
+      }
+     ],
+     "result_date": "2027-06-22",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-05-31 10:00. 특별추가접수 2027-06-02 10:00 ~ 2027-06-09 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제599회 TOEIC 정기시험",
+     "registration_start": "2027-05-10",
+     "registration_end": "2027-06-14",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-06-27"
+      }
+     ],
+     "result_date": "2027-07-06",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-06-14 10:00. 특별추가접수 2027-06-16 10:00 ~ 2027-06-24 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제600회 TOEIC 정기시험",
+     "registration_start": "2027-05-24",
+     "registration_end": "2027-06-28",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-07-11"
+      }
+     ],
+     "result_date": "2027-07-20",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-06-28 10:00. 특별추가접수 2027-06-30 10:00 ~ 2027-07-08 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제601회 TOEIC 정기시험",
+     "registration_start": "2027-06-07",
+     "registration_end": "2027-07-12",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-07-25"
+      }
+     ],
+     "result_date": "2027-08-03",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-07-12 10:00. 특별추가접수 2027-07-14 10:00 ~ 2027-07-22 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제602회 TOEIC 정기시험",
+     "registration_start": "2027-06-21",
+     "registration_end": "2027-07-26",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-08-08"
+      }
+     ],
+     "result_date": "2027-08-17",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-07-26 10:00. 특별추가접수 2027-07-28 10:00 ~ 2027-08-05 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제603회 TOEIC 정기시험",
+     "registration_start": "2027-07-05",
+     "registration_end": "2027-08-09",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-08-22"
+      }
+     ],
+     "result_date": "2027-09-02",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-08-09 10:00. 특별추가접수 2027-08-11 10:00 ~ 2027-08-19 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00. 공식 일정표에 ★ 표시: 차기 시험 접수 마감 후 성적이 발표되는 회차."
+    },
+    {
+     "name": "제604회 TOEIC 정기시험",
+     "registration_start": "2027-07-12",
+     "registration_end": "2027-08-16",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-08-29"
+      }
+     ],
+     "result_date": "2027-09-07",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-08-16 10:00. 특별추가접수 2027-08-18 10:00 ~ 2027-08-26 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제605회 TOEIC 정기시험",
+     "registration_start": "2027-07-26",
+     "registration_end": "2027-08-30",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-09-12"
+      }
+     ],
+     "result_date": "2027-09-21",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-08-30 10:00. 특별추가접수 2027-09-01 10:00 ~ 2027-09-09 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제606회 TOEIC 정기시험",
+     "registration_start": "2027-08-09",
+     "registration_end": "2027-09-13",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-09-26"
+      }
+     ],
+     "result_date": "2027-10-05",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-09-13 10:00. 특별추가접수 2027-09-15 10:00 ~ 2027-09-23 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제607회 TOEIC 정기시험",
+     "registration_start": "2027-08-30",
+     "registration_end": "2027-10-04",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-10-17"
+      }
+     ],
+     "result_date": "2027-10-26",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-10-04 10:00. 특별추가접수 2027-10-06 10:00 ~ 2027-10-14 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제608회 TOEIC 정기시험",
+     "registration_start": "2027-09-13",
+     "registration_end": "2027-10-18",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-10-31"
+      }
+     ],
+     "result_date": "2027-11-09",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-10-18 10:00. 특별추가접수 2027-10-20 10:00 ~ 2027-10-28 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제609회 TOEIC 정기시험",
+     "registration_start": "2027-09-27",
+     "registration_end": "2027-11-01",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-11-14"
+      }
+     ],
+     "result_date": "2027-11-23",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-11-01 10:00. 특별추가접수 2027-11-03 10:00 ~ 2027-11-11 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제610회 TOEIC 정기시험",
+     "registration_start": "2027-10-11",
+     "registration_end": "2027-11-15",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-11-28"
+      }
+     ],
+     "result_date": "2027-12-07",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-11-15 10:00. 특별추가접수 2027-11-17 10:00 ~ 2027-11-25 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제611회 TOEIC 정기시험",
+     "registration_start": "2027-10-25",
+     "registration_end": "2027-11-29",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-12-12"
+      }
+     ],
+     "result_date": "2027-12-21",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-11-29 10:00. 특별추가접수 2027-12-01 10:00 ~ 2027-12-09 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    },
+    {
+     "name": "제612회 TOEIC 정기시험",
+     "registration_start": "2027-11-08",
+     "registration_end": "2027-12-13",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-12-25"
+      }
+     ],
+     "result_date": "2028-01-04",
+     "source_url": "https://exam.toeic.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 마감 2027-12-13 10:00. 특별추가접수 2027-12-15 10:00 ~ 2027-12-22 13:00(응시료 더 비쌈). 시험 09:20 시작, 성적 발표 12:00."
+    }
+   ],
+   "reference_rounds": [],
+   "subjects": [
+    "Listening Comprehension(듣기): Part 1 사진묘사 6, Part 2 질의응답 25, Part 3 짧은대화 39, Part 4 설명문 30 — 100문항, 45분, 495점",
+    "Reading Comprehension(읽기): Part 5 단문공란 메우기(문법/어휘) 30, Part 6 장문 공란 메우기 16, Part 7 독해(단일지문 29·복수지문 25) — 100문항, 75분, 495점",
+    "합계: 7 Parts, 200문항, 120분, 990점"
+   ],
+   "pass_criteria": "합격·불합격 없이 점수(최대 990점)로 평가. 성적 유효기간은 시험 시행일로부터 2년 후 해당 시험일자까지.",
+   "fee": "정기접수 52,500원",
+   "fee_detail": "정기접수 52,500원(부가세 10% 포함, 2024-06-16 정기시험부터 적용 — 공식 공지 「TOEIC 응시료 인상 및 성적 발표일 단축 안내」 https://exam.toeic.co.kr/news/noticeView.php?noticeCode=9826). 특별추가접수는 응시료가 더 높으며 단독 금액 문구는 공식 페이지에서 확인하지 못함. 군인은 인터넷 접수 시 50% 할인, 기초생활수급자는 연 2회 무료 응시(공식 공지·FAQ).",
+   "eligibility_note": null,
+   "info_source_url": "https://exam.toeic.co.kr/common/template/viewContents.php?contentsCode=19",
+   "provenance": "2027년 정기시험 일정은 공식 공지 '2027년 TOEIC 정기시험 일정 안내'(2026-11-02 게시, https://exam.toeic.co.kr/news/noticeView.php?noticeCode=10090, 본문은 일정표 이미지)와 공식 시험일정 페이지가 일치함을 확인. 제612회(2027-12-25 시험)는 성적 발표가 2028-01-04. 정기접수가 끝나면 응시료가 더 비싼 특별추가접수가 회차마다 따로 열림(각 회차 note 참고). 점수 근거: 시험구성 https://exam.toeic.co.kr/common/template/viewContents.php?contentsCode=19, 성적 유효기간: 수험자가이드 https://exam.toeic.co.kr/common/template/viewContents.php?contentsCode=36, 패키지 정가: https://exam.toeic.co.kr/receipt/receiptStep1.php 및 공지 noticeCode=9993. 공식 일정표에는 '상기 일정은 주관사 사정에 따라 변경될 수 있습니다'라고 적혀 있음.",
+   "kind_note": null
+  },
+  {
+   "id": "toeic_speaking",
+   "name": "TOEIC Speaking",
+   "aliases": [
+    "토익스피킹",
+    "토익 스피킹"
+   ],
+   "issuer": "ETS(개발) / 국내 시행: ㈜와이비엠 한국TOEIC위원회",
+   "kind": "language",
+   "official_url": "https://www.toeicswt.co.kr/",
+   "schedule_source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+   "mode": "scheduled",
+   "schedule_status": "partial",
+   "checked_at": "2026-11-24",
+   "rounds": [
+    {
+     "name": "2026.12.05 TOEIC Speaking 정기시험",
+     "registration_start": "2026-11-02",
+     "registration_end": "2026-12-02",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-12-05"
+      }
+     ],
+     "result_date": "2026-12-10",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2026-12-02 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2026.12.06 TOEIC Speaking 정기시험",
+     "registration_start": "2026-11-02",
+     "registration_end": "2026-12-03",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-12-06"
+      }
+     ],
+     "result_date": "2026-12-11",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2026-12-03 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2026.12.12 TOEIC Speaking 정기시험",
+     "registration_start": "2026-11-09",
+     "registration_end": "2026-12-09",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-12-12"
+      }
+     ],
+     "result_date": "2026-12-17",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2026-12-09 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2026.12.13 TOEIC Speaking 정기시험",
+     "registration_start": "2026-11-09",
+     "registration_end": "2026-12-10",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-12-13"
+      }
+     ],
+     "result_date": "2026-12-18",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2026-12-10 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2026.12.19 TOEIC Speaking 정기시험",
+     "registration_start": "2026-11-16",
+     "registration_end": "2026-12-16",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-12-19"
+      }
+     ],
+     "result_date": "2026-12-24",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2026-12-16 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2026.12.20 TOEIC Speaking 정기시험",
+     "registration_start": "2026-11-16",
+     "registration_end": "2026-12-17",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-12-20"
+      }
+     ],
+     "result_date": "2026-12-25",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2026-12-17 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2026.12.26 TOEIC Speaking 정기시험",
+     "registration_start": "2026-11-23",
+     "registration_end": "2026-12-23",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-12-26"
+      }
+     ],
+     "result_date": "2026-12-31",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2026-12-23 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2026.12.27 TOEIC Speaking 정기시험",
+     "registration_start": "2026-11-23",
+     "registration_end": "2026-12-24",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2026-12-27"
+      }
+     ],
+     "result_date": "2027-01-01",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2026-12-24 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.01.02 TOEIC Speaking 정기시험",
+     "registration_start": "2026-11-30",
+     "registration_end": "2026-12-30",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-01-02"
+      }
+     ],
+     "result_date": "2027-01-07",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2026-12-30 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.01.03 TOEIC Speaking 정기시험",
+     "registration_start": "2026-11-30",
+     "registration_end": "2026-12-31",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-01-03"
+      }
+     ],
+     "result_date": "2027-01-08",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2026-12-31 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.01.09 TOEIC Speaking 정기시험",
+     "registration_start": "2026-12-07",
+     "registration_end": "2027-01-06",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-01-09"
+      }
+     ],
+     "result_date": "2027-01-14",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-01-06 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.01.10 TOEIC Speaking 정기시험",
+     "registration_start": "2026-12-07",
+     "registration_end": "2027-01-07",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-01-10"
+      }
+     ],
+     "result_date": "2027-01-15",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-01-07 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.01.16 TOEIC Speaking 정기시험",
+     "registration_start": "2026-12-14",
+     "registration_end": "2027-01-13",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-01-16"
+      }
+     ],
+     "result_date": "2027-01-21",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-01-13 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.01.17 TOEIC Speaking 정기시험",
+     "registration_start": "2026-12-14",
+     "registration_end": "2027-01-14",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-01-17"
+      }
+     ],
+     "result_date": "2027-01-22",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-01-14 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.01.23 TOEIC Speaking 정기시험",
+     "registration_start": "2026-12-21",
+     "registration_end": "2027-01-20",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-01-23"
+      }
+     ],
+     "result_date": "2027-01-28",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-01-20 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.01.24 TOEIC Speaking 정기시험",
+     "registration_start": "2026-12-21",
+     "registration_end": "2027-01-21",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-01-24"
+      }
+     ],
+     "result_date": "2027-01-29",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-01-21 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.01.30 TOEIC Speaking 정기시험",
+     "registration_start": "2026-12-28",
+     "registration_end": "2027-01-27",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-01-30"
+      }
+     ],
+     "result_date": "2027-02-04",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-01-27 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.01.31 TOEIC Speaking 정기시험",
+     "registration_start": "2026-12-28",
+     "registration_end": "2027-01-28",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-01-31"
+      }
+     ],
+     "result_date": "2027-02-05",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-01-28 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.02.06 TOEIC Speaking 정기시험",
+     "registration_start": "2027-01-04",
+     "registration_end": "2027-02-03",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-02-06"
+      }
+     ],
+     "result_date": "2027-02-11",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-02-03 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.02.09 TOEIC Speaking 정기시험",
+     "registration_start": "2027-01-04",
+     "registration_end": "2027-02-04",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-02-09"
+      }
+     ],
+     "result_date": "2027-02-14",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-02-04 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨. 공식 일정표 원문 그대로 화요일(02.09) 시험, 일요일(02.14) 성적 발표로 표기됨."
+    },
+    {
+     "name": "2027.02.13 TOEIC Speaking 정기시험",
+     "registration_start": "2027-01-11",
+     "registration_end": "2027-02-10",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-02-13"
+      }
+     ],
+     "result_date": "2027-02-18",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-02-10 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.02.14 TOEIC Speaking 정기시험",
+     "registration_start": "2027-01-11",
+     "registration_end": "2027-02-11",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-02-14"
+      }
+     ],
+     "result_date": "2027-02-19",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-02-11 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.02.20 TOEIC Speaking 정기시험",
+     "registration_start": "2027-01-18",
+     "registration_end": "2027-02-17",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-02-20"
+      }
+     ],
+     "result_date": "2027-02-25",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-02-17 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.02.21 TOEIC Speaking 정기시험",
+     "registration_start": "2027-01-18",
+     "registration_end": "2027-02-18",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-02-21"
+      }
+     ],
+     "result_date": "2027-02-26",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-02-18 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.02.27 TOEIC Speaking 정기시험",
+     "registration_start": "2027-01-25",
+     "registration_end": "2027-02-24",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-02-27"
+      }
+     ],
+     "result_date": "2027-03-04",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-02-24 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.02.28 TOEIC Speaking 정기시험",
+     "registration_start": "2027-01-25",
+     "registration_end": "2027-02-25",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-02-28"
+      }
+     ],
+     "result_date": "2027-03-05",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-02-25 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.03.06 TOEIC Speaking 정기시험",
+     "registration_start": "2027-02-01",
+     "registration_end": "2027-03-03",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-03-06"
+      }
+     ],
+     "result_date": "2027-03-11",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-03-03 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.03.07 TOEIC Speaking 정기시험",
+     "registration_start": "2027-02-01",
+     "registration_end": "2027-03-04",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-03-07"
+      }
+     ],
+     "result_date": "2027-03-12",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-03-04 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.03.13 TOEIC Speaking 정기시험",
+     "registration_start": "2027-02-08",
+     "registration_end": "2027-03-10",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-03-13"
+      }
+     ],
+     "result_date": "2027-03-18",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-03-10 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.03.14 TOEIC Speaking 정기시험",
+     "registration_start": "2027-02-08",
+     "registration_end": "2027-03-11",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-03-14"
+      }
+     ],
+     "result_date": "2027-03-19",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-03-11 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.03.20 TOEIC Speaking 정기시험",
+     "registration_start": "2027-02-15",
+     "registration_end": "2027-03-17",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-03-20"
+      }
+     ],
+     "result_date": "2027-03-25",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-03-17 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.03.21 TOEIC Speaking 정기시험",
+     "registration_start": "2027-02-15",
+     "registration_end": "2027-03-18",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-03-21"
+      }
+     ],
+     "result_date": "2027-03-26",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-03-18 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.03.27 TOEIC Speaking 정기시험",
+     "registration_start": "2027-02-22",
+     "registration_end": "2027-03-24",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-03-27"
+      }
+     ],
+     "result_date": "2027-04-01",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-03-24 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.03.28 TOEIC Speaking 정기시험",
+     "registration_start": "2027-02-22",
+     "registration_end": "2027-03-25",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-03-28"
+      }
+     ],
+     "result_date": "2027-04-02",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-03-25 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.04.03 TOEIC Speaking 정기시험",
+     "registration_start": "2027-03-01",
+     "registration_end": "2027-03-31",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-04-03"
+      }
+     ],
+     "result_date": "2027-04-08",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-03-31 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.04.04 TOEIC Speaking 정기시험",
+     "registration_start": "2027-03-01",
+     "registration_end": "2027-04-01",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-04-04"
+      }
+     ],
+     "result_date": "2027-04-09",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-04-01 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.04.10 TOEIC Speaking 정기시험",
+     "registration_start": "2027-03-08",
+     "registration_end": "2027-04-07",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-04-10"
+      }
+     ],
+     "result_date": "2027-04-15",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-04-07 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.04.11 TOEIC Speaking 정기시험",
+     "registration_start": "2027-03-08",
+     "registration_end": "2027-04-08",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-04-11"
+      }
+     ],
+     "result_date": "2027-04-16",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-04-08 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.04.17 TOEIC Speaking 정기시험",
+     "registration_start": "2027-03-15",
+     "registration_end": "2027-04-14",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-04-17"
+      }
+     ],
+     "result_date": "2027-04-22",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-04-14 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.04.18 TOEIC Speaking 정기시험",
+     "registration_start": "2027-03-15",
+     "registration_end": "2027-04-15",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-04-18"
+      }
+     ],
+     "result_date": "2027-04-23",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-04-15 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.04.24 TOEIC Speaking 정기시험",
+     "registration_start": "2027-03-22",
+     "registration_end": "2027-04-21",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-04-24"
+      }
+     ],
+     "result_date": "2027-04-29",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-04-21 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.04.25 TOEIC Speaking 정기시험",
+     "registration_start": "2027-03-22",
+     "registration_end": "2027-04-22",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-04-25"
+      }
+     ],
+     "result_date": "2027-04-30",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-04-22 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.05.01 TOEIC Speaking 정기시험",
+     "registration_start": "2027-03-29",
+     "registration_end": "2027-04-28",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-05-01"
+      }
+     ],
+     "result_date": "2027-05-06",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-04-28 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.05.02 TOEIC Speaking 정기시험",
+     "registration_start": "2027-03-29",
+     "registration_end": "2027-04-29",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-05-02"
+      }
+     ],
+     "result_date": "2027-05-07",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-04-29 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.05.08 TOEIC Speaking 정기시험",
+     "registration_start": "2027-04-05",
+     "registration_end": "2027-05-05",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-05-08"
+      }
+     ],
+     "result_date": "2027-05-13",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-05-05 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.05.09 TOEIC Speaking 정기시험",
+     "registration_start": "2027-04-05",
+     "registration_end": "2027-05-06",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-05-09"
+      }
+     ],
+     "result_date": "2027-05-14",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-05-06 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.05.15 TOEIC Speaking 정기시험",
+     "registration_start": "2027-04-12",
+     "registration_end": "2027-05-12",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-05-15"
+      }
+     ],
+     "result_date": "2027-05-20",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-05-12 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.05.16 TOEIC Speaking 정기시험",
+     "registration_start": "2027-04-12",
+     "registration_end": "2027-05-13",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-05-16"
+      }
+     ],
+     "result_date": "2027-05-21",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-05-13 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.05.22 TOEIC Speaking 정기시험",
+     "registration_start": "2027-04-19",
+     "registration_end": "2027-05-19",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-05-22"
+      }
+     ],
+     "result_date": "2027-05-27",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-05-19 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.05.23 TOEIC Speaking 정기시험",
+     "registration_start": "2027-04-19",
+     "registration_end": "2027-05-20",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-05-23"
+      }
+     ],
+     "result_date": "2027-05-28",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-05-20 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.05.29 TOEIC Speaking 정기시험",
+     "registration_start": "2027-04-26",
+     "registration_end": "2027-05-26",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-05-29"
+      }
+     ],
+     "result_date": "2027-06-03",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-05-26 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.05.30 TOEIC Speaking 정기시험",
+     "registration_start": "2027-04-26",
+     "registration_end": "2027-05-27",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-05-30"
+      }
+     ],
+     "result_date": "2027-06-04",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-05-27 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.06.05 TOEIC Speaking 정기시험",
+     "registration_start": "2027-05-03",
+     "registration_end": "2027-06-02",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-06-05"
+      }
+     ],
+     "result_date": "2027-06-10",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-06-02 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.06.06 TOEIC Speaking 정기시험",
+     "registration_start": "2027-05-03",
+     "registration_end": "2027-06-03",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-06-06"
+      }
+     ],
+     "result_date": "2027-06-11",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-06-03 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.06.12 TOEIC Speaking 정기시험",
+     "registration_start": "2027-05-10",
+     "registration_end": "2027-06-09",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-06-12"
+      }
+     ],
+     "result_date": "2027-06-17",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-06-09 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.06.13 TOEIC Speaking 정기시험",
+     "registration_start": "2027-05-10",
+     "registration_end": "2027-06-10",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-06-13"
+      }
+     ],
+     "result_date": "2027-06-18",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-06-10 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.06.19 TOEIC Speaking 정기시험",
+     "registration_start": "2027-05-17",
+     "registration_end": "2027-06-16",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-06-19"
+      }
+     ],
+     "result_date": "2027-06-24",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-06-16 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.06.20 TOEIC Speaking 정기시험",
+     "registration_start": "2027-05-17",
+     "registration_end": "2027-06-17",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-06-20"
+      }
+     ],
+     "result_date": "2027-06-25",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-06-17 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.06.26 TOEIC Speaking 정기시험",
+     "registration_start": "2027-05-24",
+     "registration_end": "2027-06-23",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-06-26"
+      }
+     ],
+     "result_date": "2027-07-01",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-06-23 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    },
+    {
+     "name": "2027.06.27 TOEIC Speaking 정기시험",
+     "registration_start": "2027-05-24",
+     "registration_end": "2027-06-24",
+     "exams": [
+      {
+       "label": "시험",
+       "date": "2027-06-27"
+      }
+     ],
+     "result_date": "2027-07-02",
+     "source_url": "https://www.toeicswt.co.kr/receipt/examSchList.php",
+     "checked_at": "2026-11-24",
+     "note": "접수 마감 2027-06-24 10:00, 성적 발표 12:00. 공식 일정표에 회차 번호 없이 시험일로만 표시됨."
+    }
+   ],
+   "reference_rounds": [],
+   "subjects": [
+    "Questions 1-2 Read a text aloud(문장 읽기) 2문항: 준비 각 45초, 답변 각 45초",
+    "Questions 3-4 Describe a picture(사진 묘사) 2문항: 준비 각 45초, 답변 각 30초",
+    "Questions 5-7 Respond to questions(듣고 질문에 답하기) 3문항: 준비 문항당 3초, 답변 15~30초",
+    "Questions 8-10 Respond to questions using information provided(제공된 정보를 사용하여 질문에 답하기) 3문항: 준비 문항당 3초(지문 읽는 시간 45초), 답변 15~30초",
+    "Question 11 Express an opinion(의견 제시하기) 1문항: 준비 45초, 답변 60초",
+    "총 11문항, 약 20분, 컴퓨터 음성 녹음 방식(CBT)"
+   ],
+   "pass_criteria": "합격·불합격 없이 점수(0~200점)와 레벨로 평가. 예: Advanced High 200, Advanced Mid 180~190, Advanced Low 160~170, Intermediate High 140~150, Intermediate Mid 110~130, Intermediate Low 90~100, Novice High 60~80, 그 아래 0~50. 성적 유효기간은 시험 시행일로부터 2년 뒤 해당 시험일자까지.",
+   "fee": "84,000원(부가세 10% 포함). TOEIC 정기접수와 패키지 접수 시 총 응시료 10% 할인(122,800원).",
+   "fee_detail": "84,000원(부가세 10% 포함). TOEIC 정기접수와 패키지 접수 시 총 응시료 10% 할인(122,800원).",
+   "eligibility_note": null,
+   "info_source_url": "https://www.toeicswt.co.kr/common/template/viewContents.php?contentsCode=72",
+   "provenance": "공식 시험일정 페이지에 2027-06-27 시험까지만 공개되어 있음(2027년 상반기분). 2027년 7월 이후 일정은 아직 공식 일정표에 없음. 공식 일정표는 회차 번호 없이 시험일별로 접수기간·성적발표일을 보여 주며, 주로 매주 토·일에 시행(2027-02-09 화요일 시험 1회 포함). 같은 날 여러 시간대 중 고르는 방식은 접수 화면에서 정해지며 일정표에는 시간이 나오지 않음. 특별시험 성적은 응시일로부터 약 2주 내외에 확인 가능(수험자가이드). 응시료·성적 유효기간: https://www.toeicswt.co.kr/common/template/viewContents.php?contentsCode=86, 레벨·점수: contentsCode=78. 공식 일정표에는 '상기 일정은 주관사 사정에 따라 변경될 수 있습니다'라고 적혀 있음.",
+   "kind_note": null
+  },
+  {
+   "id": "opic",
+   "name": "OPIc",
+   "aliases": [
+    "오픽"
+   ],
+   "issuer": "ACTFL(미국외국어교육협의회, 개발·평가) / 국내 시행 기관은 공식 사이트에서 확인하지 못함",
+   "kind": "language",
+   "official_url": "https://www.opic.or.kr/",
+   "schedule_source_url": "https://www.actfl.org/assessments/postsecondary-assessments/oral-proficiency-interview-computer-opic",
+   "mode": "always",
+   "schedule_status": "source_unreadable",
+   "checked_at": "2026-11-24",
+   "rounds": [],
+   "reference_rounds": [],
+   "subjects": [
+    "Background Survey(배경 설문): 직업·학교·거주·여가·관심사 설문으로 출제 주제 범위가 정해짐",
+    "Self-Assessment(자가 평가): 본인 말하기 수준을 골라 난이도별 시험 형식(Form)이 정해짐",
+    "Introduction and Warm-Up 후 컴퓨터 아바타(Ava)가 묻는 질문에 녹음으로 답변, 평균 20~40분"
+   ],
+   "pass_criteria": "합격·불합격 없이 등급으로 평가. ACTFL 공식 설명상 OPIc은 Novice부터 Superior까지 ACTFL 등급 전체를 평가(국내 성적표의 세부 등급 체계는 국내 공식 사이트를 읽지 못해 확인 안 됨).",
+   "fee": null,
+   "fee_detail": null,
+   "eligibility_note": null,
+   "info_source_url": "https://www.actfl.org/assessments/postsecondary-assessments/oral-proficiency-interview-computer-opic",
+   "provenance": "국내 OPIc 공식 사이트(www.opic.or.kr, www.opic.co.kr, m.opic.or.kr)의 robots.txt가 일반 봇 전체에 'Disallow: /'라서 자동 조회하지 않음. 그래서 국내 시험일·접수 마감·성적 발표일·응시료·국내 시행 기관을 공식 출처로 확인하지 못했고 모두 비워 둠. ACTFL 공식 페이지는 OPIc을 '응시자와 감독관이 편한 시간에 on demand로 볼 수 있는' 인터넷 시험이라고 설명하므로 mode는 always로 둠(정해진 연간 회차 없음). 앱에서 일정을 보여 주려면 사용자가 opic.or.kr에서 직접 고사장·날짜를 골라 접수하도록 안내하는 편이 안전함. 블로그 등에서 본 응시료(84,000원)·성적 발표 시점 등은 공식 출처가 아니어서 넣지 않음.",
+   "kind_note": null
+  },
+  {
+   "id": "korean_history",
+   "name": "한국사능력검정시험",
+   "aliases": [
+    "한국사",
+    "한능검",
+    "한국사능력검정"
+   ],
+   "issuer": "국사편찬위원회(시행 위탁: 현대아산)",
+   "kind": "national_other",
+   "official_url": "https://www.historyexam.go.kr/",
+   "schedule_source_url": "https://www.historyexam.go.kr/pst/view.do?bbs=noti&pst_sno=1000030163",
+   "mode": "scheduled",
+   "schedule_status": "confirmed",
+   "checked_at": "2026-11-24",
+   "rounds": [
+    {
+     "name": "제82회",
+     "registration_start": "2027-01-12",
+     "registration_end": "2027-01-19",
+     "exams": [
+      {
+       "label": "심화",
+       "date": "2027-02-13"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.historyexam.go.kr/pst/view.do?bbs=noti&pst_sno=1000030163",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 1.12.(화) 10:00~1.19.(화) 17:00. 취소좌석 접수 2027-01-26 10:00~2027-01-29 17:00(잔여석 한정). 합격자 발표일은 2027년 시행 일정 공지에 없어 비움."
+    },
+    {
+     "name": "제83회",
+     "registration_start": "2027-04-20",
+     "registration_end": "2027-04-27",
+     "exams": [
+      {
+       "label": "기본·심화",
+       "date": "2027-05-23"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.historyexam.go.kr/pst/view.do?bbs=noti&pst_sno=1000030163",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 4.20.(화) 10:00~4.27.(화) 17:00. 취소좌석 접수 2027-05-04 10:00~2027-05-07 17:00. 토요근무자 등을 위해 일요일 시행. 합격자 발표일은 2027년 시행 일정 공지에 없어 비움."
+    },
+    {
+     "name": "제84회",
+     "registration_start": "2027-07-06",
+     "registration_end": "2027-07-13",
+     "exams": [
+      {
+       "label": "기본·심화",
+       "date": "2027-08-07"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.historyexam.go.kr/pst/view.do?bbs=noti&pst_sno=1000030163",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 7.6.(화) 10:00~7.13.(화) 17:00. 취소좌석 접수 2027-07-20 10:00~2027-07-23 17:00. 합격자 발표일은 2027년 시행 일정 공지에 없어 비움."
+    },
+    {
+     "name": "제85회",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "심화",
+       "date": "2027-10-16"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.historyexam.go.kr/pst/view.do?bbs=noti&pst_sno=1000030163",
+     "checked_at": "2026-11-24",
+     "note": "공지 원문의 정기접수는 '9.6.(화) 10:00 ~ 9.13.(화) 17:00'인데 2027-09-06·09-13은 실제로 월요일이라 날짜와 요일이 맞지 않음. 어느 쪽이 오기인지 알 수 없어 접수일을 비움(공식 응시요강으로 재확인 필요). 취소좌석 접수 2027-09-28 10:00~2027-10-01 17:00. 합격자 발표일은 2027년 시행 일정 공지에 없어 비움."
+    },
+    {
+     "name": "제86회",
+     "registration_start": "2027-11-02",
+     "registration_end": "2027-11-09",
+     "exams": [
+      {
+       "label": "심화",
+       "date": "2027-11-27"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.historyexam.go.kr/pst/view.do?bbs=noti&pst_sno=1000030163",
+     "checked_at": "2026-11-24",
+     "note": "정기접수 11.2.(화) 10:00~11.9.(화) 17:00. 취소좌석 접수 2027-11-10 13:00~2027-11-12 17:00. 합격자 발표일은 2027년 시행 일정 공지에 없어 비움."
+    }
+   ],
+   "reference_rounds": [],
+   "subjects": [
+    "심화: 50문항(5지 택1형), 100점 만점(문항별 1~3점 차등), 시험 80분(10:30~11:50)",
+    "기본: 50문항(4지 택1형), 100점 만점(문항별 1~3점 차등), 시험 70분(10:30~11:40)"
+   ],
+   "pass_criteria": "심화: 1급 80점 이상, 2급 70~79점, 3급 60~69점 / 기본: 4급 80점 이상, 5급 70~79점, 6급 60~69점",
+   "fee": "심화 27,000원, 기본 22,000원",
+   "fee_detail": "심화 27,000원, 기본 22,000원",
+   "eligibility_note": null,
+   "info_source_url": "https://www.historyexam.go.kr/pageLink.do?link=examGuideline",
+   "provenance": "2027년 일정은 2026-11-03 공지 '<2027년도 한국사능력검정시험 시행 일정>'에서 확인. 응시료·시험시간 출처: https://www.historyexam.go.kr/pageLink.do?link=apyexmInfo. 제81회(2026-11-28 시험, 발표 2026-12-11)는 시험일이 2026-12-01 이전이라 넣지 않음(https://www.historyexam.go.kr/pageLink.do?link=examSchedule). 제81회는 정기접수 초반에 지역별 순차 접수를 했으므로 2027년 회차도 응시요강에서 지역별 접수 시작 시각을 확인해야 함. 합격자 발표는 홈페이지 성적 조회·인증서 출력 방식.",
+   "kind_note": "국가기술자격법에 따른 국가기술자격이 아님. 교육부 소속 국가기관인 국사편찬위원회가 주관·시행하는 한국사 인증시험이라, 다섯 종류 중 '국가 시행'에 가장 가까운 national_technical로 둠."
+  },
+  {
+   "id": "computerized_accounting",
+   "name": "전산회계 1급·2급",
+   "aliases": [
+    "전산회계",
+    "전산회계 1급",
+    "전산회계 2급"
+   ],
+   "issuer": "한국세무사회",
+   "kind": "national_certified_private",
+   "official_url": "https://license.kacta.or.kr/",
+   "schedule_source_url": "https://license.kacta.or.kr/",
+   "mode": "scheduled",
+   "schedule_status": "source_unreadable",
+   "checked_at": "2026-11-24",
+   "rounds": [],
+   "reference_rounds": [],
+   "subjects": [],
+   "pass_criteria": null,
+   "fee": null,
+   "fee_detail": null,
+   "eligibility_note": null,
+   "info_source_url": null,
+   "provenance": "공식 출처를 읽지 못함. 자격시험 사이트 license.kacta.or.kr(구 license.kacpta.or.kr)이 이 환경과 WebFetch 모두에서 연결 시간 초과·연결 거부로 열리지 않았다(해외 접속 차단으로 보임). 우회하지 않았다. 한국세무사회 본회 사이트(https://www.kacta.or.kr/)는 열리지만 자격시험 사이트로 가는 링크만 있고 시험 일정은 없으며, 공공데이터포털에도 이 시험 일정 데이터가 없었다. 그래서 날짜·과목·합격 기준·응시료를 모두 비워 둔다. 전산세무·전산회계는 같은 회차·같은 날에 함께 시행된다.",
+   "kind_note": "국가공인 민간자격으로 알려져 있으나, 시행 기관 자격시험 사이트에 접속하지 못해 이번 조사에서 공식 확인은 하지 못했다."
+  },
+  {
+   "id": "computerized_tax",
+   "name": "전산세무 1급·2급",
+   "aliases": [
+    "전산세무",
+    "전산세무 1급",
+    "전산세무 2급"
+   ],
+   "issuer": "한국세무사회",
+   "kind": "national_certified_private",
+   "official_url": "https://license.kacta.or.kr/",
+   "schedule_source_url": "https://license.kacta.or.kr/",
+   "mode": "scheduled",
+   "schedule_status": "source_unreadable",
+   "checked_at": "2026-11-24",
+   "rounds": [],
+   "reference_rounds": [],
+   "subjects": [],
+   "pass_criteria": null,
+   "fee": null,
+   "fee_detail": null,
+   "eligibility_note": null,
+   "info_source_url": null,
+   "provenance": "공식 출처를 읽지 못함. 자격시험 사이트 license.kacta.or.kr(구 license.kacpta.or.kr)이 이 환경과 WebFetch 모두에서 연결 시간 초과·연결 거부로 열리지 않았다(해외 접속 차단으로 보임). 우회하지 않았다. 한국세무사회 본회 사이트(https://www.kacta.or.kr/)는 열리지만 자격시험 사이트로 가는 링크만 있고 시험 일정은 없으며, 공공데이터포털에도 이 시험 일정 데이터가 없었다. 그래서 날짜·과목·합격 기준·응시료를 모두 비워 둔다. 전산세무·전산회계는 같은 회차·같은 날에 함께 시행된다.",
+   "kind_note": "국가공인 민간자격으로 알려져 있으나, 시행 기관 자격시험 사이트에 접속하지 못해 이번 조사에서 공식 확인은 하지 못했다."
+  },
+  {
+   "id": "gtq",
+   "name": "GTQ(그래픽기술자격)",
+   "aliases": [
+    "GTQ",
+    "그래픽기술자격"
+   ],
+   "issuer": "한국생산성본부(KPC)",
+   "kind": "national_certified_private",
+   "official_url": "https://license.kpc.or.kr/",
+   "schedule_source_url": "https://license.kpc.or.kr/nasec/rceptexmncnfirm/selectExprschdul.do?year=2026",
+   "mode": "scheduled",
+   "schedule_status": "confirmed",
+   "checked_at": "2026-11-24",
+   "rounds": [
+    {
+     "name": "2026년 제12회 정기시험",
+     "registration_start": "2026-11-18",
+     "registration_end": "2026-11-25",
+     "exams": [
+      {
+       "label": "실기시험",
+       "date": "2026-12-19"
+      }
+     ],
+     "result_date": "2027-01-08",
+     "source_url": "https://license.kpc.or.kr/nasec/rceptexmncnfirm/selectExprschdul.do?year=2026",
+     "checked_at": "2026-11-24",
+     "note": "2026년 시험일정 페이지(selectExprschdul.do?year=2026)의 값. 접수는 이미 끝남(2026-11-25 마감)."
+    },
+    {
+     "name": "2027년 제1회 정기시험",
+     "registration_start": "2026-12-23",
+     "registration_end": "2026-12-30",
+     "exams": [
+      {
+       "label": "실기시험",
+       "date": "2027-01-23"
+      }
+     ],
+     "result_date": "2027-02-12",
+     "source_url": "https://license.kpc.or.kr/nasec/rceptexmncnfirm/selectExprschdul.do?year=2027",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2027년 제2회 정기시험",
+     "registration_start": "2027-01-27",
+     "registration_end": "2027-02-03",
+     "exams": [
+      {
+       "label": "실기시험",
+       "date": "2027-02-27"
+      }
+     ],
+     "result_date": "2027-03-19",
+     "source_url": "https://license.kpc.or.kr/nasec/rceptexmncnfirm/selectExprschdul.do?year=2027",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2027년 제3회 정기시험",
+     "registration_start": "2027-02-24",
+     "registration_end": "2027-03-03",
+     "exams": [
+      {
+       "label": "실기시험",
+       "date": "2027-03-27"
+      }
+     ],
+     "result_date": "2027-04-16",
+     "source_url": "https://license.kpc.or.kr/nasec/rceptexmncnfirm/selectExprschdul.do?year=2027",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2027년 제4회 정기시험",
+     "registration_start": "2027-03-24",
+     "registration_end": "2027-03-31",
+     "exams": [
+      {
+       "label": "실기시험",
+       "date": "2027-04-24"
+      }
+     ],
+     "result_date": "2027-05-14",
+     "source_url": "https://license.kpc.or.kr/nasec/rceptexmncnfirm/selectExprschdul.do?year=2027",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2027년 제5회 정기시험",
+     "registration_start": "2027-04-28",
+     "registration_end": "2027-05-06",
+     "exams": [
+      {
+       "label": "실기시험",
+       "date": "2027-05-29"
+      }
+     ],
+     "result_date": "2027-06-18",
+     "source_url": "https://license.kpc.or.kr/nasec/rceptexmncnfirm/selectExprschdul.do?year=2027",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2027년 제6회 정기시험",
+     "registration_start": "2027-05-26",
+     "registration_end": "2027-06-02",
+     "exams": [
+      {
+       "label": "실기시험",
+       "date": "2027-06-26"
+      }
+     ],
+     "result_date": "2027-07-16",
+     "source_url": "https://license.kpc.or.kr/nasec/rceptexmncnfirm/selectExprschdul.do?year=2027",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2027년 제7회 정기시험",
+     "registration_start": "2027-06-23",
+     "registration_end": "2027-06-30",
+     "exams": [
+      {
+       "label": "실기시험",
+       "date": "2027-07-24"
+      }
+     ],
+     "result_date": "2027-08-13",
+     "source_url": "https://license.kpc.or.kr/nasec/rceptexmncnfirm/selectExprschdul.do?year=2027",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2027년 제8회 정기시험",
+     "registration_start": "2027-07-28",
+     "registration_end": "2027-08-04",
+     "exams": [
+      {
+       "label": "실기시험",
+       "date": "2027-08-28"
+      }
+     ],
+     "result_date": "2027-09-17",
+     "source_url": "https://license.kpc.or.kr/nasec/rceptexmncnfirm/selectExprschdul.do?year=2027",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2027년 제9회 정기시험",
+     "registration_start": "2027-08-25",
+     "registration_end": "2027-09-01",
+     "exams": [
+      {
+       "label": "실기시험",
+       "date": "2027-09-25"
+      }
+     ],
+     "result_date": "2027-10-15",
+     "source_url": "https://license.kpc.or.kr/nasec/rceptexmncnfirm/selectExprschdul.do?year=2027",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2027년 제10회 정기시험",
+     "registration_start": "2027-09-22",
+     "registration_end": "2027-09-29",
+     "exams": [
+      {
+       "label": "실기시험",
+       "date": "2027-10-23"
+      }
+     ],
+     "result_date": "2027-11-12",
+     "source_url": "https://license.kpc.or.kr/nasec/rceptexmncnfirm/selectExprschdul.do?year=2027",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2027년 제11회 정기시험",
+     "registration_start": "2027-10-27",
+     "registration_end": "2027-11-03",
+     "exams": [
+      {
+       "label": "실기시험",
+       "date": "2027-11-27"
+      }
+     ],
+     "result_date": "2027-12-17",
+     "source_url": "https://license.kpc.or.kr/nasec/rceptexmncnfirm/selectExprschdul.do?year=2027",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2027년 제12회 정기시험",
+     "registration_start": "2027-11-17",
+     "registration_end": "2027-11-24",
+     "exams": [
+      {
+       "label": "실기시험",
+       "date": "2027-12-18"
+      }
+     ],
+     "result_date": "2028-01-07",
+     "source_url": "https://license.kpc.or.kr/nasec/rceptexmncnfirm/selectExprschdul.do?year=2027",
+     "checked_at": "2026-11-24"
+    }
+   ],
+   "reference_rounds": [],
+   "subjects": [
+    "1급: Adobe Photoshop 실무작업형 실기시험 4문항, 90분",
+    "2급: Adobe Photoshop 실무작업형 실기시험 4문항, 90분",
+    "3급: Adobe Photoshop 실무작업형 실기시험 3문항, 60분",
+    "S/W 버전: Adobe Photoshop CS6, CC(한글, 영문). 이론(필기)시험 없음"
+   ],
+   "pass_criteria": "100점 만점에 1급 70점 이상, 2급 60점 이상, 3급 60점 이상",
+   "fee": "일반접수 1급 42,000원, 2급 32,000원, 3급 22,000원",
+   "fee_detail": "일반접수 1급 42,000원, 2급 32,000원, 3급 22,000원(군장병접수 34,000원·26,000원·18,000원). 부가가치세 포함, 결제대행수수료 1,000원 별도",
+   "eligibility_note": null,
+   "info_source_url": "https://license.kpc.or.kr/nasec/qlfint/qlfint/selectGtqinfomg.do?pageKind=announcement_gtq",
+   "provenance": "정기시험은 매월 4주차 토요일(연 12회, 2027년 제12회는 2027-12-18). 날짜는 KPC 시험일정 안내 페이지(연도별, https://license.kpc.or.kr/nasec/rceptexmncnfirm/selectExprschdul.do?year=2027 및 year=2026)에 실린 일정표에서 확인했다. 접수 기간은 인터넷접수 기준이며, 방문접수는 인터넷접수 기간 내에 관할 지역센터에 문의한다. 일정은 본부 사정·법정공휴일 등으로 바뀔 수 있다고 공지되어 있다. GTQi(일러스트)도 같은 날 시행한다. 접수 전 KPC 공지사항에서 회차별 변경 안내를 확인하는 것이 좋다(공지 게시판은 robots.txt가 막고 있어 이번 조사에서 읽지 않음).",
+   "kind_note": "GTQ 1급·2급은 국가공인 민간자격(공인번호 산업통상자원부 제2024-1호), 3급은 등록 민간자격(등록번호 2008-0192)이다. GTQi(일러스트)·GTQid(인디자인)·GTQ-AI는 별도 종목이다."
+  },
+  {
+   "id": "distribution_manager",
+   "name": "유통관리사 2급",
+   "aliases": [
+    "유통관리사"
+   ],
+   "issuer": "대한상공회의소(자격평가사업단)",
+   "kind": "national_other",
+   "official_url": "https://license.korcham.net/",
+   "schedule_source_url": "https://license.korcham.net/co/examguide03.do?cd=0201&mm=31",
+   "mode": "scheduled",
+   "schedule_status": "not_announced",
+   "checked_at": "2026-11-24",
+   "rounds": [],
+   "reference_rounds": [
+    {
+     "name": "2026년 제1회 필기",
+     "registration_start": "2026-04-16",
+     "registration_end": "2026-04-22",
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-05-09"
+      }
+     ],
+     "result_date": "2026-06-09",
+     "source_url": "https://license.korcham.net/co/examguide03.do?cd=0201&mm=31",
+     "checked_at": "2026-11-24",
+     "note": "2·3급 시행(1급 미시행 회차)"
+    },
+    {
+     "name": "2026년 제2회 필기",
+     "registration_start": "2026-07-30",
+     "registration_end": "2026-08-05",
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-08-22"
+      }
+     ],
+     "result_date": "2026-09-22",
+     "source_url": "https://license.korcham.net/co/examguide03.do?cd=0201&mm=31",
+     "checked_at": "2026-11-24",
+     "note": "1·2·3급 시행"
+    },
+    {
+     "name": "2026년 제3회 필기",
+     "registration_start": "2026-10-22",
+     "registration_end": "2026-10-28",
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-11-14"
+      }
+     ],
+     "result_date": "2026-12-15",
+     "source_url": "https://license.korcham.net/co/examguide03.do?cd=0201&mm=31",
+     "checked_at": "2026-11-24",
+     "note": "2·3급 시행(1급 미시행 회차)"
+    }
+   ],
+   "subjects": [
+    "2급 필기: 유통물류일반관리, 상권분석, 유통마케팅, 유통정보 (객관식 90문항·5지 선다형, 100분)"
+   ],
+   "pass_criteria": "매과목 100점 만점에 과목당 40점 이상이고 평균 60점 이상",
+   "fee": "29,700원(부가세 포함)",
+   "fee_detail": "29,700원(부가세 포함)",
+   "eligibility_note": null,
+   "info_source_url": "https://license.korcham.net/co/examguide.do?mm=31&cd=0201",
+   "provenance": "정기시험(필기만, 연 3회). 2026-11-24 현재 대한상공회의소 유통관리사 정기시험 일정 페이지의 연도 선택은 2026년까지만 있고, 2027년을 조회하면 '시험일정이 없습니다'로 나옴 → 2027년 일정 미공고. 2026년 회차를 reference_rounds에 참고로 넣음. 정기 검정 원서접수 마지막 날 접수마감은 18:00(수험료 결제까지 완료해야 접수 인정). 접수기간 중이라도 시험장이 조기 마감될 수 있음. 일반계산기만 지참 가능. 2026년 제3회 발표일(2026-12-15)은 12월이지만 시험일이 11월이라 rounds에는 넣지 않음.",
+   "kind_note": "국가기술자격이 아님. 대한상공회의소 공지에서 '유통관리사(국가전문자격)'로 표기하고(https://license.korcham.net/customer/noticeview.do?num=212626), 종목 안내에서도 '국가자격'으로 표기함(컴퓨터활용능력은 '국가기술자격', 무역영어는 '국가공인자격'으로 구분). 고용노동부 2027년도 국가기술자격 검정시행계획의 대한상공회의소 위탁 16종목에도 들어 있지 않음. 다섯 종류 중 '국가가 주관하는 자격'이라는 점에서 가장 가까운 national_technical로 둠."
+  },
+  {
+   "id": "trade_english",
+   "name": "무역영어",
+   "aliases": [],
+   "issuer": "대한상공회의소(자격평가사업단)",
+   "kind": "national_certified_private",
+   "official_url": "https://license.korcham.net/",
+   "schedule_source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+   "mode": "scheduled",
+   "schedule_status": "not_announced",
+   "checked_at": "2026-11-24",
+   "rounds": [],
+   "reference_rounds": [
+    {
+     "name": "2026년 1회 필기",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-05-03"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2026년 2회 필기",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-05-10"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2026년 3회 필기",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-05-17"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2026년 4회 필기",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-05-24"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2026년 5회 필기",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-05-31"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2026년 6회 필기",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-08-02"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2026년 7회 필기",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-08-09"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2026년 8회 필기",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-08-16"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2026년 9회 필기",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-08-23"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2026년 10회 필기",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-08-30"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2026년 11회 필기",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-11-01"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2026년 12회 필기",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-11-08"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2026년 13회 필기",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-11-15"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2026년 14회 필기",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-11-22"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2026년 15회 필기",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "필기",
+       "date": "2026-11-29"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://license.korcham.net/customer/noticeview.do?num=254626",
+     "checked_at": "2026-11-24"
+    }
+   ],
+   "subjects": [
+    "1급 필기: 영문해석, 영작문, 무역실무 (객관식 75문항, 90분)",
+    "2급 필기: 영문해석, 영작문, 무역실무 (객관식 75문항, 90분)",
+    "3급 필기: 영문해석, 영작문, 무역실무 (객관식 75문항, 90분)"
+   ],
+   "pass_criteria": "매과목 100점 만점에 평균 60점 이상(단, 1급은 과목당 40점 미만인 경우 불합격)",
+   "fee": "33,000원(부가세 포함)",
+   "fee_detail": "33,000원(부가세 포함)",
+   "eligibility_note": null,
+   "info_source_url": "https://license.korcham.net/co/examguide.do?mm=51&cd=0301",
+   "provenance": "공식 안내상 '상시' 시험이지만 시험일은 연간 지정된 일요일에만 열림(그래서 mode를 mixed로 둠). 시험일정 안내(https://license.korcham.net/co/examguide03.do?cd=0301&mm=51): 접수기간은 개설일로부터 시험일 4일 전까지(지역 상공회의소별로 시험을 개설), 시험일자는 '상시 - 5월, 8월, 11월(해당월 매주 일요일, 총15회)'(시험 개설 여부는 시험장 상황에 따라 다름), 합격발표는 시험일 다음날 오전 10시. 회차별 접수 시작·마감일은 지역·시험장마다 달라 공식 일정표에 없으므로 비워 둠(결과 발표일도 회차별 날짜로 공지되지 않아 비워 둠). 2026년 일정은 2025-12-24 공지 「2026년 무역영어, 비서, 전산회계운용사 1급 시험일정 안내」로 발표됨(https://license.korcham.net/customer/noticeview.do?num=254626). 2027년 일정 공지는 2026-11-24 현재 아직 없음 → published false, 2026년 15회를 reference_rounds에 넣음. 시험일정 페이지의 '총15회' 문구는 2026년 기준이므로 2027년 날짜를 이 문구로 추정하면 안 됨. 수험료 환불: 접수기간 내(시험일 4일 전까지) 100% 환불, 접수 마감 이후 취소는 환불 불가.",
+   "kind_note": "국가공인자격(산업통상부 제2025-1호), 민간자격 등록번호 제2008-0218호. 1·2·3급."
+  },
+  {
+   "id": "aws_saa",
+   "name": "AWS Certified Solutions Architect – Associate",
+   "aliases": [
+    "AWS SAA",
+    "AWS 솔루션스 아키텍트",
+    "SAA-C03"
+   ],
+   "issuer": "Amazon Web Services(AWS)",
+   "kind": "vendor",
+   "official_url": "https://aws.amazon.com/ko/certification/certified-solutions-architect-associate/",
+   "schedule_source_url": "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html",
+   "mode": "always",
+   "schedule_status": "always",
+   "checked_at": "2026-11-24",
+   "rounds": [],
+   "reference_rounds": [],
+   "subjects": [
+    "시험 코드 SAA-C03",
+    "도메인 1: 보안 아키텍처 설계(Design Secure Architectures) 30%",
+    "도메인 2: 복원력 있는 아키텍처 설계(Design Resilient Architectures) 26%",
+    "도메인 3: 고성능 아키텍처 설계(Design High-Performing Architectures) 24%",
+    "도메인 4: 비용 최적화 아키텍처 설계(Design Cost-Optimized Architectures) 20%",
+    "65문항(채점 50 + 비채점 15), 객관식 또는 복수 응답, 130분"
+   ],
+   "pass_criteria": "환산 점수 100~1,000점 중 720점 이상 합격(보상형 채점: 영역별로 따로 합격할 필요 없이 전체 점수로 판정)",
+   "fee": "150 USD(환율 등 추가 비용은 공식 Exam pricing 안내 참조)",
+   "fee_detail": "150 USD(환율 등 추가 비용은 공식 Exam pricing 안내 참조)",
+   "eligibility_note": null,
+   "info_source_url": "https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html",
+   "provenance": "정해진 시험 회차 없음. Pearson VUE 테스트 센터 또는 온라인 감독 시험으로 예약해 응시. 한국어 등으로 응시 가능. 자격 유효기간 3년(공식 페이지 FAQ). 시험 개요(시간·문항·응시료·응시 방식) 출처: https://aws.amazon.com/ko/certification/certified-solutions-architect-associate/ / 시험 코드·합격 점수·도메인 비중 출처: 공식 시험 안내서(https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html).",
+   "kind_note": null
+  },
+  {
+   "id": "jlpt",
+   "name": "JLPT(일본어능력시험)",
+   "aliases": [
+    "JLPT",
+    "일본어능력시험"
+   ],
+   "issuer": "국제교류기금·일본국제교육지원협회(주최) / 한국 시행: JLPT 서울실시위원회(㈜김스어소시에이션)·부산실시위원회·제주실시위원회",
+   "kind": "language",
+   "official_url": "https://www.jlpt.or.kr/",
+   "schedule_source_url": "https://www.jlpt.or.kr/html/",
+   "mode": "scheduled",
+   "schedule_status": "not_announced",
+   "checked_at": "2026-11-24",
+   "rounds": [
+    {
+     "name": "2026년 제2회 JLPT",
+     "registration_start": "2026-09-01",
+     "registration_end": "2026-09-20",
+     "exams": [
+      {
+       "label": "시험(N1~N5)",
+       "date": "2026-12-06"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.jlpt.or.kr/html/",
+     "checked_at": "2026-11-24",
+     "note": "추가접수 2026-09-28~2026-10-04(온라인만, 정규 수험료의 10% 수수료). 성적발표는 공식 페이지에 '1월 말'로만 적혀 있어 날짜를 비움. 입실완료 N1~N2 09:40 / N3~N5 13:40(부산실시위원회 안내). 접수는 이미 끝났지만 시험일이 2026-12에 있어 넣음."
+    }
+   ],
+   "reference_rounds": [
+    {
+     "name": "2026년 제1회 JLPT",
+     "registration_start": "2026-04-01",
+     "registration_end": "2026-04-19",
+     "exams": [
+      {
+       "label": "시험(N1~N5)",
+       "date": "2026-07-05"
+      }
+     ],
+     "result_date": "2026-08-27",
+     "source_url": "https://www.bsjlpt.or.kr/web/support/noticeview.html?idx=852&bo_master_idx=1&page_name=notice",
+     "checked_at": "2026-11-24",
+     "note": "참고용(2027년 일정 미공고). 접수기간은 부산실시위원회 공지(정규접수 4월 1일(수)~4월 19일(일), 우편접수 4월 10일 소인까지) 기준. 추가접수 2026-04-27~2026-05-03(https://www.bsjlpt.or.kr/web/support/noticeview.html?idx=873&bo_master_idx=1&page_name=notice). 시험일 2026-07-05는 jlpt.jp(https://www.jlpt.jp/index.cgi)에서 확인. 결과일 2026-08-27은 부산실시위원회 온라인 성적조회 개시일(https://www.bsjlpt.or.kr/web/support/noticeview.html?idx=891&bo_master_idx=1&page_name=notice)이며, 서울실시위원회 발표일은 정적 페이지에서 확인하지 못함."
+    },
+    {
+     "name": "2026년 제2회 JLPT",
+     "registration_start": "2026-09-01",
+     "registration_end": "2026-09-20",
+     "exams": [
+      {
+       "label": "시험(N1~N5)",
+       "date": "2026-12-06"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.jlpt.or.kr/html/",
+     "checked_at": "2026-11-24",
+     "note": "참고용 사본(같은 회차가 rounds에도 있음). 추가접수 2026-09-28~2026-10-04(온라인만, 정규 수험료의 10% 수수료). 성적발표는 공식 페이지에 '1월 말'로만 적혀 있어 날짜를 비움. 입실완료 N1~N2 09:40 / N3~N5 13:40(부산실시위원회 안내). 접수는 이미 끝났지만 시험일이 2026-12에 있어 넣음."
+    }
+   ],
+   "subjects": [
+    "N1: 언어지식(문자·어휘·문법)·독해 110분 / 청해 55분",
+    "N2: 언어지식(문자·어휘·문법)·독해 105분 / 청해 50분",
+    "N3: 언어지식(문자·어휘) 30분 / 언어지식(문법)·독해 70분 / 청해 40분",
+    "N4: 언어지식(문자·어휘) 25분 / 언어지식(문법)·독해 55분 / 청해 35분",
+    "N5: 언어지식(문자·어휘) 20분 / 언어지식(문법)·독해 40분 / 청해 30분"
+   ],
+   "pass_criteria": "모든 과목을 응시하고 ① 종합득점이 합격점 이상이며 ② 득점 구분별 득점이 모두 기준점 이상이어야 합격. 종합득점 0~180점 중 합격점 N1 100점, N2 90점, N3 95점, N4 90점, N5 80점. 기준점: N1~N3은 언어지식(문자·어휘·문법)·독해·청해 각 0~60점 중 19점, N4·N5는 언어지식·독해 0~120점 중 38점, 청해 0~60점 중 19점.",
+   "fee": "정규접수 N1~N3 75,000원, N4~N5 60,000원 / 추가접수 N1~N3 82,500원, N4~N5 66,000원",
+   "fee_detail": "정규접수 N1~N3 75,000원, N4~N5 60,000원 / 추가접수 N1~N3 82,500원, N4~N5 66,000원(부가세 포함, 2026년 제2회 부산실시위원회 안내 기준)",
+   "eligibility_note": null,
+   "info_source_url": "https://www.jlpt.or.kr/html/jlpt_info02.html",
+   "provenance": "2027년 시험일·접수 일정은 2026-11-24 기준 공식 공고를 찾지 못함: jlpt.jp 첫 화면은 2026년 7월 5일·12월 6일만 표시하고, 부산실시위원회 공지 목록(2026-11-23 글까지)에도 2027년 일정이 없음. 서울실시위원회(jlpt.or.kr)의 공지사항·시험실시안내·수험료는 자바스크립트가 POST 요청으로 불러오는 내용이라 읽지 않음(비공개 호출 금지 규칙). 그래서 응시료는 같은 시험의 부산실시위원회 공식 안내를 출처로 씀(https://www.bsjlpt.or.kr/web/guide/exam_explanation.html). jlpt.jp 기준 연 2회(7월·12월) 시행.",
+   "kind_note": null
+  },
+  {
+   "id": "hsk",
+   "name": "HSK(한어수평고시)",
+   "aliases": [
+    "HSK",
+    "한어수평고시"
+   ],
+   "issuer": "HSK한국사무국((사)한중문화협력연구원)",
+   "kind": "language",
+   "official_url": "https://www.hsk.or.kr/",
+   "schedule_source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44943&p=1",
+   "mode": "scheduled",
+   "schedule_status": "partial",
+   "checked_at": "2026-11-24",
+   "rounds": [
+    {
+     "name": "2026-12-13 HSK 3.0 PBT(지필)",
+     "registration_start": "2026-10-30",
+     "registration_end": "2026-11-16",
+     "exams": [
+      {
+       "label": "HSK 1~6급 PBT",
+       "date": "2026-12-13"
+      }
+     ],
+     "result_date": "2027-01-15",
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44943&p=1",
+     "checked_at": "2026-11-24",
+     "note": "2026년 PBT 시험일정 표(https://www.hsk.or.kr/?c1=100&c2=001&c3=002&c4=009)와 같음. 성적발표는 법정 공휴일로 연기된 날짜로 공지됨."
+    },
+    {
+     "name": "2026-12-13 HSK 3.0 IBT(컴퓨터)",
+     "registration_start": "2026-10-30",
+     "registration_end": "2026-12-03",
+     "exams": [
+      {
+       "label": "HSK 1~6급 IBT",
+       "date": "2026-12-13"
+      }
+     ],
+     "result_date": "2026-12-28",
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44943&p=1",
+     "checked_at": "2026-11-24",
+     "note": "2026년 IBT 시험일정 표(https://www.hsk.or.kr/?c1=100&c2=002&c3=002&c4=006)와 같음."
+    },
+    {
+     "name": "2027-01-09 HSK 3.0 PBT(지필)",
+     "registration_start": "2026-11-25",
+     "registration_end": "2026-12-13",
+     "exams": [
+      {
+       "label": "HSK 1~6급 PBT",
+       "date": "2027-01-09"
+      }
+     ],
+     "result_date": "2027-02-19",
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=45161&p=1",
+     "checked_at": "2026-11-24",
+     "note": "성적발표는 법정 공휴일로 연기된 날짜로 공지됨."
+    },
+    {
+     "name": "2027-01-09 HSK 3.0 IBT(컴퓨터)",
+     "registration_start": "2026-11-25",
+     "registration_end": "2026-12-30",
+     "exams": [
+      {
+       "label": "HSK 1~6급 IBT",
+       "date": "2027-01-09"
+      }
+     ],
+     "result_date": "2027-01-25",
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=45161&p=1",
+     "checked_at": "2026-11-24"
+    },
+    {
+     "name": "2027-02-21 HSK 3.0 정기시험",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "HSK 1~6급(IBT·PBT·HSK회화 시험일)",
+       "date": "2027-02-21"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44932&p=1",
+     "checked_at": "2026-11-24",
+     "note": "‘2027년 HSK 정기시험 일정’ 공지 이미지에 시험일만 있음. 접수기간·성적발표일은 아직 공고되지 않음(IBT와 PBT는 접수 마감·발표일이 서로 다르게 공고되어 왔음)."
+    },
+    {
+     "name": "2027-03-14 HSK 3.0 정기시험",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "HSK 1~6급(IBT·PBT·HSK회화 시험일)",
+       "date": "2027-03-14"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44932&p=1",
+     "checked_at": "2026-11-24",
+     "note": "‘2027년 HSK 정기시험 일정’ 공지 이미지에 시험일만 있음. 접수기간·성적발표일은 아직 공고되지 않음(IBT와 PBT는 접수 마감·발표일이 서로 다르게 공고되어 왔음)."
+    },
+    {
+     "name": "2027-04-10 HSK 3.0 정기시험",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "HSK 1~6급(IBT·PBT·HSK회화 시험일)",
+       "date": "2027-04-10"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44932&p=1",
+     "checked_at": "2026-11-24",
+     "note": "‘2027년 HSK 정기시험 일정’ 공지 이미지에 시험일만 있음. 접수기간·성적발표일은 아직 공고되지 않음(IBT와 PBT는 접수 마감·발표일이 서로 다르게 공고되어 왔음)."
+    },
+    {
+     "name": "2027-05-16 HSK 3.0 정기시험",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "HSK 1~6급(IBT·PBT·HSK회화 시험일)",
+       "date": "2027-05-16"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44932&p=1",
+     "checked_at": "2026-11-24",
+     "note": "‘2027년 HSK 정기시험 일정’ 공지 이미지에 시험일만 있음. 접수기간·성적발표일은 아직 공고되지 않음(IBT와 PBT는 접수 마감·발표일이 서로 다르게 공고되어 왔음)."
+    },
+    {
+     "name": "2027-06-26 HSK 3.0 정기시험",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "HSK 1~6급(IBT·PBT·HSK회화 시험일)",
+       "date": "2027-06-26"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44932&p=1",
+     "checked_at": "2026-11-24",
+     "note": "‘2027년 HSK 정기시험 일정’ 공지 이미지에 시험일만 있음. 접수기간·성적발표일은 아직 공고되지 않음(IBT와 PBT는 접수 마감·발표일이 서로 다르게 공고되어 왔음)."
+    },
+    {
+     "name": "2027-07-18 HSK 3.0 정기시험",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "HSK 1~6급(IBT·PBT·HSK회화 시험일)",
+       "date": "2027-07-18"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44932&p=1",
+     "checked_at": "2026-11-24",
+     "note": "‘2027년 HSK 정기시험 일정’ 공지 이미지에 시험일만 있음. 접수기간·성적발표일은 아직 공고되지 않음(IBT와 PBT는 접수 마감·발표일이 서로 다르게 공고되어 왔음)."
+    },
+    {
+     "name": "2027-08-21 HSK 3.0 정기시험",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "HSK 1~6급(IBT·PBT·HSK회화 시험일)",
+       "date": "2027-08-21"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44932&p=1",
+     "checked_at": "2026-11-24",
+     "note": "‘2027년 HSK 정기시험 일정’ 공지 이미지에 시험일만 있음. 접수기간·성적발표일은 아직 공고되지 않음(IBT와 PBT는 접수 마감·발표일이 서로 다르게 공고되어 왔음)."
+    },
+    {
+     "name": "2027-09-26 HSK 3.0 정기시험",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "HSK 1~6급(IBT·PBT·HSK회화 시험일)",
+       "date": "2027-09-26"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44932&p=1",
+     "checked_at": "2026-11-24",
+     "note": "‘2027년 HSK 정기시험 일정’ 공지 이미지에 시험일만 있음. 접수기간·성적발표일은 아직 공고되지 않음(IBT와 PBT는 접수 마감·발표일이 서로 다르게 공고되어 왔음)."
+    },
+    {
+     "name": "2027-10-16 HSK 3.0 정기시험",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "HSK 1~6급(IBT·PBT·HSK회화 시험일)",
+       "date": "2027-10-16"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44932&p=1",
+     "checked_at": "2026-11-24",
+     "note": "‘2027년 HSK 정기시험 일정’ 공지 이미지에 시험일만 있음. 접수기간·성적발표일은 아직 공고되지 않음(IBT와 PBT는 접수 마감·발표일이 서로 다르게 공고되어 왔음)."
+    },
+    {
+     "name": "2027-11-07 HSK 3.0 정기시험",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "HSK 1~6급(IBT·PBT·HSK회화 시험일)",
+       "date": "2027-11-07"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44932&p=1",
+     "checked_at": "2026-11-24",
+     "note": "‘2027년 HSK 정기시험 일정’ 공지 이미지에 시험일만 있음. 접수기간·성적발표일은 아직 공고되지 않음(IBT와 PBT는 접수 마감·발표일이 서로 다르게 공고되어 왔음)."
+    },
+    {
+     "name": "2027-12-11 HSK 3.0 정기시험",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "HSK 1~6급(IBT·PBT·HSK회화 시험일)",
+       "date": "2027-12-11"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44932&p=1",
+     "checked_at": "2026-11-24",
+     "note": "‘2027년 HSK 정기시험 일정’ 공지 이미지에 시험일만 있음. 접수기간·성적발표일은 아직 공고되지 않음(IBT와 PBT는 접수 마감·발표일이 서로 다르게 공고되어 왔음)."
+    },
+    {
+     "name": "2027-05-23 HSK 7-9급(IBT)",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "HSK 7-9급 IBT",
+       "date": "2027-05-23"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44932&p=1",
+     "checked_at": "2026-11-24",
+     "note": "‘2027년 HSK 정기시험 일정’ 공지 이미지에 시험일만 있음. 접수기간·성적발표일 미공고."
+    },
+    {
+     "name": "2027-11-20 HSK 7-9급(IBT)",
+     "registration_start": null,
+     "registration_end": null,
+     "exams": [
+      {
+       "label": "HSK 7-9급 IBT",
+       "date": "2027-11-20"
+      }
+     ],
+     "result_date": null,
+     "source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=44932&p=1",
+     "checked_at": "2026-11-24",
+     "note": "‘2027년 HSK 정기시험 일정’ 공지 이미지에 시험일만 있음. 접수기간·성적발표일 미공고."
+    }
+   ],
+   "reference_rounds": [],
+   "subjects": [
+    "HSK 3.0 1급: 듣기·독해(40문항, 약 35분)",
+    "HSK 3.0 2급: 듣기·독해·쓰기(60문항, 약 55분)",
+    "HSK 3.0 3급: 듣기·독해·쓰기(70문항, 약 78분)",
+    "HSK 3.0 4급: 듣기·독해·쓰기(70문항, 약 80분)",
+    "HSK 3.0 5급: 듣기·독해·쓰기(72문항, 약 105분)",
+    "HSK 3.0 6급: 듣기·독해·쓰기(82문항, 약 120분)",
+    "시험 방식: IBT(컴퓨터)·PBT(지필) 중 선택"
+   ],
+   "pass_criteria": "HSK 3.0의 합격 기준은 공식 사이트에서 확인하지 못함. 참고로 공식 사이트의 기존 HSK 급수 안내 페이지에는 1·2급 200점 만점 중 120점 이상, 3~6급 300점 만점 중 180점 이상 합격으로 적혀 있음(HSK 3.0에 그대로 적용되는지는 미확인).",
+   "fee": "HSK 3.0 PBT: 1급 30,000원, 2급 40,000원, 3급 60,000원, 4급 80,000원, 5급 100,000원, 6급 120,000원 / IBT: 1급 35,000원, 2급 50,000원, 3급 70,000원, 4급 90,000원, 5급 110,000원, 6급 130,000원",
+   "fee_detail": "HSK 3.0 PBT: 1급 30,000원, 2급 40,000원, 3급 60,000원, 4급 80,000원, 5급 100,000원, 6급 120,000원 / IBT: 1급 35,000원, 2급 50,000원, 3급 70,000원, 4급 90,000원, 5급 110,000원, 6급 130,000원(2026-12-13·2027-01-09 시험 공지 기준)",
+   "eligibility_note": null,
+   "info_source_url": "https://www.hsk.or.kr/?c1=400&c2=011&c3=001&v=45161&p=1",
+   "provenance": "일정은 HSK한국사무국(hsk.or.kr) 기준. 2026-12-13 시험부터 HSK 3.0으로 시행. 2027년 시험일 12회와 7-9급 2회는 2026-10-29 공지(이미지)에서 확인했고, 접수기간·성적발표일은 2027-01-09 시험만 공고됨. 과목·문항 수·응시료는 공지 이미지(급수별 안내)에서 읽음. HSK회화(HSKK)는 별도 시험이라 여기에는 넣지 않음.",
+   "kind_note": null
+  }
+ ]
+}
