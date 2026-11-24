@@ -12,6 +12,7 @@ import logging
 from collections import Counter
 
 from .contracts import AnalysisRejected, failure_reason, fit_records
+from .vertex import DEFAULT_MAX_OUTPUT_TOKENS
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ SITES = {
 MAX_RECOMMENDATIONS = 6
 MAX_GAPS = 10
 RECORD_BUDGET = 12_000
-MAX_OUTPUT_TOKENS = 8_192
+MAX_OUTPUT_TOKENS = DEFAULT_MAX_OUTPUT_TOKENS
 
 INSTRUCTION = """You help a Korean university student choose external activities that prepare
 them for a target job. Reply in Korean JSON.

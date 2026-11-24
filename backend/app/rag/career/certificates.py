@@ -15,6 +15,7 @@ from pathlib import Path
 
 from . import qnet
 from .contracts import AnalysisRejected, ProviderFailure, failure_reason, fit_records
+from .vertex import DEFAULT_MAX_OUTPUT_TOKENS
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ KIND_LABELS = {
 }
 MAX_RECOMMENDATIONS = 6
 RECORD_BUDGET = 12_000
-MAX_OUTPUT_TOKENS = 8_192
+MAX_OUTPUT_TOKENS = DEFAULT_MAX_OUTPUT_TOKENS
 ELIGIBILITY = (
     "학력·경력 응시자격이 있는 등급입니다. Q-Net 응시자격 자가진단으로 응시 가능 여부를 확인하세요."
 )

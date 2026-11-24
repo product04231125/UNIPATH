@@ -162,6 +162,12 @@ UUID는 합성 예시다. 실행에는 기존 개인 자료 API에 저장한 본
 | `model_http_<상태>` | Vertex가 HTTP 오류를 돌려줌(예: `model_http_429` 호출 한도·용량 초과, `model_http_404` 모델·리전 없음) |
 | `model_timeout`, `model_network` | Vertex 응답 시간 초과, 연결 실패 |
 | `model_incomplete_<이유>` | 모델 응답이 끝나지 않음(예: `model_incomplete_max_tokens`, `model_incomplete_safety`) |
+
+모델 출력 한도에 관해 (2026-11-24):
+- **한도:** 기본 24,576토큰이다. 자기소개서·포트폴리오는 32,768토큰이다.
+- **8,192에서 올린 이유:** Gemini는 답보다 먼저 생각 토큰을 출력 한도에서 쓴다. 스테이징에서 합성 기록 25개로 측정해 보니 생각 4,364 + 답 3,498 = 7,862토큰이었다. 이전 한도 8,192에서는 답이 잘리거나(`model_incomplete_max_tokens`) 요건 일부만 비교됐다.
+- **응답 시간:** 한도를 올려도 21~22초로 제한 50초 안이었다.
+- **로그:** 응답이 끝나지 않으면 입력·생각·답 토큰 수만 로그에 남긴다. 내용은 남기지 않는다.
 | `model_invalid_json`, `model_no_candidate` | 모델 응답을 JSON으로 읽지 못함, 후보 없음 |
 | `model_busy` | 서버의 동시 호출 슬롯이 가득 참 |
 | `model_auth_or_request` | 인증 토큰 갱신 등 요청 준비 실패 |

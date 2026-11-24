@@ -262,7 +262,18 @@ class CareerTests(unittest.TestCase):
         self.assertEqual(vertex.generate("test", {}), {"comparisons": []})
         body = json.loads(transport.request.call_args.kwargs["body"])
         self.assertEqual(body["generationConfig"]["responseMimeType"], "application/json")
+        # Thinking tokens share the output budget: the default leaves room for the answer.
+        self.assertEqual(body["generationConfig"]["maxOutputTokens"], 24_576)
         payload["candidates"][0]["finishReason"] = "MAX_TOKENS"
+        payload["usageMetadata"] = {
+            "promptTokenCount": 6400,
+            "thoughtsTokenCount": 5000,
+            "candidatesTokenCount": 3192,
+        }
         transport.request.return_value = json.dumps(payload).encode()
-        with self.assertRaises(RuntimeError):
-            vertex.generate("test", {})
+        with self.assertLogs("app.rag.career.vertex", "WARNING") as logs:
+            with self.assertRaises(RuntimeError):
+                vertex.generate("test", {}, max_output_tokens=8192)
+        # Counts only, never the reply text.
+        self.assertIn("limit=8192 prompt=6400 thoughts=5000 answer=3192", logs.output[0])
+        self.assertNotIn("comparisons", logs.output[0])
