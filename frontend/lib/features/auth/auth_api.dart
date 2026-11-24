@@ -379,6 +379,7 @@ class AuthApi implements AuthGateway, ApiGateway {
                   (const {
                         'me/job-recommendations',
                         'me/career-gap-analyses',
+                        'me/activity-recommendations',
                         'me/writing-drafts',
                       }.contains(path) ||
                       (path == 'me/personalized-guidance' &&

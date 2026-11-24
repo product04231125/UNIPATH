@@ -46309,6 +46309,134 @@
           }
         }
       }
+    },
+    "/api/v1/me/activity-recommendations": {
+      "post": {
+        "tags": [
+          "career"
+        ],
+        "summary": "Activity Recommendations",
+        "description": "Kinds of external activities for the target job's gaps, places to look and internships.",
+        "operationId": "activity_recommendations_api_v1_me_activity_recommendations_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Unipath-Owner",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional workspace account UUID precondition; never a credential",
+              "title": "X-Unipath-Owner"
+            },
+            "description": "Optional workspace account UUID precondition; never a credential"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityRecommendationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -72025,6 +72153,71 @@
           "updated_at"
         ],
         "title": "MaterialView"
+      },
+      "ActivityRecommendationRequest": {
+        "properties": {
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalEvidenceSelection"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Records"
+          },
+          "regions": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "서울",
+                "경기",
+                "인천",
+                "부산",
+                "대구",
+                "광주·전남",
+                "대전",
+                "울산",
+                "세종",
+                "강원",
+                "충북",
+                "충남",
+                "전북",
+                "경북",
+                "경남",
+                "제주"
+              ]
+            },
+            "type": "array",
+            "maxItems": 16,
+            "title": "Regions"
+          },
+          "academic_stage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "year1",
+                  "year2",
+                  "year3",
+                  "year4",
+                  "graduating",
+                  "graduate"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Stage"
+          },
+          "external_processing_consent": {
+            "type": "boolean",
+            "title": "External Processing Consent",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ActivityRecommendationRequest"
       }
     },
     "securitySchemes": {

@@ -23,6 +23,8 @@ import 'shared/widgets/page_tabs.dart';
 import 'features/writing/writing_api.dart';
 import 'features/writing/writing_page.dart';
 import 'features/career/career_gap.dart';
+import 'features/career/activity_recommendation.dart';
+import 'features/career/activity_recommendation_view.dart';
 import 'features/career/career_goal.dart';
 import 'features/home/home_page.dart';
 import 'features/planning/planning_repository.dart';
@@ -159,6 +161,7 @@ class _WorkspaceState extends State<Workspace> {
 
   /// 자료 tab: 0 내 자료, 1 자기소개서·포트폴리오.
   var _materialsTab = 0;
+  var _activityTab = 0;
   late final WritingSessionStore? _writingStore = _personalApi == null
       ? null
       : WritingSessionStore(ownerId: _personalApi.ownerId);
@@ -187,6 +190,20 @@ class _WorkspaceState extends State<Workspace> {
           ? PlanningEventCategory.deadline
           : PlanningEventCategory.activity,
       memo: '${requirement.requirement} 준비 · ${action.detail}',
+    ),
+  );
+
+  Future<void> _addActivityPlan(
+    ActivityRecommendation activity,
+    DateTime date,
+  ) => _planningRepository.saveEvent(
+    PlanningEvent(
+      id: planningClientId(),
+      title: '${activity.title} 목표일',
+      start: DateTime(date.year, date.month, date.day, 9),
+      end: DateTime(date.year, date.month, date.day, 10),
+      category: PlanningEventCategory.activity,
+      memo: '${activity.kindLabel} · ${activity.reason}',
     ),
   );
 
@@ -493,7 +510,22 @@ class _WorkspaceState extends State<Workspace> {
           loadDocuments: (ids) =>
               loadGuidanceDocuments(_materialRepository, ids),
         ),
-        StudentPages.activity => const ActivityPage(),
+        StudentPages.activity => PageTabs(
+          tabsKey: const ValueKey('activity-tabs'),
+          labels: const ['내 활동', '활동 추천'],
+          tab: _activityTab,
+          onTabChanged: (tab) => setState(() => _activityTab = tab),
+          children: [
+            const ActivityPage(),
+            ActivityRecommendationView(
+              api: _personalApi,
+              consent: _aiConsent,
+              careerGoal: _careerGoal,
+              onAddPlan: _personalApi == null ? null : _addActivityPlan,
+              onOpenCareerGap: _openCareerGap,
+            ),
+          ],
+        ),
         StudentPages.credential => const CredentialPage(),
         StudentPages.materials => PageTabs(
           tabsKey: const ValueKey('materials-tabs'),
