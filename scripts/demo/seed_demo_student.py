@@ -4,6 +4,7 @@
     python3 scripts/demo/seed_demo_student.py           # 빠진 시연 데이터만 넣는다
     python3 scripts/demo/seed_demo_student.py --reset   # 리허설 흔적을 지우고 처음 상태로 되돌린다
     python3 scripts/demo/seed_demo_student.py --status  # 지금 상태만 본다
+    python3 scripts/demo/seed_demo_student.py --pin     # 최신 분석 결과·저장 문서를 시연용으로 고정
     python3 scripts/demo/seed_demo_student.py --clear   # 시연 뒤 정리(다시 넣지 않음)
 
 계정 정보는 ~/.config/unipath-staging-demo/에서 읽고 출력하지 않는다.
@@ -17,6 +18,11 @@
 자료가 아닌 일정·활동·경험·자격·성과·내 자료(이 스크립트가 넣은 것 + 리허설 중 추가한 것). 그다음
 시연 데이터를 다시 넣는다. 일정 날짜는 실행한 날(한국 시간) 기준이라
 시연 당일 아침에 --reset 하면 된다.
+
+--pin은 앱에서 실행해 저장한 최신 목표 직무 분석·공고 찾기 결과와 최신 자기소개서·포트폴리오
+문서를 시연에서 열 결과로 고정한다. 분석 결과에는 별표(즐겨찾기)를 붙이고, 결과와 문서가 인용하는
+지금의 경험·활동·자격·성과·내 자료도 함께 남겨 --reset 뒤에도 인용이 그대로 맞는다(일정은 실행한
+날 기준으로 다시 만든다). --clear는 고정한 결과·문서와 기록까지 지우고 고정을 푼다.
 
 학교 관리자는 초기화하지 않는다. 이 서버의 스테이징 API 컨테이너 안에서 admin.json의 계정이
 그 학교의 학교 관리자인지만 확인하고(로그인하지 않음), 없을 때만 승인과 같은 방식(학교 권한 + 감사
@@ -392,24 +398,78 @@ def baseline(api, state):
     return state["baseline"]
 
 
-def reset(api, state):
+# Saved results opened in the demo instead of running the analysis live.
+PINNED_KINDS = {"gap": "목표 직무 분석", "search": "공고 찾기"}
+# Records a saved analysis can cite; events are not cited and keep their run-day dates.
+CITED = [r for r in RECORDS if r != "events"]
+
+
+def pin(api, state):
+    """Keep the newest 목표 직무 분석·공고 찾기 results, documents and the records they cite."""
     kept = baseline(api, state)
+    results = api.ok("GET", "/me/analysis-results").get("items", [])
+    pinned = {"analysis-results": [], "writing-documents": [], "materials": []}
+    for kind, label in PINNED_KINDS.items():
+        newest = max(
+            (r for r in results if r["kind"] == kind), key=lambda r: r["created_at"], default=None
+        )
+        if newest is None:
+            print(f"{label} 저장 결과가 없습니다. 앱에서 먼저 실행하세요.")
+            continue
+        if not newest["favorite"]:
+            api.ok("PATCH", f"/me/analysis-results/{newest['id']}", {"favorite": True})
+        pinned["analysis-results"].append(newest["id"])
+        print(f"고정: {label} · {newest['title']} ({newest['created_at'][:16]})")
+    documents = api.ok("GET", "/me/writing-documents").get("items", [])
+    for kind in sorted({d["document_type"] for d in documents}):
+        newest = max(
+            (d for d in documents if d["document_type"] == kind), key=lambda d: d["updated_at"]
+        )
+        pinned["writing-documents"].append(newest["id"])
+        print(f"고정: 저장 문서({kind}) · {newest['title']} ({newest['updated_at'][:16]})")
+    for resource in CITED:
+        pinned[resource] = [
+            i["id"] for i in api.all(f"/me/{resource}?limit=100") if i["id"] not in kept[resource]
+        ]
+    pinned["materials"] = [
+        m["id"] for m in api.ok("GET", "/me/materials")["items"] if m["id"] not in kept["materials"]
+    ]
+    state["pinned"] = pinned
+    save_state(state)
+    records = {
+        k: len(v) for k, v in pinned.items() if k not in ("analysis-results", "writing-documents")
+    }
+    print("함께 남길 기록:", records)
+
+
+def reset(api, state, keep_pinned=True):
+    kept = baseline(api, state)
+    pinned = state.get("pinned", {}) if keep_pinned else {}
     removed = {}
     for item in api.ok("GET", "/me/analysis-results").get("items", []):
+        if item["id"] in pinned.get("analysis-results", []):
+            if not item["favorite"]:
+                api.ok("PATCH", f"/me/analysis-results/{item['id']}", {"favorite": True})
+            continue
         api.ok("DELETE", f"/me/analysis-results/{item['id']}")
         removed["분석 결과"] = removed.get("분석 결과", 0) + 1
     for item in api.ok("GET", "/me/writing-documents").get("items", []):
+        if item["id"] in pinned.get("writing-documents", []):
+            continue
         api.ok("DELETE", f"/me/writing-documents/{item['id']}?expected_version={item['version']}")
         removed["저장 문서"] = removed.get("저장 문서", 0) + 1
     for resource in RECORDS:
         for item in api.all(f"/me/{resource}?limit=100"):
-            if item["id"] not in kept[resource]:
+            if item["id"] not in kept[resource] + pinned.get(resource, []):
                 api.ok("DELETE", f"/me/{resource}/{item['id']}?expected_version={item['version']}")
                 removed[resource] = removed.get(resource, 0) + 1
     for item in api.ok("GET", "/me/materials")["items"]:
-        if item["id"] not in kept["materials"]:
+        if item["id"] not in kept["materials"] + pinned.get("materials", []):
             api.ok("DELETE", f"/me/materials/{item['id']}?expected_version={item['version']}")
             removed["materials"] = removed.get("materials", 0) + 1
+    if not keep_pinned and state.pop("pinned", None) is not None:
+        save_state(state)
+        print("시연용 저장 결과 고정을 풀었습니다.")
     print("지운 것:", removed or "없음")
 
 
@@ -481,18 +541,27 @@ def seed(api, state):
     print("넣은 것:", added or "없음(이미 모두 있음)")
 
 
-def status(api):
+def status(api, state):
     goal = api.ok("GET", "/me/career-goal")
     print("목표 직무:", goal.get("category_label"), goal.get("keyword") or "-")
     for resource in RECORDS:
         print(f"{resource}:", [i["title"] for i in api.all(f"/me/{resource}?limit=100")][:12])
     print("내 자료:", [m["title"] for m in api.ok("GET", "/me/materials")["items"]])
+    pinned = set(state.get("pinned", {}).get("analysis-results", []))
     print(
         "분석 결과:",
-        [(r["kind"], r["title"]) for r in api.ok("GET", "/me/analysis-results").get("items", [])],
+        [
+            (r["kind"], r["title"], "고정" if r["id"] in pinned else "")
+            for r in api.ok("GET", "/me/analysis-results").get("items", [])
+        ],
     )
+    kept = set(state.get("pinned", {}).get("writing-documents", []))
     print(
-        "저장 문서:", [d["title"] for d in api.ok("GET", "/me/writing-documents").get("items", [])]
+        "저장 문서:",
+        [
+            (d["document_type"], d["title"], "고정" if d["id"] in kept else "")
+            for d in api.ok("GET", "/me/writing-documents").get("items", [])
+        ],
     )
 
 
@@ -500,6 +569,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--reset", action="store_true", help="리허설 흔적을 지우고 처음 상태로")
     parser.add_argument("--status", action="store_true", help="지금 상태만 출력")
+    parser.add_argument(
+        "--pin", action="store_true", help="최신 분석 결과·저장 문서를 시연용으로 고정"
+    )
     parser.add_argument(
         "--clear", action="store_true", help="리허설·시드 데이터를 지우고 다시 넣지 않음"
     )
@@ -519,11 +591,14 @@ def main():
         )
     state = load_state()
     if args.status:
-        status(api)
+        status(api, state)
+        return
+    if args.pin:
+        pin(api, state)
         return
     started = time.monotonic()
     if args.reset or args.clear:
-        reset(api, state)
+        reset(api, state, keep_pinned=not args.clear)
     if args.clear:
         restore_goal(api, state)
     else:
