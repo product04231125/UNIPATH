@@ -109,6 +109,8 @@ class LinkedPostingCard extends StatelessWidget {
             ExpansionTile(
               key: const ValueKey('writing-linked-posting-text'),
               tilePadding: const EdgeInsets.only(right: 8),
+              expandedAlignment: Alignment.topLeft,
+              expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
               title: Text('공고 본문 보기', style: theme.textTheme.bodyMedium),
               children: [
                 ConstrainedBox(
