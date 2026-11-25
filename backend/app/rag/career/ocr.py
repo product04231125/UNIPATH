@@ -4,13 +4,15 @@ import os
 import subprocess
 from io import BytesIO
 from math import isfinite
-from threading import BoundedSemaphore, Lock
+from threading import BoundedSemaphore
 from time import monotonic
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-# PDFium rendering is not thread safe. Limit concurrent OCR memory and CPU separately.
-_RENDER = Lock()
+from app.rag.pdf_pages import PDFIUM_LOCK as _RENDER
+
+# PDFium rendering is not thread safe (one lock for the process, shared with the PDF viewer).
+# Limit concurrent OCR memory and CPU separately.
 _SLOTS = BoundedSemaphore(2)
 MAX_PIXELS = 25_000_000
 IMAGE_FORMATS = {".png": "PNG", ".jpg": "JPEG", ".jpeg": "JPEG", ".webp": "WEBP"}

@@ -11,15 +11,17 @@ from datetime import UTC, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Request, Response
+from fastapi import APIRouter, Path, Query, Request, Response
 from pydantic import Field, StringConstraints
 from sqlalchemy import func, select
 
 from app.api.auth import CurrentIdentity, Database
 from app.core.auth_errors import AuthError, conflict
 from app.models.personal import StudentMaterial
+from app.rag import pdf_pages
 from app.schemas.auth import StrictModel
 from app.schemas.common import ErrorCode
+from app.services import auth
 from app.services.access import locked_identity
 from app.services.personal import commit
 
@@ -262,4 +264,68 @@ def material_file(material_id: UUID, db: Database, identity: CurrentIdentity):
             "X-Content-Type-Options": "nosniff",
             "ETag": f'"{item.sha256}"',
         },
+    )
+
+
+class PageSize(StrictModel):
+    width: float
+    height: float
+
+
+class MaterialPages(StrictModel):
+    """The saved PDF's page count and the sizes (points) of the pages the viewer shows."""
+
+    page_count: int
+    pages: list[PageSize]
+
+
+def _with_pdf(db, identity, material_id):
+    item = _owned(db, identity.user.id, material_id)
+    if item.sha256 is None:
+        raise AuthError(404, ErrorCode.NOT_FOUND, "이 자료에는 PDF가 없습니다.")
+    # Rendering costs CPU: a generous per-student bucket (a long PDF scrolled a few times).
+    auth.throttle(db, "material-pages:" + str(identity.user.id), limit=600)
+    return item
+
+
+def _unreadable():
+    return _invalid(
+        "이 PDF는 미리 볼 수 없습니다(암호가 걸렸거나 손상된 파일). PDF 내보내기로 받아 확인하세요."
+    )
+
+
+@router.get("/materials/{material_id}/pages", response_model=MaterialPages)
+def material_pages(material_id: UUID, db: Database, identity: CurrentIdentity):
+    """Page count and sizes of the saved PDF, for the in-app viewer."""
+    item = _with_pdf(db, identity, material_id)
+    try:
+        count, sizes = pdf_pages.page_sizes(item.sha256, lambda: item.file_data)
+    except pdf_pages.PdfUnreadable as error:
+        raise _unreadable() from error
+    return MaterialPages(page_count=count, pages=[PageSize(width=w, height=h) for w, h in sizes])
+
+
+@router.get(
+    "/materials/{material_id}/pages/{number}",
+    response_class=Response,
+    responses={200: {"content": {pdf_pages.MEDIA_TYPE: {}}, "description": "One page image"}},
+)
+def material_page(
+    material_id: UUID,
+    number: Annotated[int, Path(ge=1, le=pdf_pages.MAX_PAGES)],
+    db: Database,
+    identity: CurrentIdentity,
+):
+    """One page of the saved PDF as an image (1,400 px wide). Nothing is stored."""
+    item = _with_pdf(db, identity, material_id)
+    try:
+        image = pdf_pages.page_image(item.sha256, number, lambda: item.file_data)
+    except pdf_pages.PdfUnreadable as error:
+        raise _unreadable() from error
+    except IndexError as error:
+        raise AuthError(404, ErrorCode.NOT_FOUND, "PDF에 그 쪽이 없습니다.") from error
+    return Response(
+        image,
+        media_type=pdf_pages.MEDIA_TYPE,
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
     )

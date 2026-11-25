@@ -61,6 +61,23 @@ class PersonalMaterial {
       );
 }
 
+/// A saved PDF's pages for the in-app viewer: how many there are and the sizes (points) of the
+/// pages that can be shown.
+class MaterialPages {
+  const MaterialPages({required this.count, required this.sizes});
+  MaterialPages.fromJson(Map<String, dynamic> json)
+    : count = json['page_count'] as int,
+      sizes = [
+        for (final page in json['pages'] as List)
+          (
+            width: ((page as Map)['width'] as num).toDouble(),
+            height: (page['height'] as num).toDouble(),
+          ),
+      ];
+  final int count;
+  final List<({double width, double height})> sizes;
+}
+
 /// Where 내 자료 is kept: the student's account, or this device before signing in.
 abstract class MaterialRepository {
   /// One PDF: the most a single analysis request can send.
@@ -78,6 +95,16 @@ abstract class MaterialRepository {
 
   /// The material's PDF, or null when it has none.
   Future<Uint8List?> pdf(PersonalMaterial material);
+
+  /// True when a saved PDF can be shown in the app: the server renders its pages, so only
+  /// materials kept in the account can.
+  bool get canPreview;
+
+  /// Page count and sizes of the saved PDF.
+  Future<MaterialPages> pages(PersonalMaterial material);
+
+  /// Page [number] (1-based) of the saved PDF as an image.
+  Future<Uint8List> pageImage(PersonalMaterial material, int number);
 
   static void validatePdf(String name, Uint8List bytes) {
     if (bytes.length > maxPdfBytes) throw StateError('PDF는 8MB 이하로 선택하세요.');
@@ -162,6 +189,17 @@ class DeviceMaterialRepository implements MaterialRepository {
     final row = await _store.record(material.id).get(await _open());
     return (row?['pdf'] as Blob?)?.bytes;
   }
+
+  @override
+  bool get canPreview => false;
+
+  @override
+  Future<MaterialPages> pages(PersonalMaterial material) =>
+      throw UnsupportedError('PDF는 로그인한 뒤 앱에서 볼 수 있습니다.');
+
+  @override
+  Future<Uint8List> pageImage(PersonalMaterial material, int number) =>
+      throw UnsupportedError('PDF는 로그인한 뒤 앱에서 볼 수 있습니다.');
 }
 
 /// 내 자료 kept in the student's account. Materials still on this device move
@@ -292,6 +330,23 @@ class AccountMaterialRepository implements MaterialRepository {
       return files.materialFile(material.id);
     }
     throw StateError('PDF는 로그인한 뒤 받을 수 있습니다.');
+  }
+
+  @override
+  bool get canPreview => api is MaterialFileGateway;
+
+  @override
+  Future<MaterialPages> pages(PersonalMaterial material) async =>
+      MaterialPages.fromJson(
+        (await api.request('GET', '$_path/${material.id}/pages'))!,
+      );
+
+  @override
+  Future<Uint8List> pageImage(PersonalMaterial material, int number) {
+    if (api case final MaterialFileGateway files) {
+      return files.materialPage(material.id, number);
+    }
+    throw StateError('PDF는 로그인한 뒤 볼 수 있습니다.');
   }
 }
 
