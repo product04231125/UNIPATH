@@ -4,7 +4,6 @@ import base64
 import os
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Literal
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Path, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -24,7 +23,7 @@ from app.services.personalization.context import assemble
 from app.services.personalization.redaction import redact_context
 
 from . import activities, categories, certificates, regions
-from .contracts import SearchQuery, failure_reason
+from .contracts import SearchQuery, failure_reason, local_today
 from .crawling import Work24Crawler
 from .documents import prepare_documents
 from .gap import COLLECTION_SECONDS, MAX_POSTINGS, analyze_gap
@@ -299,7 +298,7 @@ def activity_recommendations(
 
 
 def seoul_today():
-    return datetime.now(ZoneInfo("Asia/Seoul")).date()
+    return local_today()
 
 
 def public(item):

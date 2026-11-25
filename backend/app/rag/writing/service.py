@@ -12,7 +12,14 @@ from uuid import NAMESPACE_URL, uuid5
 from pydantic import ValidationError
 
 from app.rag.career.analyzer import spans, verified_citations
-from app.rag.career.contracts import AnalysisRejected, failure_reason, fit_records, selected_records
+from app.rag.career.contracts import (
+    RECORD_STATUS_RULE,
+    AnalysisRejected,
+    failure_reason,
+    fit_records,
+    local_today,
+    selected_records,
+)
 from app.services.personalization.redaction import redact_text
 
 from .contracts import Draft, FactRow, GroundedText, Section, WritingRequest
@@ -86,6 +93,7 @@ Final check before answering: reread every text. If a sentence quotes a record w
 (…만들었다는 경험, …맡았다라는 경험, …수정했다는 성과), rewrite it as your own sentence that states
 the action directly (…만들었습니다, …맡았습니다, …고쳤습니다). Keep the citations as they are.
 """
+INSTRUCTION += RECORD_STATUS_RULE
 
 
 def _grounded(value, chosen, model):
@@ -231,6 +239,7 @@ def generate_draft(request, records, generator, *, names=()):
         "composition": groups,
         "posting_requirements": asked,
         "records": chosen,
+        "today": local_today().isoformat(),
         "output_schema": Draft.model_json_schema(),
     }
     output = generator.generate(INSTRUCTION, payload, max_output_tokens=MAX_OUTPUT_TOKENS)

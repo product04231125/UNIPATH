@@ -154,7 +154,7 @@ def test_generation_needs_consent_and_cites_each_side_separately(auth_client, au
     assert value["personal_citations"][0]["record_id"] == record["id"]
     instruction, payload = model.calls[0]
     assert "Rule Engine" in instruction
-    assert set(payload) == {"question", "school_evidence", "personal_records"}
+    assert set(payload) == {"question", "school_evidence", "personal_records", "today"}
     assert "010-1234-5678" not in str(payload)
     assert "owner" not in str(payload)
 

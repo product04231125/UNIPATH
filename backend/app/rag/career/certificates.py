@@ -14,7 +14,15 @@ from datetime import date
 from pathlib import Path
 
 from . import qnet
-from .contracts import AnalysisRejected, ProviderFailure, failure_reason, fit_records
+from .contracts import (
+    RECORD_STATUS_RULE,
+    AnalysisRejected,
+    ProviderFailure,
+    failure_reason,
+    fit_records,
+    local_today,
+    record_field,
+)
 from .vertex import DEFAULT_MAX_OUTPUT_TOKENS
 
 logger = logging.getLogger(__name__)
@@ -332,7 +340,10 @@ You receive the target job, requirements the student has not yet shown (gaps, fr
 real postings, with how many postings asked for each; may be empty), the student's records, the
 certificates they already hold, the academic stage and the certificate catalog (names).
 Recommend 3 to 6 certificates that would help most for the target job, the most useful first.
-Prefer certificates the postings asked for. Never recommend one the student already holds.
+Prefer certificates the postings asked for. Never recommend one the student already holds: one in
+held_certificates, or one a credential record says is already earned. A certificate a record shows
+as still in preparation (for example 필기 합격·실기 준비 중) may be recommended, with timing that
+continues that preparation.
 
 name: copied exactly from the catalog; never a certificate outside it.
 reason (at most 200 characters): why it matters for the target job and this student.
@@ -348,6 +359,7 @@ Do not infer protected traits and never predict hiring or passing.
 Return {"recommendations":[{"name":"...","reason":"...","requirements":["..."],
 "related_records":["..."],"timing":"...","weeks":8}],"summary":"..."}
 """
+INSTRUCTION += RECORD_STATUS_RULE
 
 
 def short(value, limit):
@@ -356,8 +368,22 @@ def short(value, limit):
     return " ".join(value.split())[:limit]
 
 
-def held_names(records):
-    return [r["title"] for r in records if r.get("kind") == "credential" and r.get("title")]
+def held_names(records, today=None):
+    """Credentials the records show as held: earned by today, or a bare name with no status (as
+    before). One with a status but no earned date may still be in preparation (준비 중, 필기 합격…):
+    the model reads that status instead, so it is not filtered out here."""
+    today = (today or local_today()).isoformat()
+    held = []
+    for record in records:
+        if record.get("kind") != "credential" or not record.get("title"):
+            continue
+        earned = record_field(record, "earned_on")
+        if earned:
+            if earned <= today:
+                held.append(record["title"])
+        elif not record_field(record, "status_label"):
+            held.append(record["title"])
+    return held
 
 
 def is_held(item, held):
@@ -382,6 +408,7 @@ def recommend_certificates(model, goal, gaps, records, *, academic_stage=None):
                 {"kind": r["kind"], "title": r["title"], "text": r["text"]} for r in fitted
             ],
             "held_certificates": held,
+            "today": local_today().isoformat(),
             "academic_stage": academic_stage,
             "catalog": names,
         },
@@ -462,6 +489,7 @@ Never state exam dates, fees, eligibility or pass rates, and never predict passi
 Return {"weeks":[{"week":1,"focus":"...","subjects":["..."],"tasks":["..."],"hours":5,
 "related_records":["..."]}],"advice":"..."}
 """
+STUDY_INSTRUCTION += RECORD_STATUS_RULE
 MAX_STUDY_WEEKS = 26
 
 
@@ -510,6 +538,7 @@ def plan_study(model, item, scope, weeks, hours_per_week, records):
             "records": [
                 {"kind": r["kind"], "title": r["title"], "text": r["text"]} for r in fitted
             ],
+            "today": local_today().isoformat(),
         },
         max_output_tokens=MAX_OUTPUT_TOKENS,
     )

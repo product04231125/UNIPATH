@@ -5,7 +5,14 @@ import re
 from collections import Counter
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-from .contracts import AnalysisRejected, failure_reason, fit_records, selected_records
+from .contracts import (
+    RECORD_STATUS_RULE,
+    AnalysisRejected,
+    failure_reason,
+    fit_records,
+    local_today,
+    selected_records,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +60,7 @@ this posting; never invent an available vacancy or claim the user qualifies for 
 Do not invent personal strengths, weaknesses, activities, employer duties or deadlines. Do not
 promise acceptance. Keep each explanation within 700 Korean characters to bound output length.
 """
+INSTRUCTION += RECORD_STATUS_RULE
 
 # Characters text extraction and models disagree on: whitespace, controls and zero-width marks.
 SPACING = re.compile(r"[\s\x00-\x1f\x7f\u200b-\u200d\u2060\ufeff]")
@@ -192,7 +200,12 @@ class EvidenceAnalyzer:
                 f"비교했습니다(전체 {len(given)}개)."
             )
         output = self.generator.generate(
-            INSTRUCTION, {"posting_text": posting_text, "records": records}
+            INSTRUCTION,
+            {
+                "posting_text": posting_text,
+                "records": records,
+                "today": local_today().isoformat(),
+            },
         )
         values = output["comparisons"]
         if not isinstance(values, list) or len(values) > 20:

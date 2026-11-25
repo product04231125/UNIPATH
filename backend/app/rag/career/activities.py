@@ -11,7 +11,13 @@ postings, internships included, are found by 공고 찾기.
 import logging
 from collections import Counter
 
-from .contracts import AnalysisRejected, failure_reason, fit_records
+from .contracts import (
+    RECORD_STATUS_RULE,
+    AnalysisRejected,
+    failure_reason,
+    fit_records,
+    local_today,
+)
 from .vertex import DEFAULT_MAX_OUTPUT_TOKENS
 
 logger = logging.getLogger(__name__)
@@ -74,6 +80,7 @@ Do not infer protected traits and never predict hiring.
 Return {"recommendations":[{"kind":"...","title":"...","reason":"...","requirements":["..."],
 "keywords":["..."],"sites":["..."],"deliverable":"...","weeks":4}],"summary":"..."}
 """
+INSTRUCTION += RECORD_STATUS_RULE
 
 
 def short(value, limit):
@@ -138,6 +145,7 @@ def recommend_activities(model, goal, gaps, records, *, academic_stage=None):
             "target_job": {"category": goal.get("label"), "detail": goal.get("keyword")},
             "gaps": gaps,
             "records": fitted,
+            "today": local_today().isoformat(),
             "academic_stage": academic_stage,
             "sites": [
                 {"id": key, "name": name, "kinds": sorted(kinds)}

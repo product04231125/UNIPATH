@@ -12,7 +12,13 @@ from collections import Counter
 from uuid import NAMESPACE_URL, uuid5
 
 from .analyzer import LABELLED, spans, verified_citations
-from .contracts import AnalysisRejected, failure_reason, fit_records
+from .contracts import (
+    RECORD_STATUS_RULE,
+    AnalysisRejected,
+    failure_reason,
+    fit_records,
+    local_today,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +80,7 @@ language|other","postings":[{"posting":1,"quote":"exact span"}],"status":"...",
 "explanation":"...","actions":[{"type":"...","title":"...","detail":"...","weeks":4}]}],
 "summary":"..."}
 """
+INSTRUCTION += RECORD_STATUS_RULE
 
 
 def short(value, limit):
@@ -148,6 +155,7 @@ def analyze_gap(model, postings, records):
                 for index, text in enumerate(texts)
             ],
             "records": fitted,
+            "today": local_today().isoformat(),
         },
         max_output_tokens=MAX_OUTPUT_TOKENS,
     )
