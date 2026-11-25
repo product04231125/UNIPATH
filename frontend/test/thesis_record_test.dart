@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/records/personal_record_fields.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
 
 import 'support/achievement_records_page.dart';
 import 'support/record_actions.dart';
@@ -42,21 +41,6 @@ void main() {
       final reload = PersonalRecordRepository(PersonalRecordKind.portfolio);
       await reload.load();
       expect(reload.records.single.value('thesisGrade'), isEmpty);
-      final source = PortfolioSource(
-        PersonalRecordKind.portfolio,
-        PersonalRecord(
-          id: 'thesis',
-          values: {
-            'title': '합성 논문',
-            'thesisType': '졸업논문',
-            'thesisStatus': '제출 기록',
-            'thesisGrade': 'Pass (원문)',
-            'thesisApprovedOn': '2026-02-28',
-          },
-        ),
-      );
-      expect(source.text, contains('원 성적 표기: Pass (원문)'));
-      expect(source.text, isNot(contains('2026-02-28')));
     },
   );
 

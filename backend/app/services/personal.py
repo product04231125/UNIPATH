@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.core.auth_errors import AuthError, conflict
@@ -15,8 +15,6 @@ from app.models.identity import Institution
 from app.models.personal import (
     AchievementRecord,
     ActivityRecord,
-    ApplicationDocument,
-    ApplicationSource,
     CourseRecord,
     CredentialRecord,
     ExperienceRecord,
@@ -26,8 +24,6 @@ from app.models.personal import (
     PersonalEvent,
     PersonalGraduationRule,
     PlanningProfile,
-    PortfolioComposition,
-    PortfolioSource,
 )
 from app.schemas import personal as dto
 from app.schemas.common import ErrorCode
@@ -43,8 +39,6 @@ RESOURCES = {
     "personal-curricula": (PersonalCurriculum, "PersonalCurriculum"),
     "personal-curriculum-courses": (PersonalCurriculumCourse, "PersonalCurriculumCourse"),
     "personal-graduation-rules": (PersonalGraduationRule, "PersonalGraduationRule"),
-    "portfolio-compositions": (PortfolioComposition, "PortfolioComposition"),
-    "application-documents": (ApplicationDocument, "ApplicationDocument"),
 }
 RECORD_MODELS = {
     "course": CourseRecord,
@@ -70,7 +64,7 @@ def contents(db, item, schema):
     result = {
         key: getattr(item, key)
         for key in schema.model_fields
-        if key not in ("related_record", "sources", "academic_context_id", "academic_entry_id")
+        if key not in ("related_record", "academic_context_id", "academic_entry_id")
     }
     if isinstance(item, CourseRecord):
         from app.services.student_course_records import reference
@@ -82,33 +76,6 @@ def contents(db, item, schema):
             record_id = getattr(item, f"related_{kind}_id")
             if record_id:
                 result["related_record"] = {"kind": kind, "record_id": record_id}
-    if isinstance(item, PortfolioComposition):
-        result["sources"] = [
-            {"kind": "achievement", "record_id": source.achievement_id}
-            for source in db.scalars(
-                select(PortfolioSource)
-                .where(
-                    PortfolioSource.composition_id == item.id,
-                    PortfolioSource.owner_id == item.owner_id,
-                )
-                .order_by(PortfolioSource.position)
-            )
-        ]
-    if isinstance(item, ApplicationDocument):
-        result["sources"] = [
-            {
-                "kind": "achievement" if source.achievement_id else "experience",
-                "record_id": source.achievement_id or source.experience_id,
-            }
-            for source in db.scalars(
-                select(ApplicationSource)
-                .where(
-                    ApplicationSource.document_id == item.id,
-                    ApplicationSource.owner_id == item.owner_id,
-                )
-                .order_by(ApplicationSource.position)
-            )
-        ]
     return result
 
 
@@ -248,15 +215,13 @@ def check_relations(db, owner_id, model, data):
         if data["related_record"]:
             reference = data["related_record"]
             get(db, owner_id, RECORD_MODELS[reference["kind"]], reference["record_id"])
-    for reference in data.get("sources", []):
-        get(db, owner_id, RECORD_MODELS[reference["kind"]], reference["record_id"])
 
 
 def set_values(db, item, data):
     values = {
         key: value
         for key, value in data.items()
-        if key not in ("sources", "related_record", "academic_context_id", "academic_entry_id")
+        if key not in ("related_record", "academic_context_id", "academic_entry_id")
     }
     if isinstance(item, PersonalGraduationRule):
         for kind in RECORD_MODELS:
@@ -266,50 +231,6 @@ def set_values(db, item, data):
             values[f"related_{reference['kind']}_id"] = reference["record_id"]
     for key, value in values.items():
         setattr(item, key, value)
-    if "sources" not in data:
-        return
-    source_model, parent_key = (
-        (PortfolioSource, "composition_id")
-        if isinstance(item, PortfolioComposition)
-        else (ApplicationSource, "document_id")
-    )
-    # Flush the parent before inserting composite owner FKs; source replacement
-    # and the parent version update remain in the same transaction.
-    db.flush()
-    db.execute(
-        delete(source_model).where(
-            getattr(source_model, parent_key) == item.id, source_model.owner_id == item.owner_id
-        )
-    )
-    for position, reference in enumerate(data["sources"]):
-        db.add(
-            source_model(
-                **{
-                    parent_key: item.id,
-                    "owner_id": item.owner_id,
-                    "position": position,
-                    reference["kind"] + "_id": reference["record_id"],
-                }
-            )
-        )
-
-
-def invalidate_reviews(db, item):
-    if not isinstance(item, AchievementRecord):
-        return
-    affected = db.scalars(
-        select(PortfolioComposition)
-        .join(PortfolioSource, PortfolioSource.composition_id == PortfolioComposition.id)
-        .where(
-            PortfolioSource.achievement_id == item.id,
-            PortfolioComposition.owner_id == item.owner_id,
-            PortfolioComposition.reviewed.is_(True),
-        )
-    )
-    for composition in affected:
-        composition.reviewed = False
-        composition.version += 1
-        composition.updated_at = datetime.now(UTC)
 
 
 def save(db, request, resource, payload, record_id=None):
@@ -330,15 +251,6 @@ def save_record(db, owner_id, resource, payload, record_id=None):
         previous = contents(db, item, schema)
         updates = payload.model_dump(exclude_unset=True, exclude={"expected_version"})
         merged = {**previous, **updates}
-        if (
-            model == PortfolioComposition
-            and any(
-                key in updates and updates[key] != previous[key]
-                for key in ("title", "detail", "sources", "audience")
-            )
-            and "reviewed" not in updates
-        ):
-            merged["reviewed"] = False
         data = validate(schema, merged).model_dump()
     else:
         data = payload.model_dump()
@@ -367,7 +279,6 @@ def save_record(db, owner_id, resource, payload, record_id=None):
             db.add(item)
             item.version = 1
         else:
-            invalidate_reviews(db, item)
             item.version += 1
         item.updated_at = datetime.now(UTC)
         set_values(db, item, data)
@@ -422,28 +333,6 @@ def references(db, owner_id, model, record_id):
             select(target).where(target.owner_id == owner_id, getattr(target, key) == record_id)
         ):
             result.append({"id": row.id, "kind": target.__tablename__, "name": row.title})
-    if model == AchievementRecord:
-        for row in db.scalars(
-            select(PortfolioComposition)
-            .join(PortfolioSource, PortfolioSource.composition_id == PortfolioComposition.id)
-            .where(
-                PortfolioComposition.owner_id == owner_id,
-                PortfolioSource.achievement_id == record_id,
-            )
-        ):
-            result.append({"id": row.id, "kind": "portfolio-compositions", "name": row.title})
-    if model in (AchievementRecord, ExperienceRecord):
-        key = (
-            ApplicationSource.achievement_id
-            if model == AchievementRecord
-            else ApplicationSource.experience_id
-        )
-        for row in db.scalars(
-            select(ApplicationDocument)
-            .join(ApplicationSource, ApplicationSource.document_id == ApplicationDocument.id)
-            .where(ApplicationDocument.owner_id == owner_id, key == record_id)
-        ):
-            result.append({"id": row.id, "kind": "application-documents", "name": row.title})
     # The same rule may reference an item through more than one relation.
     return list({row["id"]: row for row in result}.values())
 

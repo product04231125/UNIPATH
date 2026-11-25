@@ -70,7 +70,7 @@
 | `features/records/activity` | 활동 입력 상태 |
 | `features/records/experience` | 경험 기록 저장소·필드. 학생 화면 입구는 활동 메뉴 |
 | `features/records/credential` | 자격 입력 상태 |
-| `features/records/portfolio` | 내 자료, 채용공고 입력, 성과·구성·지원 문서의 숨긴 서버 초안 |
+| `features/records/portfolio` | 내 자료(PDF 보기 포함), 채용공고 분석(공고 1개 비교·공고 찾기) |
 | `features/assistant` | 학교 질의 HTTP 어댑터·응답 DTO, 메인 소유 대화 상태와 IPC 원격 상태, 공통 응답 UI |
 | `features/settings` | 설정 진입 화면 |
 
@@ -97,14 +97,13 @@
 - `planning`의 실제 일반 계정 프로필·일정은 `RemotePlanningRepository`가 서버에 저장한다. debug 샘플과 기기 원본은 `PlanningRepository`의 SharedPreferences에 보관한다. 어느 쪽도 학교 공식 학사정보·일정·졸업 판정 데이터가 아니다. [동의 이전·버전 충돌·계정 전환](../api/planning-integration.md)을 따른다.
 - `planning_repository.dart`는 읽기 성공 전 쓰기를 차단하고 저장 성공 뒤에만 메모리 상태를
   확정한다. `planning_storage_state.dart`는 홈·일정·설정의 읽기 오류·재시도 표현을 공유한다.
-- `features/records/personal_record_repository.dart`는 debug/기기 원본의 로컬 저장소다. 실제 계정의 `PersonalRepositoryScope`는 `RemotePersonalRecordRepository`와 `RemotePortfolioWorkspaceRepository`를 선택하며 선택기·원본 참조도 같은 계정을 사용한다. [서버 화면 연결/10종 동의 이전](../api/personal-workspace-integration.md)을 따른다.
+- `features/records/personal_record_repository.dart`는 debug/기기 원본의 로컬 저장소다. 실제 계정의 `PersonalRepositoryScope`는 `RemotePersonalRecordRepository`를 선택하며 선택기·원본 참조도 같은 계정을 사용한다. [서버 화면 연결/10종 동의 이전](../api/personal-workspace-integration.md)을 따른다.
   `personal_record_fields.dart`는 메뉴별 로컬 입력 스키마·검증이며 서버 DTO가 아니다.
   `RecordMenuPage`는 해당 메뉴 저장소를 읽고 구조화 입력·수정·삭제를 제공한다.
 - 개인 졸업 작업 공간도 같은 저장소의 학교·학과·교육과정·과목·규칙 다섯 종류를 사용한다. `personal_graduation_fields.dart`는
   저장된 개인 교육과정·과목·기록의 선택 목록과 관계 검증을 소유하며 규칙을 실행하지 않는다.
 - 사이드바 `목업용`/`예시 데이터 표시` 토글과 제품 화면의 예시 행은 제거했다. 개인 기록은 메뉴 전환·재시작 뒤에도 유지한다.
-- `portfolio_workspace_repository.dart`는 debug/기기 원본을 별도 v1 키에 저장한다. 실제 계정은 서버 구성·지원 문서·성과/경험 UUID를 사용하며 소유자와 버전·참조를 서버에서 확인한다. 이 저장소는 기기 자료 가져오기에만 쓴다.
-  예전 구성·지원 문서 화면은 2026-11-24에 지웠다. 포트폴리오 구성은 `features/writing/portfolio_composition.dart`가 맡는다.
+- 예전 구성·지원 문서 화면은 2026-11-24에, 그 저장소(`portfolio_workspace_repository.dart`·`remote_portfolio_workspace_repository.dart`)와 서버 표는 2026-11-25에 지웠다. 포트폴리오 구성은 `features/writing/portfolio_composition.dart`가 맡는다.
 - OpenAPI 계약이 확정되면 feature별 fixture와 로컬 상태를 repository/adapter로 교체한다.
   클라이언트는 OpenAPI에 없는 필드·상태·판정을 제품 계약으로 만들지 않는다.
 

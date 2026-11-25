@@ -92,8 +92,6 @@ def main():
         "PersonalCurriculum",
         "PersonalCurriculumCourse",
         "PersonalGraduationRule",
-        "PortfolioComposition",
-        "ApplicationDocument",
     ):
         models.append(getattr(dto, prefix + "Create"))
     models.append(InstitutionView)

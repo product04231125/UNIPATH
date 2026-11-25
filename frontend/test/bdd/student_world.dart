@@ -21,7 +21,6 @@ import 'package:university_path_frontend/features/planning/planning_repository.d
 import 'package:university_path_frontend/features/planning/remote_planning_repository.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
-import 'package:university_path_frontend/features/records/portfolio/remote_portfolio_workspace_repository.dart';
 import 'package:university_path_frontend/features/records/remote_personal_record_repository.dart';
 import 'package:university_path_frontend/features/settings/settings_page.dart';
 
@@ -91,10 +90,6 @@ class JourneyGateway implements ApiGateway {
       return {...profile};
     }
     if (path.startsWith('me/events')) {
-      return {'items': <Map<String, dynamic>>[], 'next_cursor': null};
-    }
-    if (path.startsWith('me/portfolio-compositions') ||
-        path.startsWith('me/application-documents')) {
       return {'items': <Map<String, dynamic>>[], 'next_cursor': null};
     }
     final uri = Uri.parse(path);
@@ -401,8 +396,6 @@ class StudentWorld {
     return PersonalRepositoryScope(
       records: (kind) =>
           RemotePersonalRecordRepository(api, kind, ensureOpen: () {}),
-      portfolio: () =>
-          RemotePortfolioWorkspaceRepository(api, ensureOpen: () {}),
       child: Scaffold(body: child),
     );
   }

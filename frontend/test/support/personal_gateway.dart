@@ -69,10 +69,6 @@ class PersonalGateway implements ApiGateway {
         };
       }
     }
-    if (path.startsWith('me/portfolio-compositions?') ||
-        path.startsWith('me/application-documents?')) {
-      return {'items': [], 'next_cursor': null};
-    }
     throw StateError('Unexpected synthetic gateway call $method $path');
   }
 

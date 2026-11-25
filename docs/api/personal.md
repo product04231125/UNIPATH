@@ -36,8 +36,6 @@
 | `/personal-curricula` | 개인 `school/department`, 정수 `admission_year/curriculum_year`, 선택 `evidence_url` |
 | `/personal-curriculum-courses` | `curriculum_id`, 선택 `course_record_id`, 과목 코드·이수구분·양수 학점, boolean `required` |
 | `/personal-graduation-rules` | `curriculum_id`, 선택 `curriculum_course_id`, `rule_type`, `scope=institution/department/curriculum`, 필수 `condition`, 선택 수치·기간·출처·`related_record` |
-| `/portfolio-compositions` | 사용 의도 `audience=private/application/public_review`, boolean `reviewed`, 순서 있는 `sources` |
-| `/application-documents` | 필수 `target/role/document_type`, 선택 `body`(최대 32000자), 순서 있는 `sources` |
 
 날짜는 실제 `YYYY-MM-DD`만 받으며 숫자 timestamp나 날짜/시각 혼용을 허용하지 않는다.
 기간·취득/만료·유효기간은 역전을 거부한다. 숫자는 유한한 0 이상이다.
@@ -84,16 +82,11 @@ URL은 로그인 정보가 없는 HTTP(S) 링크이며 서버에서 가져오거
 
 ## 개인 관계와 초안 보존
 
-`related_record`와 `sources`의 참조는 `{kind, record_id}`다. kind는
+`related_record`의 참조는 `{kind, record_id}`다. kind는
 `course/activity/experience/credential/achievement` 중 하나이며 record_id는 **서버 ID**다.
-구성의 sources는 achievement만, 지원 문서는 achievement/experience만 허용한다.
-중복을 거부하고 최대 100개를 순서대로 한 트랜잭션에서 교체한다.
+참조 중인 원본(개인 규칙이 가리키는 기록 등)의 삭제는 차단한다.
 
-구성·지원 문서 삭제는 연결 행만 제거하며 원 성과/경험을 지우지 않는다. 참조 중인 원본의
-삭제는 차단한다. 성과 수정은 이를 참조하는 구성의 reviewed를 false로 만들고 버전을 올린다.
-구성 내용·순서 변경도 명시적 새 reviewed 확인이 없으면 검토 표시를 초기화한다.
-원본 수정으로 작성된 지원 문서 본문을 자동 덮어쓰지 않는다.
-audience와 reviewed는 사용 의도/개인 확인 기록이며 실제 공개·공유·제출 권한이 아니다.
+예전 `portfolio-compositions`·`application-documents`(포트폴리오 구성·지원 문서)와 그 연결 표는 2026-11-25 마이그레이션 `0033_drop_legacy_portfolio`로 지웠다. 화면에서 쓰지 않았고, 남아 있으면 그 표가 참조하는 성과·경험 기록을 지울 수 없었다. 지금의 포트폴리오 구성과 자기소개서·포트폴리오 초안은 [작성 API](writing.md)의 `composition`·`posting_requirements`와 저장 문서가 맡는다.
 
 ## 재시도와 기존 로컬 자료 이전
 
@@ -111,7 +104,7 @@ audience와 reviewed는 사용 의도/개인 확인 기록이며 실제 공개·
 
 1. 원본을 보존하고 기존 UUID를 client_id로 사용한다. 서버 ID 대응표를 계정별로 저장한다.
 2. 개인 교육과정과 수강/활동/경험/자격/성과를 먼저 저장하고 응답의 서버 ID를 확보한다.
-3. 개인 과목 연결, 개인 규칙, 구성/지원 문서 순서로 참조를 서버 ID로 치환한다.
+3. 개인 과목 연결, 개인 규칙 순서로 참조를 서버 ID로 치환한다.
 4. 실패 시 원본을 지우지 않고 client_id 조회와 같은 본문 재시도로 재개한다. 바뀐 내용은
    현재 version을 읽은 PATCH로 저장한다. 익명/다른 계정 자료를 자동 귀속하지 않는다.
 5. 로컬 일정의 offset 없는 시각은 원래 시간대 확인 후 변환해야 한다. 임의로 Z를 붙이거나

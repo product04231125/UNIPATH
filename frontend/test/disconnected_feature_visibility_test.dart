@@ -10,7 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/graduation/personal_graduation_workspace.dart';
 import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
 
 Widget host(Widget child) => MaterialApp(
   home: Scaffold(body: SingleChildScrollView(child: child)),
@@ -108,7 +107,6 @@ void main() {
                 kind,
                 () => PersonalRecordRepository(kind),
               ),
-              portfolio: PortfolioWorkspaceRepository.new,
               child: PersonalGraduationWorkspace(onBack: () {}),
             ),
           ),

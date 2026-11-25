@@ -6,7 +6,6 @@ import 'package:university_path_frontend/app_shell/phone_shell.dart';
 import 'package:university_path_frontend/features/records/activity/activity_page.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
 
 class HeaderRepository extends PersonalRecordRepository {
   HeaderRepository(super.kind);
@@ -29,7 +28,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(home: PhoneChromeScope(
         active: phone,
         child: PersonalRepositoryScope(
-          records: (kind) => repos[kind]!, portfolio: PortfolioWorkspaceRepository.new,
+          records: (kind) => repos[kind]!,
           child: const Scaffold(body: ActivityPage()),
         ),
       )));

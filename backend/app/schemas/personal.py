@@ -256,38 +256,6 @@ class PersonalGraduationRuleCreate(PersonalCreate):
         return self
 
 
-class PortfolioCompositionCreate(PersonalCreate):
-    audience: Literal["private", "application", "public_review"] = "private"
-    reviewed: bool = Field(default=False, strict=True)
-    sources: list[RecordReference] = Field(default_factory=list, max_length=100)
-
-    @field_validator("sources")
-    @classmethod
-    def valid_sources(cls, value):
-        if len({(v.kind, v.record_id) for v in value}) != len(value):
-            raise ValueError("Duplicate sources")
-        if any(v.kind != "achievement" for v in value):
-            raise ValueError("Compositions reference achievements only")
-        return value
-
-
-class ApplicationDocumentCreate(PersonalCreate):
-    target: Name
-    role: Name
-    document_type: Name
-    body: LongText = ""
-    sources: list[RecordReference] = Field(default_factory=list, max_length=100)
-
-    @field_validator("sources")
-    @classmethod
-    def valid_sources(cls, value):
-        if len({(v.kind, v.record_id) for v in value}) != len(value):
-            raise ValueError("Duplicate sources")
-        if any(v.kind not in ("achievement", "experience") for v in value):
-            raise ValueError("Documents reference achievements or experiences only")
-        return value
-
-
 class OwnedView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -328,8 +296,6 @@ for prefix in (
     "PersonalCurriculum",
     "PersonalCurriculumCourse",
     "PersonalGraduationRule",
-    "PortfolioComposition",
-    "ApplicationDocument",
 ):
     schema = globals()[prefix + "Create"]
     globals()[prefix + "Patch"] = patch_contract(prefix + "Patch", schema)

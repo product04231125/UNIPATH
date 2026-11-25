@@ -47,7 +47,7 @@ void main() {
       expect(gateway.calls, isEmpty);
       await seedLocalWorkspace(userId);
       await importer.load();
-      expect(importer.count, 10);
+      expect(importer.count, 8);
       expect(importer.canImport, isTrue);
       expect(gateway.calls, isEmpty);
     },
@@ -171,7 +171,7 @@ void main() {
         final raw = jsonEncode({
           'completed': false,
           'request': {
-            'import_id': compositionId,
+            'import_id': importId,
             'source_owner_id': userId,
             'consent_confirmed': true,
             ...overrides,

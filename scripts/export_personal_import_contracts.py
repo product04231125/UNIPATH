@@ -20,8 +20,6 @@ MODELS = [
     dto.ImportRecordReference,
     dto.ImportCurriculumCourse,
     dto.ImportGraduationRule,
-    dto.ImportComposition,
-    dto.ImportApplicationDocument,
     personal.ProfileData,
     dto.PersonalImportCreate,
     dto.ImportMapping,

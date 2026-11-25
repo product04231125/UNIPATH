@@ -7,7 +7,6 @@ import 'package:university_path_frontend/features/graduation/personal_calculatio
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
 import 'package:university_path_frontend/features/records/remote_personal_record_repository.dart';
-import 'package:university_path_frontend/features/records/portfolio/remote_portfolio_workspace_repository.dart';
 
 import 'support/calculation_gateway.dart';
 import 'support/personal_workspace_fixture.dart';
@@ -30,10 +29,6 @@ void main() {
           records: (kind) => RemotePersonalRecordRepository(
             gateway.api,
             kind,
-            ensureOpen: () {},
-          ),
-          portfolio: () => RemotePortfolioWorkspaceRepository(
-            gateway.api,
             ensureOpen: () {},
           ),
           calculations: controller,

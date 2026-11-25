@@ -94,20 +94,18 @@ void main() {
             required: true,
           ),
         ],
-        portfolioCompositions: const [
-          PersonalImportComposition(
+        personalGraduationRules: const [
+          PersonalImportGraduationRule(
             clientId: localId,
-            title: '합성 구성',
-            sources: [
-              PersonalImportRecordReference(
-                kind: 'achievement',
-                clientId: serverId,
-              ),
-              PersonalImportRecordReference(
-                kind: 'achievement',
-                clientId: localId,
-              ),
-            ],
+            title: '합성 규칙',
+            curriculumClientId: localId,
+            ruleType: '학점',
+            scope: 'curriculum',
+            condition: '개인 기준 설명',
+            relatedRecord: PersonalImportRecordReference(
+              kind: 'achievement',
+              clientId: serverId,
+            ),
           ),
         ],
       );
@@ -122,13 +120,13 @@ void main() {
       final link = (body['personal_curriculum_courses'] as List).single as Map;
       expect(link['curriculum_client_id'], localId);
       expect(link.containsKey('curriculum_id'), isFalse);
-      final sources =
-          ((body['portfolio_compositions'] as List).single as Map)['sources']
-              as List;
-      expect(sources.map((source) => (source as Map)['client_id']), [
-        serverId,
-        localId,
-      ]);
+      // References name the local client id, never a server id.
+      final rule = (body['personal_graduation_rules'] as List).single as Map;
+      expect(rule['curriculum_client_id'], localId);
+      expect(rule['related_record'], {
+        'kind': 'achievement',
+        'client_id': serverId,
+      });
       expect(result.mappings.single.recordId, serverId);
       expect(result.mappings.single.versionAtImport, 1);
       expect(result.official, isFalse);

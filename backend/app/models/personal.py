@@ -334,50 +334,6 @@ class PersonalGraduationRule(OwnedRecord, Base):
     )
 
 
-class PortfolioComposition(OwnedRecord, Base):
-    __tablename__ = "portfolio_compositions"
-    audience: Mapped[str] = mapped_column(String(24), default="private")
-    reviewed: Mapped[bool] = mapped_column(Boolean, default=False)
-    __table_args__ = (
-        CheckConstraint("audience IN ('private','application','public_review')", name="audience"),
-    )
-
-
-class ApplicationDocument(OwnedRecord, Base):
-    __tablename__ = "application_documents"
-    target: Mapped[str] = mapped_column(String(128))
-    role: Mapped[str] = mapped_column(String(128))
-    document_type: Mapped[str] = mapped_column(String(128))
-    body: Mapped[str] = mapped_column(Text, default="")
-
-
-class PortfolioSource(Base):
-    __tablename__ = "portfolio_sources"
-    composition_id: Mapped[UUID] = mapped_column(primary_key=True)
-    owner_id: Mapped[UUID] = mapped_column()
-    position: Mapped[int] = mapped_column(Integer, primary_key=True)
-    achievement_id: Mapped[UUID] = mapped_column()
-    __table_args__ = (
-        UniqueConstraint("composition_id", "achievement_id"),
-        CheckConstraint("position >= 0", name="position"),
-    )
-
-
-class ApplicationSource(Base):
-    __tablename__ = "application_document_sources"
-    document_id: Mapped[UUID] = mapped_column(primary_key=True)
-    owner_id: Mapped[UUID] = mapped_column()
-    position: Mapped[int] = mapped_column(Integer, primary_key=True)
-    achievement_id: Mapped[UUID | None] = mapped_column()
-    experience_id: Mapped[UUID | None] = mapped_column()
-    __table_args__ = (
-        UniqueConstraint("document_id", "achievement_id", name="uq_application_source_achievement"),
-        UniqueConstraint("document_id", "experience_id", name="uq_application_source_experience"),
-        CheckConstraint("position >= 0", name="position"),
-        CheckConstraint("num_nonnulls(achievement_id, experience_id) = 1", name="one_source"),
-    )
-
-
 class PersonalCreationReceipt(Base):
     """A retry cannot resurrect a deleted record; receipts contain no raw payload."""
 
@@ -400,8 +356,6 @@ OWNED_MODELS = (
     PersonalCurriculum,
     PersonalCurriculumCourse,
     PersonalGraduationRule,
-    PortfolioComposition,
-    ApplicationDocument,
 )
 for model in OWNED_MODELS:
     model.__table__.append_constraint(UniqueConstraint("id", "owner_id"))
@@ -448,8 +402,3 @@ for kind, model in [
     ("achievement", AchievementRecord),
 ]:
     owned_fk(PersonalGraduationRule, [f"related_{kind}_id"], model)
-owned_fk(PortfolioSource, ["composition_id"], PortfolioComposition, cascade=True)
-owned_fk(PortfolioSource, ["achievement_id"], AchievementRecord)
-owned_fk(ApplicationSource, ["document_id"], ApplicationDocument, cascade=True)
-owned_fk(ApplicationSource, ["achievement_id"], AchievementRecord)
-owned_fk(ApplicationSource, ["experience_id"], ExperienceRecord)

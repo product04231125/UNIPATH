@@ -16,7 +16,6 @@ import 'package:university_path_frontend/features/auth/local_data_owner.dart';
 import 'package:university_path_frontend/features/auth/login_page.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
 
 http.Response jsonResponse(Object? body, [int status = 200]) => http.Response(
   jsonEncode(body),
@@ -240,14 +239,13 @@ void main() {
   });
 
   test(
-    'planning and portfolio partition accounts and do not adopt anonymous data',
+    'planning and records partition accounts and do not adopt anonymous data',
     () async {
       final anonymous = PlanningRepository();
       await anonymous.load();
       await anonymous.saveSchoolContext(school: '기존 익명 학교');
       LocalDataOwner.currentUserId = userId;
       final first = PlanningRepository();
-      final portfolio = PortfolioWorkspaceRepository();
       final firstRecords = PersonalRecordRepository(
         PersonalRecordKind.experience,
       );
@@ -272,12 +270,9 @@ void main() {
       await first.saveSchoolContext(school: 'A 변경');
       await second.load();
       expect(second.profile.school, isEmpty);
-      await portfolio.load();
-      expect(portfolio.sources.keys, contains('experience/first-experience'));
-      expect(
-        portfolio.sources.keys,
-        isNot(contains('experience/second-experience')),
-      );
+      // The first account's records stay its own after the second account saved.
+      await firstRecords.load();
+      expect(firstRecords.records.map((r) => r.id), ['first-experience']);
       anonymous.dispose();
       first.dispose();
       second.dispose();
