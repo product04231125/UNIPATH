@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
-"""시연 계정에 시연용 합성 데이터를 넣는다(스테이징 공개 API만 사용).
+"""시연 학생 계정에 시연용 합성 데이터를 넣고, 시연 학교 관리자 계정을 준비한다(스테이징).
 
     python3 scripts/demo/seed_demo_student.py           # 빠진 시연 데이터만 넣는다
     python3 scripts/demo/seed_demo_student.py --reset   # 리허설 흔적을 지우고 처음 상태로 되돌린다
     python3 scripts/demo/seed_demo_student.py --status  # 지금 상태만 본다
     python3 scripts/demo/seed_demo_student.py --clear   # 시연 뒤 정리(다시 넣지 않음)
 
-계정 정보는 ~/.config/unipath-staging-demo/account.json({"base_url", "email", "password"})에서 읽고
-출력하지 않는다. 처음 실행할 때 계정에 원래 있던 자료(수강 기록·자격·내 자료 등)의 id를
-~/.config/unipath-staging-demo/state.json에 "원래 자료"로 기록해 두고,
---reset은 그 밖의 것만 지운다.
+계정 정보는 ~/.config/unipath-staging-demo-final/에서 읽고 출력하지 않는다.
+- account.json({"base_url", "email", "password"}): 시연 학생. 역할이 학생(user)이 아니면 멈춘다.
+- admin.json({"email", "password", "display_name", "institution"}): 시연 학교 관리자(선택).
 
---reset이 지우는 것: 저장된 분석 결과 전부, 저장한 자기소개서·포트폴리오 전부, 원래 자료가 아닌
-일정·활동·경험·자격·성과·내 자료(이 스크립트가 넣은 것 + 리허설 중 추가한 것). 그다음 시연 데이터를
-다시 넣는다. 일정 날짜는 실행한 날(한국 시간) 기준이라 시연 당일 아침에 --reset 하면 된다.
+학생 데이터는 스테이징 공개 API로만 다룬다. 처음 실행할 때 계정에 원래 있던 자료(수강 기록·자격·
+내 자료 등)의 id를 state.json에 "원래 자료"로 기록해 두고, --reset은 그 밖의 것만 지운다.
+--reset이 지우는 것: 시연 학생의 저장된 분석 결과 전부, 저장한 자기소개서·포트폴리오 전부, 원래
+자료가 아닌 일정·활동·경험·자격·성과·내 자료(이 스크립트가 넣은 것 + 리허설 중 추가한 것). 그다음
+시연 데이터를 다시 넣는다. 일정 날짜는 실행한 날(한국 시간) 기준이라
+시연 당일 아침에 --reset 하면 된다.
+
+학교 관리자는 공개 API로 만들 수 없어(승인은 슈퍼관리자만 가능), admin.json의 계정이 학교 관리자로
+로그인되지 않을 때만 이 서버의 스테이징 API 컨테이너 안에서 승인과 같은 방식(학교 권한 + 감사 기록,
+부여자는 기존 슈퍼관리자)으로 만든다. 이미 있는 계정의 비밀번호는 바꾸지 않는다.
+어떤 모드도 계정을 지우지 않으며, 슈퍼관리자 계정은 만들거나 바꾸거나 지우지 않는다.
 모든 내용은 시연용 합성 데이터다.
 """
 
@@ -21,6 +28,7 @@ import argparse
 import base64
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import time
@@ -32,9 +40,13 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 # UNIPATH_DEMO_CONFIG: another account folder (for testing the script on a check account).
-CONFIG = Path(os.environ.get("UNIPATH_DEMO_CONFIG", "~/.config/unipath-staging-demo")).expanduser()
+CONFIG = Path(
+    os.environ.get("UNIPATH_DEMO_CONFIG", "~/.config/unipath-staging-demo-final")
+).expanduser()
 ACCOUNT = CONFIG / "account.json"
+ADMIN = CONFIG / "admin.json"
 STATE = CONFIG / "state.json"
+API_CONTAINER = os.environ.get("UNIPATH_STAGING_API_CONTAINER", "unipath-staging-api-1")
 KST = ZoneInfo("Asia/Seoul")
 RECORDS = [
     "events",
@@ -46,17 +58,21 @@ RECORDS = [
 
 
 class Api:
-    def __init__(self, account):
-        self.base = account["base_url"].rstrip("/") + "/api/v1"
-        self.token = self.owner = None
+    def __init__(self, base_url):
+        self.base = base_url.rstrip("/") + "/api/v1"
+        self.token = self.owner = self.role = None
+
+    def login(self, account):
+        """HTTP status of the login; on success the session and the account's role are kept."""
         status, body = self.call(
             "POST",
             "/auth/login",
             {"email": account["email"], "password": account["password"], "session_mode": "bearer"},
         )
-        if status != 200:
-            sys.exit(f"로그인 실패: HTTP {status} {body.get('error', {}).get('code', '')}")
-        self.token, self.owner = body["access_token"], body["user"]["id"]
+        if status == 200:
+            self.token, self.owner = body["access_token"], body["user"]["id"]
+            self.role = body["user"]["role"]
+        return status, body
 
     def call(self, method, path, body=None, timeout=60):
         headers = {"Content-Type": "application/json", "User-Agent": "unipath-demo-seed"}
@@ -256,6 +272,91 @@ def events(today: date):
     ]
 
 
+# ---- 시연 학교 관리자 ------------------------------------------------------------------------
+
+# Runs inside the staging API container; reads one JSON line from stdin (the password never goes
+# on a command line). Mirrors the super administrator's signup approval: an active school scope
+# granted by the existing super administrator, its audit row, then the school_admin role.
+ADMIN_SERVER_CODE = """
+import json, sys
+from datetime import UTC, datetime
+from sqlalchemy import select
+from app.core.config import Settings
+from app.core.database import create_session_factory
+from app.models.identity import AdminScope, Institution, Role, User
+from app.services.access import audit, lock_identity
+from app.services.auth import PASSWORDS
+
+p = json.loads(sys.stdin.readline())
+factory = create_session_factory(Settings())
+with factory() as db:
+    lock_identity(db)
+    school = db.scalar(select(Institution).where(
+        Institution.name == p["institution"], Institution.deleted_at.is_(None)))
+    granter = db.scalar(select(User).where(
+        User.role == Role.SUPER_ADMIN, User.account_status == "active").order_by(User.created_at))
+    user = db.scalar(select(User).where(User.email == p["email"]).with_for_update())
+    if school is None or granter is None:
+        sys.exit("no-school-or-super-admin")
+    if user is not None and (p["mode"] != "grant" or user.role != Role.USER):
+        sys.exit("existing-account-left-unchanged")
+    if user is None:
+        if p["mode"] != "create":
+            sys.exit("no-account")
+        user = User(email=p["email"], display_name=p["display_name"], role=Role.USER,
+                    password_hash=PASSWORDS.hash(p["password"]))
+        db.add(user)
+        db.flush()
+    scope = AdminScope(user_id=user.id, institution_id=school.id, reason=p["reason"],
+                       granted_by=granter.id)
+    db.add(scope)
+    db.flush()
+    audit(db, granter.id, "scope_granted", scope.id, None, school.id)
+    user.role = Role.SCHOOL_ADMIN
+    user.version += 1
+    user.updated_at = datetime.now(UTC)
+    db.commit()
+    print(school.name)
+"""
+
+
+def ensure_admin(base_url):
+    """Check the demo school administrator; create it on the staging server only when missing."""
+    if not ADMIN.exists():
+        print(f"시연 관리자: {ADMIN}가 없어 건너뜁니다.")
+        return
+    admin = json.loads(ADMIN.read_text())
+    status, body = Api(base_url).login(admin)
+    role = body.get("user", {}).get("role") if status == 200 else None
+    if role == "school_admin":
+        print(f"시연 관리자: {admin['email']} (학교 관리자) 확인")
+        return
+    if role == "super_admin":
+        print(f"시연 관리자: {admin['email']}는 슈퍼관리자 계정이라 건드리지 않습니다.")
+        return
+    if status not in (200, 401):
+        print(f"시연 관리자: 로그인 확인 실패(HTTP {status}), 건너뜁니다.")
+        return
+    payload = {
+        **{k: admin[k] for k in ("email", "password", "display_name", "institution")},
+        "mode": "grant" if status == 200 else "create",
+        "reason": "시연 전용 학교 관리자(scripts/demo/seed_demo_student.py)",
+    }
+    command = ["docker", "exec", "-i", "-w", "/app", "-e", "PYTHONPATH=/app", API_CONTAINER]
+    result = subprocess.run(
+        [*command, "python", "-c", ADMIN_SERVER_CODE],
+        input=json.dumps(payload, ensure_ascii=False) + "\n",
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    if result.returncode != 0:
+        reason = (result.stderr.strip().splitlines() or ["?"])[-1]
+        sys.exit(f"시연 관리자를 만들지 못했습니다: {reason}")
+    action = "학교 관리자 권한을 부여했습니다" if status == 200 else "만들었습니다"
+    print(f"시연 관리자: {admin['email']} ({result.stdout.strip()} 학교 관리자)를 {action}.")
+
+
 # ---- 실행 ---------------------------------------------------------------------------------------
 
 
@@ -396,7 +497,17 @@ def main():
     args = parser.parse_args()
     if not ACCOUNT.exists():
         sys.exit(f"{ACCOUNT}에 계정 정보가 없습니다.")
-    api = Api(json.loads(ACCOUNT.read_text()))
+    account = json.loads(ACCOUNT.read_text())
+    api = Api(account["base_url"])
+    code, body = api.login(account)
+    if code != 200:
+        sys.exit(f"로그인 실패: HTTP {code} {body.get('error', {}).get('code', '')}")
+    # Records are deleted only on a student account: never on an administrator's.
+    if api.role != "user":
+        sys.exit(
+            f"{account['email']}는 학생 계정이 아닙니다(역할 {api.role}). "
+            "아무것도 바꾸지 않았습니다."
+        )
     state = load_state()
     if args.status:
         status(api)
@@ -408,6 +519,7 @@ def main():
         restore_goal(api, state)
     else:
         seed(api, state)
+        ensure_admin(account["base_url"])
     print(f"완료 ({time.monotonic() - started:.1f}초)")
 
 
