@@ -48,6 +48,8 @@ class WritingDocumentSummary(Strict):
     document_type: str
     version: int
     updated_at: datetime
+    # The posting the document was written for, when it came from 채용공고 분석.
+    posting: dict | None = None
 
 
 class WritingDocumentView(WritingDocumentSummary):
@@ -85,6 +87,7 @@ def summary(item):
         document_type=item.document_type,
         version=item.version,
         updated_at=item.updated_at,
+        posting=(item.content.get("input") or {}).get("posting"),
     )
 
 

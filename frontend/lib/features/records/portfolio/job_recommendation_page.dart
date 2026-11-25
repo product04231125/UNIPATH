@@ -23,6 +23,7 @@ import '../../api/academic_guidance_models.dart';
 import 'job_recommendation_result.dart';
 import 'material_selection.dart';
 import '../../../shared/widgets/work_layout.dart';
+import '../../writing/posting_link.dart';
 
 const recommendationMaxBytes = 8 * 1024 * 1024;
 Widget _surface({required Widget child}) => SurfaceCard(
@@ -57,8 +58,12 @@ class JobRecommendationPage extends StatefulWidget {
     this.loadMaterials,
     this.loadDocuments,
     this.goal,
+    this.onWrite,
   });
   final StudentApi? api;
+
+  /// Opens 자기소개서·포트폴리오 for one found posting.
+  final WriteForPosting? onWrite;
 
   /// The saved target job; fills an untouched search form.
   final CareerGoal? goal;
@@ -99,6 +104,9 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
   /// Finished searches kept in the account; null before signing in.
   SavedAnalysesController? _saved;
   DateTime? _openedAt;
+
+  /// When the shown result was made in this session (a saved one uses [_openedAt]).
+  DateTime? _resultAt;
 
   static SavedAnalysesController? _savedFor(StudentApi? api) => api == null
       ? null
@@ -380,6 +388,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
           !GuestPreviewScope.isActive(context)) {
         setState(() {
           _result = result;
+          _resultAt = DateTime.now();
           _resultRecords = records;
         });
         // Kept in the account; a failed save leaves the result on screen.
@@ -742,6 +751,8 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
                   openedNote: _openedAt == null
                       ? null
                       : '저장된 결과 · ${savedAnalysisTime(_openedAt)} 분석',
+                  onWrite: widget.onWrite,
+                  analyzedAt: _openedAt ?? _resultAt,
                   // Offered only while the form still has the category that found nothing.
                   onBrowseCategory:
                       _busy ||

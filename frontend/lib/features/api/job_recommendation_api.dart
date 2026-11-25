@@ -136,8 +136,13 @@ class RecommendationPosting {
       url = json['url'] as String,
       location = json['location'] as String,
       expiresAt = DateTime.tryParse(json['expires_at'] as String? ?? ''),
-      closingLabel = json['closing_label'] as String? ?? '확인 필요';
+      closingLabel = json['closing_label'] as String? ?? '확인 필요',
+      text = json['text'] as String? ?? '',
+      textScope = json['text_scope'] as String? ?? 'metadata_only';
   final String source, id, title, company, url, location, closingLabel;
+
+  /// The posting body as collected (empty or a summary when only metadata was available).
+  final String text, textScope;
 
   /// Parsed `expires_at`; UTC when the server sent an offset, otherwise wall-clock time.
   final DateTime? expiresAt;

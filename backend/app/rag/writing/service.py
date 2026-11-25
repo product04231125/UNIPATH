@@ -67,6 +67,12 @@ and paragraphs for explanations. composition, when supplied, lists the target jo
 in priority order with the record_ids that show each: present the projects in that order, say
 briefly which requirement each project shows (only as far as its records support), and leave out
 records that are not in it unless they are needed for the overview.
+posting_requirements, when supplied, are the requirements of that posting as an earlier
+comparison found them: priority (required or preferred), status and the record_ids that showed
+each. Build the document on them: lead with required requirements, use the listed records for
+each, and connect each experience to the requirement it shows. The status is only an earlier
+comparison, not proof: cite the records themselves. For a requirement without records do not
+claim it; mention related learning only if a record states it, or ask in questions_for_user.
 Distinguish team accomplishments from the applicant's contribution.
 If a fact is missing, omit it from the document and ask a specific question in questions_for_user
 (each at most 100 characters).
@@ -172,13 +178,23 @@ def generate_draft(request, records, generator, *, names=()):
         }
         for group in request.composition
     ]
+    asked = [
+        {
+            "requirement": redact_text(item.requirement, names=names),
+            "priority": item.priority,
+            "status": item.status,
+            "records": [str(record.record_id) for record in item.records],
+        }
+        for item in request.posting_requirements
+    ]
     focus = "\n".join(
         [request.target_role, request.target_company, posting, *questions]
         + [group["requirement"] for group in groups]
+        + [item["requirement"] for item in asked]
     )
     # The original is always sent whole; other records fit the rest, most relevant first.
     budget = max(0, RECORD_BUDGET - sum(len(r["text"]) for r in originals))
-    composed = {record_id for group in groups for record_id in group["records"]}
+    composed = {record_id for group in [*groups, *asked] for record_id in group["records"]}
     # Records the composition names come first so the budget never drops them.
     first = fit_records([r for r in saved if r["record_id"] in composed], focus, budget=budget)
     rest = [r for r in saved if r["record_id"] not in composed]
@@ -191,6 +207,9 @@ def generate_draft(request, records, generator, *, names=()):
             {**group, "records": [i for i in group["records"] if i in kept]} for group in groups
         ]
         groups = [group for group in groups if group["records"]]
+    if asked:
+        kept = {r["record_id"] for r in fitted}
+        asked = [{**item, "records": [i for i in item["records"] if i in kept]} for item in asked]
     warnings = []
     if len(fitted) < len(saved):
         warnings.append(
@@ -210,6 +229,7 @@ def generate_draft(request, records, generator, *, names=()):
         "char_limit": request.char_limit,
         "original_text": original,
         "composition": groups,
+        "posting_requirements": asked,
         "records": chosen,
         "output_schema": Draft.model_json_schema(),
     }

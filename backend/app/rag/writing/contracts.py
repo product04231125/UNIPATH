@@ -12,6 +12,8 @@ from pydantic import (
     model_validator,
 )
 
+from app.schemas.academic import safe_url
+
 
 def xml_text(value):
     if any(
@@ -60,6 +62,28 @@ class CompositionGroup(Strict):
     records: list[CompositionRecord] = Field(min_length=1, max_length=10)
 
 
+class PostingSource(Strict):
+    """The posting a document is written for (from 채용공고 분석). Shown with saved documents;
+    only its text (posting_text) and requirements go to the model."""
+
+    source: Literal["saramin", "work24", "jobkorea", "greenhouse", "manual"]
+    source_id: str = Field(default="", max_length=200)
+    title: Label
+    company: str = Field(default="", max_length=120)
+    url: Annotated[str, StringConstraints(max_length=2048), AfterValidator(safe_url)] = ""
+    # When the posting was analysed (ISO 8601), to show how fresh the comparison is.
+    analyzed_at: str = Field(default="", max_length=40)
+
+
+class PostingRequirement(Strict):
+    """One requirement of that posting as 채용공고 분석 compared it with the student's records."""
+
+    requirement: Label
+    priority: Literal["required", "preferred"]
+    status: Literal["supported", "partially_supported", "insufficient_evidence"]
+    records: list[CompositionRecord] = Field(default_factory=list, max_length=10)
+
+
 class WritingRequest(Strict):
     document_type: Literal["cover_letter", "portfolio"]
     mode: Literal["create", "improve"] = "create"
@@ -74,6 +98,9 @@ class WritingRequest(Strict):
     # Portfolio only: requirements in priority order with the records that show each
     # (포트폴리오 구성, e.g. from the latest 목표 직무 분석).
     composition: list[CompositionGroup] = Field(default_factory=list, max_length=12)
+    # The analysed posting this is written for, and its requirements with their evidence.
+    posting: PostingSource | None = None
+    posting_requirements: list[PostingRequirement] = Field(default_factory=list, max_length=20)
     external_processing_consent: bool = Field(default=False, strict=True)
 
     @model_validator(mode="after")

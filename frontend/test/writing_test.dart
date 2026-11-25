@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -10,6 +12,9 @@ import 'package:university_path_frontend/features/career/career_goal.dart';
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
 import 'package:university_path_frontend/features/writing/writing_api.dart';
 import 'package:university_path_frontend/features/writing/writing_page.dart';
+import 'package:university_path_frontend/features/writing/posting_link.dart';
+
+import 'support/saved_analyses_store.dart';
 
 const record = AiRecordOption(
   kind: 'experience',
@@ -214,6 +219,43 @@ Future<void> tapKey(WidgetTester tester, String key) async {
   await tester.pumpAndSettle();
 }
 
+/// Also answers `me/analysis-results`, for picking a saved posting.
+class SavedPostingsGateway extends WritingGateway {
+  final saved = SavedAnalysesStore();
+
+  @override
+  Future<Map<String, dynamic>?> request(
+    String method,
+    String path, [
+    Map<String, Object?>? body,
+  ]) async => SavedAnalysesStore.handles(path)
+      ? saved.handle(method, path, body)
+      : super.request(method, path, body);
+}
+
+const linked = PostingLink(
+  source: 'work24',
+  sourceId: 'K1',
+  title: '합성 프론트엔드 신입',
+  company: '합성 회사',
+  url: 'https://example.test/k1',
+  text: '담당업무: React 화면 개발',
+  requirements: [
+    PostingRequirementLink(
+      requirement: 'React 화면 개발',
+      priority: 'required',
+      status: 'supported',
+      records: [(kind: 'experience', recordId: 'exp-id')],
+    ),
+    PostingRequirementLink(
+      requirement: 'Docker 배포',
+      priority: 'preferred',
+      status: 'insufficient_evidence',
+      records: [(kind: 'experience', recordId: 'deleted-id')],
+    ),
+  ],
+);
+
 void main() {
   testWidgets('자기소개서 초안은 모든 기록과 문항을 보내고 근거와 함께 편집하게 한다', (tester) async {
     final (api, storage, _) = await mountWriting(
@@ -410,6 +452,97 @@ void main() {
       ),
       throwsA(isA<AuthFailure>()),
     );
+  });
+
+  testWidgets('공고 분석에서 넘어온 포트폴리오는 공고 요건 순으로 구성하고 공고와 요건을 함께 보낸다', (
+    tester,
+  ) async {
+    final (api, _, _) = await mountWriting(
+      tester,
+      results: [ready()],
+      request: WritingRequest(link: linked, type: WritingType.portfolio),
+    );
+    expect(
+      find.byKey(const ValueKey('writing-linked-posting')),
+      findsOneWidget,
+    );
+    expect(find.text('합성 프론트엔드 신입'), findsOneWidget);
+    expect(find.text('합성 회사'), findsWidgets);
+    expect(find.byKey(const ValueKey('writing-posting')), findsNothing);
+    // Arranged by the posting's 필수 requirement; Docker has no saved record left.
+    expect(find.byKey(const ValueKey('portfolio-group-0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('portfolio-group-1')), findsNothing);
+    expect(find.text('필수'), findsOneWidget);
+    await tapKey(tester, 'writing-run');
+    final sent = api.posts.single;
+    expect(sent['document_type'], 'portfolio');
+    expect(sent['target_company'], '합성 회사');
+    expect(sent['posting_text'], '담당업무: React 화면 개발');
+    expect(sent['posting'], linked.toSource());
+    expect(sent['posting_requirements'], [
+      {
+        'requirement': 'React 화면 개발',
+        'priority': 'required',
+        'status': 'supported',
+        'records': [
+          {'kind': 'experience', 'record_id': 'exp-id'},
+        ],
+      },
+      {
+        'requirement': 'Docker 배포',
+        'priority': 'preferred',
+        'status': 'insufficient_evidence',
+        'records': [],
+      },
+    ]);
+    expect(sent['composition'], [
+      {
+        'requirement': 'React 화면 개발',
+        'records': [
+          {'kind': 'experience', 'record_id': 'exp-id'},
+        ],
+      },
+    ]);
+  });
+
+  testWidgets('연결을 풀면 저장된 분석에서 공고를 다시 고르거나 붙여 넣을 수 있다', (tester) async {
+    final gateway = SavedPostingsGateway();
+    gateway.saved.items.add({
+      'id': 'search-1',
+      'kind': 'search',
+      'title': '소프트웨어 · 서울',
+      'summary': {'postings': 1},
+      'favorite': false,
+      'created_at': '2026-11-24T02:13:00+09:00',
+      'input': {},
+      'result': jsonDecode(
+        File('test/fixtures/job_recommendation_response.json')
+            .readAsStringSync(),
+      ),
+    });
+    await mountWriting(
+      tester,
+      gateway: gateway,
+      request: WritingRequest(link: linked),
+    );
+    await tapKey(tester, 'writing-unlink-posting');
+    expect(find.byKey(const ValueKey('writing-linked-posting')), findsNothing);
+    await tapKey(tester, 'writing-manual-posting');
+    expect(find.byKey(const ValueKey('writing-posting')), findsOneWidget);
+    await tapKey(tester, 'writing-pick-posting');
+    await tester.tap(
+      find.byKey(const ValueKey('posting-picker-saved-search-1')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Engineer'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('posting-picker')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('writing-linked-posting')),
+      findsOneWidget,
+    );
+    expect(find.text('Engineer'), findsOneWidget);
+    expect(find.textContaining('요건 1개 · 준비 1개'), findsOneWidget);
   });
 }
 

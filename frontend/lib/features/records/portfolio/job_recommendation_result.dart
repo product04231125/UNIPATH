@@ -10,6 +10,8 @@ import '../../../shared/widgets/surface_card.dart';
 import '../../api/job_recommendation_api.dart';
 import '../../assistant/ai_record_catalog.dart';
 import '../../planning/planning_dates.dart';
+import '../../writing/posting_link.dart';
+import '../../writing/writing_api.dart';
 
 Widget _surface({required Widget child}) => SurfaceCard(
   child: Material(type: MaterialType.transparency, child: child),
@@ -221,6 +223,8 @@ class JobRecommendationResult extends StatelessWidget {
     this.onBrowseCategory,
     this.titleTrailing,
     this.openedNote,
+    this.onWrite,
+    this.analyzedAt,
   });
   final JobRecommendationResponse result;
   final List<AiRecordOption> selectedRecords;
@@ -233,6 +237,10 @@ class JobRecommendationResult extends StatelessWidget {
 
   /// Search the same category again without detail words (shown after a 0-match search).
   final VoidCallback? onBrowseCategory;
+
+  /// Opens 자기소개서·포트폴리오 for one posting; [analyzedAt] is when this result was made.
+  final WriteForPosting? onWrite;
+  final DateTime? analyzedAt;
 
   Widget _comparison(RecommendationComparison c) => Padding(
     padding: const EdgeInsets.only(bottom: 10),
@@ -423,13 +431,34 @@ class JobRecommendationResult extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: ExternalLinkButton(
-              url: posting.url,
-              label: '원 공고',
-              description: '최신 모집 조건과 마감은 원 공고에서 확인하세요.',
-            ),
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              ExternalLinkButton(
+                url: posting.url,
+                label: '원 공고',
+                description: '최신 모집 조건과 마감은 원 공고에서 확인하세요.',
+              ),
+              if (onWrite case final write?)
+                for (final type in WritingType.values)
+                  TextButton.icon(
+                    key: ValueKey(
+                      'recommend-write-${type.value}-${posting.key}',
+                    ),
+                    onPressed: () => write(
+                      PostingLink.fromRanked(entry, analyzedAt: analyzedAt),
+                      type,
+                    ),
+                    icon: Icon(
+                      type == WritingType.coverLetter
+                          ? Icons.edit_note_outlined
+                          : Icons.folder_open_outlined,
+                    ),
+                    label: Text('${type.label} 쓰기'),
+                  ),
+            ],
           ),
           if (evidence != null && evidence.matched.isNotEmpty)
             ExpansionTile(

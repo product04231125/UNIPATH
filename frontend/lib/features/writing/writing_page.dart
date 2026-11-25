@@ -21,12 +21,25 @@ import '../auth/file_export_gateway.dart';
 import 'export_file_save.dart';
 import 'writing_api.dart';
 import 'portfolio_composition.dart';
+import 'posting_link.dart';
+import 'posting_picker.dart';
 import '../../shared/widgets/work_layout.dart';
 
 /// 채용공고 분석 → 자기소개서: opens this page once with the posting filled in.
+/// Opens 자기소개서·포트폴리오 for a posting from 채용공고 분석.
 class WritingRequest extends PendingUiAction {
-  WritingRequest({required this.postingText});
+  WritingRequest({
+    this.postingText = '',
+    this.link,
+    this.type = WritingType.coverLetter,
+  });
+
+  /// Pasted posting text only (no analysis to link).
   final String postingText;
+
+  /// The analysed posting, with its requirements and their evidence.
+  final PostingLink? link;
+  final WritingType type;
 }
 
 const maxQuestions = 6;
@@ -134,6 +147,10 @@ class _WritingPageState extends State<WritingPage> {
   final _title = TextEditingController();
   List<CompositionGroup> _composition = const [];
 
+  /// The posting from 채용공고 분석 this draft is written for; replaces the pasted text.
+  PostingLink? _link;
+  bool _manualPosting = false;
+
   WritingInput? _input;
   WritingResult? _result;
   List<_EditableSection> _sections = [];
@@ -178,6 +195,7 @@ class _WritingPageState extends State<WritingPage> {
       _sending = _exporting = false;
       _materialIds.clear();
       _composition = const [];
+      _link = null;
       _clearDraft();
       _documents = const [];
       _restored = false;
@@ -219,11 +237,46 @@ class _WritingPageState extends State<WritingPage> {
   void _consumeRequest() {
     final request = widget.request;
     if (request == null || !request.consume()) return;
+    final link = request.link;
     setState(() {
-      _type = WritingType.coverLetter;
+      _type = request.type;
       _improve = false;
-      _posting.text = request.postingText;
+      _link = link;
+      _composition = const [];
+      _posting.text = link == null ? request.postingText : '';
+      if (link != null && link.company.isNotEmpty) _company.text = link.company;
     });
+    if (link != null && request.type == WritingType.portfolio) {
+      unawaited(_composeFor(link));
+    }
+  }
+
+  /// A portfolio for a posting starts arranged by that posting's requirements.
+  Future<void> _composeFor(PostingLink link) async {
+    final api = widget.api;
+    if (api == null || link.requirements.isEmpty) return;
+    try {
+      final records = await (widget.loadRecords?.call() ?? loadAiRecords(api));
+      if (!mounted || !identical(_link, link)) return;
+      setState(() => _composition = composeFromPosting(link, records));
+    } catch (_) {
+      // The card's own buttons build it again and show any failure.
+    }
+  }
+
+  Future<void> _pickPosting() async {
+    final api = widget.api;
+    if (api == null) return;
+    final link = await showSavedPostingPicker(context, api);
+    if (link == null || !mounted) return;
+    setState(() {
+      _link = link;
+      _composition = const [];
+      if (link.company.isNotEmpty && _company.text.trim().isEmpty) {
+        _company.text = link.company;
+      }
+    });
+    if (_type == WritingType.portfolio) unawaited(_composeFor(link));
   }
 
   Future<void> _restore() async {
@@ -256,7 +309,14 @@ class _WritingPageState extends State<WritingPage> {
     _improve = input.improve;
     _role.text = input.targetRole;
     _company.text = input.targetCompany;
-    if (_posting.text.trim().isEmpty) _posting.text = input.postingText;
+    _link = PostingLink.fromSaved(
+      input.posting,
+      input.postingText,
+      input.postingRequirements,
+    );
+    if (_link == null && _posting.text.trim().isEmpty) {
+      _posting.text = input.postingText;
+    }
     _charLimit.text = input.charLimit?.toString() ?? '';
     _original.text = input.originalText;
     for (final q in _questions) {
@@ -396,12 +456,19 @@ class _WritingPageState extends State<WritingPage> {
       return null;
     }
     final cover = _type == WritingType.coverLetter;
+    final link = _link;
+    final postingText = link?.text.trim() ?? _posting.text.trim();
     return WritingInput(
       type: _type,
       improve: _improve,
       targetRole: role,
       targetCompany: _company.text.trim(),
-      postingText: _posting.text.trim(),
+      // A collected posting longer than a request holds keeps its beginning, as analysis did.
+      postingText: postingText.length > 20000
+          ? postingText.substring(0, 20000)
+          : postingText,
+      posting: link?.toSource(),
+      postingRequirements: link?.requirementsJson() ?? const [],
       questions: cover ? questions : const [],
       charLimit: cover ? limit : null,
       originalText: _improve ? _original.text.trim() : '',
@@ -743,6 +810,63 @@ class _WritingPageState extends State<WritingPage> {
     return '${local.month}월 ${local.day}일 ${two(local.hour)}:${two(local.minute)}';
   }
 
+  /// The linked posting, or ways to bring one in: pick a saved analysis, or paste the text
+  /// (for postings no source collects, such as a company's own careers page).
+  Widget _postingInput(bool enabled) {
+    if (_link case final link?) {
+      return LinkedPostingCard(
+        link: link,
+        onUnlink: enabled
+            ? () => setState(() {
+                _link = null;
+                _composition = const [];
+              })
+            : null,
+      );
+    }
+    final manual = _manualPosting || _posting.text.trim().isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            if (widget.api != null)
+              OutlinedButton.icon(
+                key: const ValueKey('writing-pick-posting'),
+                onPressed: enabled ? _pickPosting : null,
+                icon: const Icon(Icons.work_outline),
+                label: const Text('채용공고 분석에서 고르기'),
+              ),
+            if (!manual)
+              TextButton(
+                key: const ValueKey('writing-manual-posting'),
+                onPressed: enabled
+                    ? () => setState(() => _manualPosting = true)
+                    : null,
+                child: const Text('공고 본문 직접 붙여 넣기'),
+              ),
+          ],
+        ),
+        if (manual) ...[
+          const SizedBox(height: 8),
+          TextField(
+            key: const ValueKey('writing-posting'),
+            controller: _posting,
+            enabled: enabled,
+            minLines: 3,
+            maxLines: 8,
+            decoration: const InputDecoration(
+              hintText:
+                  '수집되지 않는 공고(회사 채용 페이지 등)는 본문을 붙여 넣으면 업무와 자격에 맞는 경험을 골라 씁니다.',
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _savedDocuments(BuildContext context) {
     final theme = Theme.of(context);
     final muted = TextStyle(color: theme.colorScheme.onSurfaceVariant);
@@ -810,6 +934,14 @@ class _WritingPageState extends State<WritingPage> {
                           ].join(' · '),
                           style: muted,
                         ),
+                        if (d.postingLabel case final posting?)
+                          Text(
+                            '공고 · $posting',
+                            key: ValueKey('writing-document-posting-${d.id}'),
+                            style: muted,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                       ],
                     ),
                   ),
@@ -885,25 +1017,14 @@ class _WritingPageState extends State<WritingPage> {
             ),
           ),
           const SizedBox(height: 12),
-          FieldLabel(
-            label: '채용공고 본문 (선택)',
-            child: TextField(
-              key: const ValueKey('writing-posting'),
-              controller: _posting,
-              enabled: enabled,
-              minLines: 3,
-              maxLines: 8,
-              decoration: const InputDecoration(
-                hintText: '붙여 넣으면 공고의 업무와 자격에 맞는 경험을 골라 씁니다.',
-              ),
-            ),
-          ),
+          FieldLabel(label: '지원할 공고 (선택)', child: _postingInput(enabled)),
           if (!cover && !_improve && widget.api != null) ...[
             const SizedBox(height: 12),
             PortfolioCompositionCard(
               api: widget.api!,
               groups: _composition,
               enabled: enabled,
+              posting: _link,
               loadRecords: widget.loadRecords,
               onChanged: (groups) => setState(() => _composition = groups),
             ),

@@ -14,6 +14,8 @@ import 'package:university_path_frontend/features/records/personal_record_reposi
 import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
 import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
 import 'package:university_path_frontend/features/records/portfolio/job_analysis_page.dart';
+import 'package:university_path_frontend/features/writing/posting_link.dart';
+import 'package:university_path_frontend/features/writing/writing_api.dart';
 
 late AiConsentPreferences consent;
 const id = '10000000-0000-4000-8000-000000000001';
@@ -52,6 +54,7 @@ Widget host(
   StudentApi api, {
   Future<List<AssistantMaterial>> Function()? loadMaterials,
   Future<List<GuidanceDocument>> Function(List<String> ids)? loadDocuments,
+  WriteForPosting? onWrite,
 }) => MaterialApp(
   home: PersonalRepositoryScope(
     records: (kind) => Records(kind),
@@ -62,6 +65,7 @@ Widget host(
         consent: consent,
         loadMaterials: loadMaterials,
         loadDocuments: loadDocuments,
+        onWrite: onWrite,
         loadRecords: () async => [
           const AiRecordOption(
             kind: 'activity',
@@ -250,6 +254,70 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('내 자료 근거 (합성.txt · 본문): 합성 근거'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a compared posting opens 자기소개서·포트폴리오 with its requirements', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await consent.load();
+    await consent.setAllowed(AiConsentFeature.jobAnalysis, true);
+    final gateway = Gateway();
+    final written = <(PostingLink, WritingType)>[];
+    await tester.pumpWidget(
+      host(
+        StudentApi(gateway, ownerId: id),
+        onWrite: (link, type) => written.add((link, type)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await prepare(tester);
+    await run(tester);
+    gateway.pending.single.complete({
+      'analysis_id': id,
+      'status': 'completed',
+      'reason': 'compared_with_personal_evidence',
+      'official': false,
+      'missing_fields': [],
+      'warnings': [],
+      'comparisons': [
+        {
+          'requirement_id': id,
+          'priority': 'required',
+          'requirement': '봉사 경험',
+          'status': 'supported',
+          'posting_evidence': {'start': 0, 'end': 2, 'excerpt': '공고'},
+          'personal_evidence': [
+            {
+              'kind': 'activity',
+              'record_id': id,
+              'version': 3,
+              'excerpt': '선택 봉사',
+            },
+          ],
+          'explanation': '봉사 기록이 있습니다.',
+        },
+      ],
+    });
+    await tester.pumpAndSettle();
+    final portfolio = find.byKey(
+      const ValueKey('job-analysis-write-portfolio'),
+    );
+    await tester.ensureVisible(portfolio);
+    await tester.tap(portfolio);
+    await tester.pumpAndSettle();
+    final (link, type) = written.single;
+    expect(type, WritingType.portfolio);
+    expect(link.text, '공고 본문');
+    expect(link.source, 'manual');
+    expect(link.requirements.single.requirement, '봉사 경험');
+    expect(link.requirements.single.records.single.recordId, id);
+    expect(link.analyzedAt, isNotNull);
+    expect(
+      find.byKey(const ValueKey('job-analysis-write-cover_letter')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('analysis notes are shown with the result', (tester) async {
