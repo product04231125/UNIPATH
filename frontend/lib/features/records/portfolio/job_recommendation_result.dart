@@ -441,23 +441,30 @@ class JobRecommendationResult extends StatelessWidget {
                 label: '원 공고',
                 description: '최신 모집 조건과 마감은 원 공고에서 확인하세요.',
               ),
+              // The two 쓰기 buttons wrap to the next line together.
               if (onWrite case final write?)
-                for (final type in WritingType.values)
-                  TextButton.icon(
-                    key: ValueKey(
-                      'recommend-write-${type.value}-${posting.key}',
-                    ),
-                    onPressed: () => write(
-                      PostingLink.fromRanked(entry, analyzedAt: analyzedAt),
-                      type,
-                    ),
-                    icon: Icon(
-                      type == WritingType.coverLetter
-                          ? Icons.edit_note_outlined
-                          : Icons.folder_open_outlined,
-                    ),
-                    label: Text('${type.label} 쓰기'),
-                  ),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: [
+                    for (final type in WritingType.values)
+                      TextButton.icon(
+                        key: ValueKey(
+                          'recommend-write-${type.value}-${posting.key}',
+                        ),
+                        onPressed: () => write(
+                          PostingLink.fromRanked(entry, analyzedAt: analyzedAt),
+                          type,
+                        ),
+                        icon: Icon(
+                          type == WritingType.coverLetter
+                              ? Icons.edit_note_outlined
+                              : Icons.folder_open_outlined,
+                        ),
+                        label: Text('${type.label} 쓰기'),
+                      ),
+                  ],
+                ),
             ],
           ),
           if (evidence != null && evidence.matched.isNotEmpty)
