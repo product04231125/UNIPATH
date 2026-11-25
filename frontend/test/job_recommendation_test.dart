@@ -472,24 +472,38 @@ void main() {
         ('preferred', 'supported'),
       ]),
       item('match', [('required', 'supported'), ('preferred', 'supported')]),
+      // Saved before every 필수 was required: the server still listed it as a match.
+      item('half', [
+        ('required', 'supported'),
+        ('required', 'insufficient_evidence'),
+      ]),
     ];
-    (json['recommendations'] as List).first['source_id'] = 'match';
+    final recommended = json['recommendations'] as List;
+    recommended.first['source_id'] = 'match';
+    recommended.add({
+      ...jsonDecode(jsonEncode(recommended.first)) as Map<String, dynamic>,
+      'source_id': 'half',
+    });
     final ranked = rankPostings(JobRecommendationResponse.fromJson(json));
     expect(ranked.map((p) => p.posting.id), [
       'match',
+      'half',
       'preferred-only',
       'none',
       'failed',
     ]);
     expect(ranked.map((p) => p.verdict), [
       PostingVerdict.recommended,
+      PostingVerdict.closest,
       PostingVerdict.requiredMissing,
       PostingVerdict.noEvidence,
       PostingVerdict.unavailable,
     ]);
-    expect(ranked.first.reason, '필수 요건 1개 중 1개가 준비되어 추천했습니다.');
-    expect(ranked[1].required, (0, 1));
-    expect(ranked[1].reason, contains('추천에서 제외'));
+    expect(ranked.first.reason, '필수 요건 1개를 모두 갖춰 추천했습니다.');
+    expect(ranked[1].required, (1, 2));
+    expect(ranked[1].reason, contains('확인되지 않은 필수 요건: 「'));
+    expect(ranked[2].required, (0, 1));
+    expect(ranked[2].reason, contains('추천에서 제외'));
   });
 
   testWidgets('several regions and 졸업예정 are sent with the search', (

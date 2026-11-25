@@ -122,6 +122,128 @@ class DocumentRecommendations(unittest.TestCase):
         self.assertEqual(result["document_locations"][cite["record_id"]]["location"], "1쪽")
         self.assertEqual(item["url"], posting.url)
 
+    def test_graduating_stage_is_a_citable_record_for_degree_requirements(self):
+        identity = SimpleNamespace(user=SimpleNamespace(id="owner", display_name="임의사용자"))
+        model = Mock()
+
+        def generate(instruction, payload):
+            self.assertIn("졸업예정", instruction)
+            (record,) = [r for r in payload["records"] if r["text"].startswith("학적 정보")]
+            self.assertIn("학교: 합성대학교\n학과: 컴퓨터공학과", record["text"])
+            return {
+                "comparisons": [
+                    {
+                        "priority": "required",
+                        "requirement": "4년제 대학 졸업",
+                        "posting_quote": "4년제 대학 졸업",
+                        "status": "supported",
+                        "explanation": "졸업예정이라 학위 요건을 충족합니다.",
+                        "personal_evidence": [
+                            {
+                                "kind": record["kind"],
+                                "record_id": record["record_id"],
+                                "version": 1,
+                                "excerpt": "현재 학년: 졸업예정",
+                            }
+                        ],
+                    }
+                ]
+            }
+
+        model.generate.side_effect = generate
+        request = SimpleNamespace(
+            app=SimpleNamespace(
+                state=SimpleNamespace(
+                    portfolio_analyzer=EvidenceAnalyzer(model),
+                    settings=SimpleNamespace(vertex_model="gemini-3.5-flash"),
+                )
+            )
+        )
+        payload = RecommendationRequest(
+            keyword="engineer",
+            region="서울",
+            academic_stage="graduating",
+            external_processing_consent=True,
+            documents=[
+                {
+                    "filename": "portfolio.pdf",
+                    "content_base64": base64.b64encode(synthetic_pdf()).decode(),
+                }
+            ],
+        )
+        db = Mock()
+        db.get.return_value = SimpleNamespace(
+            school="합성대학교", department="컴퓨터공학과", admission_year=None
+        )
+        posting = Posting(
+            "greenhouse",
+            "example/2",
+            "Engineer",
+            "Test",
+            "서울",
+            "https://job-boards.greenhouse.io/example/jobs/2",
+            "지원자격: 4년제 대학 졸업",
+            "2026-01-01T00:00:00+00:00",
+            text_scope="full_text",
+        )
+        with (
+            patch.dict(
+                "os.environ",
+                {
+                    "CAREER_GREENHOUSE_BOARD": "example",
+                    "SARAMIN_ACCESS_KEY": "",
+                    "WORK24_AUTH_KEY": "",
+                },
+            ),
+            patch("app.services.auth.throttle"),
+            patch("app.services.auth.current_identity", return_value=identity),
+            patch("app.services.gemini.reserve_call"),
+            patch("app.rag.career.api.Greenhouse.search", return_value=[posting]),
+        ):
+            result = recommendations(payload, request, db, identity)
+        (item,) = result["recommendations"]
+        cite = item["matched_requirements"][0]["personal_evidence"][0]
+        location = result["document_locations"][cite["record_id"]]
+        self.assertEqual((location["filename"], location["method"]), ("학적 정보", "academic"))
+
+    def test_every_required_requirement_must_be_met_to_recommend(self):
+        from app.rag.career.contracts import SearchQuery
+        from app.rag.career.recommendations import recommend
+
+        ctx, _, _ = prepare_documents([("portfolio.txt", b"Python project")])
+        source = Mock()
+        source.name = "greenhouse"
+        source.search.return_value = [
+            Posting(
+                "greenhouse",
+                "board/2",
+                "Engineer",
+                "Example",
+                "Seoul",
+                "https://example.com/open/2",
+                "Python required; driving licence required",
+                "2026-01-01T00:00:00+00:00",
+                text_scope="full_text",
+            )
+        ]
+        analyzer = Mock()
+        for second, recommended in (
+            ("partially_supported", False),
+            ("insufficient_evidence", False),
+            ("supported", True),
+        ):
+            analyzer.analyze.return_value = [
+                {"priority": "required", "status": "supported"},
+                {"priority": "required", "status": second},
+                {"priority": "preferred", "status": "supported"},
+            ]
+            result = recommend(SearchQuery("Engineer", "Seoul"), ctx["records"], [source], analyzer)
+            self.assertEqual(len(result["recommendations"]), int(recommended), second)
+            if not recommended:
+                self.assertEqual(
+                    result["display_candidates"][0]["display_type"], "closest_needs_review"
+                )
+
     def test_model_gaps_or_failure_do_not_become_recommendations(self):
         from app.rag.career.contracts import SearchQuery
         from app.rag.career.recommendations import recommend

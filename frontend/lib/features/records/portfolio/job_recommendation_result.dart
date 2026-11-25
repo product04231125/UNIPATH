@@ -75,8 +75,8 @@ String postingDeadlineLabel(RecommendationPosting posting, {DateTime? now}) {
   return '마감 $year${at.month}월 ${at.day}일(${weekdayLabel(at.weekday)})$time';
 }
 
-/// How one compared posting stands against the recommendation rule: a ready
-/// requirement, and at least one ready 필수 requirement when it has any.
+/// How one compared posting stands against the recommendation rule: every 필수
+/// requirement ready, or at least one ready requirement when it has no 필수.
 enum PostingVerdict {
   recommended('추천', AppTone.success),
   closest('조건 확인 필요', AppTone.warning),
@@ -117,6 +117,14 @@ class RankedPosting {
   }
 }
 
+/// The 필수 requirements that kept a posting out of 추천, for its one-line reason.
+String _unreadyNote(List<RecommendationComparison> unready) {
+  if (unready.isEmpty) return '지원 조건을 직접 확인하세요.';
+  final names = [for (final c in unready.take(2)) '「${c.requirement}」'];
+  final more = unready.length > 2 ? ' 외 ${unready.length - 2}개' : '';
+  return '확인되지 않은 필수 요건: ${names.join(', ')}$more. 지원 조건을 직접 확인하세요.';
+}
+
 /// Every compared posting in one list: recommended ones in the server's order
 /// (fewest unconfirmed 필수 first), then the closest candidate, then the rest
 /// by how near they are, and postings without a finished analysis last.
@@ -143,21 +151,27 @@ List<RankedPosting> rankPostings(JobRecommendationResponse result) {
     final required = comparisons.where((c) => c.priority == 'required');
     final requiredReady = required.where((c) => c.status == 'supported').length;
     final ready = comparisons.where((c) => c.status == 'supported').length;
+    final unready = [
+      for (final c in required)
+        if (c.status != 'supported') c,
+    ];
     // The server's candidate type decides first; otherwise the comparisons do.
+    // Results saved before every 필수 was required may still call a posting with
+    // one ready 필수 a match: the comparisons keep it out of 추천.
     final type =
         candidate?.type ??
         recommendation?.type ??
         (recommendation != null ? 'evidence_match' : null);
     final (verdict, reason) = switch (type) {
-      'evidence_match' => (
+      'evidence_match' when ready > 0 && unready.isEmpty => (
         PostingVerdict.recommended,
         required.isEmpty
             ? '준비된 요건이 $ready개 있어 추천했습니다.'
-            : '필수 요건 ${required.length}개 중 $requiredReady개가 준비되어 추천했습니다.',
+            : '필수 요건 ${required.length}개를 모두 갖춰 추천했습니다.',
       ),
       'closest_needs_review' => (
         PostingVerdict.closest,
-        '추천 기준에는 못 미치지만 비교한 공고 중 가장 가깝습니다. 지원 조건을 직접 확인하세요.',
+        '추천 기준에는 못 미치지만 비교한 공고 중 가장 가깝습니다. ${_unreadyNote(unready)}',
       ),
       _ when type == 'analysis_unavailable' || status != 'completed' => (
         PostingVerdict.unavailable,
@@ -173,7 +187,7 @@ List<RankedPosting> rankPostings(JobRecommendationResponse result) {
         PostingVerdict.requiredMissing,
         '필수 요건 ${required.length}개 중 준비된 것이 없어 추천에서 제외했습니다.',
       ),
-      _ => (PostingVerdict.closest, '추천 기준에 가깝습니다. 지원 조건을 직접 확인하세요.'),
+      _ => (PostingVerdict.closest, '추천 기준에 가깝습니다. ${_unreadyNote(unready)}'),
     };
     return RankedPosting(
       posting: posting,
@@ -272,7 +286,10 @@ class JobRecommendationResult extends StatelessWidget {
   String _citationLabel(RecommendationCitation cite) {
     final location = result.locations[cite.id];
     if (location != null) {
-      return '내 자료: ${location.filename} · ${location.location}';
+      // The 학적 정보 record the server built from the chosen stage, not a file.
+      return location.method == 'academic'
+          ? '${location.filename}: ${location.location}'
+          : '내 자료: ${location.filename} · ${location.location}';
     }
     final matches = selectedRecords.where(
       (r) =>
@@ -627,7 +644,7 @@ class JobRecommendationResult extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '추천 기준: 준비된 요건이 있고, 필수 요건 중 하나 이상이 준비됨. '
+            '추천 기준: 필수 요건을 모두 갖춤(필수 요건이 없으면 준비된 요건이 하나 이상). '
             '기준을 만족한 공고부터 보여 줍니다.',
             style: muted,
           ),
