@@ -241,10 +241,8 @@ class _WritingPageState extends State<WritingPage> {
     setState(() {
       _type = request.type;
       _improve = false;
-      _link = link;
-      _composition = const [];
+      _setLink(link, fromAnalysis: true);
       _posting.text = link == null ? request.postingText : '';
-      if (link != null && link.company.isNotEmpty) _company.text = link.company;
     });
     if (link != null && request.type == WritingType.portfolio) {
       unawaited(_composeFor(link));
@@ -269,14 +267,24 @@ class _WritingPageState extends State<WritingPage> {
     if (api == null) return;
     final link = await showSavedPostingPicker(context, api);
     if (link == null || !mounted) return;
-    setState(() {
-      _link = link;
-      _composition = const [];
-      if (link.company.isNotEmpty && _company.text.trim().isEmpty) {
-        _company.text = link.company;
-      }
-    });
+    setState(() => _setLink(link));
     if (_type == WritingType.portfolio) unawaited(_composeFor(link));
+  }
+
+  /// Links [link] (or none) in place of the current posting. 지원처 follows the posting when
+  /// it is empty or still holds the previous posting's company; a company the student typed
+  /// stays, unless [fromAnalysis] (a 쓰기 button on a posting) names another one.
+  void _setLink(PostingLink? link, {bool fromAnalysis = false}) {
+    final current = _company.text.trim();
+    final previous = _link?.company ?? '';
+    final next = link?.company ?? '';
+    if (current.isEmpty ||
+        (previous.isNotEmpty && current == previous) ||
+        (fromAnalysis && next.isNotEmpty)) {
+      _company.text = next;
+    }
+    _link = link;
+    _composition = const [];
   }
 
   Future<void> _restore() async {
@@ -816,12 +824,7 @@ class _WritingPageState extends State<WritingPage> {
     if (_link case final link?) {
       return LinkedPostingCard(
         link: link,
-        onUnlink: enabled
-            ? () => setState(() {
-                _link = null;
-                _composition = const [];
-              })
-            : null,
+        onUnlink: enabled ? () => setState(() => _setLink(null)) : null,
       );
     }
     final manual = _manualPosting || _posting.text.trim().isNotEmpty;

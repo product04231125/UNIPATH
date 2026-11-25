@@ -525,8 +525,13 @@ void main() {
       gateway: gateway,
       request: WritingRequest(link: linked),
     );
+    TextField company() =>
+        tester.widget(find.byKey(const ValueKey('writing-company')));
+    expect(company().controller!.text, '합성 회사');
     await tapKey(tester, 'writing-unlink-posting');
     expect(find.byKey(const ValueKey('writing-linked-posting')), findsNothing);
+    // The company came with the posting, so it goes with it.
+    expect(company().controller!.text, isEmpty);
     await tapKey(tester, 'writing-manual-posting');
     expect(find.byKey(const ValueKey('writing-posting')), findsOneWidget);
     await tapKey(tester, 'writing-pick-posting');
@@ -543,6 +548,15 @@ void main() {
     );
     expect(find.text('Engineer'), findsOneWidget);
     expect(find.textContaining('요건 1개 · 준비 1개'), findsOneWidget);
+    expect(company().controller!.text, 'Test');
+
+    // A company the student typed stays when another posting is linked.
+    await tester.enterText(
+      find.byKey(const ValueKey('writing-company')),
+      '직접 쓴 회사',
+    );
+    await tapKey(tester, 'writing-unlink-posting');
+    expect(company().controller!.text, '직접 쓴 회사');
   });
 }
 
