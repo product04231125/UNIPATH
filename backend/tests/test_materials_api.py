@@ -78,6 +78,49 @@ def test_materials_are_owner_only_versioned_and_keep_their_pdf(auth_client):
 
 
 @pytest.mark.integration
+def test_saved_pdf_pages_render_for_the_owner_only(auth_client):
+    from io import BytesIO
+
+    import pypdfium2 as pdfium
+
+    from app.rag import pdf_pages
+
+    pdf_pages._IMAGES.clear()
+    pdf_pages._SIZES.clear()
+    document = pdfium.PdfDocument.new()
+    document.new_page(595, 842)
+    document.new_page(842, 595)
+    out = BytesIO()
+    document.save(out)
+    c = auth_client
+    owner = authorization(register(c))
+    other = authorization(register(c, "other@example.test"))
+    path = "/api/v1/me/materials"
+    real = c.post(path, headers=owner, json=material(pdf=out.getvalue())).json()
+    pages = f"{path}/{real['id']}/pages"
+    info = c.get(pages, headers=owner)
+    assert info.status_code == 200, info.text
+    assert info.json() == {
+        "page_count": 2,
+        "pages": [{"width": 595.0, "height": 842.0}, {"width": 842.0, "height": 595.0}],
+    }
+    image = c.get(f"{pages}/2", headers=owner)
+    assert image.status_code == 200 and image.headers["content-type"] == "image/webp"
+    assert image.headers["cache-control"] == "no-store" and image.content[8:12] == b"WEBP"
+    assert c.get(f"{pages}/3", headers=owner).status_code == 404
+    assert c.get(f"{pages}/0", headers=owner).status_code == 422
+    # Another student gets nothing, not even the page count.
+    assert c.get(pages, headers=other).status_code == 404
+    assert c.get(f"{pages}/1", headers=other).status_code == 404
+    # A damaged PDF says so; a material without a PDF has no pages.
+    broken = c.post(path, headers=owner, json=material("깨진 PDF")).json()
+    refused = c.get(f"{path}/{broken['id']}/pages", headers=owner)
+    assert refused.status_code == 422 and "미리 볼 수 없습니다" in refused.text
+    note = c.post(path, headers=owner, json=material("설명만", pdf=None, description="합성 설명"))
+    assert c.get(f"{path}/{note.json()['id']}/pages", headers=owner).status_code == 404
+
+
+@pytest.mark.integration
 def test_material_content_is_checked(auth_client):
     c = auth_client
     owner = authorization(register(c))

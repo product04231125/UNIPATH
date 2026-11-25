@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:io';
 
@@ -59,7 +60,34 @@ class MemoryMaterials implements MaterialRepository {
   @override
   Future<Uint8List?> pdf(PersonalMaterial material) async =>
       material.pdf ?? records[material.id]?.pdf;
+
+  /// Pretends a server renders pages (an account store).
+  bool preview = false;
+  final pageRequests = <int>[];
+
+  @override
+  bool get canPreview => preview;
+
+  @override
+  Future<MaterialPages> pages(PersonalMaterial material) async =>
+      const MaterialPages(
+        count: 2,
+        sizes: [(width: 595, height: 842), (width: 595, height: 842)],
+      );
+
+  @override
+  Future<Uint8List> pageImage(PersonalMaterial material, int number) async {
+    pageRequests.add(number);
+    return pageImageBytes;
+  }
 }
+
+/// A 1×1 white PNG standing in for a rendered page.
+final pageImageBytes = Uint8List.fromList(
+  base64Decode(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=',
+  ),
+);
 
 void main() {
   test(
@@ -562,5 +590,83 @@ void main() {
     expect(list.left, greaterThan(form.right));
     expect(form.width, lessThanOrEqualTo(600));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a saved PDF opens in the viewer from its tile and the form', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = MemoryMaterials()..preview = true;
+    repo.records['m'] = PersonalMaterial(
+      id: 'm',
+      title: '합성 포트폴리오',
+      type: MaterialKinds.portfolio,
+      description: '',
+      fileName: 'portfolio.pdf',
+      pdf: Uint8List.fromList(utf8.encode('%PDF-1.4 synthetic')),
+    );
+    PersonalMaterial? exported;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MaterialsPage(
+            repository: repo,
+            exportPdf: (value, _) async => exported = value,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('material-view-m')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('material-preview')), findsOneWidget);
+    expect(find.text('portfolio.pdf · 2쪽'), findsOneWidget);
+    expect(find.text('1 / 2'), findsOneWidget);
+    expect(repo.pageRequests, contains(1));
+    await tester.tap(find.byTooltip('확대'));
+    await tester.pumpAndSettle();
+    expect(find.text('125%'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('material-preview-zoom')));
+    await tester.pumpAndSettle();
+    expect(find.text('100%'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('material-preview-export')));
+    await tester.pumpAndSettle();
+    expect(exported?.id, 'm');
+    await tester.tap(find.byTooltip('닫기'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('material-preview')), findsNothing);
+
+    // Editing the material offers the saved PDF too.
+    await tester.tap(find.byKey(const ValueKey('material-row-m')));
+    await tester.pumpAndSettle();
+    final formView = find.byKey(const ValueKey('material-form-view'));
+    await tester.ensureVisible(formView);
+    await tester.tap(formView);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('material-preview')), findsOneWidget);
+  });
+
+  testWidgets('a device store has no in-app viewer, only export', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = MemoryMaterials();
+    repo.records['m'] = PersonalMaterial(
+      id: 'm',
+      title: '합성 포트폴리오',
+      type: MaterialKinds.portfolio,
+      description: '',
+      fileName: 'portfolio.pdf',
+      pdf: Uint8List.fromList(utf8.encode('%PDF-1.4 synthetic')),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MaterialsPage(repository: repo)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('material-view-m')), findsNothing);
   });
 }

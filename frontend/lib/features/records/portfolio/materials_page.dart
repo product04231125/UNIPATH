@@ -19,6 +19,7 @@ import '../../../shared/widgets/tone_chip.dart';
 import '../../../shared/widgets/work_layout.dart';
 import '../../auth/auth_api.dart';
 import '../../auth/guest_preview_scope.dart';
+import 'material_preview.dart';
 import 'material_repository.dart';
 
 class MaterialsPage extends StatefulWidget {
@@ -266,6 +267,17 @@ class MaterialsPageState extends State<MaterialsPage> {
     }
   }
 
+  bool _canView(PersonalMaterial r) => r.hasPdf && _repo.canPreview;
+
+  Future<void> _view(PersonalMaterial r) => showMaterialPreview(
+    context,
+    repository: _repo,
+    material: r,
+    onExport: () {
+      if (!_busy) _export(r);
+    },
+  );
+
   Future<void> _edit(PersonalMaterial r) async {
     if (_busy) return;
     if (await allowLeave() && mounted) _reset(r);
@@ -293,7 +305,18 @@ class MaterialsPageState extends State<MaterialsPage> {
       ],
       lines: [if (r.description.isNotEmpty) r.description],
       onTap: _busy ? null : () => _edit(r),
+      footer: [
+        if (_canView(r))
+          TextButton.icon(
+            key: ValueKey('material-view-${r.id}'),
+            onPressed: () => _view(r),
+            icon: const Icon(Icons.visibility_outlined, size: 18),
+            label: const Text('PDF 보기'),
+          ),
+      ],
       actions: [
+        if (_canView(r))
+          RecordAction('PDF 보기', Icons.visibility_outlined, () => _view(r)),
         RecordAction('수정', Icons.edit_outlined, () => _edit(r)),
         if (pdf)
           RecordAction('PDF 내보내기', Icons.download_outlined, () {
@@ -517,6 +540,17 @@ class MaterialsPageState extends State<MaterialsPage> {
                         icon: const Icon(Icons.attach_file),
                         label: const Text('PDF 선택'),
                       ),
+                      // The saved PDF (not one just picked): the server renders its pages.
+                      if (_editing case final saved?
+                          when _pdf == null &&
+                              _fileName.isNotEmpty &&
+                              _canView(saved))
+                        TextButton.icon(
+                          key: const ValueKey('material-form-view'),
+                          onPressed: () => _view(saved),
+                          icon: const Icon(Icons.visibility_outlined),
+                          label: const Text('PDF 보기'),
+                        ),
                       if (_fileName.isNotEmpty)
                         TextButton(
                           onPressed: _busy

@@ -29,6 +29,15 @@ class MaterialsGateway extends ApiGateway implements MaterialFileGateway {
       saved[body['id'] as String] = body;
       return {};
     }
+    if (method == 'GET' && path.endsWith('/pages')) {
+      return {
+        'page_count': 3,
+        'pages': [
+          {'width': 595, 'height': 842},
+          {'width': 842.5, 'height': 595},
+        ],
+      };
+    }
     if (method == 'GET') {
       return {
         'items': [
@@ -50,6 +59,14 @@ class MaterialsGateway extends ApiGateway implements MaterialFileGateway {
 
   @override
   Future<Uint8List> materialFile(String id) async => pdf;
+
+  final pageRequests = <(String, int)>[];
+
+  @override
+  Future<Uint8List> materialPage(String id, int number) async {
+    pageRequests.add((id, number));
+    return Uint8List.fromList(utf8.encode('RIFF0000WEBP'));
+  }
 }
 
 void main() {
@@ -151,4 +168,34 @@ void main() {
       throwsStateError,
     );
   });
+
+  test(
+    'account materials read page sizes and images from the server',
+    () async {
+      final gateway = MaterialsGateway();
+      final repo = AccountMaterialRepository(
+        gateway,
+        ownerId: 'owner',
+        device: DeviceMaterialRepository(
+          open: () => databaseFactoryMemory.openDatabase('preview-pages'),
+          owner: const LocalDataOwner('owner'),
+        ),
+      );
+      final material = PersonalMaterial(
+        id: '00000000-0000-4000-8000-000000000001',
+        title: '합성',
+        type: MaterialKinds.portfolio,
+        description: '',
+        fileName: 'a.pdf',
+      );
+      expect(repo.canPreview, isTrue);
+      final pages = await repo.pages(material);
+      expect(gateway.requests.last.$2, 'me/materials/${material.id}/pages');
+      expect(pages.count, 3);
+      expect(pages.sizes.last, (width: 842.5, height: 595.0));
+      await repo.pageImage(material, 2);
+      expect(gateway.pageRequests.single, (material.id, 2));
+      expect(DeviceMaterialRepository().canPreview, isFalse);
+    },
+  );
 }

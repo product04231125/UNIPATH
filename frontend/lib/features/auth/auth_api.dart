@@ -654,7 +654,35 @@ class _OwnerGateway
   }
 
   @override
-  Future<Uint8List> materialFile(String id) async {
+  Future<Uint8List> materialFile(String id) => _materialBytes(
+    id,
+    'file',
+    what: '자료의 PDF',
+    whatObject: '자료의 PDF를',
+    valid: (type, bytes) =>
+        type == ExportFormat.pdf.mime && ExportFormat.pdf.matches(bytes),
+  );
+
+  @override
+  Future<Uint8List> materialPage(String id, int number) {
+    if (number < 1) throw const AuthFailure('올바른 쪽을 선택해 주세요.');
+    return _materialBytes(
+      id,
+      'pages/$number',
+      what: 'PDF $number쪽',
+      whatObject: 'PDF $number쪽을',
+      valid: (type, bytes) => type == 'image/webp' && isWebp(bytes),
+    );
+  }
+
+  /// One owner-scoped binary response under `me/materials/{id}/`.
+  Future<Uint8List> _materialBytes(
+    String id,
+    String suffix, {
+    required String what,
+    required String whatObject,
+    required bool Function(String? type, Uint8List bytes) valid,
+  }) async {
     if (!RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(id)) {
       throw const AuthFailure('올바른 자료를 선택해 주세요.');
     }
@@ -668,7 +696,7 @@ class _OwnerGateway
     try {
       final request = http.Request(
         'GET',
-        auth._base.resolve('/api/v1/me/materials/$id/file'),
+        auth._base.resolve('/api/v1/me/materials/$id/$suffix'),
       );
       request.followRedirects = false;
       request.headers['X-Unipath-Owner'] = ownerId;
@@ -681,24 +709,23 @@ class _OwnerGateway
           .timeout(const Duration(seconds: 60));
       check();
       if (response.statusCode != 200) {
-        throw AuthFailure(
-          response.statusCode == 404
-              ? '자료의 PDF를 찾을 수 없습니다. 목록을 새로 읽어 주세요.'
-              : '자료의 PDF를 받지 못했습니다. 다시 시도해 주세요.',
-          status: response.statusCode,
-        );
+        throw AuthFailure(switch (response.statusCode) {
+          404 => '$whatObject 찾을 수 없습니다. 목록을 새로 읽어 주세요.',
+          429 => '요청이 많습니다. 잠시 후 다시 시도해 주세요.',
+          _ => '$whatObject 받지 못했습니다. 다시 시도해 주세요.',
+        }, status: response.statusCode);
       }
       final type = response.headers['content-type']?.split(';').first;
       final bytes = response.bodyBytes;
-      if (type != ExportFormat.pdf.mime || !ExportFormat.pdf.matches(bytes)) {
-        throw const AuthFailure('자료의 PDF 형식을 확인하지 못했습니다.');
+      if (!valid(type, bytes)) {
+        throw AuthFailure('$what 형식을 확인하지 못했습니다.');
       }
       return bytes;
     } on AuthFailure {
       rethrow;
     } catch (_) {
       check();
-      throw const AuthFailure('자료의 PDF를 받지 못했습니다. 연결을 확인하고 다시 시도해 주세요.');
+      throw AuthFailure('$whatObject 받지 못했습니다. 연결을 확인하고 다시 시도해 주세요.');
     }
   }
 

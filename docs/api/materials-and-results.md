@@ -13,8 +13,14 @@
 | `PUT /me/materials/{id}` | 위 필드와 `expected_version`. `file`을 빼면 저장된 PDF를 유지하고, `null`이면 지우고, 값이 있으면 바꾼다. |
 | `DELETE /me/materials/{id}?expected_version=N` | 삭제 |
 | `GET /me/materials/{id}/file` | 저장된 PDF(`application/pdf`, `Cache-Control: no-store`) |
+| `GET /me/materials/{id}/pages` | 앱 안 PDF 보기용. `{page_count, pages: [{width, height}]}`(쪽 크기는 pt, 쪽 회전 반영, 앞 300쪽). 암호가 걸렸거나 손상된 PDF는 422, PDF가 없으면 404. |
+| `GET /me/materials/{id}/pages/{n}` | `n`쪽(1부터)의 이미지(`image/webp`, 폭 1,400px, 한 장 600만 화소·한 변 8,000px 이하, `no-store`). 없는 쪽은 404. |
 
 - 설명이나 PDF 중 하나는 있어야 한다. PDF는 `.pdf` 이름과 `%PDF-` 시작을 확인한다.
+- 쪽 이미지(2026-11-25)는 서버가 PDFium(`pypdfium2`, pdfplumber와 함께 설치됨)으로 그린다. 글자를 뽑거나 저장하지 않는다.
+  - 같은 파일(SHA-256)의 쪽 크기와 최근 이미지 48장은 프로세스 메모리에 잠시 둔다.
+  - PDFium은 스레드에 안전하지 않아 OCR과 같은 잠금(`app/rag/pdf_pages.py`의 `PDFIUM_LOCK`)을 쓴다.
+  - 두 경로는 학생마다 15분에 600회까지다(`material-pages:` 버킷).
 - 한도는 PDF 1개 8MiB(분석 요청 하나로 보낼 수 있는 양), 계정 전체 50MiB, 100개다. 넘으면 422 또는 409.
 - 게이트웨이·웹 nginx는 이 경로에 12MB 요청 본문을 허용한다.
 - 분석에 쓸 때는 앱이 고른 자료의 설명·PDF를 읽어 기존처럼 요청의 `documents`로 보낸다. 서버가 자료를 분석 요청에 몰래 붙이지 않는다.
