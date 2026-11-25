@@ -10,6 +10,7 @@ import '../graduation/school_context_form.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/anchored_select_field.dart';
 import 'personal_record_repository.dart';
+import '../../shared/widgets/date_picker_field.dart';
 
 String sourceStatus(RecordSourceStatus s) => switch (s) {
   RecordSourceStatus.submitted => '검토 대기',
@@ -408,13 +409,14 @@ class _UploadState extends State<_SourceUploadDialog> {
             if (!_busy) setState(() => _kind = v);
           },
         ),
-        TextField(
+        DatePickerFormField(
+          key: const ValueKey('official-source-issued-on'),
           controller: _date,
           enabled: !_busy,
-          decoration: InputDecoration(
-            labelText: '발급일 (YYYY-MM-DD)',
-            errorText: _fields.contains('issued_on') ? '발급일을 확인하세요.' : null,
-          ),
+          label: '발급일',
+          clearable: false,
+          lastDate: DateUtils.dateOnly(DateTime.now()),
+          errorText: _fields.contains('issued_on') ? '발급일을 확인하세요.' : null,
         ),
         TextButton(
           onPressed: _busy ? null : _pick,

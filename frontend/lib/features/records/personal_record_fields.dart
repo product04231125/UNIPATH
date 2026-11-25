@@ -257,14 +257,17 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
   },
 ];
 
+/// Start and end of a period: the form puts them on one line and checks their order.
+const personalDatePairs = {
+  'startedOn': 'endedOn',
+  'earnedOn': 'expiresOn',
+  'effectiveFrom': 'effectiveTo',
+};
+
 String? personalRecordCrossError(Map<String, String> values) {
-  for (final pair in [
-    ('startedOn', 'endedOn'),
-    ('earnedOn', 'expiresOn'),
-    ('effectiveFrom', 'effectiveTo'),
-  ]) {
-    final start = DateTime.tryParse(values[pair.$1] ?? '');
-    final end = DateTime.tryParse(values[pair.$2] ?? '');
+  for (final pair in personalDatePairs.entries) {
+    final start = DateTime.tryParse(values[pair.key] ?? '');
+    final end = DateTime.tryParse(values[pair.value] ?? '');
     if (start != null && end != null && end.isBefore(start)) {
       return '종료·만료일은 시작·취득일보다 빠를 수 없습니다.';
     }

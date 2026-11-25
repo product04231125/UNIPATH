@@ -14,6 +14,7 @@ import '../../shared/widgets/anchored_select_field.dart';
 import '../../shared/widgets/input_dialog.dart';
 import 'personal_record_repository.dart';
 import 'official_record_labels.dart';
+import '../../shared/widgets/date_picker_field.dart';
 
 class OfficialRecordEditor extends StatefulWidget {
   const OfficialRecordEditor({
@@ -298,13 +299,14 @@ class _EditorState extends State<OfficialRecordEditor> {
             errorText: fieldError('page_count'),
           ),
         ),
-        TextField(
+        DatePickerFormField(
+          key: const ValueKey('official-records-as-of'),
           controller: _date,
           enabled: !_busy,
-          decoration: InputDecoration(
-            labelText: '기록 기준일 (YYYY-MM-DD)',
-            errorText: fieldError('records_as_of'),
-          ),
+          label: '기록 기준일',
+          clearable: false,
+          lastDate: DateUtils.dateOnly(DateTime.now()),
+          errorText: fieldError('records_as_of'),
         ),
         AnchoredSelectField(
           value: _kind,
@@ -718,7 +720,11 @@ class _RowState extends State<OfficialRecordRowDialog> {
               }),
               title: const Text('유효기간을 확인했습니다 (빈 만료일은 기간 제한 없음).'),
             ),
-            field('만료일 (YYYY-MM-DD, 미확인 시 비움)', _expires),
+            DatePickerFormField(
+              key: const ValueKey('official-record-expires'),
+              controller: _expires,
+              label: '만료일 (미확인 시 비움)',
+            ),
           ],
           if (widget.kind == 'theses') ...[
             field('논문 유형', _type),

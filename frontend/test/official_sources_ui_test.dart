@@ -14,6 +14,7 @@ import 'official_graduation_ui_test.dart' as catalog;
 import 'record_source_api_test.dart' as fixture;
 import 'support/auth_fixture.dart';
 import 'support/reachable_controls.dart';
+import 'support/date_picker.dart';
 
 Future<void> launch(WidgetTester tester, Widget dialog) async {
   await tester.pumpWidget(
@@ -103,7 +104,7 @@ void main() {
         await tester.pumpAndSettle();
         if (size.width == 480) {
           await expectControlsReachable(tester, [
-            find.widgetWithText(TextField, '발급일 (YYYY-MM-DD)'),
+            find.byKey(const ValueKey('official-source-issued-on')),
             find.text('PDF 선택 (최대 2 MiB)'),
             find.text('선택한 학교 관리자가 이 원본과 검토 이력을 확인하는 데 동의합니다.'),
             find.text('검토 요청 제출'),
@@ -112,9 +113,11 @@ void main() {
           return;
         }
         await catalog.choose(tester, '학교 선택', '검증 대학');
-        final date = find.widgetWithText(TextField, '발급일 (YYYY-MM-DD)');
-        await tester.ensureVisible(date);
-        await tester.enterText(date, '2026-01-01');
+        await pickDate(
+          tester,
+          find.byKey(const ValueKey('official-source-issued-on')),
+          DateTime(2026, 1, 1),
+        );
         final submit = find.text('검토 요청 제출');
         await tester.tap(submit);
         await tester.pumpAndSettle();

@@ -12,6 +12,7 @@ import '../../shared/widgets/feature_actions.dart';
 import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/surface_card.dart';
+import '../../shared/widgets/date_picker_field.dart';
 
 String auditStatus(String value) => switch (value) {
   'satisfied' => '충족',
@@ -325,19 +326,20 @@ class _OfficialGraduationState extends State<OfficialGraduationPage> {
                 profile: widget.profile,
               ),
             const FeatureLine.section(text: '기준일'),
-            TextField(
+            DatePickerFormField(
+              key: const ValueKey('official-graduation-as-of'),
               controller: _date,
               enabled: !_busy,
-              decoration: InputDecoration(
-                labelText: '기준일 (YYYY-MM-DD)',
-                errorText:
-                    _fields.any(
-                      (field) => field == 'as_of' || field.endsWith('.as_of'),
-                    )
-                    ? '이 입력을 확인하세요.'
-                    : null,
-                helperText: '미래 날짜는 사용할 수 없습니다.',
-              ),
+              label: '기준일',
+              clearable: false,
+              lastDate: DateUtils.dateOnly(DateTime.now()),
+              errorText:
+                  _fields.any(
+                    (field) => field == 'as_of' || field.endsWith('.as_of'),
+                  )
+                  ? '이 입력을 확인하세요.'
+                  : null,
+              helperText: '미래 날짜는 고를 수 없습니다.',
             ),
           ],
         ),

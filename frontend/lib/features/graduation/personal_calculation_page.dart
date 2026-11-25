@@ -12,6 +12,7 @@ import '../auth/guest_preview_scope.dart';
 import 'personal_calculation_controller.dart';
 import 'personal_calculation_draft.dart';
 import 'personal_condition_fields.dart';
+import '../../shared/widgets/date_picker_field.dart';
 
 class PersonalCalculationPage extends StatefulWidget {
   const PersonalCalculationPage({
@@ -219,16 +220,14 @@ class _PersonalCalculationPageState extends State<PersonalCalculationPage> {
                         ],
                       ),
               _error(c.sourceError),
-              TextFormField(
+              DatePickerFormField(
                 key: ValueKey((c, 'calculation-as-of')),
                 initialValue: c.asOf,
-                readOnly: c.locked,
-                decoration: InputDecoration(
-                  labelText: '계산 기준일 · YYYY-MM-DD',
-                  helperText: '초기값은 UTC 오늘입니다. 이 날짜에 활성인 모든 규칙을 결과에 포함합니다.',
-                  helperMaxLines: 4,
-                  errorText: validateCalculationDay(c.asOf),
-                ),
+                enabled: !c.locked,
+                label: '계산 기준일',
+                clearable: false,
+                helperText: '초기값은 UTC 오늘입니다. 이 날짜에 활성인 모든 규칙을 결과에 포함합니다.',
+                errorText: validateCalculationDay(c.asOf),
                 onChanged: (value) => setState(() => c.asOf = value),
                 validator: validateCalculationDay,
               ),

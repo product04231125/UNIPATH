@@ -8,9 +8,12 @@ class AdminField {
     this.relation,
     this.options = const {},
     this.multiline = false,
+    this.date = false,
   });
   final String key, label;
-  final bool required, multiline;
+
+  /// [date]: a `YYYY-MM-DD` value chosen from a calendar.
+  final bool required, multiline, date;
   final AdminKind? relation;
   final Map<String, String> options;
 }
@@ -170,8 +173,8 @@ List<AdminField> adminFields(AdminKind kind) => [
   if (kind == AdminKind.ruleSet ||
       kind == AdminKind.rule ||
       kind == AdminKind.document) ...[
-    const AdminField('effectiveFrom', '적용 시작일 YYYY-MM-DD', required: false),
-    const AdminField('effectiveTo', '적용 종료일 YYYY-MM-DD', required: false),
+    const AdminField('effectiveFrom', '적용 시작일', required: false, date: true),
+    const AdminField('effectiveTo', '적용 종료일', required: false, date: true),
   ],
   if (kind == AdminKind.scope) ...[
     const AdminField('userId', '사용자', relation: AdminKind.account),

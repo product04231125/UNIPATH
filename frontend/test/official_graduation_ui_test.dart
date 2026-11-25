@@ -10,6 +10,7 @@ import 'package:university_path_frontend/features/planning/planning_repository.d
 
 import 'graduation_api_test.dart' as fixture;
 import 'support/auth_fixture.dart';
+import 'support/date_picker.dart';
 
 const catalogProfile = PlanningProfile(
   school: '검증 대학',
@@ -116,9 +117,11 @@ void main() {
         expect(find.text('내 학교·학과 기준 설정'), findsNothing);
         expect(find.text('학교 선택'), findsNothing);
         expect(find.text('이수 경로'), findsNothing);
-        final date = find.widgetWithText(TextField, '기준일 (YYYY-MM-DD)');
-        await tester.ensureVisible(date);
-        await tester.enterText(date, '2026-10-21');
+        await pickDate(
+          tester,
+          find.byKey(const ValueKey('official-graduation-as-of')),
+          DateTime(2026, 10, 21),
+        );
         final run = find.text('졸업요건 감사 실행');
         await tester.ensureVisible(run);
         await tester.tap(run);
@@ -126,7 +129,7 @@ void main() {
         expect(creates, hasLength(1));
         expect(creates.single['context']['track'], 'single_major');
         expect(creates.single['context']['admission_year'], 2026);
-        expect(find.widgetWithText(TextField, '2026-10-21'), findsOneWidget);
+        expect(find.text('2026.10.21 (수)'), findsOneWidget);
         await tester.ensureVisible(run);
         await tester.tap(run);
         await tester.pumpAndSettle();

@@ -17,6 +17,7 @@ import 'official_sources_ui_test.dart' as ui;
 import 'record_source_api_test.dart' as source;
 import 'support/auth_fixture.dart';
 import 'support/reachable_controls.dart';
+import 'support/date_picker.dart';
 
 void main() {
   for (final kind in ['academics', 'volunteers', 'certificates', 'theses']) {
@@ -175,7 +176,7 @@ void main() {
         if (size.width == 480) {
           await expectControlsReachable(tester, [
             find.widgetWithText(TextField, '입학연도'),
-            find.widgetWithText(TextField, '기록 기준일 (YYYY-MM-DD)'),
+            find.byKey(const ValueKey('official-records-as-of')),
             find.text('대조한 기록 추가'),
             find.text('검토 초안 저장'),
           ]);
@@ -187,12 +188,16 @@ void main() {
           '입학연도': '2026',
           '이수 경로': 'single_major',
           '원본 전체 쪽수': '2',
-          '기록 기준일 (YYYY-MM-DD)': '2026-01-01',
         }.entries) {
           final f = find.widgetWithText(TextField, entry.key);
           await tester.ensureVisible(f);
           await tester.enterText(f, entry.value);
         }
+        await pickDate(
+          tester,
+          find.byKey(const ValueKey('official-records-as-of')),
+          DateTime(2026, 1, 1),
+        );
         await tester.ensureVisible(find.text('대조한 기록 추가'));
         await tester.drag(
           find.byType(SingleChildScrollView).last,
