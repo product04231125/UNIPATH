@@ -64,16 +64,6 @@ def translated(item, name, identities):
                     dto.REFERENCE_RESOURCES[reference.kind], reference.record_id
                 ),
             }
-    if name in ("portfolio_compositions", "application_documents") and "sources" in data:
-        data["sources"] = [
-            {
-                "kind": reference.kind,
-                "record_id": identifier(
-                    dto.REFERENCE_RESOURCES[reference.kind], reference.record_id
-                ),
-            }
-            for reference in item.sources
-        ]
     return data
 
 

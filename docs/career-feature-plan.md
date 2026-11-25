@@ -50,7 +50,7 @@ UniversityPath AI는 학생의 취업을 돕는 서비스다. 그런데 지금�
 - **현재:** D에서 초안 생성·편집·계정 저장(여러 건)·Word·PDF 내보내기까지 구현했다.
 - **연결점:**
   - D의 근거 있는 지원서 초안.
-  - 기존 지원 문서·포트폴리오 구성 저장(`application_documents`, `portfolio_compositions`).
+  - 기존 지원 문서·포트폴리오 구성 저장(`application_documents`, `portfolio_compositions`). → 2026-11-25 화면·API·표 모두 삭제(`0033_drop_legacy_portfolio`).
 - **2026-11-24:** 포트폴리오 구성(최근 목표 직무 분석의 요건 순서로 근거 기록 묶기, 초안 요청 `composition`)을 구현했다. 메뉴에 없던 예전 `PortfolioDraftsPage`를 지웠다.
 - **2026-11-25:** 채용공고 분석과 연결했다. 공고 찾기·공고 1개 비교 결과에서 자기소개서·포트폴리오를 바로 쓴다. 공고 본문·요건·근거 기록을 함께 넘기고(`posting`, `posting_requirements`), 저장한 문서에 어느 공고로 썼는지 표시한다.
 - **필요한 것:**

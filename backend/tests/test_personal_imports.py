@@ -35,8 +35,6 @@ def graph(owner_id, *, profile=True):
             "curriculum",
             "curriculum_course",
             "rule",
-            "composition",
-            "document",
         ]
     }
 
@@ -105,30 +103,6 @@ def graph(owner_id, *, profile=True):
                 related_record={"kind": "activity", "client_id": identifiers["activity"]},
             )
         ],
-        "portfolio_compositions": [
-            record(
-                "composition",
-                sources=[
-                    {"kind": "achievement", "client_id": identifiers[key]}
-                    for key in ["second_achievement", "achievement"]
-                ],
-                audience="private",
-                reviewed=True,
-            )
-        ],
-        "application_documents": [
-            record(
-                "document",
-                target="합성 지원처",
-                role="합성 직무",
-                document_type="개인 초안",
-                body="합성 본문",
-                sources=[
-                    {"kind": kind, "client_id": identifiers[key]}
-                    for kind, key in [("experience", "experience"), ("achievement", "achievement")]
-                ],
-            )
-        ],
     }
     return result, identifiers
 
@@ -161,7 +135,7 @@ def test_complete_graph_initializes_profile_and_preserves_relations_order_and_ti
     body, identifiers = graph(owner)
     result = submit(c, h, body)
     assert result["owner_id"] == owner and result["official"] is False
-    assert result["record_count"] == 12 and result["profile_version_at_import"] == 1
+    assert result["record_count"] == 10 and result["profile_version_at_import"] == 1
     assert result["replayed"] is False
     mappings = {(m["resource"], m["client_id"]): m["record_id"] for m in result["mappings"]}
 
@@ -184,19 +158,13 @@ def test_complete_graph_initializes_profile_and_preserves_relations_order_and_ti
         "kind": "activity",
         "record_id": saved("activity-records", "activity")["id"],
     }
-    composition = saved("portfolio-compositions", "composition")
-    assert [ref["record_id"] for ref in composition["sources"]] == [
-        mappings["achievement-records", identifiers[key]]
-        for key in ["second_achievement", "achievement"]
-    ]
-    document = saved("application-documents", "document")
-    assert [ref["kind"] for ref in document["sources"]] == ["experience", "achievement"]
     event = saved("events", "event")
     assert event["starts_at"] == "2026-10-19T01:00:00Z" and event["time_zone"] == "Asia/Seoul"
     reordered = deepcopy(body)
     reordered["achievement_records"].reverse()
     assert submit(c, h, reordered)["mappings"] == result["mappings"]
-    reordered["portfolio_compositions"][0]["sources"].reverse()
+    # The same import id with different contents is a conflict, not a second import.
+    reordered["events"][0]["title"] = "바뀐 합성 일정"
     submit(c, h, reordered, 409)
     with auth_db() as db:
         receipt = db.get(PersonalImportReceipt, (UUID(owner), UUID(result["import_id"])))
@@ -230,9 +198,9 @@ def test_missing_graph_aliases_consent_and_naive_times_rejected_before_writes(au
     body["course_records"].append(deepcopy(body["course_records"][0]))
     invalid.append(body)
     body = deepcopy(original)
-    body["portfolio_compositions"][0]["sources"][0]["record_id"] = body["portfolio_compositions"][
-        0
-    ]["sources"][0].pop("client_id")
+    # References name local client ids, never server ids.
+    reference = body["personal_graduation_rules"][0]["related_record"]
+    reference["record_id"] = reference.pop("client_id")
     invalid.append(body)
     invalid.append({**deepcopy(original), "owner_id": owner})
     for body in invalid:
@@ -250,7 +218,7 @@ def test_failure_after_last_record_rolls_back_profile_records_sources_and_receip
 
     def failure(db, owner_id, resource, payload, record_id=None):
         result = save_record(db, owner_id, resource, payload, record_id)
-        if resource == "application-documents":
+        if resource == "personal-graduation-rules":
             raise conflict()
         return result
 
@@ -258,7 +226,7 @@ def test_failure_after_last_record_rolls_back_profile_records_sources_and_receip
         submit(c, h, body, 409)
     empty_records(auth_db)
     result = submit(c, h, body)
-    assert result["record_count"] == 12 and not result["replayed"]
+    assert result["record_count"] == 10 and not result["replayed"]
 
 
 def test_replay_is_historical_and_never_overwrites_or_resurrects_deleted_records(
@@ -363,7 +331,7 @@ def test_concurrent_identical_requests_have_one_commit_and_stable_mapping(auth_c
     assert results[0]["mappings"] == results[1]["mappings"]
     with auth_db() as db:
         assert db.scalar(select(func.count()).select_from(PersonalImportReceipt)) == 1
-        assert db.scalar(select(func.count()).select_from(PersonalCreationReceipt)) == 12
+        assert db.scalar(select(func.count()).select_from(PersonalCreationReceipt)) == 10
 
 
 def test_profile_only_import_and_oversized_batches_have_explicit_bounds(auth_client, auth_db):
@@ -376,16 +344,27 @@ def test_profile_only_import_and_oversized_batches_have_explicit_bounds(auth_cli
         h,
         {
             **base,
-            "application_documents": [
+            # 200 records under the count limit, but over 2 MiB in total.
+            "experience_records": [
                 {
                     "client_id": str(uuid4()),
-                    "title": "합성 대형 초안",
-                    "target": "합성",
-                    "role": "합성",
-                    "document_type": "합성",
-                    "body": "x" * 32000,
+                    "title": "합성 대형 경험",
+                    "experience_type": "프로젝트",
+                    "detail": "x" * 8000,
+                    "result": "x" * 8000,
                 }
-                for _ in range(70)
+                for _ in range(100)
+            ],
+            "achievement_records": [
+                {
+                    "client_id": str(uuid4()),
+                    "title": "합성 대형 성과",
+                    "achievement_type": "프로젝트",
+                    "role": "합성",
+                    "detail": "x" * 8000,
+                    "result": "x" * 8000,
+                }
+                for _ in range(100)
             ],
         },
         422,

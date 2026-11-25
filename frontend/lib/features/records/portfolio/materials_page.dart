@@ -202,7 +202,7 @@ class MaterialsPageState extends State<MaterialsPage> {
         title: Text('${record.title} 삭제'),
         content: Text(
           '${_repo.inAccount ? '계정에' : '이 기기에'} 보관한 설명과 PDF를 삭제합니다. '
-          '원래 선택한 파일과 기존 성과·지원 문서는 삭제하지 않습니다.',
+          '원래 선택한 파일과 기록·자기소개서·포트폴리오는 삭제하지 않습니다.',
         ),
         actions: [
           TextButton(

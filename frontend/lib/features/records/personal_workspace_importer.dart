@@ -10,7 +10,6 @@ import '../auth/local_data_owner.dart';
 import '../planning/remote_planning_repository.dart';
 import 'personal_record_codec.dart';
 import 'personal_record_repository.dart';
-import 'portfolio/portfolio_workspace_repository.dart';
 
 /// Preserves a complete, reviewed graph of the other ten personal collections.
 /// Profile/events have their own existing migration and are not sent again.
@@ -38,8 +37,6 @@ class PersonalWorkspaceImporter extends ChangeNotifier {
     'personal_curricula': '개인 교육과정',
     'personal_curriculum_courses': '교육과정 과목',
     'personal_graduation_rules': '개인 규칙',
-    'portfolio_compositions': '포트폴리오 구성',
-    'application_documents': '지원 문서',
   };
   List<String> get preview => [
     if (_request != null)
@@ -108,11 +105,7 @@ class PersonalWorkspaceImporter extends ChangeNotifier {
           await repository.load();
           records[kind] = repository.records;
         }
-        final portfolio = PortfolioWorkspaceRepository(
-          owner: LocalDataOwner(api.ownerId),
-        );
-        await portfolio.load();
-        _request = _prepare(records, portfolio);
+        _request = _prepare(records);
         completed = false;
       }
       ensureOpen();
@@ -130,7 +123,6 @@ class PersonalWorkspaceImporter extends ChangeNotifier {
 
   PersonalImportRequest? _prepare(
     Map<PersonalRecordKind, List<PersonalRecord>> records,
-    PortfolioWorkspaceRepository portfolio,
   ) {
     String clientId(String original) =>
         RegExp(
@@ -208,33 +200,6 @@ class PersonalWorkspaceImporter extends ChangeNotifier {
           })(),
       ];
     }
-    body['portfolio_compositions'] = [
-      for (final c in portfolio.compositions)
-        {
-          'client_id': clientId(c.id),
-          'title': c.title,
-          'detail': c.description,
-          'audience': switch (c.audience) {
-            PortfolioAudience.private => 'private',
-            PortfolioAudience.application => 'application',
-            PortfolioAudience.publicReview => 'public_review',
-          },
-          'reviewed': c.reviewed,
-          'sources': [for (final ref in c.sources) reference(ref, c.title)],
-        },
-    ];
-    body['application_documents'] = [
-      for (final d in portfolio.documents)
-        {
-          'client_id': clientId(d.id),
-          'title': d.title,
-          'target': d.target,
-          'role': d.role,
-          'document_type': d.type,
-          'body': d.body,
-          'sources': [for (final ref in d.sources) reference(ref, d.title)],
-        },
-    ];
     var total = 0;
     for (final value in body.values.whereType<List>()) {
       if (value.length > 100) {

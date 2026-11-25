@@ -105,7 +105,7 @@ class _ImportDialogState extends State<_ImportDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          '현재 계정의 수강·활동·경험·자격·성과·개인 교육과정/과목/규칙·구성·지원 문서를 이전합니다. '
+          '현재 계정의 수강·활동·경험·자격·성과·개인 교육과정/과목/규칙을 이전합니다. '
           '제목·기간·수치·메모·작성 본문과 기록 사이의 연결을 함께 전송합니다. 익명·다른 계정 자료와 학업 프로필·일정은 이 요청에 포함하지 않습니다.',
         ),
         const SizedBox(height: 12),

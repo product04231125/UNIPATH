@@ -5,8 +5,6 @@ import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_workspace_importer.dart';
 import 'package:university_path_frontend/features/records/remote_personal_record_repository.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
-import 'package:university_path_frontend/features/records/portfolio/remote_portfolio_workspace_repository.dart';
 import 'package:university_path_frontend/features/planning/remote_planning_repository.dart';
 
 import 'support/personal_workspace_fixture.dart';
@@ -52,7 +50,7 @@ void main() {
     return (auth, StudentApi(auth.forOwner(identity.id), ownerId: identity.id));
   }
 
-  test('real HTTP all eight record types and portfolio retain relationships, versions and source order', () async {
+  test('real HTTP all eight record types retain relationships and versions', () async {
     final (auth, api) = await connect();
     final repositories = <PersonalRecordKind, RemotePersonalRecordRepository>{};
     final ids = <PersonalRecordKind, String>{};
@@ -124,63 +122,6 @@ void main() {
       ),
       throwsA(isA<AuthFailure>().having((e) => e.status, 'status', 409)),
     );
-    final portfolio = RemotePortfolioWorkspaceRepository(
-      api,
-      ensureOpen: () {},
-    );
-    await portfolio.load();
-    final achievement = 'portfolio/${ids[PersonalRecordKind.portfolio]}';
-    final experience = 'experience/${ids[PersonalRecordKind.experience]}';
-    await portfolio.saveComposition(
-      PortfolioComposition(
-        id: compositionId,
-        title: 'HTTP 구성',
-        sources: [achievement],
-      ),
-    );
-    await portfolio.saveDocument(
-      ApplicationDocument(
-        id: documentId,
-        title: 'HTTP 지원 문서',
-        target: '합성 지원처',
-        role: '개발',
-        type: '이력서',
-        body: '합성 본문',
-        sources: [experience, achievement],
-      ),
-    );
-    final fresh = RemotePortfolioWorkspaceRepository(api, ensureOpen: () {});
-    await fresh.load();
-    expect(fresh.compositions.single.sources, [achievement]);
-    expect(fresh.documents.single.sources, [experience, achievement]);
-    expect(fresh.sources.keys, containsAll([experience, achievement]));
-    final document = fresh.documents.single;
-    await portfolio.saveDocument(
-      ApplicationDocument(
-        id: document.id,
-        version: document.version,
-        title: document.title,
-        target: document.target,
-        role: document.role,
-        type: document.type,
-        body: '수정된 합성 본문',
-        sources: [achievement, experience],
-      ),
-    );
-    await expectLater(
-      fresh.deleteDocument(document.id, expectedVersion: document.version),
-      throwsA(isA<AuthFailure>().having((e) => e.status, 'status', 409)),
-    );
-    await portfolio.load();
-    expect(portfolio.documents.single.sources, [achievement, experience]);
-    await portfolio.deleteDocument(
-      portfolio.documents.single.id,
-      expectedVersion: portfolio.documents.single.version,
-    );
-    await portfolio.deleteComposition(
-      portfolio.compositions.single.id,
-      expectedVersion: portfolio.compositions.single.version,
-    );
     for (final kind in [
       PersonalRecordKind.personalGraduationRule,
       PersonalRecordKind.personalCurriculumCourse,
@@ -202,7 +143,7 @@ void main() {
     }
     await auth.logout();
   }, skip: base.isEmpty);
-  test('real atomic migration of ten linked collections resumes after lost receipt and keeps originals', () async {
+  test('real atomic migration of eight linked collections resumes after lost receipt and keeps originals', () async {
     final (auth, api) = await connect();
     await seedLocalWorkspace(api.ownerId);
     final preferences = await SharedPreferences.getInstance();
@@ -274,17 +215,6 @@ void main() {
           .value('relatedRecord'),
       'portfolio/${ids[PersonalRecordKind.portfolio]}',
     );
-    final portfolio = RemotePortfolioWorkspaceRepository(
-      api,
-      ensureOpen: () {},
-    );
-    await portfolio.load();
-    expect(portfolio.compositions, hasLength(1));
-    expect(portfolio.documents, hasLength(1));
-    expect(portfolio.documents.single.sources, [
-      'experience/${ids[PersonalRecordKind.experience]}',
-      'portfolio/${ids[PersonalRecordKind.portfolio]}',
-    ]);
     for (final entry in originals.entries) {
       expect(preferences.getString(entry.key), entry.value);
     }

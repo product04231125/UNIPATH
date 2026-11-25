@@ -43,14 +43,6 @@ class StudentResources {
     'personal-graduation-rules',
     StudentPersonalGraduationRuleCreate.fromJson,
   );
-  static final compositions = StudentResource(
-    'portfolio-compositions',
-    StudentPortfolioCompositionCreate.fromJson,
-  );
-  static final applicationDocuments = StudentResource(
-    'application-documents',
-    StudentApplicationDocumentCreate.fromJson,
-  );
 }
 
 class StudentRecord<T extends StudentPayload> {

@@ -37,7 +37,6 @@ import 'features/api/student_api.dart';
 import 'features/records/personal_repository_scope.dart';
 import 'features/records/personal_workspace_importer.dart';
 import 'features/records/remote_personal_record_repository.dart';
-import 'features/records/portfolio/remote_portfolio_workspace_repository.dart';
 import 'features/planning/weekly_schedule.dart';
 import 'features/records/activity/activity_page.dart';
 import 'features/records/course/course_page.dart';
@@ -502,10 +501,6 @@ class _WorkspaceState extends State<Workspace> {
             records: (kind) => RemotePersonalRecordRepository(
               _personalApi,
               kind,
-              ensureOpen: _ensurePersonalOpen,
-            ),
-            portfolio: () => RemotePortfolioWorkspaceRepository(
-              _personalApi,
               ensureOpen: _ensurePersonalOpen,
             ),
             child: shell,

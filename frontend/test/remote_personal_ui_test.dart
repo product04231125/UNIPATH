@@ -6,7 +6,6 @@ import 'package:university_path_frontend/features/auth/local_data_owner.dart';
 import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/remote_personal_record_repository.dart';
-import 'package:university_path_frontend/features/records/portfolio/remote_portfolio_workspace_repository.dart';
 import 'package:university_path_frontend/features/records/course/course_page.dart';
 import 'package:university_path_frontend/features/graduation/personal_graduation_workspace.dart';
 
@@ -29,8 +28,6 @@ Widget scope(PersonalGateway gateway, Widget child, {double scale = 1}) =>
           kind,
           ensureOpen: () {},
         ),
-        portfolio: () =>
-            RemotePortfolioWorkspaceRepository(gateway.api, ensureOpen: () {}),
         child: Scaffold(body: child),
       ),
     );

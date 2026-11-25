@@ -238,23 +238,6 @@ def test_all_personal_collections_roundtrip_partial_patch_and_no_store(auth_clie
             "condition": "개인 기준 설명",
             "related_record": {"kind": "course", "record_id": course["id"]},
         },
-        "portfolio-compositions": {
-            "title": "합성 구성",
-            "sources": [{"kind": "achievement", "record_id": achievement["id"]}],
-            "audience": "public_review",
-            "reviewed": True,
-        },
-        "application-documents": {
-            "title": "합성 지원",
-            "target": "합성 지원처",
-            "role": "개발",
-            "document_type": "자기소개서",
-            "body": "작성 내용 보존",
-            "sources": [
-                {"kind": "experience", "record_id": experience["id"]},
-                {"kind": "achievement", "record_id": achievement["id"]},
-            ],
-        },
     }
     for path, body in other.items():
         item = post(c, h, path, body)
@@ -269,10 +252,6 @@ def test_all_personal_collections_roundtrip_partial_patch_and_no_store(auth_clie
         )
         assert changed.status_code == 200, changed.text
         assert changed.json()["version"] == 2 and changed.json()["title"] == body["title"]
-        if "sources" in body:
-            assert changed.json()["sources"] == body["sources"]
-        if path == "portfolio-compositions":
-            assert changed.json()["reviewed"] is False
         assert (
             c.patch(
                 "/api/v1/me/" + path + "/" + item["id"],
@@ -331,16 +310,6 @@ def test_owner_isolation_including_superadmin_and_cross_owner_references(auth_cl
             "category": "전공",
             "credits": "3",
             "required": True,
-        },
-        404,
-    )
-    post(
-        c,
-        second,
-        "portfolio-compositions",
-        {
-            "title": "다른 계정 참조",
-            "sources": [{"kind": "achievement", "record_id": achievement["id"]}],
         },
         404,
     )
@@ -454,73 +423,19 @@ def test_profile_creation_version_partial_updates_and_calendar_window(auth_clien
 
 
 @integration
-def test_reference_constraints_source_order_and_review_invalidation(auth_client, auth_db):
+def test_reference_constraints(auth_client, auth_db):
     c = auth_client
     h = authorization(register(c))
     course, curriculum, link, achievement, experience = samples(c, h)
-    composition = post(
-        c,
-        h,
-        "portfolio-compositions",
-        {
-            "title": "합성 구성",
-            "reviewed": True,
-            "sources": [{"kind": "achievement", "record_id": achievement["id"]}],
-        },
-    )
-    doc = post(
-        c,
-        h,
-        "application-documents",
-        {
-            "title": "합성 지원",
-            "target": "합성",
-            "role": "개발",
-            "document_type": "초안",
-            "body": "원본 본문 유지",
-            "sources": [
-                {"kind": "achievement", "record_id": achievement["id"]},
-                {"kind": "experience", "record_id": experience["id"]},
-            ],
-        },
-    )
-    assert (
-        c.delete(
-            "/api/v1/me/achievement-records/" + achievement["id"] + "?expected_version=1", headers=h
-        ).status_code
-        == 409
-    )
+    # The old 포트폴리오 구성·지원 문서 resources are gone, so nothing holds an achievement back.
+    for path in ("portfolio-compositions", "application-documents"):
+        assert c.get("/api/v1/me/" + path, headers=h).status_code == 404
     response = c.patch(
         "/api/v1/me/achievement-records/" + achievement["id"],
         headers=h,
         json={"expected_version": 1, "result": "수정한 합성 결과"},
     )
     assert response.status_code == 200
-    current = c.get("/api/v1/me/portfolio-compositions/" + composition["id"], headers=h).json()
-    assert current["reviewed"] is False and current["version"] == 2
-    current_doc = c.get("/api/v1/me/application-documents/" + doc["id"], headers=h).json()
-    assert current_doc["body"] == "원본 본문 유지"
-    changed = c.patch(
-        "/api/v1/me/application-documents/" + doc["id"],
-        headers=h,
-        json={"expected_version": 1, "sources": list(reversed(current_doc["sources"]))},
-    )
-    assert changed.status_code == 200, changed.text
-    assert changed.json()["sources"] == list(reversed(current_doc["sources"]))
-    # Removing containers removes membership rows, never the original records.
-    assert (
-        c.delete(
-            "/api/v1/me/application-documents/" + doc["id"] + "?expected_version=2", headers=h
-        ).status_code
-        == 204
-    )
-    assert (
-        c.delete(
-            "/api/v1/me/portfolio-compositions/" + composition["id"] + "?expected_version=2",
-            headers=h,
-        ).status_code
-        == 204
-    )
     assert (
         c.delete(
             "/api/v1/me/achievement-records/" + achievement["id"] + "?expected_version=2", headers=h

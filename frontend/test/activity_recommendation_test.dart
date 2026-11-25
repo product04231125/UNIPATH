@@ -184,7 +184,6 @@ void main() {
           records: (kind) => kind == PersonalRecordKind.experience
               ? experience
               : PersonalRecordRepository(kind),
-          portfolio: () => throw UnimplementedError(),
           child: Scaffold(
             body: ActivityRecommendationView(
               api: StudentApi(api, ownerId: 'owner'),

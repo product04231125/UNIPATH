@@ -135,21 +135,7 @@ void main() {
     );
   });
 
-  test('structured references keep order and event instants preserve the same moment', () {
-    const document = StudentApplicationDocumentCreate(
-      title: '합성 초안',
-      target: '합성 지원처',
-      role: '개발',
-      documentType: '자기소개서',
-      sources: [
-        StudentRecordReference(kind: 'experience', recordId: recordId),
-        StudentRecordReference(kind: 'achievement', recordId: clientId),
-      ],
-    );
-    expect(document.toJson()['sources'], [
-      {'kind': 'experience', 'record_id': recordId},
-      {'kind': 'achievement', 'record_id': clientId},
-    ]);
+  test('event instants preserve the same moment', () {
     final event = StudentEventCreate.fromJson({
       'title': '합성 일정',
       'starts_at': '2026-10-19T00:00:00+09:00',

@@ -101,7 +101,6 @@ Widget host({
         ? page
         : PersonalRepositoryScope(
             records: (_) => throw StateError('unused'),
-            portfolio: () => throw StateError('unused'),
             calculations: calculations,
             child: page,
           ),

@@ -12,7 +12,6 @@ import 'package:university_path_frontend/features/api/student_api.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
 import 'package:university_path_frontend/features/records/portfolio/job_analysis_page.dart';
 import 'package:university_path_frontend/features/writing/posting_link.dart';
 import 'package:university_path_frontend/features/writing/writing_api.dart';
@@ -58,7 +57,6 @@ Widget host(
 }) => MaterialApp(
   home: PersonalRepositoryScope(
     records: (kind) => Records(kind),
-    portfolio: () => PortfolioWorkspaceRepository(),
     child: Scaffold(
       body: JobAnalysisPage(
         api: api,
