@@ -20,6 +20,7 @@ import '../support/auth_fixture.dart';
 import 'gherkin_runner.dart';
 import 'student_world.dart';
 import '../support/record_actions.dart';
+import '../support/date_picker.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -406,10 +407,11 @@ void main() {
         expect(find.textContaining('단일전공'), findsWidgets);
       },
       '기준일은 그 실행에서 입력한다': (tester, world) async {
-        final field = find.widgetWithText(TextField, '기준일 (YYYY-MM-DD)');
-        await tester.ensureVisible(field);
-        await tester.enterText(field, '2026-10-21');
-        await tester.pump();
+        await pickDate(
+          tester,
+          find.byKey(const ValueKey('official-graduation-as-of')),
+          DateTime(2026, 10, 21),
+        );
       },
       '공식 졸업감사를 실행하면': (tester, world) async {
         final run = find.text('졸업요건 감사 실행');
@@ -567,13 +569,15 @@ void main() {
       },
       '공식 감사를 위해 기준일을 넣으면': (tester, world) async {
         await world.pumpOfficialAudit(tester);
-        final field = find.widgetWithText(TextField, '기준일 (YYYY-MM-DD)');
-        await tester.ensureVisible(field);
-        await tester.enterText(field, '2026-10-21');
+        await pickDate(
+          tester,
+          find.byKey(const ValueKey('official-graduation-as-of')),
+          DateTime(2026, 10, 21),
+        );
       },
       '설정 프로필과 별도로 그 실행 입력이 된다': (tester, world) async {
         expect(world.planning?.profile.institutionId, isNull);
-        expect(find.widgetWithText(TextField, '2026-10-21'), findsOneWidget);
+        expect(find.text('2026.10.21 (수)'), findsOneWidget);
       },
       '그 문맥으로 공식 졸업감사를 실행하면': (tester, world) async {
         final run = find.widgetWithText(FilledButton, '졸업요건 감사 실행');

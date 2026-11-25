@@ -24,6 +24,7 @@ import 'graduation_certification_page.dart';
 import 'graduation_credit_grid.dart';
 import 'graduation_credit_grid_page.dart';
 import 'graduation_template_preview.dart';
+import '../../shared/widgets/date_picker_field.dart';
 
 class AcademicRequirementsPage extends StatefulWidget {
   const AcademicRequirementsPage({
@@ -649,24 +650,25 @@ class AcademicRequirementsPageState extends State<AcademicRequirementsPage> {
               children: [
                 FieldLabel(
                   label: '적용 시작일 · 선택',
-                  child: TextField(
+                  child: DatePickerFormField(
+                    key: const ValueKey('requirements-effective-from'),
                     controller: _from,
+                    label: '적용 시작일',
+                    showLabel: false,
                     enabled: canEdit,
-                    decoration: InputDecoration(
-                      hintText: 'YYYY-MM-DD',
-                      errorText: _write.fieldError('effective_from'),
-                    ),
+                    errorText: _write.fieldError('effective_from'),
                   ),
                 ),
                 FieldLabel(
                   label: '적용 종료일 · 선택',
-                  child: TextField(
+                  child: DatePickerFormField(
+                    key: const ValueKey('requirements-effective-to'),
                     controller: _to,
+                    label: '적용 종료일',
+                    showLabel: false,
                     enabled: canEdit,
-                    decoration: InputDecoration(
-                      hintText: 'YYYY-MM-DD',
-                      errorText: _write.fieldError('effective_to'),
-                    ),
+                    initialDate: () => parseDay(_from.text),
+                    errorText: _write.fieldError('effective_to'),
                   ),
                 ),
               ],

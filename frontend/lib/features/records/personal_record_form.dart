@@ -5,6 +5,7 @@ import '../../app_shell/phone_shell.dart';
 import '../../shared/credits_format.dart';
 import '../../shared/year_options.dart';
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/date_picker_field.dart';
 import '../../shared/widgets/digits_only_hint.dart';
 import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/field_requirement.dart';
@@ -94,6 +95,25 @@ Future<void> showPersonalRecordForm({
       field.key: TextEditingController(text: seed(field.key)),
   };
   final isCourse = kind == PersonalRecordKind.course;
+  bool hidden(PersonalRecordField field) =>
+      (isCourse && _courseHiddenInputKeys.contains(field.key)) ||
+      (kind == PersonalRecordKind.activity &&
+          !activityVisibleKeys.contains(field.key)) ||
+      (kind == PersonalRecordKind.portfolio &&
+          portfolioHiddenKeys.contains(field.key));
+  final byKey = {for (final field in fields) field.key: field};
+  // A period's end shown beside its start, as in 일정 (one line when both fit).
+  PersonalRecordField? pairedEnd(PersonalRecordField field) {
+    final end = byKey[personalDatePairs[field.key]];
+    return field.type == PersonalFieldType.date &&
+            end?.type == PersonalFieldType.date &&
+            !hidden(field) &&
+            !hidden(end!)
+        ? end
+        : null;
+  }
+
+  final shownBesideStart = {for (final field in fields) ?pairedEnd(field)?.key};
   final originalTerm = record?.value('term') ?? '';
   final period = CourseTerm.parse(draftValues?['term'] ?? originalTerm);
   final initialYear = record == null && draftValues == null
@@ -407,11 +427,7 @@ Future<void> showPersonalRecordForm({
                 ),
               ],
               for (final field in fields) ...[
-                if ((isCourse && _courseHiddenInputKeys.contains(field.key)) ||
-                    (kind == PersonalRecordKind.activity &&
-                        !activityVisibleKeys.contains(field.key)) ||
-                    (kind == PersonalRecordKind.portfolio &&
-                        portfolioHiddenKeys.contains(field.key)))
+                if (hidden(field) || shownBesideStart.contains(field.key))
                   const SizedBox.shrink()
                 else ...[
                   if (isCourse && field.key == 'term') ...[
@@ -563,6 +579,34 @@ Future<void> showPersonalRecordForm({
                               );
                             },
                           )
+                        : field.type == PersonalFieldType.date
+                        ? () {
+                            Widget date(
+                              PersonalRecordField item, {
+                              PersonalRecordField? start,
+                            }) => DatePickerFormField(
+                              key: ValueKey('record-field-${item.key}'),
+                              controller: controllers[item.key]!,
+                              label: fieldRequirementLabel(
+                                item.label,
+                                required: item.required,
+                              ),
+                              enabled: !saving,
+                              clearable: !item.required,
+                              validator: item.validate,
+                              initialDate: start == null
+                                  ? null
+                                  : () =>
+                                        parseDay(controllers[start.key]!.text),
+                            );
+                            final end = pairedEnd(field);
+                            return end == null
+                                ? date(field)
+                                : FieldPair(
+                                    first: date(field),
+                                    second: date(end, start: field),
+                                  );
+                          }()
                         : field.options.isEmpty
                         ? () {
                             final above =

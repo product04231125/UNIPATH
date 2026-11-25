@@ -19,6 +19,7 @@ import 'remote_admin_repository.dart';
 import 'admin_rule_execution_panel.dart';
 import 'school_classification_drafts.dart';
 import 'school_classification_widgets.dart';
+import '../../shared/widgets/date_picker_field.dart';
 
 class AdminEditor extends StatefulWidget {
   const AdminEditor({
@@ -661,7 +662,22 @@ class AdminEditorState extends State<AdminEditor> {
 
   Widget _field(AdminField field) => Padding(
     padding: const EdgeInsets.only(bottom: 14),
-    child: !_isSelect(field)
+    child: field.date
+        ? FieldLabel(
+            label: fieldRequirementLabel(field.label, required: field.required),
+            child: DatePickerFormField(
+              key: ValueKey('admin-field-${field.key}'),
+              controller: _controllers[field.key]!,
+              label: field.label,
+              showLabel: false,
+              clearable: !field.required,
+              enabled: !saving && !_metadataLocked,
+              validator: (v) => field.required && v.trim().isEmpty
+                  ? '${field.label}을 선택하세요.'
+                  : null,
+            ),
+          )
+        : !_isSelect(field)
         ? FieldLabel(
             label: fieldRequirementLabel(field.label, required: field.required),
             child: Semantics(

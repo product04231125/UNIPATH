@@ -421,13 +421,13 @@ void main() {
       );
       await tester.pumpWidget(page(first));
       await tester.pumpAndSettle();
-      expect(find.text('2026-01-01'), findsOneWidget);
+      expect(find.text('2026.1.1 (목)'), findsOneWidget);
       await tester.pumpWidget(page(second));
       await tester.pumpAndSettle();
       expect(second.curriculaLoads, 1);
       expect(second.historyLoads, 1);
-      expect(find.text('2026-02-02'), findsOneWidget);
-      expect(find.text('2026-01-01'), findsNothing);
+      expect(find.text('2026.2.2 (월)'), findsOneWidget);
+      expect(find.text('2026.1.1 (목)'), findsNothing);
     },
   );
 

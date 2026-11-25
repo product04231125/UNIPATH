@@ -6,6 +6,7 @@ import '../api/student_api_models.dart';
 import '../api/student_catalog_api.dart';
 import '../auth/auth_api.dart';
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/date_picker_field.dart';
 
 /// Explicit registered identifiers, never names inferred from a personal profile.
 class SchoolContextForm extends StatefulWidget {
@@ -327,14 +328,15 @@ class SchoolContextFormState extends State<SchoolContextForm> {
           ),
         ),
       if (widget.showDate)
-        TextField(
+        DatePickerFormField(
+          key: const ValueKey('school-context-as-of'),
           controller: date,
           enabled: !widget.disabled,
-          decoration: InputDecoration(
-            labelText: '기준일 (YYYY-MM-DD)',
-            errorText: _fieldError('as_of'),
-            helperText: '미래 날짜는 사용할 수 없습니다.',
-          ),
+          label: '기준일',
+          clearable: false,
+          lastDate: DateUtils.dateOnly(DateTime.now()),
+          errorText: _fieldError('as_of'),
+          helperText: '미래 날짜는 고를 수 없습니다.',
         ),
       if (!_loading && _error == null && _schools.isEmpty)
         const Text('등록된 학교가 없습니다. 학교 기준 등록 후 이용할 수 있습니다.'),

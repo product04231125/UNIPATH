@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'chat_window.dart' as chat_window;
 import 'features/assistant/detached_chat_page.dart';
@@ -21,6 +22,8 @@ Future<void> runUniversityPathApp() async {
 
 ThemeData universityPathTheme({AppPalette palette = AppPalette.cream}) =>
     buildAppTheme(palette);
+
+const appLocale = Locale('ko', 'KR');
 
 class UniversityPathApp extends StatefulWidget {
   const UniversityPathApp({
@@ -71,6 +74,10 @@ class _UniversityPathAppState extends State<UniversityPathApp> {
     builder: (theme, preview) => MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'UniversityPath',
+      // Korean month names and buttons in the date and time pickers.
+      locale: appLocale,
+      supportedLocales: const [appLocale],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: theme,
       builder: (context, child) =>
           preview(context, TaskFocusGroup(child: child!)),
@@ -89,6 +96,10 @@ class DetachedChatApp extends StatelessWidget {
     builder: (theme, preview) => MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'UniversityPath AI 도우미',
+      // Korean month names and buttons in the date and time pickers.
+      locale: appLocale,
+      supportedLocales: const [appLocale],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: theme,
       builder: (context, child) =>
           preview(context, TaskFocusGroup(child: child!)),
