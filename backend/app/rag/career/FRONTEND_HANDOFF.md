@@ -36,7 +36,7 @@ final result = await api.request('POST', 'me/job-recommendations', {
 
 | 화면 | 읽을 필드와 표시 방법 |
 |---|---|
-| 추천 목록 | 서버가 정렬한 `recommendations[]` 순서로 제목·회사·원문 URL을 표시한다. `required_to_check`는 근거가 충분하지 않은 필수조건 개수다. |
+| 추천 목록 | 서버가 정렬한 `recommendations[]` 순서로 제목·회사·원문 URL을 표시한다. `required_to_check`는 근거가 충분하지 않은 필수조건 개수다. 추천은 필수조건을 모두 충족한 공고뿐이라 항상 0이다(2026-11-25). |
 | 카드 펼치기 | 카드와 `items[].posting`을 `(source, source_id)`로 연결한다. 지역·마감·출처, `warnings`와 전체 `comparisons`를 표시한다. 사람인의 `metadata_only`는 공고 요약 기준, `excerpt`는 본문 일부 기준이다. |
 | 왜 추천됐나요? | `matched_requirements[].posting_evidence.excerpt`와 `personal_evidence[].excerpt`를 나란히 표시한다. 지원 여부를 판정하는 점수로 바꾸지 않는다. |
 | 내 자료 인용 | 개인 인용의 `record_id`로 `document_locations`를 조회한다. 있으면 `filename`과 `location`을, `method == "ocr"`이면 “자동 문자 인식 · 원본 확인”을 표시한다. 없으면 선택한 저장 기록의 종류·ID·버전으로 표시한다. |

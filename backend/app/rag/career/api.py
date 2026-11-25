@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from app.api.auth import CurrentIdentity, Database
 from app.core.auth_errors import AuthError, conflict
-from app.models.personal import AnalysisResult
+from app.models.personal import AnalysisResult, PlanningProfile
 from app.schemas.common import ErrorCode
 from app.schemas.personalization import (
     MAX_ANALYSIS_RECORDS,
@@ -23,6 +23,7 @@ from app.services.personalization.context import assemble
 from app.services.personalization.redaction import redact_context
 
 from . import activities, categories, certificates, regions
+from .academic_status import academic_status
 from .contracts import SearchQuery, failure_reason, local_today
 from .crawling import Work24Crawler
 from .documents import prepare_documents
@@ -559,6 +560,12 @@ def recommendations(
             ErrorCode.VALIDATION_ERROR,
             "검색 조건과 파일 형식·크기·텍스트 추출 가능 여부를 확인해 주세요.",
         ) from error
+    # The chosen stage as a citable record, so a 졸업예정 student can meet a degree requirement.
+    if payload.academic_stage is not None:
+        profile = db.get(PlanningProfile, identity.user.id)
+        record, location = academic_status(identity.user.id, payload.academic_stage, profile)
+        records.append(record)
+        locations[record["record_id"]] = location
 
     owner_id = identity.user.id
     db.rollback()

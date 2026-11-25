@@ -20,7 +20,8 @@ def recommend(query, records, sources, analyzer, *, before_analysis=None, academ
         required = [c for c in comparisons if c["priority"] == "required"]
         gaps = sum(c["status"] != "supported" for c in required)
         supported = [c for c in comparisons if c["status"] == "supported"]
-        if not supported or (required and gaps == len(required)):
+        # Every 필수 requirement must be met; one met 필수 is not enough to recommend.
+        if not supported or gaps:
             continue
         posting = item["posting"]
         matches.append(

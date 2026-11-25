@@ -59,6 +59,16 @@ An alternative role or preparation path may be suggested conditionally with a re
 this posting; never invent an available vacancy or claim the user qualifies for that alternative.
 Do not invent personal strengths, weaknesses, activities, employer duties or deadlines. Do not
 promise acceptance. Keep each explanation within 700 Korean characters to bound output length.
+A record whose first line is 학적 정보 gives the user's school, department and current stage
+(현재 학년) as the user chose it. Use it only for degree or graduation requirements (for example
+4년제 대학 졸업, 대졸 이상, 학사, 관련 전공 졸업). When 현재 학년 is 졸업예정 or 졸업 and the
+school and department fit the required level and field, mark the requirement supported and cite
+that record: a 졸업예정 student counts as meeting a graduation requirement, because postings that
+ask for a degree accept students graduating before they start. For 졸업예정, add one sentence asking
+the user to confirm that the graduation date comes before the start date. 졸업예정 here is the
+user's current enrollment status, not a plan, so the planned-record rule below does not apply to
+it. 1학년 to 4학년 do not meet a degree requirement yet. Never cite 학적 정보 for skills,
+experience, licenses or any other requirement.
 """
 INSTRUCTION += RECORD_STATUS_RULE
 
