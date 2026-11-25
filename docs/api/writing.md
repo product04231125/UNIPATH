@@ -20,6 +20,8 @@
   "records": [{"kind": "experience", "record_id": "UUID", "expected_version": 1}],
   "documents": [{"filename": "portfolio.pdf", "content_base64": "…"}],
   "composition": [],
+  "posting": null,
+  "posting_requirements": [],
   "external_processing_consent": true
 }
 ```
@@ -37,6 +39,17 @@
   `[{"requirement": "REST API 개발 경험", "records": [{"kind": "experience", "record_id": "UUID"}]}]`
   (묶음당 기록 1~10개). 묶음의 기록은 `records`에 함께 보낸 것만 쓸 수 있다. 아니면 422다. 자기소개서에 보내도 422다.
   초안은 이 순서로 프로젝트를 소개하고, 각 프로젝트가 어떤 요건을 보여 주는지 기록이 뒷받침하는 만큼만 적는다.
+- `posting`(선택, 2026-11-25): 채용공고 분석에서 연결한 공고. `{source, source_id, title, company, url, analyzed_at}` 형식이다.
+  - `source`는 `work24`·`saramin`·`jobkorea`·`greenhouse`·`manual`(붙여 넣은 공고) 중 하나다.
+  - `url`은 로그인 정보가 없는 http(s) 주소다.
+  - 저장한 문서에 어느 공고로 썼는지 표시하는 데만 쓴다. 모델에는 보내지 않는다. 공고 본문은 기존대로 `posting_text`로 보낸다.
+- `posting_requirements`(선택, 최대 20개): 그 공고의 요건을 채용공고 분석이 내 기록과 비교한 결과다.
+  - 형식: `[{"requirement": "React 화면 개발", "priority": "required|preferred", "status": "supported|partially_supported|insufficient_evidence", "records": [{"kind": "experience", "record_id": "UUID"}]}]`(요건당 기록 0~10개)
+  - 자기소개서·포트폴리오 모두 쓸 수 있다.
+  - 기록은 `records`에 함께 보낸 것만 쓸 수 있다. 아니면 422다.
+  - 생성 지시: 필수 요건부터 그 요건의 기록으로 쓰고, 경험마다 어떤 요건을 보여 주는지 잇는다.
+    - 비교 상태는 증거가 아니므로 기록 자체를 인용한다.
+    - 기록이 없는 요건은 갖췄다고 쓰지 않는다. 기록에 관련 학습이 있을 때만 언급하거나 `questions_for_user`로 묻는다.
 - 동의 없음 → `needs_user_input`(`external_processing_consent`). 기록·자료·원문이 모두 없음 → `records`.
   모델이 설정되지 않으면 `not_configured`.
 - 사용자당 15분 20회, 모델 호출은 전체 호출 상한(`llm:global`)을 함께 쓴다.
@@ -45,7 +58,7 @@
 
 1. 기록은 이름·연락처를 가린 뒤 보낸다. 기록 합계가 40,000자를 넘으면 목표 직무·지원처·공고·문항과 겹치는
    단어가 많은 기록부터 담고, 몇 개를 썼는지 `warnings`에 알린다. 다듬을 원문은 항상 전부 보낸다.
-   `composition`에 있는 기록은 다른 기록보다 먼저 담는다. 한도 때문에 빠진 기록은 묶음에서도 뺀다.
+   `composition`과 `posting_requirements`에 있는 기록은 다른 기록보다 먼저 담는다. 한도 때문에 빠진 기록은 묶음·요건에서도 뺀다.
 2. 모델 호출 1회(제한 90초, 출력 32,768토큰: 생각 토큰도 출력 한도를 쓴다). 문단과 표 항목(포트폴리오의 기간·역할·기술)마다 근거 기록의
    문장을 그대로 인용하게 한다. 기록에 없는 효과·성과(안정성, 성능, 효율 등)를 덧붙이지 않게 한다.
    빠진 사실은 지어내지 않고 `questions_for_user`로 묻는다.
@@ -117,7 +130,7 @@
 
 | 요청 | 동작 |
 | --- | --- |
-| `GET /me/writing-documents` | 목록(최근 저장 순). `id`, `title`, `document_type`, `version`, `updated_at`만 준다. |
+| `GET /me/writing-documents` | 목록(최근 저장 순). `id`, `title`, `document_type`, `version`, `updated_at`과, 공고로 쓴 문서면 `posting`(요청의 `posting` 그대로, 아니면 `null`)을 준다. 공고 정보는 저장된 `input` 안에 있어 마이그레이션은 없다. |
 | `POST /me/writing-documents` | 새로 저장(201). 계정당 50개까지, 넘으면 409. |
 | `GET /me/writing-documents/{id}` | 문서 전체. |
 | `PUT /me/writing-documents/{id}` | 덮어쓰기. `expected_version`이 다르면 409(다른 곳에서 바뀜). |

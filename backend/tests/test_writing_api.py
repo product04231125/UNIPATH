@@ -90,6 +90,17 @@ def test_writing_draft_uses_owned_records_and_drops_unverified_paragraphs(auth_c
     # Another student's record is never assembled into the request.
     other = authorization(register(c, "other@example.test"))
     assert c.post(path, headers=other, json=body).status_code in (403, 404)
+    # Posting requirements, like a composition, may only point at records that are sent.
+    stray_requirement = {
+        "requirement": "React 화면 개발",
+        "priority": "required",
+        "status": "supported",
+        "records": [{"kind": "experience", "record_id": "00000000-0000-4000-8000-000000000999"}],
+    }
+    refused = c.post(
+        path, headers=owner, json={**body, "posting_requirements": [stray_requirement]}
+    )
+    assert refused.status_code == 422
     # 포트폴리오 구성 may only arrange records that are sent with the request.
     stray = {"kind": "experience", "record_id": "00000000-0000-4000-8000-000000000999"}
     portfolio = {**body, "document_type": "portfolio", "questions": [], "char_limit": None}
@@ -214,7 +225,22 @@ def test_saved_writing_documents_are_owner_only_and_versioned(auth_client):
     assert c.put(item, headers=owner, json=update).status_code == 409
     listed = c.get(path, headers=owner).json()["items"]
     assert [(i["title"], i["version"]) for i in listed] == [("바뀐 제목", 2)]
-    assert "draft" not in listed[0]
+    assert "draft" not in listed[0] and listed[0]["posting"] is None
+
+    # A document written from 채용공고 분석 lists the posting it was written for.
+    linked = saved_body("공고로 쓴 문서")
+    linked["input"]["posting"] = {
+        "source": "work24",
+        "source_id": "K1",
+        "title": "합성 프론트엔드 신입",
+        "company": "합성 회사",
+        "url": "https://example.test/k1",
+        "analyzed_at": "2026-11-25T01:00:00Z",
+    }
+    assert c.post(path, headers=owner, json=linked).status_code == 201
+    first = c.get(path, headers=owner).json()["items"][0]
+    assert first["posting"]["company"] == "합성 회사"
+    assert first["posting"]["title"] == "합성 프론트엔드 신입"
 
     empty = saved_body()
     empty["draft"]["sections"][0]["paragraphs"] = []

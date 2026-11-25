@@ -29,6 +29,8 @@ import '../../settings/ai_consent_preferences.dart';
 import '../../settings/ai_consent_section.dart';
 import 'job_recommendation_page.dart';
 import 'material_selection.dart';
+import '../../writing/posting_link.dart';
+import '../../writing/writing_api.dart';
 
 const jobPostingFileMaxBytes = 10 * 1024 * 1024;
 
@@ -97,7 +99,7 @@ class JobAnalysisPage extends StatefulWidget {
     this.onAddPlan,
     this.onGapReport,
     this.purposeRequest,
-    this.onWriteCoverLetter,
+    this.onWrite,
   });
   final Future<XFile?> Function()? pickFile;
   final StudentApi? api;
@@ -119,8 +121,8 @@ class JobAnalysisPage extends StatefulWidget {
   /// Saved target job; fills the 공고 찾기 search form.
   final CareerGoalController? careerGoal;
 
-  /// Opens 자기소개서 작성 with the analyzed posting.
-  final ValueChanged<String>? onWriteCoverLetter;
+  /// Opens 자기소개서·포트폴리오 with an analysed posting (here or in 공고 찾기).
+  final WriteForPosting? onWrite;
   @override
   State<JobAnalysisPage> createState() => _JobAnalysisPageState();
 }
@@ -138,6 +140,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
 
   /// When the shown result is a saved one opened from the list.
   DateTime? _openedAt;
+  DateTime? _resultAt;
 
   /// Titles of the records sent with the last run, to name the evidence.
   Map<String, String> _recordTitles = const {};
@@ -332,6 +335,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
           !GuestPreviewScope.isActive(context)) {
         setState(() {
           _result = result;
+          _resultAt = DateTime.now();
           _recordTitles = {for (final r in records) r.id: r.title};
         });
         // Kept in the account; a failed save leaves the result on screen.
@@ -448,6 +452,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
         if (_visited.contains(JobPurpose.search))
           JobRecommendationPage(
             goal: widget.careerGoal?.goal,
+            onWrite: widget.onWrite,
             api: widget.api,
             consent: widget.consent,
             loadRecords: widget.loadRecords,
@@ -611,8 +616,8 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
     (int, int) coverage(List<JobRequirementComparison> items) =>
         (items.where((c) => c.status == 'supported').length, items.length);
     final required = group('required'), preferred = group('preferred');
-    final write =
-        widget.onWriteCoverLetter != null && _posting.text.trim().isNotEmpty;
+    final write = widget.onWrite;
+    final text = _posting.text.trim();
     Widget grid(List<JobRequirementComparison> items) => ResponsiveGrid(
       targetItemWidth: 420,
       minItemWidth: 320,
@@ -643,14 +648,32 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
                   ],
                 ],
               ),
-              if (write)
-                FilledButton.tonalIcon(
-                  key: const ValueKey('job-analysis-write'),
-                  onPressed: _sending
-                      ? null
-                      : () => widget.onWriteCoverLetter!(_posting.text.trim()),
-                  icon: const Icon(Icons.edit_note_outlined),
-                  label: const Text('이 공고로 자기소개서 쓰기'),
+              if (write != null && text.isNotEmpty)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final type in WritingType.values)
+                      FilledButton.tonalIcon(
+                        key: ValueKey('job-analysis-write-${type.value}'),
+                        onPressed: _sending
+                            ? null
+                            : () => write(
+                                PostingLink.fromJobAnalysis(
+                                  text,
+                                  result,
+                                  analyzedAt: _openedAt ?? _resultAt,
+                                ),
+                                type,
+                              ),
+                        icon: Icon(
+                          type == WritingType.coverLetter
+                              ? Icons.edit_note_outlined
+                              : Icons.folder_open_outlined,
+                        ),
+                        label: Text('이 공고로 ${type.label} 쓰기'),
+                      ),
+                  ],
                 ),
             ],
           ),

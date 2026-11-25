@@ -72061,6 +72061,24 @@
             "type": "array",
             "maxItems": 12,
             "title": "Composition"
+          },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PostingSource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "posting_requirements": {
+            "items": {
+              "$ref": "#/components/schemas/PostingRequirement"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Posting Requirements"
           }
         },
         "additionalProperties": false,
@@ -72382,6 +72400,18 @@
             "type": "string",
             "format": "date-time",
             "title": "Updated At"
+          },
+          "posting": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Posting"
           }
         },
         "additionalProperties": false,
@@ -72483,6 +72513,18 @@
             },
             "type": "object",
             "title": "Labels"
+          },
+          "posting": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Posting"
           }
         },
         "additionalProperties": false,
@@ -72578,6 +72620,24 @@
             "type": "array",
             "maxItems": 12,
             "title": "Composition"
+          },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PostingSource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "posting_requirements": {
+            "items": {
+              "$ref": "#/components/schemas/PostingRequirement"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Posting Requirements"
           }
         },
         "additionalProperties": false,
@@ -73212,6 +73272,103 @@
           "height"
         ],
         "title": "PageSize"
+      },
+      "PostingRequirement": {
+        "properties": {
+          "requirement": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Requirement"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "required",
+              "preferred"
+            ],
+            "title": "Priority"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "supported",
+              "partially_supported",
+              "insufficient_evidence"
+            ],
+            "title": "Status"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/CompositionRecord"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Records"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "requirement",
+          "priority",
+          "status"
+        ],
+        "title": "PostingRequirement",
+        "description": "One requirement of that posting as 채용공고 분석 compared it with the student's records."
+      },
+      "PostingSource": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "saramin",
+              "work24",
+              "jobkorea",
+              "greenhouse",
+              "manual"
+            ],
+            "title": "Source"
+          },
+          "source_id": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Source Id",
+            "default": ""
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "company": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Company",
+            "default": ""
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2048,
+            "title": "Url",
+            "default": ""
+          },
+          "analyzed_at": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Analyzed At",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source",
+          "title"
+        ],
+        "title": "PostingSource",
+        "description": "The posting a document is written for (from 채용공고 분석). Shown with saved documents;\nonly its text (posting_text) and requirements go to the model."
       }
     },
     "securitySchemes": {

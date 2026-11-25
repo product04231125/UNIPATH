@@ -49,6 +49,7 @@ import 'features/auth/local_data_owner.dart';
 import 'features/settings/settings_page.dart';
 import 'features/schedule/schedule_page.dart';
 import 'features/auth/guest_preview_scope.dart';
+import 'features/writing/posting_link.dart';
 
 /// Coordinates navigation and the assistant window.
 /// Product pages show personal/server records; fixtures stay isolated.
@@ -175,10 +176,10 @@ class _WorkspaceState extends State<Workspace> {
       : WritingSessionStore(ownerId: _personalApi.ownerId);
   WritingRequest? _writingRequest;
 
-  /// 채용공고 분석 → 자기소개서 with that posting.
-  void _writeForPosting(String posting) {
+  /// 채용공고 분석 → 자기소개서·포트폴리오 for that posting.
+  void _writeForPosting(PostingLink link, WritingType type) {
     setState(() {
-      _writingRequest = WritingRequest(postingText: posting);
+      _writingRequest = WritingRequest(link: link, type: type);
       _materialsTab = 1;
     });
     _selectPage(StudentPages.materials);
@@ -558,7 +559,7 @@ class _WorkspaceState extends State<Workspace> {
           onAddPlan: _addPreparationPlan,
           onGapReport: (report) => _gapReport.value = report,
           purposeRequest: _jobPurposeRequest,
-          onWriteCoverLetter: _writeForPosting,
+          onWrite: _writeForPosting,
           api: _personalApi,
           consent: _aiConsent,
           loadMaterials: () => loadAssistantMaterials(_materialRepository),

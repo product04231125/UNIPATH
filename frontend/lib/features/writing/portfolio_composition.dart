@@ -7,6 +7,7 @@ import '../assistant/ai_record_catalog.dart';
 import '../auth/auth_api.dart';
 import '../career/career_gap.dart';
 import '../career/saved_analyses.dart';
+import 'posting_link.dart';
 
 /// One target-job requirement and the student's records that show it.
 class CompositionGroup {
@@ -15,6 +16,7 @@ class CompositionGroup {
     required this.records,
     this.frequency,
     this.postings,
+    this.label,
   });
   final String requirement;
   final List<AiRecordOption> records;
@@ -22,11 +24,15 @@ class CompositionGroup {
   /// How many analysed postings asked for it, when known.
   final int? frequency, postings;
 
+  /// A short note beside the requirement, e.g. `필수` for one posting's requirement.
+  final String? label;
+
   CompositionGroup withRecords(List<AiRecordOption> value) => CompositionGroup(
     requirement: requirement,
     records: value,
     frequency: frequency,
     postings: postings,
+    label: label,
   );
 
   Map<String, Object?> toJson() => {
@@ -78,7 +84,30 @@ List<CompositionGroup> composeFromGap(
   return groups;
 }
 
-/// Builds and edits a 포트폴리오 구성 from the latest saved 목표 직무 분석.
+/// 포트폴리오 구성 for one posting: 필수 requirements first, each with the saved records
+/// that showed it. Requirements without such records are left out.
+List<CompositionGroup> composeFromPosting(
+  PostingLink link,
+  List<AiRecordOption> records,
+) {
+  final byKey = {for (final r in records) '${r.kind}/${r.id}': r};
+  return [
+    for (final requirement in link.requirements)
+      if ([
+            for (final r in requirement.records)
+              ?byKey['${r.kind}/${r.recordId}'],
+          ]
+          case final shown when shown.isNotEmpty)
+        CompositionGroup(
+          requirement: requirement.requirement,
+          records: shown.take(maxGroupRecords).toList(),
+          label: requirement.required ? '필수' : '우대',
+        ),
+  ].take(maxCompositionGroups).toList();
+}
+
+/// Builds and edits a 포트폴리오 구성: from the linked posting's requirements, or from the
+/// latest saved 목표 직무 분석.
 class PortfolioCompositionCard extends StatefulWidget {
   const PortfolioCompositionCard({
     super.key,
@@ -86,12 +115,16 @@ class PortfolioCompositionCard extends StatefulWidget {
     required this.groups,
     required this.onChanged,
     this.loadRecords,
+    this.posting,
     this.enabled = true,
   });
   final StudentApi api;
   final List<CompositionGroup> groups;
   final ValueChanged<List<CompositionGroup>> onChanged;
   final Future<List<AiRecordOption>> Function()? loadRecords;
+
+  /// The posting this portfolio is written for, when linked from 채용공고 분석.
+  final PostingLink? posting;
   final bool enabled;
 
   @override
@@ -102,7 +135,41 @@ class PortfolioCompositionCard extends StatefulWidget {
 class _PortfolioCompositionCardState extends State<PortfolioCompositionCard> {
   bool _loading = false;
   String? _message;
-  DateTime? _analyzedAt;
+
+  /// What the shown groups were built from, e.g. `목표 직무 분석 · 11월 24일 15:15 기준`.
+  String? _basis;
+
+  Future<void> _composeFromPosting() async {
+    final link = widget.posting;
+    if (link == null) return;
+    setState(() {
+      _loading = true;
+      _message = null;
+    });
+    try {
+      final records =
+          await (widget.loadRecords?.call() ?? loadAiRecords(widget.api));
+      if (!mounted) return;
+      final groups = composeFromPosting(link, records);
+      _basis =
+          '공고 · ${[if (link.company.isNotEmpty) link.company, link.title].join(' ')} 기준';
+      if (groups.isEmpty) {
+        setState(
+          () => _message = '이 공고 분석에서 내 기록이 근거로 쓰인 요건이 없습니다. 목표 직무 기준으로 구성하거나 기록을 더 추가해 보세요.',
+        );
+      }
+      widget.onChanged(groups);
+    } catch (e) {
+      if (mounted) {
+        setState(
+          () =>
+              _message = e is AuthFailure ? e.message : '포트폴리오 구성을 만들지 못했습니다.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   Future<void> _compose() async {
     setState(() {
@@ -132,7 +199,7 @@ class _PortfolioCompositionCardState extends State<PortfolioCompositionCard> {
           await (widget.loadRecords?.call() ?? loadAiRecords(widget.api));
       if (!mounted) return;
       final groups = composeFromGap(report, records);
-      _analyzedAt = latest.first.createdAt;
+      _basis = '목표 직무 분석 · ${savedAnalysisTime(latest.first.createdAt)} 기준';
       if (groups.isEmpty) {
         setState(
           () => _message =
@@ -198,16 +265,33 @@ class _PortfolioCompositionCardState extends State<PortfolioCompositionCard> {
                       : null,
                   child: const Text('구성 지우기'),
                 ),
+            ],
+          ),
+          // Below the title so the choices wrap in a narrow form column.
+          Wrap(
+            spacing: 4,
+            children: [
+              if (widget.posting?.requirements.isNotEmpty ?? false)
+                TextButton.icon(
+                  key: const ValueKey('portfolio-composition-posting'),
+                  onPressed: widget.enabled && !_loading
+                      ? _composeFromPosting
+                      : null,
+                  icon: const Icon(Icons.work_outline, size: 18),
+                  label: const Text('이 공고 요건 순으로 구성'),
+                ),
               TextButton.icon(
                 key: const ValueKey('portfolio-composition-build'),
                 onPressed: widget.enabled && !_loading ? _compose : null,
                 icon: const Icon(Icons.account_tree_outlined, size: 18),
-                label: Text(groups.isEmpty ? '목표 직무 요건 순으로 구성' : '다시 구성'),
+                label: const Text('목표 직무 요건 순으로 구성'),
               ),
             ],
           ),
           Text(
-            '최근 목표 직무 분석에서 공고가 자주 요구한 요건부터, 그 요건의 근거가 된 내 기록을 묶습니다. 구성하면 초안이 이 순서로 프로젝트를 소개합니다.',
+            widget.posting == null
+                ? '최근 목표 직무 분석에서 공고가 자주 요구한 요건부터, 그 요건의 근거가 된 내 기록을 묶습니다. 구성하면 초안이 이 순서로 프로젝트를 소개합니다.'
+                : '연결한 공고의 필수·우대 요건 순서로, 공고 분석에서 그 요건의 근거가 된 내 기록을 묶습니다. 구성하면 초안이 이 순서로 프로젝트를 소개합니다.',
             style: muted,
           ),
           if (_loading) ...[
@@ -219,12 +303,9 @@ class _PortfolioCompositionCardState extends State<PortfolioCompositionCard> {
             Text(_message!, style: muted),
           ],
           if (groups.isNotEmpty) ...[
-            if (_analyzedAt != null) ...[
+            if (_basis != null) ...[
               const SizedBox(height: 6),
-              Text(
-                '목표 직무 분석 · ${savedAnalysisTime(_analyzedAt)} 기준',
-                style: muted,
-              ),
+              Text(_basis!, style: muted),
             ],
             for (final (i, group) in groups.indexed)
               Padding(
@@ -245,6 +326,11 @@ class _PortfolioCompositionCardState extends State<PortfolioCompositionCard> {
                             ),
                           ),
                         ),
+                        if (group.label case final label?)
+                          ToneChip(
+                            label: label,
+                            tone: label == '필수' ? AppTone.accent : AppTone.info,
+                          ),
                         if (group.frequency != null &&
                             (group.postings ?? 0) > 0)
                           ToneChip(

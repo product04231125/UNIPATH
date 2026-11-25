@@ -36,6 +36,8 @@ class WritingInput {
     this.charLimit,
     this.originalText = '',
     this.composition = const [],
+    this.posting,
+    this.postingRequirements = const [],
   });
 
   WritingInput.fromJson(Map<String, dynamic> json)
@@ -50,6 +52,13 @@ class WritingInput {
       composition = [
         for (final g in json['composition'] as List? ?? const [])
           Map<String, Object?>.from(g as Map),
+      ],
+      posting = json['posting'] == null
+          ? null
+          : Map<String, Object?>.from(json['posting'] as Map),
+      postingRequirements = [
+        for (final r in json['posting_requirements'] as List? ?? const [])
+          Map<String, Object?>.from(r as Map),
       ];
 
   final WritingType type;
@@ -60,6 +69,11 @@ class WritingInput {
 
   /// 포트폴리오 구성: `{requirement, records: [{kind, record_id}]}` groups in order.
   final List<Map<String, Object?>> composition;
+
+  /// The posting from 채용공고 분석 this is written for (`PostingLink.toSource`), and its
+  /// requirements as that analysis compared them (`PostingLink.requirementsJson`).
+  final Map<String, Object?>? posting;
+  final List<Map<String, Object?>> postingRequirements;
 
   Map<String, Object?> toJson() => {
     'document_type': type.value,
@@ -72,6 +86,9 @@ class WritingInput {
     'original_text': improve ? originalText : '',
     if (type == WritingType.portfolio && composition.isNotEmpty)
       'composition': composition,
+    'posting': ?posting,
+    if (postingRequirements.isNotEmpty)
+      'posting_requirements': postingRequirements,
   };
 }
 
@@ -299,6 +316,12 @@ class WritingApi {
             if (_kept(g, records) case final kept when kept.isNotEmpty)
               {...g, 'records': kept},
         ],
+      // A requirement stays even when its records are gone: it still says what is asked.
+      if (input.toJson()['posting_requirements'] case final List asked)
+        'posting_requirements': [
+          for (final r in asked.cast<Map<String, Object?>>())
+            {...r, 'records': _kept(r, records)},
+        ],
       'records': [
         for (final r in records)
           {'kind': r.kind, 'record_id': r.id, 'expected_version': r.version},
@@ -340,11 +363,26 @@ class WritingDocumentSummary {
       title = json['title'] as String,
       type = WritingType.parse(json['document_type'] as String?),
       version = json['version'] as int,
-      updatedAt = DateTime.tryParse(json['updated_at'] as String? ?? '');
+      updatedAt = DateTime.tryParse(json['updated_at'] as String? ?? ''),
+      posting = json['posting'] == null
+          ? null
+          : Map<String, Object?>.from(json['posting'] as Map);
   final String id, title;
   final WritingType type;
   final int version;
   final DateTime? updatedAt;
+
+  /// The posting it was written for (`source`, `title`, `company`, `url`, …), if any.
+  final Map<String, Object?>? posting;
+
+  /// `합성 회사 · 프론트엔드 신입` for the list, or null.
+  String? get postingLabel => switch (posting) {
+    final p? => [
+      if ((p['company'] as String? ?? '').isNotEmpty) p['company'],
+      p['title'],
+    ].join(' · '),
+    null => null,
+  };
 }
 
 /// A draft saved on the server: the form, the edited sections and the citation labels.

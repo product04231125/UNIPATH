@@ -109,6 +109,64 @@ def test_generation_redacts_and_sends_posting_questions_and_limit():
     assert records == before
 
 
+def test_posting_requirements_reach_the_model_but_the_posting_source_does_not():
+    other = "00000000-0000-4000-8000-000000000102"
+    records = copy.deepcopy(RECORDS) + [
+        dict(kind="achievement", record_id=other, version=1, text="합성 수상 기록 " * 20)
+    ]
+    generator = model()
+    generate_draft(
+        request(
+            document_type="cover_letter",
+            posting_text="담당업무: 도서관 API 개발",
+            posting={
+                "source": "work24",
+                "source_id": "K1",
+                "title": "합성 백엔드 신입",
+                "company": "합성 회사",
+                "url": "https://example.test/k1",
+            },
+            posting_requirements=[
+                {
+                    "requirement": "REST API 개발 경험",
+                    "priority": "required",
+                    "status": "supported",
+                    "records": [{"kind": "experience", "record_id": RID}],
+                },
+                {
+                    "requirement": "Docker 배포",
+                    "priority": "preferred",
+                    "status": "insufficient_evidence",
+                },
+            ],
+        ),
+        records,
+        generator,
+    )
+    payload = generator.generate.call_args.args[1]
+    assert payload["posting_requirements"] == [
+        {
+            "requirement": "REST API 개발 경험",
+            "priority": "required",
+            "status": "supported",
+            "records": [RID],
+        },
+        {
+            "requirement": "Docker 배포",
+            "priority": "preferred",
+            "status": "insufficient_evidence",
+            "records": [],
+        },
+    ]
+    assert payload["records"][0]["record_id"] == RID
+    assert "posting" not in payload and "https://example.test" not in str(payload)
+    with pytest.raises(ValueError):
+        request_model = request(
+            posting={"source": "work24", "title": "x", "url": "javascript:alert(1)"}
+        )
+        generate_draft(request_model, records, generator)
+
+
 def test_portfolio_composition_orders_by_requirement_and_keeps_its_records():
     other = "00000000-0000-4000-8000-000000000102"
     records = copy.deepcopy(RECORDS) + [
