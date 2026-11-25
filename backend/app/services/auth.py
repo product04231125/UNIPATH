@@ -153,7 +153,8 @@ def establish(db: Session, user: User, mode: SessionMode, config: Settings, requ
 
 def login(db: Session, payload: LoginRequest, config: Settings, request: Request):
     check_origin(request, cookie=payload.session_mode == SessionMode.COOKIE)
-    throttle(db, "login:" + payload.email, limit=8)
+    # No attempt limit on login: the graduation project's shared demo and test accounts kept
+    # locking each other out. Registration and password change keep their limits.
     # Serialize session issuance with suspension. A login that read the old active
     # state must not create an unrevoked session after the suspension transaction.
     user = db.scalar(select(User).where(User.email == payload.email).with_for_update())
