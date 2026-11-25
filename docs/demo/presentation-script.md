@@ -168,7 +168,7 @@ PPT 발표 3분 50초, 실제 AI를 부르는 시연 6분 20초입니다. 시연
 
 ## 시연 계정과 데이터
 
-시연은 스테이징(staging-unipath.duckdns.org)의 시연 전용 계정으로 합니다. 학생은 final-demo@demo.example, 학교 관리자는 final-admin@demo.example(경동대학교)입니다. 팀원이 함께 쓰는 student@demo.example·admin@demo.example은 시연에 쓰지 않습니다. 비밀번호는 이 문서에 적지 않습니다. 인물은 경동대 컴퓨터공학과 2019학번 단일전공이고, 백엔드 개발자를 준비하는 학생입니다. 아래 내용은 모두 시연용 합성 데이터입니다.
+시연은 스테이징(staging-unipath.duckdns.org) 계정으로 합니다. 학생은 student@demo.example, 학교 관리자는 admin@demo.example(경동대학교)입니다. 비밀번호는 이 문서에 적지 않습니다. 인물은 경동대 컴퓨터공학과 2019학번 단일전공이고, 백엔드 개발자를 준비하는 학생입니다. 아래 내용은 모두 시연용 합성 데이터입니다.
 
 | 구분 | 내용 | 넣은 곳 |
 | --- | --- | --- |
@@ -197,7 +197,7 @@ PPT 발표 3분 50초, 실제 AI를 부르는 시연 6분 20초입니다. 시연
 
 ### 데이터 스크립트
 
-스크립트 위치는 [scripts/demo/seed_demo_student.py](../../scripts/demo/seed_demo_student.py)입니다. 계정 정보는 서버 쪽 폴더(`~/.config/unipath-staging-demo-final/`)에서 읽습니다. 학생은 `account.json`, 학교 관리자는 `admin.json`에 있습니다.
+스크립트 위치는 [scripts/demo/seed_demo_student.py](../../scripts/demo/seed_demo_student.py)입니다. 계정 정보는 서버 쪽 폴더(`~/.config/unipath-staging-demo/`)에서 읽습니다. 학생은 `account.json`, 학교 관리자는 `admin.json`에 있습니다.
 
 ```bash
 python3 scripts/demo/seed_demo_student.py --reset   # 리허설 흔적을 지우고 처음 상태로 (약 5초)
@@ -209,7 +209,7 @@ python3 scripts/demo/seed_demo_student.py --clear   # 시연 뒤 정리
 
 시연이 끝나면 `--clear`로 스크립트와 리허설에서 생긴 데이터를 지우고, 목표 직무를 처음 값으로 되돌립니다. 넣기, 리셋, 정리는 확인용 계정에서 미리 시험했습니다.
 
-학교 관리자는 `--reset`과 기본 실행 때 계정이 있는지만 확인하고, 없으면 만듭니다. 승인은 슈퍼관리자만 할 수 있어서, 이 서버의 스테이징 API 컨테이너 안에서 승인과 같은 방식으로 만듭니다. 그러면 경동대학교 관리 권한과 감사 기록이 함께 남고, 부여자는 기존 슈퍼관리자로 기록됩니다. 이미 있는 계정의 비밀번호는 바꾸지 않습니다.
+학교 관리자는 초기화하지 않습니다. `--reset`과 기본 실행 때 이 서버의 스테이징 API 컨테이너 안에서 경동대학교 학교 관리자인지만 확인합니다(로그인하지 않음). 없을 때만 승인과 같은 방식으로 만듭니다. 승인은 슈퍼관리자만 할 수 있기 때문입니다. 그러면 학교 관리 권한과 감사 기록이 함께 남고, 부여자는 기존 슈퍼관리자로 기록됩니다. 이미 있는 계정의 비밀번호와 역할은 바꾸지 않습니다.
 
 어떤 모드도 계정을 지우지 않습니다. 슈퍼관리자 계정은 만들지도, 바꾸지도, 지우지도 않습니다. 학생 계정 자리에 관리자나 슈퍼관리자 계정이 설정돼 있으면 아무것도 바꾸지 않고 멈춥니다.
 
