@@ -2,11 +2,40 @@
 
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from urllib.parse import urlsplit
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 KINDS = {"course", "activity", "experience", "credential", "achievement"}
+
+# Appended to every instruction that reads the student's records, with "today" in the payload.
+# Status fields are free text the student typed, so the model reads them; code never guesses
+# from their wording.
+RECORD_STATUS_RULE = """
+Records describe plans as well as finished work; today is given as YYYY-MM-DD. A record is not yet
+done when a status line (status_label, thesis_status_label, completion) says it is planned, applied
+for, in progress, being prepared or only partly passed (for example 참여 예정, 지원 예정, 진행 중,
+준비 중, 수강 중, 작성 중, 필기 합격·실기 준비 중), or when its started_on or earned_on is after
+today. Never present such a record as finished work, a held credential or a completed course, and
+never cite it as evidence that a requirement is met (supported). Cite it only for what it says is
+already done, or mention it as a plan or a step in progress."""
+
+
+def local_today() -> date:
+    """Today in Korea: the date records, plans and schedules are judged against."""
+    return datetime.now(ZoneInfo("Asia/Seoul")).date()
+
+
+def record_field(record, key):
+    """One field of an assembled record text (`key: value` lines, see personalization.context)."""
+    prefix = f"{key}: "
+    values = [
+        line[len(prefix) :].strip()
+        for line in str(record.get("text") or "").splitlines()
+        if line.startswith(prefix)
+    ]
+    return values[-1] if values else ""
 
 
 class NotConfigured(Exception):

@@ -4,7 +4,12 @@ from uuid import UUID, uuid4
 
 from app.core.auth_errors import conflict
 from app.rag.career.analyzer import bounded_text, validate_citations
-from app.rag.career.contracts import AnalysisRejected, selected_records
+from app.rag.career.contracts import (
+    RECORD_STATUS_RULE,
+    AnalysisRejected,
+    local_today,
+    selected_records,
+)
 from app.schemas.knowledge import KnowledgeSearch
 from app.schemas.personalized_guidance import (
     PersonalizedGuidanceReason,
@@ -29,6 +34,7 @@ school_chunk_ids에는 사용한 school_evidence의 chunk_id만 넣는다.
 personal_evidence 항목은 kind, record_id, version, excerpt를 가진다.
 excerpt는 해당 기록 text의 정확한 부분 문자열이다.
 근거가 부족하거나 서로 충돌하면 insufficient_evidence=true, answer는 빈 문자열, 두 배열은 비운다."""
+INSTRUCTION += RECORD_STATUS_RULE
 KEYS = {"answer", "school_chunk_ids", "personal_evidence", "insufficient_evidence"}
 
 
@@ -63,6 +69,7 @@ def generate(model, question, school, outbound):
             for source in school.sources
         ],
         "personal_records": selected_records(outbound),
+        "today": local_today().isoformat(),
     }
     return parse_output(model.generate(INSTRUCTION, payload), school, outbound)
 

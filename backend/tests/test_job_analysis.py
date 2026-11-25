@@ -145,6 +145,45 @@ def test_personal_context_is_explicit_owner_scoped_and_versioned(auth_client):
 
 
 @pytest.mark.integration
+def test_personal_context_says_whether_a_record_is_done(auth_client):
+    c = auth_client
+    owner = authorization(register(c))
+    planned = post(
+        c,
+        owner,
+        "experience-records",
+        {
+            "title": "합성 해커톤",
+            "experience_type": "대외활동",
+            "started_on": "2027-03-02",
+            "status_label": "참여 예정",
+        },
+    )
+    thesis = post(
+        c,
+        owner,
+        "achievement-records",
+        {
+            "title": "합성 졸업 논문",
+            "achievement_type": "논문",
+            "role": "제1저자",
+            "result": "추천 모델 비교",
+            "started_on": "2026-09-01",
+            "thesis_status_label": "작성 중",
+        },
+    )
+    result = c.post(
+        ROOT + "/personalization-contexts",
+        headers=owner,
+        json={"records": [selection(planned), {**selection(thesis), "kind": "achievement"}]},
+    )
+    assert result.status_code == 200, result.text
+    texts = [r["text"] for r in result.json()["records"]]
+    assert "status_label: 참여 예정" in texts[0] and "started_on: 2027-03-02" in texts[0]
+    assert "thesis_status_label: 작성 중" in texts[1] and "started_on: 2026-09-01" in texts[1]
+
+
+@pytest.mark.integration
 def test_job_analysis_missing_inputs_unconfigured_and_synthetic_minimum_scenario(auth_client):
     c = auth_client
     owner, _, body = setup(c)

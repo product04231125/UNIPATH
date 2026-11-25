@@ -256,6 +256,28 @@ def test_recommendations_keep_catalog_names_and_drop_held(private):
         )
 
 
+def test_a_credential_still_in_preparation_is_not_held():
+    today = date(2026, 11, 25)
+
+    def credential(title, *lines):
+        return {
+            "kind": "credential",
+            "title": title,
+            "text": "\n".join([f"title: {title}", *lines]),
+        }
+
+    records = [
+        credential("정보처리기사", "status_label: 필기 합격, 실기 준비 중"),
+        credential("SQLD", "earned_on: 2026-03-02", "status_label: 취득"),
+        credential("토익", "earned_on: 2026-12-20"),
+        credential("컴퓨터활용능력 1급"),
+        {"kind": "course", "title": "합성 데이터베이스", "text": "title: 합성 데이터베이스"},
+    ]
+    # Earned by today, or a bare name as before; a status without an earned date is left to
+    # the model, which reads the record.
+    assert certificates.held_names(records, today) == ["SQLD", "컴퓨터활용능력 1급"]
+
+
 @pytest.mark.integration
 def test_certificate_api(auth_client, monkeypatch, private):
     c = auth_client

@@ -105,6 +105,7 @@ def test_generation_redacts_and_sends_posting_questions_and_limit():
     assert "도서관 API 개발" in payload["posting_text"]
     assert payload["questions"] == ["지원 직무와 관련된 경험을 적어 주세요."]
     assert payload["char_limit"] == 800
+    assert payload["today"] and len(payload["today"]) == 10
     assert generator.generate.call_args.kwargs["max_output_tokens"] > 8192
     assert records == before
 
