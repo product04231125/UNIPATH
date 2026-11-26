@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -32,6 +33,57 @@ def test_personal_contracts_reject_spoofed_ownership_and_untrusted_school_flags(
 def test_course_credits_are_finite_positive_decimal(value):
     with pytest.raises(ValidationError):
         dto.CourseRecordCreate(title="합성", term="2026", category="전공", credits=value)
+
+
+@pytest.mark.parametrize("amount", [None, "0", "1.125"])
+def test_personal_pf_credits_preserve_unknown_zero_and_positive(amount):
+    value = dto.CourseRecordCreate(
+        title="합성 P/F",
+        term="2026",
+        category="교양",
+        credits=amount,
+        grading_basis="pass_fail",
+        completion="recorded",
+    )
+    assert value.credits is None if amount is None else str(value.credits) == amount
+    assert value.grade == ""
+    assert value.completion == "recorded"
+
+
+@pytest.mark.integration
+def test_personal_pf_roundtrip_keeps_unknown_credits_and_existing_records(auth_client, auth_db):
+    headers = authorization(register(auth_client))
+    original = post(
+        auth_client,
+        headers,
+        "course-records",
+        {"title": "기존 수강", "term": "2026", "category": "전공", "credits": "3"},
+    )
+    for amount in [None, "0", "1.125"]:
+        saved = post(
+            auth_client,
+            headers,
+            "course-records",
+            {
+                "title": "합성 P/F",
+                "term": "2026",
+                "category": "교양",
+                "credits": amount,
+                "grading_basis": "pass_fail",
+                "completion": "recorded",
+            },
+        )
+        reread = auth_client.get("/api/v1/me/course-records/" + saved["id"], headers=headers)
+        assert reread.status_code == 200, reread.text
+        assert (
+            reread.json()["credits"] is None
+            if amount is None
+            else Decimal(reread.json()["credits"]) == Decimal(amount)
+        )
+        assert reread.json()["grading_basis"] == "pass_fail"
+        assert reread.json()["grade"] == ""
+    reread = auth_client.get("/api/v1/me/course-records/" + original["id"], headers=headers)
+    assert reread.json()["credits"] == "3.000"
 
 
 @pytest.mark.parametrize(
@@ -186,23 +238,6 @@ def test_all_personal_collections_roundtrip_partial_patch_and_no_store(auth_clie
             "condition": "개인 기준 설명",
             "related_record": {"kind": "course", "record_id": course["id"]},
         },
-        "portfolio-compositions": {
-            "title": "합성 구성",
-            "sources": [{"kind": "achievement", "record_id": achievement["id"]}],
-            "audience": "public_review",
-            "reviewed": True,
-        },
-        "application-documents": {
-            "title": "합성 지원",
-            "target": "합성 지원처",
-            "role": "개발",
-            "document_type": "자기소개서",
-            "body": "작성 내용 보존",
-            "sources": [
-                {"kind": "experience", "record_id": experience["id"]},
-                {"kind": "achievement", "record_id": achievement["id"]},
-            ],
-        },
     }
     for path, body in other.items():
         item = post(c, h, path, body)
@@ -217,10 +252,6 @@ def test_all_personal_collections_roundtrip_partial_patch_and_no_store(auth_clie
         )
         assert changed.status_code == 200, changed.text
         assert changed.json()["version"] == 2 and changed.json()["title"] == body["title"]
-        if "sources" in body:
-            assert changed.json()["sources"] == body["sources"]
-        if path == "portfolio-compositions":
-            assert changed.json()["reviewed"] is False
         assert (
             c.patch(
                 "/api/v1/me/" + path + "/" + item["id"],
@@ -279,16 +310,6 @@ def test_owner_isolation_including_superadmin_and_cross_owner_references(auth_cl
             "category": "전공",
             "credits": "3",
             "required": True,
-        },
-        404,
-    )
-    post(
-        c,
-        second,
-        "portfolio-compositions",
-        {
-            "title": "다른 계정 참조",
-            "sources": [{"kind": "achievement", "record_id": achievement["id"]}],
         },
         404,
     )
@@ -383,76 +404,38 @@ def test_profile_creation_version_partial_updates_and_calendar_window(auth_clien
     assert [x["id"] for x in window.json()["items"]] == [event["id"]]
     assert datetime.fromisoformat(event["starts_at"]).astimezone(UTC).hour == 15
     assert event["time_zone"] == "Asia/Seoul"
+    # Checking an event off and undoing it; other fields stay as they were.
+    assert event["completed_at"] is None
+    done = c.patch(
+        f"/api/v1/me/events/{event['id']}",
+        headers=h,
+        json={"expected_version": 1, "completed_at": "2026-10-19T10:30:00+09:00"},
+    )
+    assert done.status_code == 200, done.text
+    assert datetime.fromisoformat(done.json()["completed_at"]).astimezone(UTC).hour == 1
+    assert done.json()["category"] == "deadline"
+    undone = c.patch(
+        f"/api/v1/me/events/{event['id']}",
+        headers=h,
+        json={"expected_version": 2, "completed_at": None},
+    )
+    assert undone.json()["completed_at"] is None and undone.json()["version"] == 3
 
 
 @integration
-def test_reference_constraints_source_order_and_review_invalidation(auth_client, auth_db):
+def test_reference_constraints(auth_client, auth_db):
     c = auth_client
     h = authorization(register(c))
     course, curriculum, link, achievement, experience = samples(c, h)
-    composition = post(
-        c,
-        h,
-        "portfolio-compositions",
-        {
-            "title": "합성 구성",
-            "reviewed": True,
-            "sources": [{"kind": "achievement", "record_id": achievement["id"]}],
-        },
-    )
-    doc = post(
-        c,
-        h,
-        "application-documents",
-        {
-            "title": "합성 지원",
-            "target": "합성",
-            "role": "개발",
-            "document_type": "초안",
-            "body": "원본 본문 유지",
-            "sources": [
-                {"kind": "achievement", "record_id": achievement["id"]},
-                {"kind": "experience", "record_id": experience["id"]},
-            ],
-        },
-    )
-    assert (
-        c.delete(
-            "/api/v1/me/achievement-records/" + achievement["id"] + "?expected_version=1", headers=h
-        ).status_code
-        == 409
-    )
+    # The old 포트폴리오 구성·지원 문서 resources are gone, so nothing holds an achievement back.
+    for path in ("portfolio-compositions", "application-documents"):
+        assert c.get("/api/v1/me/" + path, headers=h).status_code == 404
     response = c.patch(
         "/api/v1/me/achievement-records/" + achievement["id"],
         headers=h,
         json={"expected_version": 1, "result": "수정한 합성 결과"},
     )
     assert response.status_code == 200
-    current = c.get("/api/v1/me/portfolio-compositions/" + composition["id"], headers=h).json()
-    assert current["reviewed"] is False and current["version"] == 2
-    current_doc = c.get("/api/v1/me/application-documents/" + doc["id"], headers=h).json()
-    assert current_doc["body"] == "원본 본문 유지"
-    changed = c.patch(
-        "/api/v1/me/application-documents/" + doc["id"],
-        headers=h,
-        json={"expected_version": 1, "sources": list(reversed(current_doc["sources"]))},
-    )
-    assert changed.status_code == 200, changed.text
-    assert changed.json()["sources"] == list(reversed(current_doc["sources"]))
-    # Removing containers removes membership rows, never the original records.
-    assert (
-        c.delete(
-            "/api/v1/me/application-documents/" + doc["id"] + "?expected_version=2", headers=h
-        ).status_code
-        == 204
-    )
-    assert (
-        c.delete(
-            "/api/v1/me/portfolio-compositions/" + composition["id"] + "?expected_version=2",
-            headers=h,
-        ).status_code
-        == 204
-    )
     assert (
         c.delete(
             "/api/v1/me/achievement-records/" + achievement["id"] + "?expected_version=2", headers=h

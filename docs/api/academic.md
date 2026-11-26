@@ -10,7 +10,7 @@
 | `institutions` | 이름, 선택 국가 코드(대문자 2자), 공식 HTTP(S) URL |
 | `departments` | 학교 UUID, 이름, 코드 |
 | `curricula` | 학교·학과 UUID, 이름, 적용 연도(1000~9999) |
-| `courses` | 학교 UUID, 이름, 코드, 0~100 학점(소수 3자리 이내) |
+| `courses` | 학교 UUID, 이름, 코드, 0~100 학점(소수 3자리 이내), 선택 소속 학과 `department_id` |
 | `curriculum-courses` | 학교·교육과정·과목 UUID, 이름, 이수구분 `major/general/other`, boolean `required` |
 | `rule-sets` | 학교 UUID, 선택 학과·교육과정 UUID, 이름, 선택 시작·종료일 |
 | `rules` | 묶음과 같은 범위/기간, 선택 묶음 UUID, 규칙 종류, 조건 설명, 선택 출처 URL |
@@ -42,6 +42,51 @@ transaction advisory lock 안에서 세션과 역할을 다시 읽는다. 코드
 반환하고 삭제를 차단한다. 다른 항목은 참조 없는 초안만 삭제하며
 적용본은 항상 보존한다. 이름/코드는 기존 보관 자료와 충돌할 수 있으며 조용히 재사용하지 않는다.
 
+## 학교별 분류
+
+이수구분·세부분류와 이수 경로는 관리자 학사 작업 공간이 관리한다. 분류 개정본(`/admin/academic/classification-revisions`)과
+이수 경로(`/admin/academic/study-tracks`), 그것을 쓰는 교육과정 개정본·졸업요건은
+[관리자 학사 작업 공간](admin-academic-workspace.md)을 따른다. 이 문서의 `courses`, `curriculum-courses`에는
+분류 필드가 없다. 필수/선택은 `curriculum-courses.required`, 전공/교양/기타는 `category`다.
+
+2026-11-08(#57)에 넣었던 `/admin/classifications`, `/catalog/classifications`와 과목·연결의
+`classification_id`·`track_id`·적용 분류 응답 필드는 같은 개념이 두 갈래가 되지 않도록
+`0027_unify_classification`에서 없앴다. 이 필드를 보내면 422, 경로는 404다.
+
+## 과목 학과 소속
+
+과목은 선택 `department_id`(같은 학교 학과)로 소속 학과를 가진다. `null`은 학교 공통 과목이다.
+기존 과목은 모두 `null`로 시작한다. 다른 학교 학과는 409이고 복합 FK로도 막는다.
+
+- 수정에서 `department_id`를 **생략하면 기존 값을 유지**하고, `null`이면 공통 과목으로 바꾼다.
+  다른 학과로 옮길 수 있다(과목 아래에 학과 범위를 가진 항목이 없기 때문이다).
+- 과목이 속한 학과는 삭제할 수 없고, 학과 참조 확인 API에 그 과목이 나온다.
+- 학생 카탈로그 `GET /catalog/courses?department_id=`는 **그 학과 소속 과목과 그 학과 교육과정에
+  연결된 과목**을 함께 준다. 공통 과목은 연결돼 있을 때만 나온다. `curriculum_id`를 주면 지금처럼
+  그 교육과정에 연결된 과목만 준다.
+
+## 과목 등록과 교육과정 배치
+
+과목을 등록하는 길과 교육과정에 넣는 길은 하나씩이다.
+
+1. **과목 원부**는 `POST/PATCH /admin/courses`로 등록한다. 이름·코드·학점·평가 방식·소속 학과를 가진다.
+2. **교육과정에 넣기**는 교육과정 개정본(`/admin/academic/curriculum-revisions`)에서 등록된 과목을 골라
+   분류 노드·필수/선택·인정 학점과 함께 저장한다([관리자 학사 작업 공간](admin-academic-workspace.md)).
+   개정본은 고른 과목의 `course_id`와 그때의 `course_version`을 남긴다.
+
+`curricula`·`curriculum-courses`는 **이전 교육과정**이다. 서버에 연결된 관리자 화면은 이 표를 편집하지 않는다.
+대신 다음 두 곳이 읽는다.
+
+- 교육과정 개정본의 "이전 교육과정 가져오기"(`legacy_curriculum_id`)
+- 학업 기준을 아직 적용하지 않은 학생의 과목 선택 대체 경로(`/catalog/courses`, `/catalog/curriculum-courses`)
+
+`curricula`는 규칙 묶음·공식 기록·졸업 감사·학교 문서·학생 프로필의 교육과정 범위로도 계속 쓴다.
+API는 호환을 위해 남아 있지만 새 배치에는 쓰지 않는다.
+
+2026-11-08(#60)의 과목·연결 통합 저장 `POST /admin/course-placements`와 `GET /admin/course-placements/{client_id}`는
+화면이 쓰지 않던 중복 경로라 `0028_drop_course_placements`에서 영수증 테이블과 함께 없앴다(404).
+그 API로 만든 과목과 연결은 그대로 남는다.
+
 ## 검토·새 버전
 
 `rule-sets`, `rules`, `documents`는 다음 동작을 제공한다.
@@ -71,7 +116,17 @@ transaction advisory lock 안에서 세션과 역할을 다시 읽는다. 코드
   기존 `/role`, `/status`도 유지한다. 자신의 계정 변경은 금지하며 정지는 세션을 폐기한다.
 - `POST /scopes/{id}/revoke`: 기존 `expected_version`에 선택 `reason`(최대 500자)을 추가했다.
   회수 사유는 범위의 `revocation_reason`에 저장하며 자유 입력을 감사 로그에 복제하지 않는다.
-- `GET /audit-logs`: 학교·UUID cursor·limit 필터와 `items/next_cursor`.
+- `GET /audit-logs`: 학교·UUID cursor·limit 필터와 `items/next_cursor`. 다음 조건을 AND로 더 받는다.
+  - `target_id`, `actor_id`: 대상·수행자 UUID 일치.
+  - `kind`: 응답의 `kind`와 같은 값(`institution`, `department`, `curriculum`, `course`,
+    `curriculumCourse`, `ruleSet`, `rule`, `document`, `classification`, `scope`, `account`). 모르는 값은 422.
+  - `action`: 전체 행동 문자열 일치(예: `academic:course:update`, `scope_granted`).
+  - `occurred_from`, `occurred_to`: 시간대가 있는 ISO 8601 시각(`Z` 또는 `+09:00`). 시작은 포함하고
+    끝은 제외한다. 시간대가 없거나 시작이 끝보다 늦지 않으면 422.
+  - 정렬과 cursor는 기존처럼 기록 UUID 순이다. 조건을 바꾸면 cursor를 처음부터 다시 쓴다.
+  - 감사 기록은 성공한 변경만 남기므로 결과 필터는 없다. 이름·설명 같은 문자열은 기록하지 않아
+    텍스트 검색도 없다. 대상 이름 검색은 목록 API로 ID를 찾은 뒤 `target_id`로 거른다.
+  - 학교관리자는 필터와 관계없이 자신의 활성 학교 범위 기록만 받는다.
   슈퍼관리자는 전체, 학교관리자는 현재 활성 범위의 학교 메타데이터만 조회한다.
   성공한 변경을 기록하며 실패 요청의 영구 감사 저장은 구현하지 않았다.
 

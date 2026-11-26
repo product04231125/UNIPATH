@@ -1,3 +1,6 @@
+import 'support/configured_planning.dart';
+import 'course_period_test.dart' as period;
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -10,10 +13,14 @@ import 'package:university_path_frontend/features/assistant/assistant_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
+import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/main.dart';
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    await seedConfiguredPlanning();
+  });
 
   test('persists personal planning data locally', () async {
     final repository = PlanningRepository();
@@ -201,10 +208,19 @@ void main() {
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     await tester.pumpAndSettle();
 
-    expect(find.text('일정 없음'), findsNWidgets(7));
+    // Empty days show only their date; no repeated "no events" filler.
+    expect(find.text('일정 없음'), findsNothing);
+    expect(find.byWidgetPredicate(
+      (w) =>
+          w.key is ValueKey<String> &&
+          (w.key! as ValueKey<String>).value.startsWith('week-day-'),
+    ), findsNWidgets(7));
     final now = DateTime.now();
-    final sunday = now.subtract(Duration(days: now.weekday % 7));
-    expect(find.text('일 ${sunday.month}/${sunday.day}'), findsOneWidget);
+    final sunday = DateTime(now.year, now.month, now.day - now.weekday % 7);
+    expect(
+      find.byKey(ValueKey('week-day-${sunday.toIso8601String()}')),
+      findsOneWidget,
+    );
     await tester.binding.setSurfaceSize(null);
   });
 
@@ -227,42 +243,54 @@ void main() {
 
   testWidgets('adds a personal record from the course menu', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final curriculum = PersonalRecordRepository(
+      PersonalRecordKind.personalCurriculumCourse,
+    );
+    await curriculum.load();
+    await curriculum.save(
+      PersonalRecord(
+        id: PersonalRecord.newId(),
+        values: {
+          'title': '운영체제',
+          'courseCode': 'CS300',
+          'credits': '3',
+          'category': '전공선택',
+        },
+      ),
+    );
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
-
-    await tester.tap(find.text('수강 관리'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('수강 과목 직접 입력'));
+    await tester.tap(find.text('학사').first);
     await tester.pumpAndSettle();
-    for (final entry in {
-      'title': '운영체제',
-      'term': '2026-2',
-      'category': '전공선택',
-      'credits': '3',
-    }.entries) {
-      final field = find.byKey(ValueKey('record-field-${entry.key}'));
-      await tester.ensureVisible(field);
-      await tester.enterText(field, entry.value);
-    }
+    await tester.tap(find.byTooltip('수강 과목 추가'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('record-field-title')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('record-select-course')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('운영체제').last);
+    await tester.pumpAndSettle();
+    await period.enter(tester, 'course-year', '2026');
+    await period.enter(tester, 'term', '2학기');
     await tester.tap(find.text('내 기록에 저장'));
     await tester.pumpAndSettle();
-
     expect(find.text('운영체제'), findsOneWidget);
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('can hide record fixtures from the mock switch', (tester) async {
+  testWidgets('workspace hides fixtures and sample controls by default', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
 
-    await tester.tap(find.text('수강 관리'));
+    await tester.tap(find.text('학사'));
     await tester.pumpAndSettle();
-    expect(find.text('자료구조'), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('mock-data-toggle')));
-    await tester.pumpAndSettle();
-
     expect(find.text('자료구조'), findsNothing);
-    expect(find.text('수강 과목 직접 입력'), findsOneWidget);
+    expect(find.byKey(const Key('mock-data-toggle')), findsNothing);
+    expect(find.text('목업용'), findsNothing);
+    expect(find.text('예시 데이터 표시'), findsNothing);
+    expect(find.byTooltip('수강 과목 추가'), findsOneWidget);
     await tester.binding.setSurfaceSize(null);
   });
 
@@ -271,13 +299,14 @@ void main() {
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
 
     for (final menu in [
-      ('수강 관리', '내 수강 과목'),
-      ('일정', '개인 계획을 이 기기에 저장합니다.'),
-      ('졸업 요건', '기준 선택'),
-      ('활동', '등록한 활동'),
-      ('자격', '등록한 자격'),
+      ('학사', '취득 학점'),
+      // 학사 tabs.
+      ('졸업 요건', '학업 프로필'),
+      ('일정', '일정이 없습니다'),
+      ('활동', '기록 시간'),
+      ('자격', '아직 등록한 기록이 없습니다'),
       ('자료', '내 자료'),
-      ('채용공고 분석', '채용공고 텍스트'),
+      ('채용공고 분석', '채용공고 본문'),
       ('설정', '학업과 계획'),
     ]) {
       await tester.tap(find.text(menu.$1));
@@ -294,13 +323,17 @@ void main() {
   });
 
   testWidgets('saves a personal schedule on this device', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'university_path.personal_planning.v1': '{"profile":{"school":"테스트대학교","department":"컴퓨터공학과","admissionYear":2025},"events":[]}',
+    });
     await tester.binding.setSurfaceSize(const Size(900, 768));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('일정'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('일정 추가'));
+    await tester.ensureVisible(find.byTooltip('일정 추가'));
+    await tester.tap(find.byTooltip('일정 추가'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, '프로젝트 마감');
     await tester.tap(find.text('저장'));
@@ -314,9 +347,10 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     await tester.pumpWidget(const UniversityPathApp(startAuthenticated: true));
 
-    await tester.tap(find.text('졸업 요건'));
+    await tester.tap(find.text('설정'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('내 학교·학과 기준 설정'));
+    await tester.ensureVisible(find.text('개인 교육과정 작업'));
+    await tester.tap(find.text('개인 교육과정 작업'));
     await tester.pumpAndSettle();
     await tester.pumpAndSettle();
     for (final entry in {
@@ -332,9 +366,9 @@ void main() {
     }
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('내 기록에 저장'));
+    await tester.ensureVisible(find.text('등록'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('내 기록에 저장'));
+    await tester.tap(find.text('등록'));
     await tester.pumpAndSettle();
 
     expect(find.text('개인 교육과정 A'), findsOneWidget);

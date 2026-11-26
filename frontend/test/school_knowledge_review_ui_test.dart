@@ -348,10 +348,10 @@ void main() {
             isNull,
           );
           await tap(tester, find.text('최신 자료 다시 읽기'));
-          await tap(tester, find.text('계속 작성'));
+          await tap(tester, find.byKey(const Key('input-discard-cancel')));
           expect(find.text('유지할 검토 메모'), findsOneWidget);
           await tap(tester, find.text('최신 자료 다시 읽기'));
-          await tap(tester, find.text('내용 폐기'));
+          await tap(tester, find.byKey(const Key('input-discard-delete')));
           expect(find.text('유지할 검토 메모'), findsNothing);
           expect(
             tester
@@ -394,7 +394,7 @@ void main() {
       await type(tester, '검토 사유', '작성 중인 메모');
       await tap(tester, find.text('닫기').last);
       expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-      await tap(tester, find.text('계속 작성'));
+      await tap(tester, find.byKey(const Key('input-discard-cancel')));
       expect(find.text('작성 중인 메모'), findsOneWidget);
       expect(tester.takeException(), isNull);
       expect(server.writes, isEmpty);

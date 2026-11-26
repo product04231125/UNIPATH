@@ -1,5 +1,4 @@
-/// Temporary, local-only display data used until the records API contract is
-/// available. This is not an API model or school-authoritative record.
+/// Shared list-row presentation for personal records on record menus.
 class RecordMockEntry {
   const RecordMockEntry({
     required this.title,

@@ -34,6 +34,7 @@ class PersonalImportEvent implements PersonalImportPayload {
     required this.endsAt,
     required this.timeZone,
     required this.category,
+    this.completedAt,
   });
   final String title;
   final String detail;
@@ -42,6 +43,7 @@ class PersonalImportEvent implements PersonalImportPayload {
   final DateTime endsAt;
   final String timeZone;
   final String category;
+  final DateTime? completedAt;
   factory PersonalImportEvent.fromJson(Map<String, dynamic> value) =>
       PersonalImportEvent(
         title: value['title'] as String,
@@ -56,6 +58,9 @@ class PersonalImportEvent implements PersonalImportPayload {
           "activity",
           "deadline",
         ]),
+        completedAt: value['completed_at'] == null
+            ? null
+            : DateTime.parse(value['completed_at'] as String),
       );
   @override
   Map<String, Object?> toJson() => {
@@ -66,6 +71,7 @@ class PersonalImportEvent implements PersonalImportPayload {
     'ends_at': endsAt.toUtc().toIso8601String(),
     'time_zone': timeZone,
     'category': category,
+    'completed_at': completedAt?.toUtc().toIso8601String(),
   };
 }
 
@@ -77,21 +83,27 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
     required this.term,
     required this.category,
     required this.credits,
+    this.gradingBasis = "unspecified",
     this.section = "",
     this.courseCode = "",
     this.grade = "",
     this.completion = "planned",
+    this.academicContextId,
+    this.academicEntryId,
   });
   final String title;
   final String detail;
   final String clientId;
   final String term;
   final String category;
-  final String credits;
+  final String? credits;
+  final String gradingBasis;
   final String section;
   final String courseCode;
   final String grade;
   final String completion;
+  final String? academicContextId;
+  final String? academicEntryId;
   factory PersonalImportCourseRecord.fromJson(Map<String, dynamic> value) =>
       PersonalImportCourseRecord(
         title: value['title'] as String,
@@ -99,7 +111,14 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
         clientId: value['client_id'] as String,
         term: value['term'] as String,
         category: value['category'] as String,
-        credits: _decimal(value['credits']),
+        credits: value['credits'] == null ? null : _decimal(value['credits']),
+        gradingBasis: value['grading_basis'] == null
+            ? "unspecified"
+            : _choice(value['grading_basis'], [
+                "unspecified",
+                "graded",
+                "pass_fail",
+              ]),
         section: value['section'] == null ? "" : value['section'] as String,
         courseCode: value['course_code'] == null
             ? ""
@@ -111,7 +130,14 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
                 "planned",
                 "in_progress",
                 "recorded",
+                "not_completed",
               ]),
+        academicContextId: value['academic_context_id'] == null
+            ? null
+            : value['academic_context_id'] as String,
+        academicEntryId: value['academic_entry_id'] == null
+            ? null
+            : value['academic_entry_id'] as String,
       );
   @override
   Map<String, Object?> toJson() => {
@@ -121,10 +147,13 @@ class PersonalImportCourseRecord implements PersonalImportPayload {
     'term': term,
     'category': category,
     'credits': credits,
+    'grading_basis': gradingBasis,
     'section': section,
     'course_code': courseCode,
     'grade': grade,
     'completion': completion,
+    'academic_context_id': academicContextId,
+    'academic_entry_id': academicEntryId,
   };
 }
 
@@ -599,107 +628,6 @@ class PersonalImportGraduationRule implements PersonalImportPayload {
   };
 }
 
-class PersonalImportComposition implements PersonalImportPayload {
-  const PersonalImportComposition({
-    required this.title,
-    this.detail = "",
-    required this.clientId,
-    this.audience = "private",
-    this.reviewed = false,
-    this.sources = const [],
-  });
-  final String title;
-  final String detail;
-  final String clientId;
-  final String audience;
-  final bool reviewed;
-  final List<PersonalImportRecordReference> sources;
-  factory PersonalImportComposition.fromJson(Map<String, dynamic> value) =>
-      PersonalImportComposition(
-        title: value['title'] as String,
-        detail: value['detail'] == null ? "" : value['detail'] as String,
-        clientId: value['client_id'] as String,
-        audience: value['audience'] == null
-            ? "private"
-            : _choice(value['audience'], [
-                "private",
-                "application",
-                "public_review",
-              ]),
-        reviewed: value['reviewed'] == null ? false : value['reviewed'] as bool,
-        sources: value['sources'] == null
-            ? const []
-            : List.unmodifiable(
-                (value['sources'] as List).map(
-                  (v) => PersonalImportRecordReference.fromJson(
-                    Map<String, dynamic>.from(v as Map),
-                  ),
-                ),
-              ),
-      );
-  @override
-  Map<String, Object?> toJson() => {
-    'title': title,
-    'detail': detail,
-    'client_id': clientId,
-    'audience': audience,
-    'reviewed': reviewed,
-    'sources': sources.map((v) => v.toJson()).toList(),
-  };
-}
-
-class PersonalImportApplicationDocument implements PersonalImportPayload {
-  const PersonalImportApplicationDocument({
-    required this.title,
-    this.detail = "",
-    required this.clientId,
-    required this.target,
-    required this.role,
-    required this.documentType,
-    this.body = "",
-    this.sources = const [],
-  });
-  final String title;
-  final String detail;
-  final String clientId;
-  final String target;
-  final String role;
-  final String documentType;
-  final String body;
-  final List<PersonalImportRecordReference> sources;
-  factory PersonalImportApplicationDocument.fromJson(
-    Map<String, dynamic> value,
-  ) => PersonalImportApplicationDocument(
-    title: value['title'] as String,
-    detail: value['detail'] == null ? "" : value['detail'] as String,
-    clientId: value['client_id'] as String,
-    target: value['target'] as String,
-    role: value['role'] as String,
-    documentType: value['document_type'] as String,
-    body: value['body'] == null ? "" : value['body'] as String,
-    sources: value['sources'] == null
-        ? const []
-        : List.unmodifiable(
-            (value['sources'] as List).map(
-              (v) => PersonalImportRecordReference.fromJson(
-                Map<String, dynamic>.from(v as Map),
-              ),
-            ),
-          ),
-  );
-  @override
-  Map<String, Object?> toJson() => {
-    'title': title,
-    'detail': detail,
-    'client_id': clientId,
-    'target': target,
-    'role': role,
-    'document_type': documentType,
-    'body': body,
-    'sources': sources.map((v) => v.toJson()).toList(),
-  };
-}
-
 class PersonalImportProfile implements PersonalImportPayload {
   const PersonalImportProfile({
     this.school = "",
@@ -784,8 +712,6 @@ class PersonalImportRequest implements PersonalImportPayload {
     this.personalCurricula = const [],
     this.personalCurriculumCourses = const [],
     this.personalGraduationRules = const [],
-    this.portfolioCompositions = const [],
-    this.applicationDocuments = const [],
   });
   final String importId;
   final String sourceOwnerId;
@@ -800,8 +726,6 @@ class PersonalImportRequest implements PersonalImportPayload {
   final List<PersonalImportPersonalCurriculum> personalCurricula;
   final List<PersonalImportCurriculumCourse> personalCurriculumCourses;
   final List<PersonalImportGraduationRule> personalGraduationRules;
-  final List<PersonalImportComposition> portfolioCompositions;
-  final List<PersonalImportApplicationDocument> applicationDocuments;
   factory PersonalImportRequest.fromJson(Map<String, dynamic> value) =>
       PersonalImportRequest(
         importId: value['import_id'] as String,
@@ -893,24 +817,6 @@ class PersonalImportRequest implements PersonalImportPayload {
                   ),
                 ),
               ),
-        portfolioCompositions: value['portfolio_compositions'] == null
-            ? const []
-            : List.unmodifiable(
-                (value['portfolio_compositions'] as List).map(
-                  (v) => PersonalImportComposition.fromJson(
-                    Map<String, dynamic>.from(v as Map),
-                  ),
-                ),
-              ),
-        applicationDocuments: value['application_documents'] == null
-            ? const []
-            : List.unmodifiable(
-                (value['application_documents'] as List).map(
-                  (v) => PersonalImportApplicationDocument.fromJson(
-                    Map<String, dynamic>.from(v as Map),
-                  ),
-                ),
-              ),
       );
   @override
   Map<String, Object?> toJson() => {
@@ -929,12 +835,6 @@ class PersonalImportRequest implements PersonalImportPayload {
         .map((v) => v.toJson())
         .toList(),
     'personal_graduation_rules': personalGraduationRules
-        .map((v) => v.toJson())
-        .toList(),
-    'portfolio_compositions': portfolioCompositions
-        .map((v) => v.toJson())
-        .toList(),
-    'application_documents': applicationDocuments
         .map((v) => v.toJson())
         .toList(),
   };
@@ -965,8 +865,6 @@ class PersonalImportMapping implements PersonalImportPayload {
           "personal-curricula",
           "personal-curriculum-courses",
           "personal-graduation-rules",
-          "portfolio-compositions",
-          "application-documents",
         ]),
         clientId: value['client_id'] as String,
         recordId: value['record_id'] as String,

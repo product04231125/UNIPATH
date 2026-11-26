@@ -318,17 +318,13 @@ def test_sessions_expire_logout_is_server_side_and_logout_all(auth_client, auth_
 
 
 @pytest.mark.integration
-def test_login_limits_survive_failed_requests_and_reset_after_window(auth_client, auth_db):
+def test_repeated_failed_logins_never_lock_the_account(auth_client, auth_db):
     register(auth_client)
-    for _ in range(8):
+    for _ in range(12):
         assert login(auth_client, password="wrong").status_code == 401
-    response = login(auth_client)
-    assert response.status_code == 429 and response.headers["Retry-After"] == "900"
-    with auth_db() as db:
-        bucket = db.get(AuthThrottle, token_hash("login:student@example.test"))
-        bucket.window_start = datetime.now(UTC) - timedelta(minutes=16)
-        db.commit()
     assert login(auth_client).status_code == 200
+    with auth_db() as db:
+        assert db.get(AuthThrottle, token_hash("login:student@example.test")) is None
 
 
 @pytest.mark.integration

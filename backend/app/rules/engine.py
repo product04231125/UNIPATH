@@ -147,10 +147,27 @@ def _courses(rule: CourseRule, snapshot: Snapshot) -> dict:
     }
 
 
-def _volunteers(rule: VolunteerRule, snapshot: Snapshot) -> dict:
+def _volunteers(rule: VolunteerRule, snapshot: Snapshot, as_of: date) -> dict:
     if snapshot.volunteers is None:
         return {"status": Status.NEEDS_REVIEW, "reason": "volunteer_records_unavailable"}
     total, unknown, evidence = ZERO, False, []
+    if rule.hours_basis == "reported":
+        for record in snapshot.volunteers:
+            if record.activity_on is not None and record.activity_on > as_of:
+                continue
+            if record.reported_hours is not None:
+                hours = record.reported_hours
+            elif record.approval_status == Approval.APPROVED and record.approved_hours is not None:
+                # Older records were entered with approved hours only.
+                hours = record.approved_hours
+            elif record.approval_status == Approval.REJECTED:
+                continue
+            else:
+                unknown = True
+                continue
+            total += hours
+            evidence.append(record.id)
+        return _threshold(total, rule.minimum, unknown, tuple(evidence))
     for record in snapshot.volunteers:
         if record.approval_status in (Approval.PENDING, Approval.NEEDS_REVIEW):
             unknown = True
@@ -213,7 +230,7 @@ def _evaluate_rule(rule: Rule, rule_set: RuleSet, snapshot: Snapshot, as_of: dat
         case CourseRule():
             values = _courses(rule, snapshot)
         case VolunteerRule():
-            values = _volunteers(rule, snapshot)
+            values = _volunteers(rule, snapshot, as_of)
         case CertificateRule():
             values = _certificates(rule, snapshot, as_of)
         case ThesisRule():

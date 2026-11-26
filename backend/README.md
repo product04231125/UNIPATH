@@ -1,5 +1,16 @@
 # 백엔드 개발환경
 
+학생 학사 연결은 migration `0021_student_academic`의 별도 학생 소유 테이블과
+`/api/v1/catalog/academic/options`, `/api/v1/me/academic-*`를 사용한다.
+기존 개인 기록·감사 이력을 유지하며 새 기준 적용·O/X·기록 연결·학점 진행 상황을
+지원한다. [학생 학사 API](../docs/api/student-academic.md)를 따른다.
+
+관리자 학사 재설계는 migration `0018_admin_academic_foundation`부터
+`0020_admin_academic_requirements`까지의 additive 테이블과
+`/api/v1/admin/academic`을 사용한다. 기존 학생·학사 API는 유지한다.
+학교 분류·교육과정별 과목·한 줄 요건/학점표/인증 요건의 실제 계약과 이전 제한은
+[관리자 학사 API](../docs/api/admin-academic-workspace.md)를 참고한다.
+
 Python 3.12, FastAPI, SQLAlchemy, Psycopg, Alembic, PostgreSQL 17과 pgvector를
 사용한다. Docker 기반 이미지는 Python 3.12.14와 pgvector 0.8.6을 포함하며 digest로
 잠근다. Python 의존성은 `uv.lock`에 잠그며 Docker와 호스트가 같은 잠금 파일을
@@ -75,7 +86,9 @@ Flutter Web은 예를 들어 `flutter run -d chrome --web-port 3000`으로 고�
 사용한다. 다른 포트를 쓰면 `.env`의 `CORS_ORIGINS` JSON 배열도 갱신한다.
 프론트엔드 학교 질의는 `POST /api/v1/assistant/queries`와 연결한다.
 인증·학업 프로필·일정·개인 기록·구성·지원 문서는 실제 서버와 연결했고 공식 감사는 타입/전송 API까지 제공하고 해당 화면은 후속이다. Web 실행 주소는
-`http://localhost:3000`, 빌드 설정 `API_BASE_URL`은 실제 API 주소에 맞춘다.
+`http://localhost:3000` 또는 `http://127.0.0.1:3000`(기본 CORS에 둘 다 포함),
+빌드 설정 `API_BASE_URL`은 실제 API 주소에 맞춘다. 다른 기기(폰)에서 붙을 때만
+LAN IP와 `0.0.0.0` 바인딩·`CORS_ORIGINS` 추가가 필요하다.
 
 ## RAG 팀 모듈과 학교 질의 API
 

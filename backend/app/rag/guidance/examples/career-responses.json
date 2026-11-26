@@ -1,0 +1,239 @@
+{
+  "career": {
+    "schema_version": "academic-click-v3",
+    "node_id": "career",
+    "title": "취업 분석",
+    "state": "ready",
+    "reason": "menu",
+    "message": "원하는 직무·지역을 직접 선택하고 분석에 사용할 자격증·경험을 골라 주세요.",
+    "cards": [],
+    "warnings": [],
+    "buttons": [
+      {
+        "id": "career:recommend",
+        "label": "내 자료로 공고 찾기",
+        "action": "select_node",
+        "node_id": "career:recommend",
+        "availability": "available"
+      },
+      {
+        "id": "career:profile",
+        "label": "내 자격증·경험 분석",
+        "action": "select_node",
+        "node_id": "career:profile",
+        "availability": "available"
+      },
+      {
+        "id": "career:posting",
+        "label": "공고 1개와 비교",
+        "action": "select_node",
+        "node_id": "career:posting",
+        "availability": "available"
+      },
+      {
+        "id": "career:sources",
+        "label": "공고 수집처 안내",
+        "action": "select_node",
+        "node_id": "career:sources",
+        "availability": "available"
+      },
+      {
+        "id": "home",
+        "label": "이전 메뉴",
+        "action": "select_node",
+        "node_id": "home",
+        "availability": "available"
+      }
+    ]
+  },
+  "career:recommend": {
+    "schema_version": "academic-click-v3",
+    "node_id": "career:recommend",
+    "title": "내 자료로 공고 찾기",
+    "state": "needs_input",
+    "reason": "career_inputs_required",
+    "message": "분석에 사용할 내 자료와 검색·비교 조건을 선택해 주세요.",
+    "cards": [],
+    "warnings": [],
+    "buttons": [
+      {
+        "id": "career",
+        "label": "이전 메뉴",
+        "action": "select_node",
+        "node_id": "career",
+        "availability": "available"
+      },
+      {
+        "id": "home",
+        "label": "처음으로",
+        "action": "select_node",
+        "node_id": "home",
+        "availability": "available"
+      }
+    ],
+    "missing_fields": [
+      "records",
+      "job_keyword",
+      "region"
+    ],
+    "workflow": {
+      "id": "recommend",
+      "requires_authenticated_user": true,
+      "record_kinds": [
+        "credential",
+        "experience",
+        "activity",
+        "achievement",
+        "course"
+      ],
+      "job_selection": "user_selected",
+      "region_selection": "user_selected",
+      "steps": [
+        "자료 선택",
+        "직무·지역 또는 공고 입력",
+        "분석 자료 확인",
+        "결과 확인"
+      ]
+    },
+    "integration_state": "adapter_not_connected",
+    "notice": "선택한 자료만 분석에 사용하며 메뉴 선택만으로 외부에 전송하지 않습니다."
+  },
+  "career:profile": {
+    "schema_version": "academic-click-v3",
+    "node_id": "career:profile",
+    "title": "내 자격증·경험 분석",
+    "state": "needs_input",
+    "reason": "career_inputs_required",
+    "message": "분석에 사용할 내 자료와 검색·비교 조건을 선택해 주세요.",
+    "cards": [],
+    "warnings": [],
+    "buttons": [
+      {
+        "id": "career",
+        "label": "이전 메뉴",
+        "action": "select_node",
+        "node_id": "career",
+        "availability": "available"
+      },
+      {
+        "id": "home",
+        "label": "처음으로",
+        "action": "select_node",
+        "node_id": "home",
+        "availability": "available"
+      }
+    ],
+    "missing_fields": [
+      "records"
+    ],
+    "workflow": {
+      "id": "profile",
+      "requires_authenticated_user": true,
+      "record_kinds": [
+        "credential",
+        "experience",
+        "activity",
+        "achievement",
+        "course"
+      ],
+      "job_selection": "user_selected",
+      "region_selection": "user_selected",
+      "steps": [
+        "자료 선택",
+        "직무·지역 또는 공고 입력",
+        "분석 자료 확인",
+        "결과 확인"
+      ]
+    },
+    "integration_state": "adapter_not_connected",
+    "notice": "선택한 자료만 분석에 사용하며 메뉴 선택만으로 외부에 전송하지 않습니다."
+  },
+  "career:posting": {
+    "schema_version": "academic-click-v3",
+    "node_id": "career:posting",
+    "title": "공고 1개와 비교",
+    "state": "needs_input",
+    "reason": "career_inputs_required",
+    "message": "분석에 사용할 내 자료와 검색·비교 조건을 선택해 주세요.",
+    "cards": [],
+    "warnings": [],
+    "buttons": [
+      {
+        "id": "career",
+        "label": "이전 메뉴",
+        "action": "select_node",
+        "node_id": "career",
+        "availability": "available"
+      },
+      {
+        "id": "home",
+        "label": "처음으로",
+        "action": "select_node",
+        "node_id": "home",
+        "availability": "available"
+      }
+    ],
+    "missing_fields": [
+      "records",
+      "posting_text"
+    ],
+    "workflow": {
+      "id": "posting",
+      "requires_authenticated_user": true,
+      "record_kinds": [
+        "credential",
+        "experience",
+        "activity",
+        "achievement",
+        "course"
+      ],
+      "job_selection": "user_selected",
+      "region_selection": "user_selected",
+      "steps": [
+        "자료 선택",
+        "직무·지역 또는 공고 입력",
+        "분석 자료 확인",
+        "결과 확인"
+      ]
+    },
+    "integration_state": "adapter_not_connected",
+    "notice": "선택한 자료만 분석에 사용하며 메뉴 선택만으로 외부에 전송하지 않습니다."
+  },
+  "career:sources": {
+    "schema_version": "academic-click-v3",
+    "node_id": "career:sources",
+    "title": "공고 수집처 안내",
+    "state": "ready",
+    "reason": "career_sources",
+    "message": "궁금한 항목을 선택해 주세요.",
+    "cards": [
+      {
+        "type": "reference_text",
+        "title": "사람인 · 고용24(워크넷)",
+        "body": "공식 API 검색 어댑터가 준비되어 있습니다. 발급받은 인증키와 서버 연결이 필요합니다."
+      },
+      {
+        "type": "reference_text",
+        "title": "잡코리아",
+        "body": "이용 승인 후 전용 호출 주소와 명세를 받아 연결해야 합니다."
+      }
+    ],
+    "warnings": [],
+    "buttons": [
+      {
+        "id": "career",
+        "label": "이전 메뉴",
+        "action": "select_node",
+        "node_id": "career",
+        "availability": "available"
+      },
+      {
+        "id": "home",
+        "label": "처음으로",
+        "action": "select_node",
+        "node_id": "home",
+        "availability": "available"
+      }
+    ]
+  }
+}

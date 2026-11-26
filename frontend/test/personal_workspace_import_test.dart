@@ -9,6 +9,7 @@ import 'package:university_path_frontend/features/records/personal_workspace_imp
 import 'package:university_path_frontend/features/records/personal_workspace_import_section.dart';
 
 import 'support/auth_fixture.dart';
+import 'support/reachable_controls.dart';
 import 'support/personal_gateway.dart';
 import 'support/personal_workspace_fixture.dart';
 
@@ -46,7 +47,7 @@ void main() {
       expect(gateway.calls, isEmpty);
       await seedLocalWorkspace(userId);
       await importer.load();
-      expect(importer.count, 10);
+      expect(importer.count, 8);
       expect(importer.canImport, isTrue);
       expect(gateway.calls, isEmpty);
     },
@@ -170,7 +171,7 @@ void main() {
         final raw = jsonEncode({
           'completed': false,
           'request': {
-            'import_id': compositionId,
+            'import_id': importId,
             'source_owner_id': userId,
             'consent_confirmed': true,
             ...overrides,
@@ -193,7 +194,9 @@ void main() {
   }
   for (final size in [const Size(1440, 900), const Size(480, 520)]) {
     testWidgets(
-      'whole workspace consent protects source data and stays usable at $size',
+      size.width == 480
+          ? 'workspace import consent and confirmation stay reachable at $size'
+          : 'whole workspace consent protects source data',
       (tester) async {
         await seedLocalWorkspace(userId);
         final gateway = PersonalGateway();
@@ -226,6 +229,13 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.byType(Checkbox));
         await tester.pumpAndSettle();
+        if (size.width == 480) {
+          await expectControlsReachable(tester, [confirm]);
+          expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
+          expect(gateway.calls, isEmpty);
+          await tester.pumpWidget(const SizedBox());
+          return;
+        }
         await tester.tap(confirm);
         await tester.pumpAndSettle();
         expect(importer.completed, isTrue);

@@ -188,7 +188,9 @@ def import_regulations(directory, output=DATA):
                     raise ValueError(f"{code} page {index} requires OCR/review")
                 pages.append({"page": index, "text": text, "tables": page.extract_tables()})
         sha = digest(raw)
-        source = output / "sources" / f"{code}-{sha[:12]}.pdf"
+        from .filenames import pdf_path
+
+        source = output / pdf_path("학사규정", scope, title, code, sha)
         source.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, source)
         documents.append(

@@ -28,7 +28,7 @@
 | 경로 | 공통 필드 외 주요 입력 |
 | --- | --- |
 | `/events` | `starts_at`, `ends_at`(시간대 offset 필수), `time_zone`(IANA), `category=academic/personal/activity/deadline` |
-| `/course-records` | `term`, `category`, `credits`(0 초과~100, 소수 3자리), 선택 `section/course_code/grade`, `completion=planned/in_progress/recorded` |
+| `/course-records` | `term`, `category`, `credits`(0 초과~100, 소수 3자리, P/F만 0·`null`), `grading_basis`, 선택 `section/course_code/grade`, `completion=planned/in_progress/recorded/not_completed`, 선택 학업 기준 연결 `academic_context_id/academic_entry_id` |
 | `/activity-records` | 기관·역할, 시작/종료일, `reported_hours`, 관찰한 `approved_hours/approval/observed_on` |
 | `/experience-records` | `experience_type`, 기관·역할·기간·결과, 자유 서술 `status_label` |
 | `/credential-records` | `provider/level`, 취득/만료일, `status_label`, `evidence_url` |
@@ -36,16 +36,32 @@
 | `/personal-curricula` | 개인 `school/department`, 정수 `admission_year/curriculum_year`, 선택 `evidence_url` |
 | `/personal-curriculum-courses` | `curriculum_id`, 선택 `course_record_id`, 과목 코드·이수구분·양수 학점, boolean `required` |
 | `/personal-graduation-rules` | `curriculum_id`, 선택 `curriculum_course_id`, `rule_type`, `scope=institution/department/curriculum`, 필수 `condition`, 선택 수치·기간·출처·`related_record` |
-| `/portfolio-compositions` | 사용 의도 `audience=private/application/public_review`, boolean `reviewed`, 순서 있는 `sources` |
-| `/application-documents` | 필수 `target/role/document_type`, 선택 `body`(최대 32000자), 순서 있는 `sources` |
 
 날짜는 실제 `YYYY-MM-DD`만 받으며 숫자 timestamp나 날짜/시각 혼용을 허용하지 않는다.
-기간·취득/만료·유효기간은 역전을 거부한다. 숫자는 유한한 0 이상이며 학점은 0을 허용하지 않는다.
+기간·취득/만료·유효기간은 역전을 거부한다. 숫자는 유한한 0 이상이다.
+수강 기록의 `grading_basis=unspecified/graded/pass_fail`은 평가 방식을 보존한다.
+P/F 수강만 `credits=null`(미확인)과 `0`(확인한 0학점)을 허용하며 두 값을 구분한다.
+기존 수강은 `unspecified`로 유지하고, 성적 P/F나 기록 상태로 합격·취득학점을 자동 확정하지 않는다.
+개인 교육과정의 과목 학점은 기존 양수 조건을 유지한다.
+
+수강 `completion=planned/in_progress/recorded/not_completed`는 각각 수강 예정·수강 중·이수 완료·미이수다.
+기존 `recorded`는 학생의 이수 완료로 유지하며 별도 합격 검증을 요구하지 않는다.
+선택 `academic_context_id/academic_entry_id`는 함께 전달한다. 서버가 본인 전공 연결과
+해당 교육과정 과목 관계를 검증하고 기존 학생 과목 연결 테이블에 저장한다.
+개인 수강 저장과 연결·수강 상태에서 파생한 취득학점 갱신은 같은 트랜잭션이다.
+이수 완료는 과목 학점, 미이수는0, 예정/진행은 미확정으로 처리한다. 기록 수정 시 연결 버전도 갱신한다.
+과거 기준의 기존 연결은 일반 메모·상태 수정에서 보존하고 새 과목 선택은 현재 게시 기준을 검사한다.
 URL은 로그인 정보가 없는 HTTP(S) 링크이며 서버에서 가져오거나 학교 증빙을 검증하지 않는다.
 자유 서술 상태는 `status_label` 등으로 보존하며 기계적 승인 상태로 해석하지 않는다.
 
+수강 기록이 학교 교육과정의 어느 과목인지는 위 `academic_context_id/academic_entry_id` 연결 하나로만
+나타낸다([학생 학사 기준](student-academic.md)). 2026-11-08(#60)에 넣었던 원본 참조
+`catalog_course_id/catalog_course_version/curriculum_course_id/curriculum_course_version`은
+`0027_unify_classification`에서 없앴고, 이 필드를 보내면 422다.
+
 `approved_hours > 0`을 기록하려면 사용자가 관찰한 `approval=approved`와 `observed_on`이
 필요하다. 이것도 **사용자 입력**이며 서버의 봉사 승인·검증된 실적이 아니다.
+개인 기준 계산은 `reported_hours`를 합산하고, 입력 시간이 없을 때만 이 승인 시간을 쓴다.
 개인 `condition`·`rule_type`·`required_value/current_value`는 저장용 설명/관찰 값이다.
 실행 코드나 공식 졸업 판정 조건으로 자동 해석하지 않는다.
 
@@ -66,16 +82,11 @@ URL은 로그인 정보가 없는 HTTP(S) 링크이며 서버에서 가져오거
 
 ## 개인 관계와 초안 보존
 
-`related_record`와 `sources`의 참조는 `{kind, record_id}`다. kind는
+`related_record`의 참조는 `{kind, record_id}`다. kind는
 `course/activity/experience/credential/achievement` 중 하나이며 record_id는 **서버 ID**다.
-구성의 sources는 achievement만, 지원 문서는 achievement/experience만 허용한다.
-중복을 거부하고 최대 100개를 순서대로 한 트랜잭션에서 교체한다.
+참조 중인 원본(개인 규칙이 가리키는 기록 등)의 삭제는 차단한다.
 
-구성·지원 문서 삭제는 연결 행만 제거하며 원 성과/경험을 지우지 않는다. 참조 중인 원본의
-삭제는 차단한다. 성과 수정은 이를 참조하는 구성의 reviewed를 false로 만들고 버전을 올린다.
-구성 내용·순서 변경도 명시적 새 reviewed 확인이 없으면 검토 표시를 초기화한다.
-원본 수정으로 작성된 지원 문서 본문을 자동 덮어쓰지 않는다.
-audience와 reviewed는 사용 의도/개인 확인 기록이며 실제 공개·공유·제출 권한이 아니다.
+예전 `portfolio-compositions`·`application-documents`(포트폴리오 구성·지원 문서)와 그 연결 표는 2026-11-25 마이그레이션 `0033_drop_legacy_portfolio`로 지웠다. 화면에서 쓰지 않았고, 남아 있으면 그 표가 참조하는 성과·경험 기록을 지울 수 없었다. 지금의 포트폴리오 구성과 자기소개서·포트폴리오 초안은 [작성 API](writing.md)의 `composition`·`posting_requirements`와 저장 문서가 맡는다.
 
 ## 재시도와 기존 로컬 자료 이전
 
@@ -93,7 +104,7 @@ audience와 reviewed는 사용 의도/개인 확인 기록이며 실제 공개·
 
 1. 원본을 보존하고 기존 UUID를 client_id로 사용한다. 서버 ID 대응표를 계정별로 저장한다.
 2. 개인 교육과정과 수강/활동/경험/자격/성과를 먼저 저장하고 응답의 서버 ID를 확보한다.
-3. 개인 과목 연결, 개인 규칙, 구성/지원 문서 순서로 참조를 서버 ID로 치환한다.
+3. 개인 과목 연결, 개인 규칙 순서로 참조를 서버 ID로 치환한다.
 4. 실패 시 원본을 지우지 않고 client_id 조회와 같은 본문 재시도로 재개한다. 바뀐 내용은
    현재 version을 읽은 PATCH로 저장한다. 익명/다른 계정 자료를 자동 귀속하지 않는다.
 5. 로컬 일정의 offset 없는 시각은 원래 시간대 확인 후 변환해야 한다. 임의로 Z를 붙이거나

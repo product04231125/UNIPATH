@@ -21,7 +21,7 @@ from app.schemas.assistant import (
     SchoolQueryContext,
 )
 from app.schemas.knowledge import KnowledgeSearchResponse
-from app.services import auth, catalog, knowledge
+from app.services import auth, catalog, gemini, knowledge
 from app.services.assistant import query_school
 
 MAX_DOCUMENTS = 32
@@ -33,8 +33,7 @@ class KnowledgeIndexCache:
     def __init__(self):
         self._indexes = OrderedDict()
         self._lock = RLock()
-        # Provider selection remains an explicit integration step. Tests may inject
-        # a synthetic generator; no real provider or credential is configured here.
+        # Set by application startup when Gemini is configured; tests inject synthetic ones.
         self.generator = None
 
     def get(self, key, build):
@@ -210,7 +209,9 @@ def execute(db, request, payload, cache, *, search=False):
         retriever = cache.get(key, lambda: build_index(db, records, context))
     except (ValueError, KeyError, TypeError):
         return failure(search)
-    # Do not retain an open read transaction across a future external generation call.
+    if not search and cache.generator is not None:
+        gemini.reserve_call(db, request)
+    # Do not retain an open read transaction across an external generation call.
     db.rollback()
     if search:
         try:

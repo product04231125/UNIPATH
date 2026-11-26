@@ -223,7 +223,7 @@ class _SchoolSignupPanelState extends State<SchoolSignupPanel> {
   }
 
   Future<void> _fetchReview(String id) async {
-    if (_selected != null && _dirty && !await confirmInputDiscard(context)) {
+    if (_selected != null && _dirty && !await confirmInputDiscardAllowsLeave(context)) {
       return;
     }
     if (!mounted) return;
@@ -421,7 +421,7 @@ class _SchoolSignupPanelState extends State<SchoolSignupPanel> {
                         if (widget.admin &&
                             _selected != null &&
                             _dirty &&
-                            !await confirmInputDiscard(context)) {
+                            !await confirmInputDiscardAllowsLeave(context)) {
                           return;
                         }
                         if (!mounted) return;

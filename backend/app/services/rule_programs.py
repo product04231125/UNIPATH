@@ -156,7 +156,8 @@ def validate_data(db, item, payload, *, complete=False):
         if meta.version != entry.expected_version:
             raise conflict()
         condition = entry.condition
-        if KINDS[meta.rule_type] != condition.kind:
+        checklist = condition.kind == "manual_review" and not entry.evidence_chunk_ids
+        if not checklist and KINDS[meta.rule_type] != condition.kind:
             raise invalid("요건 종류와 실행 조건 종류를 일치시켜 주세요.")
         identifier = uuid5(item.id, str(meta.id))
         rule = ProgramRule(
@@ -455,17 +456,15 @@ def _dependencies_valid(db, item, on, *, strict_references=False):
         if {row.rule_id for row in rows} != required.keys():
             return False
         for row in rows:
-            if (
-                row.source_version != required[row.rule_id].version
-                or row.kind != KINDS[required[row.rule_id].rule_type]
-            ):
+            if row.source_version != required[row.rule_id].version:
                 return False
             condition = dto.condition_adapter.validate_python(row.condition_json)
             refs = list(
                 db.scalars(select(ProgramEvidence).where(ProgramEvidence.program_rule_id == row.id))
             )
             records = evidence_records(db, [ref.chunk_id for ref in refs])
-            if not refs:
+            checklist = condition.kind == "manual_review" and not refs
+            if not checklist and (not refs or row.kind != KINDS[required[row.rule_id].rule_type]):
                 return False
             for ref in refs:
                 chunk, document, meta = records[ref.chunk_id]

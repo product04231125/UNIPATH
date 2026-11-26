@@ -18,12 +18,13 @@ Flutter의 학업 프로필·일정은 [서버 저장과 동의 후 기기 자�
   409로 보호하며 별도 버전 PATCH로 수정한다.
 - `events`, `course_records`, `activity_records`, `experience_records`, `credential_records`,
   `achievement_records`, `personal_curricula`, `personal_curriculum_courses`,
-  `personal_graduation_rules`, `portfolio_compositions`, `application_documents`: 타입이 있는 배열.
+  `personal_graduation_rules`: 타입이 있는 배열. 예전 `portfolio_compositions`·`application_documents`는
+  2026-11-25에 없앴다(보내면 422). 기기에 남은 예전 구성·지원 문서는 이전하지 않는다.
   생략은 빈 배열이며 기존 서버 목록을 삭제하지 않는다.
 
 각 항목은 `client_id`가 필수다. 모든 참조 대상도 같은 요청에 포함한다. 이전된 의존 자료를
-동일 생성 내용으로 다시 포함하면 기존 ID를 재사용할 수 있다. 컬렉션당 100개·전체 500개·
-구성/지원 문서의 순서 참조 전체 2000개, 원본과 정상화된 JSON은 2 MiB 이내다.
+동일 생성 내용으로 다시 포함하면 기존 ID를 재사용할 수 있다. 컬렉션당 100개·전체 500개,
+원본과 정상화된 JSON은 2 MiB 이내다.
 자료가 없으면 프로필 초기화가 필요하다. 큰 자료는 의존 자료를 포함한 별도 묶음으로 나눈다.
 Nginx가 원본 2 MiB 초과를 거절하면 공통 `HTTP_ERROR` envelope·request ID·no-store와 413을
 반환한다. 파싱 후 정상화된 자료의 한도 위반은 공통 422이며 어느 경우에도 부분 저장하지 않는다.
@@ -40,10 +41,8 @@ HTTPS 바깥 게이트웨이와 앱 프록시의 한도를 함께 적용한다. 
 | 개인 교육과정 과목 | `curriculum_client_id`, 선택 `course_record_client_id` |
 | 개인 규칙 | `curriculum_client_id`, 선택 `curriculum_course_client_id` |
 | 개인 규칙의 `related_record` | `{kind, client_id}` |
-| 구성/지원 문서의 `sources` | 순서가 있는 `{kind, client_id}` 배열 |
 
-kind는 기존 `course/activity/experience/credential/achievement`다. 구성은 achievement만,
-지원 문서는 achievement/experience만 허용한다. 중복 식별자·빠진 참조·다른 개인 교육과정의
+kind는 기존 `course/activity/experience/credential/achievement`다. 중복 식별자·빠진 참조·다른 개인 교육과정의
 과목을 연결한 규칙을 쓰기 전에 거부한다. 학교 카탈로그 UUID를 개인 참조로 해석하지 않는다.
 프로필의 선택 카탈로그 ID는 기존 소속 검증을 따르며 공식 학적이 아니다.
 

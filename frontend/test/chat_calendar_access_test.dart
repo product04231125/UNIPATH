@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/features/assistant/assistant_panel.dart';
 import 'package:university_path_frontend/features/planning/planning_dates.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
+import 'package:university_path_frontend/features/planning/weekly_schedule.dart';
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 
 void main() {
@@ -46,45 +46,12 @@ void main() {
             await tester.tap(find.byTooltip('작업 화면으로 돌아가기'));
             await tester.pumpAndSettle();
           }
-          final scrollbar = find.byKey(
-            const Key('weekly-horizontal-scrollbar'),
-          );
-          await tester.ensureVisible(scrollbar);
-          await tester.pumpAndSettle();
-          final frame = tester.getRect(scrollbar);
           final rightEdge = size.width < 1180 ? size.width : panel.left;
-          expect(frame.right, lessThanOrEqualTo(rightEdge));
-          final widget = tester.widget<Scrollbar>(scrollbar);
-          final controller = widget.controller!;
-          if (size.width < 1180 && controller.position.maxScrollExtent > 1) {
-            expect(widget.thumbVisibility, isTrue);
-            expect(widget.interactive, isTrue);
-            expect(controller.position.maxScrollExtent, greaterThan(0));
-            await tester.dragFrom(
-              Offset(frame.left + frame.width * .1, frame.bottom - 2),
-              Offset(frame.width, 0),
-              kind: PointerDeviceKind.mouse,
-            );
-            await tester.pumpAndSettle();
-            expect(
-              controller.offset,
-              closeTo(controller.position.maxScrollExtent, .01),
-              reason: 'frame=$frame panel=$panel',
-            );
-            controller.jumpTo(0);
-            await tester.pump();
-            await tester.sendEventToBinding(
-              PointerScrollEvent(
-                position: frame.center,
-                scrollDelta: const Offset(1000, 0),
-              ),
-            );
-            await tester.pumpAndSettle();
-            expect(
-              controller.offset,
-              closeTo(controller.position.maxScrollExtent, .01),
-            );
-          }
+          // The week strip fits its card (detailed or dots), never scrolls.
+          await tester.ensureVisible(find.byType(WeeklySchedule));
+          await tester.pumpAndSettle();
+          final strip = tester.getRect(find.byType(WeeklySchedule));
+          expect(strip.right, lessThanOrEqualTo(rightEdge));
           final last = planningWeek(DateTime.now(), WeekStartDay.sunday).last;
           final day = find.byKey(
             ValueKey('week-day-${last.toIso8601String()}'),

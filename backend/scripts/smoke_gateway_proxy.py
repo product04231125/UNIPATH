@@ -133,6 +133,19 @@ def verify_chain(base):
     )
     assert status == 413 and "X-Synthetic-Body-Bytes" not in headers
     common_size_error(headers, body)
+    # Selected files travel as base64 (8 MiB raw is about 10.7 MiB); long model routes share it.
+    for path in [
+        "/api/v1/me/job-analyses",
+        "/api/v1/me/job-recommendations",
+        "/api/v1/me/personalized-guidance",
+        "/api/v1/me/career-gap-analyses",
+        "/api/v1/me/writing-drafts",
+    ]:
+        status, headers, _, expected_size = request(base, path, 11 * 1024 * 1024)
+        assert status == 401 and int(headers["X-Synthetic-Body-Bytes"]) == expected_size
+        status, headers, body, _ = request(base, path, 13 * 1024 * 1024, headers_only=True)
+        assert status == 413 and "X-Synthetic-Body-Bytes" not in headers
+        common_size_error(headers, body)
 
 
 def verify_source_files(base):
@@ -170,15 +183,19 @@ def verify_source_files(base):
 
 
 def verify_rate_limit(base):
+    # Login has no attempt limit (shared demo accounts); registration keeps nginx's limit.
+    for _ in range(12):
+        status, _, _, _ = request(base, "/api/v1/auth/login", 16)
+        assert status == 401, status
     statuses = []
     for _ in range(12):
-        status, _, body, _ = request(base, "/api/v1/auth/login", 16)
+        status, _, body, _ = request(base, "/api/v1/auth/register", 16)
         assert status in (401, 429)
         if status == 429:
             assert json.loads(body)["error"]["code"] == "RATE_LIMITED"
         statuses.append(status)
     assert 401 in statuses and 429 in statuses
-    print("PASS: login rate limiting still returns the original common 429", flush=True)
+    print("PASS: login is not rate limited; registration still returns the common 429", flush=True)
 
 
 def main():
@@ -267,7 +284,7 @@ def main():
                 print(
                     "PASS: two real proxy layers:",
                     template,
-                    "large imports/knowledge/rules, unchanged login/event limits, common 413",
+                    "large imports/knowledge/rules/files, unchanged event limits, common 413",
                     flush=True,
                 )
             verify_rate_limit(base)

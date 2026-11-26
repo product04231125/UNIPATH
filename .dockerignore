@@ -22,3 +22,5 @@ docs/api/*
 **/.cursor
 backend/app/rag/output/
 dist/
+output/
+tmp/

@@ -1,0 +1,113 @@
+{
+  "official": false,
+  "status": "partial",
+  "query": {
+    "keyword": "engineer",
+    "region_label": "서울"
+  },
+  "sources": [
+    {
+      "source": "saramin",
+      "status": "not_configured"
+    },
+    {
+      "source": "work24",
+      "status": "not_configured"
+    },
+    {
+      "source": "greenhouse",
+      "status": "completed"
+    }
+  ],
+  "items": [
+    {
+      "posting": {
+        "source": "greenhouse",
+        "source_id": "example/1",
+        "title": "Engineer",
+        "company": "Test",
+        "location": "서울",
+        "url": "https://job-boards.greenhouse.io/example/jobs/1",
+        "text": "Python required",
+        "fetched_at": "2026-01-01T00:00:00+00:00",
+        "closing_label": "확인 필요",
+        "expires_at": null,
+        "active": null,
+        "text_scope": "full_text"
+      },
+      "analysis_status": "completed",
+      "comparisons": [
+        {
+          "requirement_id": "13ff0de9-4331-5f67-8668-99a4894e7916",
+          "priority": "required",
+          "requirement": "Python",
+          "posting_evidence": {
+            "start": 0,
+            "end": 6,
+            "excerpt": "Python"
+          },
+          "status": "supported",
+          "personal_evidence": [
+            {
+              "kind": "experience",
+              "record_id": "dac63727-a583-4d70-877e-4933e00ae5a6",
+              "version": 1,
+              "excerpt": "Python project"
+            }
+          ],
+          "explanation": "프로젝트 기록에 Python이 있습니다."
+        }
+      ],
+      "analysis_scope": "full_text",
+      "warnings": [
+        "정확한 마감 시각은 원 공고에서 확인이 필요합니다."
+      ]
+    }
+  ],
+  "ranking": "source_order",
+  "notice": "검색 조건에 따른 공고 후보와 선택 자료의 근거 비교이며 합격 가능성 점수가 아닙니다.",
+  "recommendations": [
+    {
+      "source": "greenhouse",
+      "source_id": "example/1",
+      "title": "Engineer",
+      "company": "Test",
+      "url": "https://job-boards.greenhouse.io/example/jobs/1",
+      "matched_requirements": [
+        {
+          "requirement_id": "13ff0de9-4331-5f67-8668-99a4894e7916",
+          "priority": "required",
+          "requirement": "Python",
+          "posting_evidence": {
+            "start": 0,
+            "end": 6,
+            "excerpt": "Python"
+          },
+          "status": "supported",
+          "personal_evidence": [
+            {
+              "kind": "experience",
+              "record_id": "dac63727-a583-4d70-877e-4933e00ae5a6",
+              "version": 1,
+              "excerpt": "Python project"
+            }
+          ],
+          "explanation": "프로젝트 기록에 Python이 있습니다."
+        }
+      ],
+      "required_to_check": 0,
+      "analysis_scope": "full_text"
+    }
+  ],
+  "recommendation_order": "fewest_unconfirmed_required_then_most_supported",
+  "model": "gemini-3.8-flash",
+  "document_locations": {
+    "dac63727-a583-4d70-877e-4933e00ae5a6": {
+      "filename": "private-name.pdf",
+      "location": "1쪽",
+      "offset": 0,
+      "method": "text"
+    }
+  },
+  "document_warnings": []
+}

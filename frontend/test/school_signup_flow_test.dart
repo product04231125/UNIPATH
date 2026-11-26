@@ -157,63 +157,62 @@ void main() {
     expect(auth.forOwner(otherId), isNotNull);
   });
 
-  for (final size in [const Size(1440, 900), const Size(480, 520)]) {
-    testWidgets(
-      'signup loss keeps the same key, freezes fields, and confirms receipt at $size',
-      (tester) async {
-        await tester.binding.setSurfaceSize(size);
-        addTearDown(() => tester.binding.setSurfaceSize(null));
-        final keys = <String>[];
-        var signed = 0;
-        await tester.pumpWidget(
-          MaterialApp(
-            home: LoginPage(
-              onSignedIn: () => signed++,
-              registerSchoolAdmin:
-                  ({
-                    required email,
-                    required password,
-                    required displayName,
-                    required details,
-                  }) async {
-                    keys.add(details.clientId);
-                    if (keys.length == 1) throw const AuthFailure('합성 응답 유실');
-                    return SchoolAdminSignupView.fromJson({
-                      ...receipt(),
-                      'client_id': details.clientId,
-                    });
-                  },
-            ),
+  // Reflow at both sizes and text scales lives in school_admin_signup_ui_test.
+  testWidgets(
+    'signup loss keeps the same key, freezes fields, and confirms receipt',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final keys = <String>[];
+      var signed = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LoginPage(
+            onSignedIn: () => signed++,
+            registerSchoolAdmin:
+                ({
+                  required email,
+                  required password,
+                  required displayName,
+                  required details,
+                }) async {
+                  keys.add(details.clientId);
+                  if (keys.length == 1) throw const AuthFailure('합성 응답 유실');
+                  return SchoolAdminSignupView.fromJson({
+                    ...receipt(),
+                    'client_id': details.clientId,
+                  });
+                },
           ),
-        );
-        await tap(tester, find.byKey(const Key('signup-tab')));
-        await tap(tester, find.byKey(const Key('signup-school-admin')));
-        for (final value in {
-          '이름': '합성 담당자',
-          '이메일 주소': 'staff@example.test',
-          '비밀번호': 'synthetic long password',
-          '비밀번호 확인': 'synthetic long password',
-          '학교명': '합성대',
-          '직책': '담당자',
-          '연락 이메일': 'staff@example.test',
-          '신청 사유': '합성 신청',
-        }.entries) {
-          await type(tester, value.key, value.value);
-        }
-        await tap(tester, find.byKey(const Key('signup-submit')));
-        expect(signed, 0);
-        expect(tester.widget<TextFormField>(field('학교명')).enabled, false);
-        await tap(tester, find.byKey(const Key('signup-submit')));
-        expect(keys, hasLength(2));
-        expect(keys[0], keys[1]);
-        expect(find.textContaining('접수 번호:'), findsOneWidget);
-        expect(find.textContaining('승인 대기'), findsOneWidget);
-        await tap(tester, find.text('계속하기'));
-        expect(signed, 1);
-        expect(tester.takeException(), isNull);
-      },
-    );
-  }
+        ),
+      );
+      await tap(tester, find.byKey(const Key('signup-tab')));
+      await tap(tester, find.byKey(const Key('signup-school-admin')));
+      for (final value in {
+        '이름': '합성 담당자',
+        '이메일 주소': 'staff@example.test',
+        '비밀번호': 'synthetic long password',
+        '비밀번호 확인': 'synthetic long password',
+        '학교명': '합성대',
+        '직책': '담당자',
+        '연락 이메일': 'staff@example.test',
+        '신청 사유': '합성 신청',
+      }.entries) {
+        await type(tester, value.key, value.value);
+      }
+      await tap(tester, find.byKey(const Key('signup-submit')));
+      expect(signed, 0);
+      expect(tester.widget<TextFormField>(field('학교명')).enabled, false);
+      await tap(tester, find.byKey(const Key('signup-submit')));
+      expect(keys, hasLength(2));
+      expect(keys[0], keys[1]);
+      expect(find.textContaining('접수 번호:'), findsOneWidget);
+      expect(find.textContaining('승인 대기'), findsOneWidget);
+      await tap(tester, find.text('계속하기'));
+      expect(signed, 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   for (final denied in [false, true]) {
     testWidgets(

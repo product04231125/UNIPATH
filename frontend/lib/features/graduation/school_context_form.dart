@@ -6,6 +6,7 @@ import '../api/student_api_models.dart';
 import '../api/student_catalog_api.dart';
 import '../auth/auth_api.dart';
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/date_picker_field.dart';
 
 /// Explicit registered identifiers, never names inferred from a personal profile.
 class SchoolContextForm extends StatefulWidget {
@@ -15,6 +16,7 @@ class SchoolContextForm extends StatefulWidget {
     this.disabled = false,
     this.showStudy = true,
     this.showDate = true,
+    this.showCurriculum = true,
     this.onChanged,
     this.initialInstitutionId,
     this.initialDepartmentId,
@@ -26,6 +28,7 @@ class SchoolContextForm extends StatefulWidget {
   final ApiGateway api;
   final bool disabled;
   final bool showStudy, showDate;
+  final bool showCurriculum;
   final VoidCallback? onChanged;
   final String? initialInstitutionId,
       initialDepartmentId,
@@ -54,9 +57,19 @@ class SchoolContextFormState extends State<SchoolContextForm> {
   String? get selectedInstitutionId => _school;
   String? get selectedDepartmentId => _department;
   String? get selectedCurriculumId => _curriculum;
-  String? get institutionId => isReady ? _school : null;
-  String? get departmentId => _department;
-  String? get curriculumId => _curriculum;
+  String? get institutionId =>
+      isReady && _schools.any((item) => item.id == _school) ? _school : null;
+  String? get departmentId =>
+      institutionId != null &&
+          _departments.any((item) => item.id == _department)
+      ? _department
+      : null;
+  String? get curriculumId =>
+      departmentId != null &&
+          (!widget.showCurriculum ||
+              _curricula.any((item) => item.id == _curriculum))
+      ? _curriculum
+      : null;
   String? get institutionName =>
       _nameOf(_schools.map((item) => (item.id, item.name)), _school);
   String? get departmentName =>
@@ -88,9 +101,9 @@ class SchoolContextFormState extends State<SchoolContextForm> {
     final y = int.tryParse(year.text);
     if (_loading ||
         _error != null ||
-        _school == null ||
-        _department == null ||
-        _curriculum == null ||
+        institutionId == null ||
+        departmentId == null ||
+        curriculumId == null ||
         y == null ||
         y < 1000 ||
         y > 9999 ||
@@ -151,6 +164,7 @@ class SchoolContextFormState extends State<SchoolContextForm> {
     String? department,
   }) async {
     final rows = <T>[];
+    final seenCursors = <String>{};
     String? cursor;
     do {
       final page = await _catalog.list(
@@ -161,6 +175,9 @@ class SchoolContextFormState extends State<SchoolContextForm> {
       );
       rows.addAll(page.items);
       cursor = page.nextCursor;
+      if (cursor != null && !seenCursors.add(cursor)) {
+        throw StateError('Catalog pagination cursor repeated.');
+      }
     } while (cursor != null);
     return rows;
   }
@@ -175,7 +192,7 @@ class SchoolContextFormState extends State<SchoolContextForm> {
       final departments = _school == null
           ? <StudentDepartmentPublicView>[]
           : await _all(StudentCatalogResources.departments, school: _school);
-      final curricula = _department == null
+      final curricula = _department == null || !widget.showCurriculum
           ? <StudentCurriculumPublicView>[]
           : await _all(
               StudentCatalogResources.curricula,
@@ -265,23 +282,29 @@ class SchoolContextFormState extends State<SchoolContextForm> {
       ),
       if (_fieldError('department_id') != null) const Text('학과 입력을 확인하세요.'),
       const SizedBox(height: 12),
-      AnchoredSelectField<String?>(
-        value: _curricula.any((s) => s.id == _curriculum) ? _curriculum : null,
-        label: '교육과정',
-        searchable: true,
-        options: [
-          const SelectOption(null, '교육과정 선택'),
-          ..._curricula.map((s) => SelectOption(s.id, '${s.name} (${s.year})')),
-        ],
-        onChanged: (v) {
-          if (!_loading && !widget.disabled) {
-            setState(() => _curriculum = v);
-            widget.onChanged?.call();
-          }
-        },
-      ),
-      if (_fieldError('curriculum_id') != null) const Text('교육과정 입력을 확인하세요.'),
-      const SizedBox(height: 12),
+      if (widget.showCurriculum)
+        AnchoredSelectField<String?>(
+          value: _curricula.any((s) => s.id == _curriculum)
+              ? _curriculum
+              : null,
+          label: '교육과정',
+          searchable: true,
+          options: [
+            const SelectOption(null, '교육과정 선택'),
+            ..._curricula.map(
+              (s) => SelectOption(s.id, '${s.name} (${s.year})'),
+            ),
+          ],
+          onChanged: (v) {
+            if (!_loading && !widget.disabled) {
+              setState(() => _curriculum = v);
+              widget.onChanged?.call();
+            }
+          },
+        ),
+      if (widget.showCurriculum && _fieldError('curriculum_id') != null)
+        const Text('교육과정 입력을 확인하세요.'),
+      if (widget.showCurriculum) const SizedBox(height: 12),
       if (widget.showStudy)
         TextField(
           controller: year,
@@ -305,14 +328,15 @@ class SchoolContextFormState extends State<SchoolContextForm> {
           ),
         ),
       if (widget.showDate)
-        TextField(
+        DatePickerFormField(
+          key: const ValueKey('school-context-as-of'),
           controller: date,
           enabled: !widget.disabled,
-          decoration: InputDecoration(
-            labelText: '기준일 (YYYY-MM-DD)',
-            errorText: _fieldError('as_of'),
-            helperText: '미래 날짜는 사용할 수 없습니다.',
-          ),
+          label: '기준일',
+          clearable: false,
+          lastDate: DateUtils.dateOnly(DateTime.now()),
+          errorText: _fieldError('as_of'),
+          helperText: '미래 날짜는 고를 수 없습니다.',
         ),
       if (!_loading && _error == null && _schools.isEmpty)
         const Text('등록된 학교가 없습니다. 학교 기준 등록 후 이용할 수 있습니다.'),

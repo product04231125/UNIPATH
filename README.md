@@ -36,8 +36,8 @@ git switch -c feature/your-task
 
 백엔드 CI는 [`.github/workflows/backend-ci.yaml`](.github/workflows/backend-ci.yaml)에서
 PR과 `main`/`develop`의 백엔드 변경을 검증합니다. 앱 다운로드 워크플로는
-[`.github/workflows/app-release.yaml`](.github/workflows/app-release.yaml)이며 프론트·백엔드·RAG
-검증 후 Web과 Windows x64를 빌드해 GitHub Releases에 게시합니다.
+[`.github/workflows/app-release.yaml`](.github/workflows/app-release.yaml)이며 필요할 때 수동으로
+실행해 Web과 Windows x64를 빌드하고 GitHub Releases에 게시합니다. 코드 검증은 PR CI가 맡습니다.
 팀 통합·빌드·릴리스 담당은 이어진입니다. 수동 빌드와 실행 절차는 아래 공통 환경과
 [`docs/releases.md`](docs/releases.md)를 참고합니다.
 
@@ -57,13 +57,14 @@ develop의 로그인·가입·세션·역할/학교 범위는 실제 API/DB로 �
 접수를 함께 저장하고 슈퍼관리자 승인 시 학교 등록/기존 학교 연결·관리 권한 부여를 처리합니다.
 [학교관리자 신청·승인 API](docs/api/school-admin-applications.md)는 본인 신청과 슈퍼관리자의
 신원·학교 담당 확인 후 역할/학교 범위 부여를 원자적으로 처리합니다. 기존 권한 신청·심사 화면을 연결했으며, 회원가입의 최초 학교관리자 폼은 입력 준비까지 완료했습니다. 최초 학교 정보 접수 API는 후속 계약입니다.
-모든 실제 역할은 공통 제목표시줄의 [계정 보안](docs/api/account-security-integration.md)에서 비밀번호 변경·모든 기기 로그아웃을 사용합니다.
+모든 실제 역할은 설정의 [계정 보안](docs/api/account-security-integration.md)에서 비밀번호 변경·모든 기기 로그아웃을 사용합니다.
 학업 프로필·일정은 [서버 저장과 동의 이전 화면](docs/api/planning-integration.md)을 연결했습니다. [다른 개인 기록·구성·지원 문서 화면](docs/api/personal-workspace-integration.md)도 서버 저장과 동의 이전을 연결했습니다. 기기 원본은 보존합니다.
 [개인 기준 계산 API](docs/api/personal-evaluations.md)와 불변 결과 이력도 구현했습니다.
 [개인 자료 일괄 이전 API](docs/api/personal-imports.md)는 본인 확인·동의한 자료와 관계를
 원자적으로 추가하고 ID 대응표·안전한 재시도를 제공합니다. 프로필·일정과 다른 개인 자료 10종의 별도 동의 이전 화면을 연결했습니다.
 [학교 문서 검토·DB 검색 API](docs/api/school-knowledge.md)는 적용 문서의 추출본 등록,
-별도 승인·회수와 로그인 사용자의 UUID 문맥 검색을 제공합니다. 실제 LLM은 미연결입니다.
+별도 승인·회수와 로그인 사용자의 UUID 문맥 검색을 제공합니다. 답변 생성은 Vertex Gemini를
+설정하면 동작하며 기본값은 꺼짐입니다.
 [공식 실행 규칙](docs/api/rule-programs.md)은 적용 메타데이터에 명시적인 조건·승인 근거를
 연결하고 학교·학과·교육과정·입학연도·이수경로로 선택합니다.
 [자격증·발급기관 마스터](docs/api/certificates.md)는 슈퍼관리자가 관리합니다.
@@ -96,10 +97,14 @@ HTTPS 설정은 [`docs/releases.md`](docs/releases.md)에 있습니다.
 - 진로 정보 RAG 질의응답
 - 채용공고 요구사항 추출 및 개인 경험 비교
 
-착수용 [개인화·채용 분석 API 계약](docs/api/job-analysis.md)은 구현했습니다.
+[개인화·채용 분석 API](docs/api/job-analysis.md)를 구현했습니다.
 명시적으로 선택한 본인 기록과 공고 원문을 입력받고 소유권·버전·인용을 검증합니다.
-실제 AI 분석기는 미연결이며 기본 응답은 `not_configured`입니다. 전체 2차 MVP 완료와
-구분합니다. [졸업 결과 안내](docs/api/graduation-audits.md)는 기존 Rule Engine 결과를
+Gemini 분석기를 연결했지만 Vertex 설정 전 기본 응답은 `not_configured`이며, 실제 모델 응답은
+아직 검증하지 못했습니다. 외부 전송은 요청별 동의가 있을 때 선택한 기록만 식별 정보를 제거해
+보냅니다. 전체 2차 MVP 완료와 구분합니다. [정형 학사 안내](docs/api/academic-guidance.md)는
+수집한 일정·규정·장학금·학과 자료를 버튼형으로 제공하고,
+[맞춤 안내](docs/api/personalized-guidance.md)는 학교 근거와 개인 기록을 분리해 돌려줍니다.
+[졸업 결과 안내](docs/api/graduation-audits.md)는 기존 Rule Engine 결과를
 근거·부족 항목·추가 확인 사항으로 정리합니다.
 
 ### 3차 MVP 기능
@@ -385,6 +390,7 @@ university-path/
 │  ├─ architecture-erd.md
 │  ├─ database-erd.md
 │  ├─ initial-plan-comparison.md
+│  ├─ career-feature-plan.md
 │  ├─ specialized-ai-and-supporting-tools-proposal.md
 │  ├─ job-matching-decision-layer-proposal.md
 │  └─ frontend/
@@ -490,7 +496,10 @@ flutter build web
 flutter build windows
 ```
 
-Web 쿠키 세션은 `localhost`와 `127.0.0.1`을 다른 호스트로 보므로 Chrome은 `http://localhost:8010`을 사용합니다.
+Web은 브라우저에서 `http://localhost:3000` 또는 `http://127.0.0.1:3000`으로 연다(기본 CORS에 둘 다 포함).
+같은 세션에서 호스트를 바꿔 가며 쓰지 않는다. 다른 기기(폰)에서 붙을 때만 PC LAN IP와
+백엔드 `0.0.0.0` 바인딩·`CORS_ORIGINS` 추가가 필요하다.
+
 Windows Release 실행 파일은 `frontend\build\windows\x64\runner\Release\university_path_frontend.exe`에 생성됩니다. Flutter가 `Path`에 없다면 위 명령의 `flutter` 대신 Flutter SDK의 `bin\flutter.bat` 절대 경로를 사용합니다.
 
 ## 8. 환경 분리 및 배포

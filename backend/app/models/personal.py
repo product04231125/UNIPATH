@@ -5,6 +5,7 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     CheckConstraint,
     Date,
@@ -12,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
+    LargeBinary,
     Numeric,
     String,
     Text,
@@ -32,6 +34,93 @@ class OwnedRecord:
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CareerGoal(Base):
+    """The job a student is preparing for: Work24 occupation codes plus optional detail words."""
+
+    __tablename__ = "career_goals"
+    owner_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    category_codes: Mapped[list[str]] = mapped_column(JSON, default=list)
+    keyword: Mapped[str] = mapped_column(String(80), default="")
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (CheckConstraint("version >= 1", name="version"),)
+
+
+class WritingDocument(Base):
+    """A saved 자기소개서·포트폴리오 draft: the request, the edited sections and their citations."""
+
+    __tablename__ = "writing_documents"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(120))
+    document_type: Mapped[str] = mapped_column(String(24))
+    content: Mapped[dict] = mapped_column(JSON)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (
+        CheckConstraint("version >= 1", name="version"),
+        CheckConstraint("document_type IN ('cover_letter','portfolio')", name="document_type"),
+    )
+
+
+class StudentMaterial(Base):
+    """내 자료: a described file (PDF) or a written description, kept in the student's account.
+
+    The id is chosen by the client, so a material saved earlier on a device keeps its id when
+    it moves to the account. Nothing here is sent to a model until the student picks it for one
+    analysis request.
+    """
+
+    __tablename__ = "student_materials"
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(120))
+    material_type: Mapped[str] = mapped_column(String(16))
+    description: Mapped[str] = mapped_column(Text, default="")
+    filename: Mapped[str | None] = mapped_column(String(200))
+    byte_count: Mapped[int] = mapped_column(Integer, default=0)
+    sha256: Mapped[str | None] = mapped_column(String(64))
+    file_data: Mapped[bytes | None] = mapped_column(LargeBinary, deferred=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (
+        CheckConstraint("version >= 1", name="version"),
+        CheckConstraint(
+            "material_type IN ('portfolio','resume','cover_letter','other')", name="material_type"
+        ),
+        CheckConstraint(
+            "(file_data IS NULL AND filename IS NULL AND sha256 IS NULL AND byte_count = 0)"
+            " OR (file_data IS NOT NULL AND filename IS NOT NULL AND sha256 IS NOT NULL"
+            " AND byte_count BETWEEN 5 AND 8388608 AND octet_length(file_data) = byte_count)",
+            name="file",
+        ),
+        CheckConstraint("file_data IS NOT NULL OR length(btrim(description)) > 0", name="content"),
+    )
+
+
+class AnalysisResult(Base):
+    """A finished 채용공고 분석 result, kept so the student can reopen it; star to keep it."""
+
+    __tablename__ = "analysis_results"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(16))
+    title: Mapped[str] = mapped_column(String(160))
+    # Small facts for the list (e.g. ready / total requirements) so it never loads results.
+    summary: Mapped[dict] = mapped_column(JSON, default=dict)
+    # What the student asked (posting text, search conditions); consent and files are not kept.
+    input: Mapped[dict] = mapped_column(JSON, default=dict)
+    result: Mapped[dict] = mapped_column(JSON)
+    favorite: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (CheckConstraint("kind IN ('posting','gap','search')", name="kind"),)
 
 
 class PlanningProfile(Base):
@@ -84,6 +173,8 @@ class PersonalEvent(OwnedRecord, Base):
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     time_zone: Mapped[str] = mapped_column(String(64))
     category: Mapped[str] = mapped_column(String(16))
+    # Checked off by the student (a weekly study goal, an exam step); null while open.
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = (
         CheckConstraint("ends_at > starts_at", name="period"),
         CheckConstraint(
@@ -96,14 +187,26 @@ class CourseRecord(OwnedRecord, Base):
     __tablename__ = "personal_course_records"
     term: Mapped[str] = mapped_column(String(128))
     category: Mapped[str] = mapped_column(String(128))
-    credits: Mapped[Decimal] = mapped_column(Numeric(8, 3))
+    credits: Mapped[Decimal | None] = mapped_column(Numeric(8, 3))
+    grading_basis: Mapped[str] = mapped_column(
+        String(16), default="unspecified", server_default="unspecified"
+    )
     section: Mapped[str] = mapped_column(String(128), default="")
     course_code: Mapped[str] = mapped_column(String(128), default="")
     grade: Mapped[str] = mapped_column(String(128), default="")
     completion: Mapped[str] = mapped_column(String(16), default="planned")
     __table_args__ = (
-        CheckConstraint("credits > 0 AND credits <= 100", name="credits"),
-        CheckConstraint("completion IN ('planned','in_progress','recorded')", name="completion"),
+        CheckConstraint(
+            "(credits >= 0 AND credits <= 100) AND (credits > 0 OR grading_basis = 'pass_fail')",
+            name="credits",
+        ),
+        CheckConstraint("credits IS NOT NULL OR grading_basis = 'pass_fail'", name="known_credits"),
+        CheckConstraint(
+            "grading_basis IN ('unspecified','graded','pass_fail')", name="grading_basis"
+        ),
+        CheckConstraint(
+            "completion IN ('planned','in_progress','recorded','not_completed')", name="completion"
+        ),
     )
 
 
@@ -231,50 +334,6 @@ class PersonalGraduationRule(OwnedRecord, Base):
     )
 
 
-class PortfolioComposition(OwnedRecord, Base):
-    __tablename__ = "portfolio_compositions"
-    audience: Mapped[str] = mapped_column(String(24), default="private")
-    reviewed: Mapped[bool] = mapped_column(Boolean, default=False)
-    __table_args__ = (
-        CheckConstraint("audience IN ('private','application','public_review')", name="audience"),
-    )
-
-
-class ApplicationDocument(OwnedRecord, Base):
-    __tablename__ = "application_documents"
-    target: Mapped[str] = mapped_column(String(128))
-    role: Mapped[str] = mapped_column(String(128))
-    document_type: Mapped[str] = mapped_column(String(128))
-    body: Mapped[str] = mapped_column(Text, default="")
-
-
-class PortfolioSource(Base):
-    __tablename__ = "portfolio_sources"
-    composition_id: Mapped[UUID] = mapped_column(primary_key=True)
-    owner_id: Mapped[UUID] = mapped_column()
-    position: Mapped[int] = mapped_column(Integer, primary_key=True)
-    achievement_id: Mapped[UUID] = mapped_column()
-    __table_args__ = (
-        UniqueConstraint("composition_id", "achievement_id"),
-        CheckConstraint("position >= 0", name="position"),
-    )
-
-
-class ApplicationSource(Base):
-    __tablename__ = "application_document_sources"
-    document_id: Mapped[UUID] = mapped_column(primary_key=True)
-    owner_id: Mapped[UUID] = mapped_column()
-    position: Mapped[int] = mapped_column(Integer, primary_key=True)
-    achievement_id: Mapped[UUID | None] = mapped_column()
-    experience_id: Mapped[UUID | None] = mapped_column()
-    __table_args__ = (
-        UniqueConstraint("document_id", "achievement_id", name="uq_application_source_achievement"),
-        UniqueConstraint("document_id", "experience_id", name="uq_application_source_experience"),
-        CheckConstraint("position >= 0", name="position"),
-        CheckConstraint("num_nonnulls(achievement_id, experience_id) = 1", name="one_source"),
-    )
-
-
 class PersonalCreationReceipt(Base):
     """A retry cannot resurrect a deleted record; receipts contain no raw payload."""
 
@@ -297,8 +356,6 @@ OWNED_MODELS = (
     PersonalCurriculum,
     PersonalCurriculumCourse,
     PersonalGraduationRule,
-    PortfolioComposition,
-    ApplicationDocument,
 )
 for model in OWNED_MODELS:
     model.__table__.append_constraint(UniqueConstraint("id", "owner_id"))
@@ -345,8 +402,3 @@ for kind, model in [
     ("achievement", AchievementRecord),
 ]:
     owned_fk(PersonalGraduationRule, [f"related_{kind}_id"], model)
-owned_fk(PortfolioSource, ["composition_id"], PortfolioComposition, cascade=True)
-owned_fk(PortfolioSource, ["achievement_id"], AchievementRecord)
-owned_fk(ApplicationSource, ["document_id"], ApplicationDocument, cascade=True)
-owned_fk(ApplicationSource, ["achievement_id"], AchievementRecord)
-owned_fk(ApplicationSource, ["experience_id"], ExperienceRecord)

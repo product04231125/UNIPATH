@@ -26,7 +26,6 @@ for prefix in (
     "Department",
     "Curriculum",
     "Course",
-    "CurriculumCourse",
     "RuleSet",
     "Rule",
     "Document",
@@ -35,3 +34,7 @@ for prefix in (
     globals()[prefix + "PublicView"] = create_model(
         prefix + "PublicView", __base__=(getattr(academic, prefix + "Create"), metadata)
     )
+
+
+class CurriculumCoursePublicView(academic.CurriculumCourseCreate, PublicRecord):
+    pass

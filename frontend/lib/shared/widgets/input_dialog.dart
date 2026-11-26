@@ -3,9 +3,28 @@ import 'package:flutter/material.dart';
 import 'content_scroll_view.dart';
 import 'task_focus_group.dart';
 
-Future<bool> confirmInputDiscard(BuildContext context) async {
+/// Result of the leave/discard confirmation for unsaved input.
+enum InputDiscardAction {
+  /// Keep editing; do not leave.
+  cancel,
+
+  /// Persist a client draft (caller/`onTempSave`) then leave.
+  tempSave,
+
+  /// Discard unsaved input and leave.
+  discard,
+}
+
+/// Asks whether to keep editing, temp-save, or discard unsaved input.
+///
+/// When [onTempSave] is provided and the user chooses temp-save, it is awaited
+/// first. A failed or false result keeps the dialog outcome as [InputDiscardAction.cancel].
+Future<InputDiscardAction> confirmInputDiscard(
+  BuildContext context, {
+  Future<bool> Function()? onTempSave,
+}) async {
   final previousFocus = FocusManager.instance.primaryFocus;
-  final discard = await showDialog<bool>(
+  final choice = await showDialog<InputDiscardAction>(
     context: context,
     barrierDismissible: false,
     builder: (context) => PopScope(
@@ -14,20 +33,56 @@ Future<bool> confirmInputDiscard(BuildContext context) async {
         title: const Text('작성한 내용을 폐기할까요?'),
         actions: [
           TextButton(
+            key: const Key('input-discard-cancel'),
             autofocus: true,
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('계속 작성'),
+            onPressed: () => Navigator.pop(context, InputDiscardAction.cancel),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            key: const Key('input-discard-temp-save'),
+            onPressed: () => Navigator.pop(context, InputDiscardAction.tempSave),
+            child: const Text('임시저장'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('내용 폐기'),
+            key: const Key('input-discard-delete'),
+            onPressed: () => Navigator.pop(context, InputDiscardAction.discard),
+            child: const Text('삭제'),
           ),
         ],
       ),
     ),
   );
-  if (discard != true && context.mounted) previousFocus?.requestFocus();
-  return discard == true;
+  final action = choice ?? InputDiscardAction.cancel;
+  if (action == InputDiscardAction.tempSave) {
+    if (onTempSave == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이 화면에서는 아직 임시저장할 수 없습니다.')),
+        );
+      }
+      if (context.mounted) previousFocus?.requestFocus();
+      return InputDiscardAction.cancel;
+    }
+    final saved = await onTempSave();
+    if (!saved) {
+      if (context.mounted) previousFocus?.requestFocus();
+      return InputDiscardAction.cancel;
+    }
+  }
+  if (action == InputDiscardAction.cancel && context.mounted) {
+    previousFocus?.requestFocus();
+  }
+  return action;
+}
+
+/// True when the user chose to leave after discard or a successful temp-save.
+Future<bool> confirmInputDiscardAllowsLeave(
+  BuildContext context, {
+  Future<bool> Function()? onTempSave,
+}) async {
+  final action = await confirmInputDiscard(context, onTempSave: onTempSave);
+  return action == InputDiscardAction.tempSave ||
+      action == InputDiscardAction.discard;
 }
 
 /// Input routes are dismissible only while the shared dialog reports empty.
@@ -46,6 +101,7 @@ class _InputDialogRoute<T> extends DialogRoute<T> {
   _InputDialogRoute({required super.context, required super.builder});
   bool Function()? allowImplicitDismiss;
   bool Function()? hasUnsavedChanges;
+  Future<bool> Function()? onTempSave;
   bool saving = false;
   bool confirming = false;
 
@@ -53,9 +109,12 @@ class _InputDialogRoute<T> extends DialogRoute<T> {
     if (saving || confirming || !isCurrent) return;
     if (hasUnsavedChanges?.call() == true) {
       confirming = true;
-      final discard = await confirmInputDiscard(context);
+      final action = await confirmInputDiscard(
+        context,
+        onTempSave: onTempSave,
+      );
       confirming = false;
-      if (discard != true) return;
+      if (action == InputDiscardAction.cancel) return;
     }
     if (isCurrent && !saving) navigator?.pop(result);
   }
@@ -90,6 +149,7 @@ class InputDialog extends StatelessWidget {
     required this.hasContent,
     required this.changes,
     this.hasUnsavedChanges,
+    this.onTempSave,
     this.saving = false,
     this.editing = false,
   });
@@ -99,6 +159,7 @@ class InputDialog extends StatelessWidget {
   final bool Function() hasContent;
   final Listenable changes;
   final bool Function()? hasUnsavedChanges;
+  final Future<bool> Function()? onTempSave;
   final bool saving;
   final bool editing;
 
@@ -108,6 +169,7 @@ class InputDialog extends StatelessWidget {
     if (route is _InputDialogRoute) {
       route.saving = saving;
       route.hasUnsavedChanges = hasUnsavedChanges ?? hasContent;
+      route.onTempSave = onTempSave;
       route.allowImplicitDismiss = () => !saving && !editing && !hasContent();
     }
     final viewInsets = MediaQuery.viewInsetsOf(context);

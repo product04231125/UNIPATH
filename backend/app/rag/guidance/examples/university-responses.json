@@ -1,0 +1,420 @@
+{
+  "synthetic": false,
+  "scenarios": {
+    "university": {
+      "schema_version": "academic-click-v3",
+      "node_id": "university",
+      "title": "대학규정",
+      "state": "ready",
+      "reason": "menu",
+      "message": "분류와 규정을 선택하면 첨부 문서 본문을 안내합니다.",
+      "cards": [],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "university:CDE_000184",
+          "label": "제1편 학교법인",
+          "action": "select_node",
+          "node_id": "university:CDE_000184",
+          "availability": "available"
+        },
+        {
+          "id": "university:CDE_000185",
+          "label": "제2편 학칙",
+          "action": "select_node",
+          "node_id": "university:CDE_000185",
+          "availability": "available"
+        },
+        {
+          "id": "university:CDE_000186",
+          "label": "제3편 대학평의원회",
+          "action": "select_node",
+          "node_id": "university:CDE_000186",
+          "availability": "available"
+        },
+        {
+          "id": "university:CDE_000371",
+          "label": "제4편 행정",
+          "action": "select_node",
+          "node_id": "university:CDE_000371",
+          "availability": "available"
+        },
+        {
+          "id": "university:CDE_000191",
+          "label": "제5편 위원회",
+          "action": "select_node",
+          "node_id": "university:CDE_000191",
+          "availability": "available"
+        },
+        {
+          "id": "university:CDE_000192",
+          "label": "제6편 센터/부속·부설기관/부설연구소",
+          "action": "select_node",
+          "node_id": "university:CDE_000192",
+          "availability": "available"
+        },
+        {
+          "id": "university:CDE_000193",
+          "label": "제7편 기타",
+          "action": "select_node",
+          "node_id": "university:CDE_000193",
+          "availability": "available"
+        },
+        {
+          "id": "university:unclassified-9a07d9c26a6c",
+          "label": "경동대학교 연구실안전관리센터 규정",
+          "action": "select_node",
+          "node_id": "university:unclassified-9a07d9c26a6c",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "coverage": {
+        "listed": 189,
+        "attachments": 171,
+        "without_attachments": 18,
+        "ocr_pages": 53
+      },
+      "fetched_at": "2026-11-05T13:50:16.002569+00:00",
+      "snapshot_stale": false
+    },
+    "university:CDE_000275": {
+      "schema_version": "academic-click-v3",
+      "node_id": "university:CDE_000275",
+      "title": "장학 규정",
+      "state": "ready",
+      "reason": "university_regulation",
+      "message": "장학 규정 · 게시 제·개정일: 2026-10-26",
+      "cards": [
+        {
+          "type": "regulation_metadata",
+          "title": "장학 규정",
+          "body": "제4편 행정 > 제4장 학생행정 > 장학 규정",
+          "sources": [
+            {
+              "type": "official_website",
+              "source_url": "https://www.kduniv.ac.kr/kor/CMS/RegulationBookMgr/list.do?mCode=MN191",
+              "fetched_at": "2026-11-05T13:50:16.002569+00:00",
+              "sha256": "c5d607db88301dcc58c97742c40b864de414ffef532950cf21eb7302f7020351"
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "게시 문서 기준 안내입니다. 개인 적용 여부는 시행일과 경과조치를 확인해야 합니다."
+      ],
+      "buttons": [
+        {
+          "id": "university:CDE_000275:attachment:1",
+          "label": "첨부 1 · 본문 8쪽",
+          "action": "select_node",
+          "node_id": "university:CDE_000275:attachment:1",
+          "availability": "available"
+        },
+        {
+          "id": "university:CDE_000190",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "university:CDE_000190",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "fetched_at": "2026-11-05T13:50:16.002569+00:00",
+      "listing_status": "listed",
+      "snapshot_stale": false
+    },
+    "university:CDE_000275:attachment:1:page:1": {
+      "schema_version": "academic-click-v3",
+      "node_id": "university:CDE_000275:attachment:1:page:1",
+      "title": "1쪽",
+      "state": "ready",
+      "reason": "university_pdf_page",
+      "message": "장학 규정",
+      "cards": [
+        {
+          "type": "regulation_page",
+          "title": "장학 규정 1쪽",
+          "body": "장학 규정 4-4-1\n장학 규정\n제정 1997. 03. 01 개정 1999. 02. 18\n개정 2000. 08. 21 개정 2001. 04. 20\n개정 2002. 08. 15 개정 2003. 04. 01\n개정 2003. 08. 01 개정 2004. 06. 14\n개정 2005. 01. 01 개정 2006. 01. 16\n개정 2011. 06. 14 개정 2012. 12. 31\n개정 2013. 09. 11 개정 2016. 09. 06\n개정 2017. 12. 26 개정 2019. 02. 11\n개정 2020. 09. 21 개정 2020. 12. 21\n개정 2022. 06. 17 개정 2022. 09. 01\n개정 2023. 06. 19 개정 2025. 04. 28\n개정 2026. 10. 26\n제1장 총 칙\n제1조 (목적) 이 규정은 경동대학교(이하 '본교'라 한다)의 교육목적 실현과 면학풍토를 조성하\n고 향학열을 고취하기 위한 신입생 및 재학생에게 지급하는 장학금에 필요한 사항을 규정함을\n목적으로 한다.\n제2조 (적용범위) 본교의 장학생 선정과 장학금 지급은 본 규정을 따르고, 외부 장학금의 경우\n기부하는 각 단체(또는 개인)에서 따로 정한 바에 따르되, 따로 정한 바가 없을 경우는 본 규\n정에 의한다.\n제2장 장학위원회\n제3조 (구성) 본교의 장학에 관한 주요사항을 심의하기 위하여 장학위원회(이하 '위원회'라 한\n다)를 두며 그 구성은 다음과 같다.\n① 위원은 총장이 위촉하는 7인 이상의 위원으로 구성한다.\n② 위원장은 취업복지 담당 부서의 처장이 한다.\n③ 위원회의 업무진행을 위하여 총장이 지명하는 부위원장 1인과 간사 1인을 둘 수 있다.\n제4조 (기능) 위원회는 다음 사항을 심의한다.\n① 장학정책의 중요시책에 관한 사항\n② 장학 수혜 대상자 및 각종 장학금 신청자에 대한 심사 및 선정에 관한 사항\n③ 장학 규정 개․폐에 관한 사항\n④ 장학재원의 조달에 관한 사항\n⑤ 기타 장학에 관한 주요 사항\n제5조 (회의) ① 위원회 회의는 위원장이 소집한다.\n② 재적 위원의 과반수 출석과 출석 위원 과반수의 찬성으로 의결한다. 단, 가부가 같을 경우\n위원장이 결정권을 갖는다.\n제3장 장학금의 종류",
+          "tables": [],
+          "extraction_status": "text_extracted",
+          "sources": [
+            {
+              "type": "official_pdf",
+              "source_url": "https://www.kduniv.ac.kr/kor/ajx_json/UploadMgr/downloadRun.do?qcode=UmVndWxhdGlvbkJvb2tNZ3IsODEyNTIsWQ==",
+              "sha256": "2f3aaea3efb6fecc47829e564057187eceb39ca0fa064ad0849e317296672a19",
+              "title": "장학 규정",
+              "fetched_at": "2026-11-05T13:50:16.002569+00:00",
+              "asset_id": "2f3aaea3efb6fecc47829e564057187eceb39ca0fa064ad0849e317296672a19",
+              "page": 1
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "게시 문서 기준 안내입니다. 개인 적용 여부는 시행일과 경과조치를 확인해야 합니다.",
+        "표·서식의 추출 순서는 원문과 다를 수 있습니다."
+      ],
+      "buttons": [
+        {
+          "id": "university:CDE_000275:attachment:1",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "university:CDE_000275:attachment:1",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "fetched_at": "2026-11-05T13:50:16.002569+00:00",
+      "snapshot_stale": false
+    },
+    "scholarship": {
+      "schema_version": "academic-click-v3",
+      "node_id": "scholarship",
+      "title": "장학금·학자금 융자",
+      "state": "ready",
+      "reason": "menu",
+      "message": "안내 항목을 선택해 주세요.",
+      "cards": [],
+      "warnings": [],
+      "buttons": [
+        {
+          "id": "scholarship:MN149",
+          "label": "장학금 안내",
+          "action": "select_node",
+          "node_id": "scholarship:MN149",
+          "availability": "available"
+        },
+        {
+          "id": "scholarship:MN150",
+          "label": "장학금 종류",
+          "action": "select_node",
+          "node_id": "scholarship:MN150",
+          "availability": "available"
+        },
+        {
+          "id": "scholarship:MN151",
+          "label": "학자금 융자",
+          "action": "select_node",
+          "node_id": "scholarship:MN151",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "fetched_at": "2026-11-05T13:50:16.002569+00:00",
+      "snapshot_stale": false
+    },
+    "scholarship:MN149": {
+      "schema_version": "academic-click-v3",
+      "node_id": "scholarship:MN149",
+      "title": "장학금 안내",
+      "state": "ready",
+      "reason": "scholarship_overview",
+      "message": "장학금 안내",
+      "cards": [
+        {
+          "type": "reference_text",
+          "title": "장학금 안내",
+          "body": "KDU\n취업에 강한 대학\n경동대학교\n경동대학교 장학금 안내에 대한 정보를 보여드립니다.\nKYUNGDONG UNIVERSITY\n신청방법\n학비감면(1차) :\n입학, 우수, 외국인장학, 국가장학금(1차) 등은 학비감면\n현금 지급(2차) :\n홈페이지 장학공지 및 학과 게시판으로 장학금 신청안내(자강, 경동가족, 리더십, V3자기개발, 봉사 등)\n신청기간 내 신청서 및 첨부 서류 제출(마감이후 장학금 제한)\n지급방법\n교내장학 및 국가장학금 1유형 등 등록금성 장학금은 등록금 우선 감면 원칙 생활비성 장학금 및 후 지급 장학금 등은 학생 본인명의 계좌로 입금(단, 학자금대출 상환금액이 있는 경우 대출 우선 상환 함)\n장학금 자격 제한\n제12조 (자격 제한) :\n학칙 위반, 휴학 및 제적, 8개 학기 초과자, 직전학기 2.0미만자(단, 면학격려, V3자기개발, 공로, 근로, 봉사 등은 성적 미적용)\n세부내용 장학 규정 제12조 제4항\n등록금 초과 가능 장학\n장학금의 총 수혜금액은 등록금액을 초과하지 못함. (단, 근로 및 봉사 장학금, V3 자기개발, 리더십, 외부장학금(생활비성)은 제외)\n세부내용 장학 규정 제13조 제2항\n국가장학금 신청 안내\n재학생은 1차 신청이 원칙이며, 2차 신청 재학생은 국가장학금     지원 제한 (재학 중 2회에 한해 구제신청서 제출 시 국가장학금 지원)\n1차 신청 후 국가장학금 승인 시 등록금 우선감면 처리\n2차 신청은 개인별 후 지급되며, 교부금 차수에 따라 지급\n국가장학금 신청 :\nhttps://www.kosaf.go.kr",
+          "sources": [
+            {
+              "type": "official_website",
+              "source_url": "https://www.kduniv.ac.kr/kor/CMS/Contents/Contents.do?mCode=MN149",
+              "sha256": "4d897e5f93aa45a31d07c119c5d12b73c64f6ed1dd2d532d03b878a6fb6fd449",
+              "fetched_at": "2026-11-05T13:50:16.002569+00:00"
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "학교 게시 페이지의 수집본입니다. 현재 신청 기간·조건·금액은 별도 확인이 필요합니다."
+      ],
+      "buttons": [
+        {
+          "id": "scholarship:MN149:section:1",
+          "label": "신청방법",
+          "action": "select_node",
+          "node_id": "scholarship:MN149:section:1",
+          "availability": "available"
+        },
+        {
+          "id": "scholarship:MN149:section:2",
+          "label": "지급방법",
+          "action": "select_node",
+          "node_id": "scholarship:MN149:section:2",
+          "availability": "available"
+        },
+        {
+          "id": "scholarship:MN149:section:3",
+          "label": "장학금 자격 제한",
+          "action": "select_node",
+          "node_id": "scholarship:MN149:section:3",
+          "availability": "available"
+        },
+        {
+          "id": "scholarship:MN149:section:4",
+          "label": "등록금 초과 가능 장학",
+          "action": "select_node",
+          "node_id": "scholarship:MN149:section:4",
+          "availability": "available"
+        },
+        {
+          "id": "scholarship:MN149:section:5",
+          "label": "국가장학금 신청 안내",
+          "action": "select_node",
+          "node_id": "scholarship:MN149:section:5",
+          "availability": "available"
+        },
+        {
+          "id": "scholarship",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "scholarship",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        },
+        {
+          "id": "university:CDE_000275",
+          "label": "장학 규정",
+          "action": "select_node",
+          "node_id": "university:CDE_000275",
+          "availability": "available"
+        }
+      ],
+      "fetched_at": "2026-11-05T13:50:16.002569+00:00",
+      "snapshot_stale": false
+    },
+    "scholarship:MN150:table:1:row:1": {
+      "schema_version": "academic-click-v3",
+      "node_id": "scholarship:MN150:table:1:row:1",
+      "title": "입학 장학금 · 신입학장학금",
+      "state": "ready",
+      "reason": "scholarship_table_row",
+      "message": "입학 장학금 · 신입학장학금",
+      "cards": [
+        {
+          "type": "reference_text",
+          "title": "입학 장학금 · 신입학장학금",
+          "body": "구분: 입학 장학금\n종류: 신입학장학금\n종류: 신입학장학금\n장학금 내용: 모집요강에 명시된 기준에 따라 지급\n비고: 입학당시 명시된 모집요강 적용",
+          "sources": [
+            {
+              "type": "official_website",
+              "source_url": "https://www.kduniv.ac.kr/kor/CMS/Contents/Contents.do?mCode=MN150",
+              "sha256": "fa2ad36a7dda4439fd4bce2a7d5dd24410a81529456a9a42d1407789026aa5db",
+              "fetched_at": "2026-11-05T13:50:16.002569+00:00"
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "학교 게시 페이지의 수집본입니다. 현재 신청 기간·조건·금액은 별도 확인이 필요합니다."
+      ],
+      "buttons": [
+        {
+          "id": "scholarship:MN150:table:1:list:1",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "scholarship:MN150:table:1:list:1",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "fetched_at": "2026-11-05T13:50:16.002569+00:00",
+      "snapshot_stale": false
+    },
+    "scholarship:MN151": {
+      "schema_version": "academic-click-v3",
+      "node_id": "scholarship:MN151",
+      "title": "학자금 융자",
+      "state": "ready",
+      "reason": "scholarship_overview",
+      "message": "학자금 융자",
+      "cards": [
+        {
+          "type": "reference_text",
+          "title": "학자금 융자",
+          "body": "정부학자금대출\n정부 학자금 대출 포털 사이트\nwww.kosaf.go.kr (학자금대출신용보증기금)\n사이트 바로가기\n대출절차\nSTEP 01\n인터넷대출신청\nwww.kosaf.go.kr\n공인인증서 발급 후 신청가능\nSTEP 02\n서류제출\nSTEP 03\n심사승인통보\n(승인통보 후 반드시 은행에서 '대출실행' 을 해야 함)\nSTEP 04\n대출실행\n자격요건\n국내 고등교육기관에 재학 중인 학생\n직전학기 12학점 이상 이수\n직전학기 성적 100점 만점 환산시 70점 이상\n최소의 신용심사 요건을 갖춘 대학생\n농어촌출신학자금융자\n지원목적\n농어촌출신대학생에게 무이자학자금융자로 농어촌 학부모의 가계 부담을 완화\n농어민후생복지 증진에 기여하고 교육의 기회균등에 이바지함\n지원금액\n등록금(입학금, 수업료 등) 범위 내 신청액 전액 무이자융자\n농어촌출신학자금융자 우선순위\n1순위\n보호자가 농어촌에서 실제 농.어업에 종사하는 자녀\n2순위\n보호자가 농어촌지역에 주소를 둔 자녀\n3순위\n보호자 주소가 시(市)의 동(洞)일 경우 거주지 토지이용계획에 관리지역(준농림지역), 자연녹지지역이 확인된 경우의 자녀\n4순위\n보호자가 특별시. 광역시. 시의 지역중 토지이용계획에 개발제한구역으로 지정 고시된 주소의 자녀\n신청에 관한 사항\n신청기간\n방학 중 학교 홈페이지 또는 한국학술진흥재단 홈페이지\n(http://scholar.krf.or.kr - 장학지원사업- 전체장학금 사업안내- 농촌장학금)\n신청방법\n재단 장학지원시스템에 가입 후 온라인신청\n신청자격\n고등교육법 제2조의 각호\n(대학교, 산업대학, 교육대학, 전문대학, 기술대학)에 재학 중인 학생\n신청절차\n재단 학자금 지원시스템에서 온라인신청 후 신청서 출력 후\n학교 장학담당부(팀)에 제출(증빙서류 포함)\n증빙서류\n1순위자중 농지원부(또는 어업허가증)가 없는 경우에는 농어업종사확인서 제출\n주민등록등본 상 보호자와의 관계가 나타나지 않는 경우에는 호적등본 제출\n선정 및 지원\n동일순위 내에서는 경지규모, 지역 등을 고려하여 지원할 수 있음\n학자금은 선정발표 후 소속기관을 경유하여 온라인으로 일괄 송금함",
+          "sources": [
+            {
+              "type": "official_website",
+              "source_url": "https://www.kduniv.ac.kr/kor/CMS/Contents/Contents.do?mCode=MN151",
+              "sha256": "78bbaaea7e20287b0b063bb90c80c9e8aacf0027011ba747154b0d9db045cec8",
+              "fetched_at": "2026-11-05T13:50:16.002569+00:00"
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "학교 게시 페이지의 수집본입니다. 현재 신청 기간·조건·금액은 별도 확인이 필요합니다."
+      ],
+      "buttons": [
+        {
+          "id": "scholarship:MN151:section:1",
+          "label": "정부학자금대출",
+          "action": "select_node",
+          "node_id": "scholarship:MN151:section:1",
+          "availability": "available"
+        },
+        {
+          "id": "scholarship:MN151:section:2",
+          "label": "농어촌출신학자금융자",
+          "action": "select_node",
+          "node_id": "scholarship:MN151:section:2",
+          "availability": "available"
+        },
+        {
+          "id": "scholarship",
+          "label": "이전 메뉴",
+          "action": "select_node",
+          "node_id": "scholarship",
+          "availability": "available"
+        },
+        {
+          "id": "home",
+          "label": "처음으로",
+          "action": "select_node",
+          "node_id": "home",
+          "availability": "available"
+        }
+      ],
+      "fetched_at": "2026-11-05T13:50:16.002569+00:00",
+      "snapshot_stale": false
+    }
+  }
+}

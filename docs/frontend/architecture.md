@@ -52,6 +52,12 @@
 
 ## 기능 소유권
 
+학생 학사 연결(2026-11-08)은 `StudentAcademicApi`의 owner-bound 전송/DTO,
+`StudentAcademicController`의 읽기·미확정 쓰기·재조회 상태, graduation 모듈의
+문맥/수강/응답 편집기와 기본 화면으로 나눈다. 설정과 수강 메뉴는 같은 편집기 진입만
+추가한다. 다단 표와 인증 미리보기는 기존 관리자 표현 컴포넌트를 재사용한다.
+범위 선택·인증 영역 결과·학점 집계는 서버 응답을 표시하며 위젯에서 계산하지 않는다.
+
 | 모듈 | 소유 화면·로컬 상태 |
 | --- | --- |
 | `features/auth` | 로그인·회원가입 목업 |
@@ -59,12 +65,12 @@
 | `features/home` | 개인 계획 기반 이번 주 일정·준비 목록·우선 링크 |
 | `features/planning` | 실제 계정 서버 프로필·일정 repository와 원본 보존/동의 이전, debug 로컬 저장소 |
 | `features/schedule` | 월간 개인 일정과 선택 날짜 목록, 일정 CRUD |
-| `features/graduation` | 졸업요건 fixture, 개인 교육과정·과목·규칙 서버 저장과 관계 검증 |
+| `features/graduation` | 공식 감사·개인 교육과정·과목·규칙 서버 저장과 관계 검증 |
 | `features/records/course` | 수강 관리와 수강 직접 입력 상태 |
 | `features/records/activity` | 활동 입력 상태 |
 | `features/records/experience` | 경험 기록 저장소·필드. 학생 화면 입구는 활동 메뉴 |
 | `features/records/credential` | 자격 입력 상태 |
-| `features/records/portfolio` | 내 자료, 채용공고 입력, 성과·구성·지원 문서의 숨긴 서버 초안 |
+| `features/records/portfolio` | 내 자료(PDF 보기 포함), 채용공고 분석(공고 1개 비교·공고 찾기) |
 | `features/assistant` | 학교 질의 HTTP 어댑터·응답 DTO, 메인 소유 대화 상태와 IPC 원격 상태, 공통 응답 UI |
 | `features/settings` | 설정 진입 화면 |
 
@@ -86,19 +92,18 @@
 - `ConversationBridge`는 상태 revision과 명령 ID를 사용해 오래된 상태·중복 명령을 구분한다.
   학교 문맥은 저장에 성공한 개인 프로필에서 공유하며 미저장 폼 값을 요청에 적용하지 않는다.
 
-- 기록 예시 행은 `features/records/fixtures/`, 졸업요건 표 행은
-  `features/graduation/graduation_mock_fixture.dart`에 둔다.
+- 기록·졸업요건 화면의 제품용 예시 행 fixture는 제거했다. 테스트 전용 합성 데이터는
+  테스트 지원 파일에만 둔다.
 - `planning`의 실제 일반 계정 프로필·일정은 `RemotePlanningRepository`가 서버에 저장한다. debug 샘플과 기기 원본은 `PlanningRepository`의 SharedPreferences에 보관한다. 어느 쪽도 학교 공식 학사정보·일정·졸업 판정 데이터가 아니다. [동의 이전·버전 충돌·계정 전환](../api/planning-integration.md)을 따른다.
 - `planning_repository.dart`는 읽기 성공 전 쓰기를 차단하고 저장 성공 뒤에만 메모리 상태를
   확정한다. `planning_storage_state.dart`는 홈·일정·설정의 읽기 오류·재시도 표현을 공유한다.
-- `features/records/personal_record_repository.dart`는 debug/기기 원본의 로컬 저장소다. 실제 계정의 `PersonalRepositoryScope`는 `RemotePersonalRecordRepository`와 `RemotePortfolioWorkspaceRepository`를 선택하며 선택기·원본 참조도 같은 계정을 사용한다. [서버 화면 연결/10종 동의 이전](../api/personal-workspace-integration.md)을 따른다.
+- `features/records/personal_record_repository.dart`는 debug/기기 원본의 로컬 저장소다. 실제 계정의 `PersonalRepositoryScope`는 `RemotePersonalRecordRepository`를 선택하며 선택기·원본 참조도 같은 계정을 사용한다. [서버 화면 연결/10종 동의 이전](../api/personal-workspace-integration.md)을 따른다.
   `personal_record_fields.dart`는 메뉴별 로컬 입력 스키마·검증이며 서버 DTO가 아니다.
   `RecordMenuPage`는 해당 메뉴 저장소를 읽고 구조화 입력·수정·삭제를 제공한다.
 - 개인 졸업 작업 공간도 같은 저장소의 학교·학과·교육과정·과목·규칙 다섯 종류를 사용한다. `personal_graduation_fields.dart`는
   저장된 개인 교육과정·과목·기록의 선택 목록과 관계 검증을 소유하며 규칙을 실행하지 않는다.
-- `목업용` 스위치는 예시 행만 표시·숨김 처리한다. 개인 기록은 메뉴 전환·재시작 뒤에도 유지한다.
-- `portfolio_workspace_repository.dart`는 debug/기기 원본을 별도 v1 키에 저장한다. 실제 계정은 서버 구성·지원 문서·성과/경험 UUID를 사용하며 소유자와 버전·참조를 서버에서 확인한다. `portfolio_editor_dialog.dart`는 입력·선택·정렬,
-  `portfolio_drafts_page.dart`는 읽기·실패·목록·미리보기·삭제 UI를 소유한다.
+- 사이드바 `목업용`/`예시 데이터 표시` 토글과 제품 화면의 예시 행은 제거했다. 개인 기록은 메뉴 전환·재시작 뒤에도 유지한다.
+- 예전 구성·지원 문서 화면은 2026-11-24에, 그 저장소(`portfolio_workspace_repository.dart`·`remote_portfolio_workspace_repository.dart`)와 서버 표는 2026-11-25에 지웠다. 포트폴리오 구성은 `features/writing/portfolio_composition.dart`가 맡는다.
 - OpenAPI 계약이 확정되면 feature별 fixture와 로컬 상태를 repository/adapter로 교체한다.
   클라이언트는 OpenAPI에 없는 필드·상태·판정을 제품 계약으로 만들지 않는다.
 
@@ -113,7 +118,7 @@
 
 - 작업 큐는 완료 전에 공유 슬롯을 해제한다. 완료 Future를 계속 보관하지 않아 종료된 비동기 실행 영역을 다음 화면/검사로 가져오지 않는다. 최종 전체 275개 및 저장 관련 42개 회귀 통과.
 
-실제 세 역할의 공통 제목표시줄은 [계정 보안](../api/account-security-integration.md)을 제공한다. `AuthApi.securityForOwner`는 소유자·로그인 세대에 묶인 변경/세션 확인 capability이며 확인된 종료만 본인의 메모리 세션을 지운다. 클라이언트가 이미 관찰한 새 세션을 오래된 응답으로 지우지 않는다.
+실제 세 역할의 설정 `계정·정보`는 [계정 보안](../api/account-security-integration.md)을 제공한다. `AuthApi.securityForOwner`는 소유자·로그인 세대에 묶인 변경/세션 확인 capability이며 확인된 종료만 본인의 메모리 세션을 지운다. 클라이언트가 이미 관찰한 새 세션을 오래된 응답으로 지우지 않는다.
 
 ### 개인 학업 본문·기기 자료 통합
 

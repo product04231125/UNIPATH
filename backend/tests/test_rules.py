@@ -280,6 +280,74 @@ def test_volunteer_counts_only_approved_hours(approval, hours, status):
 
 
 @pytest.mark.parametrize(
+    "record,status,current,counted",
+    [
+        ({"reported_hours": "10"}, Status.SATISFIED, "10", True),
+        ({"reported_hours": "9.99"}, Status.NOT_SATISFIED, "9.99", True),
+        # A known zero is evidence, unlike a missing value.
+        ({"reported_hours": "0"}, Status.NOT_SATISFIED, "0", True),
+        # Reported hours win over approval fields the screen no longer collects.
+        ({"reported_hours": "10", "approval_status": "pending"}, Status.SATISFIED, "10", True),
+        ({"reported_hours": "10", "approval_status": "rejected"}, Status.SATISFIED, "10", True),
+        # Older records with approved hours only keep the previous rule.
+        ({"approval_status": "approved", "approved_hours": "12"}, Status.SATISFIED, "12", True),
+        ({"approval_status": "pending", "approved_hours": "12"}, Status.NEEDS_REVIEW, "0", False),
+        (
+            {"approval_status": "rejected", "approved_hours": "12"},
+            Status.NOT_SATISFIED,
+            "0",
+            False,
+        ),
+        ({}, Status.NEEDS_REVIEW, "0", False),
+        # An activity dated after the evaluation date is not counted yet.
+        (
+            {"reported_hours": "10", "activity_on": TODAY + timedelta(days=1)},
+            Status.NOT_SATISFIED,
+            "0",
+            False,
+        ),
+        ({"reported_hours": "10", "activity_on": TODAY}, Status.SATISFIED, "10", True),
+    ],
+)
+def test_personal_volunteer_counts_reported_hours(record, status, current, counted):
+    result = evaluate(
+        personal("minimum_volunteer_hours", minimum="10", hours_basis="reported"),
+        volunteers=[{"id": uid(1), "approval_status": "needs_review", **record}],
+    )
+    assert result.status == status
+    assert result.results[0].current == Decimal(current)
+    assert result.results[0].evidence_record_ids == ((UUID(uid(1)),) if counted else ())
+
+
+def test_reported_hours_add_across_records_and_never_reach_official_rules():
+    result = evaluate(
+        personal("minimum_volunteer_hours", minimum="10", hours_basis="reported"),
+        volunteers=[
+            {"id": uid(1), "approval_status": "needs_review", "reported_hours": "4"},
+            {"id": uid(2), "approval_status": "needs_review", "reported_hours": "6"},
+        ],
+    )
+    assert result.status == Status.SATISFIED and result.results[0].current == Decimal(10)
+    # Missing basis keeps the approved-hours policy, so saved snapshots replay unchanged.
+    default = evaluate(
+        personal("minimum_volunteer_hours", minimum="10"),
+        volunteers=[{"id": uid(1), "approval_status": "needs_review", "reported_hours": "99"}],
+    )
+    assert default.status == Status.NEEDS_REVIEW and default.results[0].current == 0
+    rule = {
+        "id": uid(301),
+        "kind": "minimum_volunteer_hours",
+        "code": "volunteer",
+        "title": "합성 규칙",
+        "minimum": "10",
+        "hours_basis": "reported",
+    }
+    with pytest.raises(ValidationError):
+        official(1, rules=[rule])
+    official(1, rules=[{**rule, "hours_basis": "approved"}])
+
+
+@pytest.mark.parametrize(
     "expires,known,status",
     [
         (TODAY, True, Status.SATISFIED),

@@ -32,10 +32,10 @@ void main() {
     expect(find.text('작성 중 프로필'), findsOneWidget);
     await tester.tap(find.byTooltip('뒤로 가기'));
     await tester.pumpAndSettle();
-    expect(find.text('학업 프로필'), findsNothing);
+    expect(find.text('학업과 계획'), findsNothing);
     await tester.tap(find.byTooltip('앞으로 가기'));
     await tester.pumpAndSettle();
-    expect(find.text('학업 프로필'), findsOneWidget);
+    expect(find.text('학업과 계획'), findsOneWidget);
     expect(find.text('작성 중 프로필'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -58,7 +58,7 @@ void main() {
             child: Column(
               children: [
                 WorkspaceTitleBar(
-                  title: '슈퍼관리자 · UniversityPath',
+                  statusLabel: '슈퍼관리자',
                   sidebarVisible: sidebarVisible,
                   onToggleSidebar: () =>
                       setState(() => sidebarVisible = !sidebarVisible),
@@ -124,7 +124,7 @@ void main() {
       await tester.tap(find.text('학교·학과'));
       await tester.pumpAndSettle();
       final form = find.byKey(
-        const ValueKey('admin-registration-institution-school-a'),
+        const ValueKey('admin-registration-institution-'),
       );
       final name = find.descendant(
         of: form,
@@ -145,7 +145,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('관리 현황'));
       await tester.pumpAndSettle();
-      expect(find.text('관리 가능한 학교 3개'), findsOneWidget);
+      expect(find.text('최근 변경'), findsOneWidget);
 
       path = '/admin/overview';
       await tester.pumpWidget(
@@ -160,7 +160,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('관리 가능한 학교 3개'), findsOneWidget);
+      expect(find.text('최근 변경'), findsOneWidget);
       final reread = PersonalRecordRepository(PersonalRecordKind.activity);
       await reread.load();
       expect(reread.records.single.value('title'), '합성 학생 기록');

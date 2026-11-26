@@ -1,26 +1,36 @@
+import '../../../shared/app_tones.dart';
+import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/guide_card.dart';
+import '../../../shared/widgets/record_tile.dart';
+import '../../../shared/widgets/responsive_grid.dart';
+import '../../../shared/widgets/tone_chip.dart';
+import '../record_display.dart';
+
 import 'package:flutter/material.dart';
 
-import '../../../shared/app_typography.dart';
 import '../../../shared/app_style.dart';
-import '../../../shared/widgets/content_scroll_view.dart';
+import '../../../shared/drafts/form_draft_picker.dart';
+import '../../../shared/drafts/form_draft_store.dart';
 import '../../../shared/widgets/external_link_button.dart';
-import '../../../shared/widgets/page_header.dart';
-import '../../../shared/widgets/status_badge.dart';
+import '../../../shared/widgets/feature_line.dart';
+import '../../../shared/widgets/feature_page.dart';
 import '../../../shared/widgets/surface_card.dart';
 import '../../auth/auth_api.dart';
-import '../fixtures/activity_fixture.dart';
-import '../fixtures/experience_fixture.dart';
-import '../fixtures/record_mock_entry.dart';
+import '../../auth/guest_preview_scope.dart';
 import '../personal_record_fields.dart';
 import '../personal_record_form.dart';
 import '../personal_record_repository.dart';
 import '../personal_repository_scope.dart';
+import '../../../shared/widgets/page_actions.dart';
 
-enum _ActivityAddChoice { volunteer, project, other }
+enum _ActivityAddChoice { volunteer, project, intern, club, other }
 
+/// Unified student menu for activity and experience personal records.
 class ActivityPage extends StatefulWidget {
-  const ActivityPage({super.key, required this.showMockData});
-  final bool showMockData;
+  const ActivityPage({super.key, this.changes});
+
+  /// Fires when records were added elsewhere (e.g. from 활동 추천) so the list reloads.
+  final Listenable? changes;
 
   @override
   State<ActivityPage> createState() => _ActivityPageState();
@@ -32,8 +42,9 @@ class _ActivityPageState extends State<ActivityPage> {
   var _loading = true;
   var _loadFailed = false;
   var _loadRevision = 0;
+  var _formOpen = false;
   Listenable? _importChanges;
-  Map<PersonalRecordKind, List<PersonalRecordField>> _fields = {
+  final Map<PersonalRecordKind, List<PersonalRecordField>> _fields = {
     PersonalRecordKind.activity: personalRecordFields(
       PersonalRecordKind.activity,
     ),
@@ -53,13 +64,26 @@ class _ActivityPageState extends State<ActivityPage> {
         scope?.records(PersonalRecordKind.experience) ??
         PersonalRecordRepository(PersonalRecordKind.experience);
     _importChanges = scope?.importer?.importedRevision;
-    _importChanges?.addListener(_load);
+    _importChanges?.addListener(_reloadAfterImport);
+    widget.changes?.addListener(_reloadAfterImport);
     _load();
   }
 
   @override
+  void didUpdateWidget(covariant ActivityPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.changes, widget.changes)) {
+      oldWidget.changes?.removeListener(_reloadAfterImport);
+      widget.changes?.addListener(_reloadAfterImport);
+    }
+  }
+
+  void _reloadAfterImport() => _load();
+
+  @override
   void dispose() {
-    _importChanges?.removeListener(_load);
+    _importChanges?.removeListener(_reloadAfterImport);
+    widget.changes?.removeListener(_reloadAfterImport);
     _loadRevision++;
     super.dispose();
   }
@@ -75,14 +99,12 @@ class _ActivityPageState extends State<ActivityPage> {
     try {
       await Future.wait([_activityRepo.load(), _experienceRepo.load()]);
       if (mounted && revision == _loadRevision) {
-        _fields = {
-          PersonalRecordKind.activity: personalRecordFields(
-            PersonalRecordKind.activity,
-          ),
-          PersonalRecordKind.experience: personalRecordFields(
-            PersonalRecordKind.experience,
-          ),
-        };
+        _fields[PersonalRecordKind.activity] = personalRecordFields(
+          PersonalRecordKind.activity,
+        );
+        _fields[PersonalRecordKind.experience] = personalRecordFields(
+          PersonalRecordKind.experience,
+        );
       }
     } catch (_) {
       if (mounted && revision == _loadRevision) {
@@ -98,10 +120,14 @@ class _ActivityPageState extends State<ActivityPage> {
   PersonalRecordRepository _repoFor(PersonalRecordKind kind) =>
       kind == PersonalRecordKind.experience ? _experienceRepo : _activityRepo;
 
-  String _kindLabel(PersonalRecordKind kind) =>
-      kind == PersonalRecordKind.experience ? '경험' : '활동';
+  bool _guestBlocked() {
+    if (!GuestPreviewScope.isActive(context)) return false;
+    GuestPreviewScope.showBlockedMessage(context);
+    return true;
+  }
 
   Future<void> _add() async {
+    if (_formOpen || _guestBlocked()) return;
     final choice = await showDialog<_ActivityAddChoice>(
       context: context,
       builder: (context) => SimpleDialog(
@@ -114,54 +140,113 @@ class _ActivityPageState extends State<ActivityPage> {
             child: const ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text('봉사'),
-              subtitle: Text('시간·승인 필드를 사용합니다.'),
+              subtitle: Text('이름·시간·메모를 적습니다.'),
             ),
           ),
-          SimpleDialogOption(
-            key: const ValueKey('activity-add-project'),
-            onPressed: () => Navigator.pop(context, _ActivityAddChoice.project),
-            child: const ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('프로젝트·인턴·동아리'),
-              subtitle: Text('역할·결과 필드를 사용합니다.'),
+          for (final entry in const {
+            _ActivityAddChoice.project: '프로젝트',
+            _ActivityAddChoice.intern: '인턴',
+            _ActivityAddChoice.club: '동아리',
+          }.entries)
+            SimpleDialogOption(
+              key: ValueKey('activity-add-${entry.key.name}'),
+              onPressed: () => Navigator.pop(context, entry.key),
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(entry.value),
+                subtitle: const Text('참여 기간·역할과 결과를 기록합니다.'),
+              ),
             ),
-          ),
           SimpleDialogOption(
             key: const ValueKey('activity-add-other'),
             onPressed: () => Navigator.pop(context, _ActivityAddChoice.other),
             child: const ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text('그 밖의 활동'),
-              subtitle: Text('교내외 활동 기록의 기존 필드를 사용합니다.'),
+              subtitle: Text('이름·시간·메모를 적습니다.'),
             ),
           ),
         ],
       ),
     );
     if (!mounted || choice == null) return;
-    final kind = choice == _ActivityAddChoice.project
-        ? PersonalRecordKind.experience
-        : PersonalRecordKind.activity;
-    await _edit(kind);
-  }
-
-  Future<void> _edit(PersonalRecordKind kind, [PersonalRecord? record]) async {
-    await showPersonalRecordForm(
-      context: context,
-      kind: kind,
-      repository: _repoFor(kind),
-      addLabel: kind == PersonalRecordKind.experience ? '경험 직접 기록' : '활동 직접 기록',
-      record: record,
-      onFieldsReady: (fields) {
-        if (mounted) setState(() => _fields[kind] = fields);
-      },
-      onSaved: () {
-        if (mounted) setState(() {});
-      },
+    final experienceType = switch (choice) {
+      _ActivityAddChoice.project => '프로젝트',
+      _ActivityAddChoice.intern => '인턴',
+      _ActivityAddChoice.club => '동아리',
+      _ => null,
+    };
+    await _edit(
+      experienceType == null
+          ? PersonalRecordKind.activity
+          : PersonalRecordKind.experience,
+      draftValues: experienceType == null ? null : {'type': experienceType},
     );
   }
 
+  Future<void> _edit(
+    PersonalRecordKind kind, {
+    PersonalRecord? record,
+    Map<String, String>? draftValues,
+    String? appliedDraftId,
+  }) async {
+    if (_formOpen || _guestBlocked()) return;
+    _formOpen = true;
+    try {
+      await showPersonalRecordForm(
+        context: context,
+        kind: kind,
+        repository: _repoFor(kind),
+        addLabel: kind == PersonalRecordKind.experience ? '경험 추가' : '활동 추가',
+        record: record,
+        draftValues: draftValues,
+        appliedDraftId: appliedDraftId,
+        onFieldsReady: (fields) {
+          if (mounted) setState(() => _fields[kind] = fields);
+        },
+        onSaved: () {
+          if (mounted) setState(() {});
+        },
+      );
+    } finally {
+      _formOpen = false;
+    }
+  }
+
+  Future<void> _loadDraft() async {
+    if (_formOpen || _guestBlocked()) return;
+    final kind = await showDialog<PersonalRecordKind>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('불러올 임시저장 종류'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () =>
+                Navigator.pop(context, PersonalRecordKind.activity),
+            child: const Text('활동·봉사'),
+          ),
+          SimpleDialogOption(
+            onPressed: () =>
+                Navigator.pop(context, PersonalRecordKind.experience),
+            child: const Text('프로젝트·인턴·동아리'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || kind == null) return;
+    final entry = await showFormDraftPicker(
+      context: context,
+      collectionKey: formDraftCollectionKey(personalRecordDraftScreenId(kind)),
+    );
+    if (!mounted || entry == null) return;
+    final values = {
+      for (final item in entry.payload.entries) item.key: '${item.value ?? ''}',
+    };
+    await _edit(kind, draftValues: values, appliedDraftId: entry.id);
+  }
+
   Future<void> _delete(PersonalRecordKind kind, PersonalRecord record) async {
+    if (_guestBlocked()) return;
     final repository = _repoFor(kind);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -183,7 +268,8 @@ class _ActivityPageState extends State<ActivityPage> {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
+    if (_guestBlocked()) return;
     try {
       await repository.delete(record.id, expectedVersion: record.version);
       if (mounted) setState(() {});
@@ -202,114 +288,117 @@ class _ActivityPageState extends State<ActivityPage> {
     }
   }
 
-  Widget _header() => PageHeader(
-    title: '활동',
-    description: '봉사·교내외 활동과 프로젝트·인턴·동아리 경험을 한곳에서 기록합니다.',
-    actions: [
-      if (_activityRepo.isServerBacked || _experienceRepo.isServerBacked)
-        TextButton.icon(
-          onPressed: _loading ? null : _load,
-          icon: const Icon(Icons.refresh),
-          label: const Text('서버 기록 다시 불러오기'),
-        ),
-    ],
-  );
-
-  Widget _statePage({required Widget child}) => ContentScrollView(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [_header(), child],
-    ),
-  );
-
-  Widget _entry(RecordMockEntry entry) => Container(
-    padding: const EdgeInsets.symmetric(vertical: 11),
-    decoration: BoxDecoration(
-      border: Border(
-        bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-    ),
-    child: Row(
-      children: [
-        Icon(
-          Icons.description_outlined,
-          size: 19,
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                entry.title,
-                style: TextStyle(
-                  fontSize: AppTypography.body,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                entry.detail,
-                style: TextStyle(
-                  fontSize: AppTypography.caption,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        StatusBadge(status: entry.status),
-      ],
-    ),
-  );
+  String _fieldDisplay(PersonalRecordField field, String value) {
+    if (field.optionLabels[value] != null) return field.optionLabels[value]!;
+    if (field.options.isNotEmpty && !field.options.contains(value)) {
+      return '연결 대상 없음 · 수정에서 다시 선택하세요';
+    }
+    return value;
+  }
 
   Widget _personalEntry(PersonalRecordKind kind, PersonalRecord record) {
     final fields = _fields[kind] ?? personalRecordFields(kind);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _entry(
-          RecordMockEntry(
-            title: '${_kindLabel(kind)} · ${record.value('title')}',
-            detail: fields
-                .where(
-                  (f) => f.key != 'title' && record.value(f.key).isNotEmpty,
-                )
-                .map(
-                  (f) =>
-                      '${f.label}: ${f.optionLabels[record.value(f.key)] ?? (f.options.isNotEmpty && !f.options.contains(record.value(f.key)) ? '연결 대상 없음 · 수정에서 다시 선택하세요' : record.value(f.key))}',
-                )
-                .join(' · '),
-            status: '개인 기록',
-          ),
+    String value(String key) {
+      final raw = record.value(key);
+      if (raw.isEmpty) return raw;
+      final field = fields.where((f) => f.key == key).firstOrNull;
+      return field == null ? raw : _fieldDisplay(field, raw);
+    }
+
+    final experience = kind == PersonalRecordKind.experience;
+    final type = value('type');
+    final (icon, tone) = experience
+        ? experienceVisual(type)
+        : (Icons.volunteer_activism_outlined, AppTone.success);
+    final period = recordPeriodLabel(
+      record.value('startedOn'),
+      record.value('endedOn'),
+    );
+    final hours = record.value('reportedHours');
+    return RecordTile(
+      key: ValueKey('record-${kind.name}-${record.id}'),
+      icon: icon,
+      tone: tone,
+      title: record.value('title'),
+      badges: [
+        ToneChip(
+          label: experience ? (type.isEmpty ? '경험' : type) : '활동',
+          tone: tone,
         ),
-        Wrap(
-          children: [
-            for (final field in fields.where(
-              (f) =>
-                  f.type == PersonalFieldType.url &&
-                  record.value(f.key).isNotEmpty,
-            ))
-              ExternalLinkButton(
-                url: record.value(field.key),
-                label: field.label,
-              ),
-            TextButton(
-              onPressed: () => _edit(kind, record),
-              child: const Text('수정'),
-            ),
-            TextButton(
-              style: destructiveButtonStyle(context),
-              onPressed: () => _delete(kind, record),
-              child: const Text('삭제'),
-            ),
-          ],
+        if (value('status') case final status when status.isNotEmpty)
+          ToneChip(label: status),
+      ],
+      facts: [
+        if (period != null) RecordFact(Icons.calendar_today_outlined, period),
+        if (hours.isNotEmpty)
+          RecordFact(Icons.schedule, '${recordNumber(hours)}시간'),
+        if (value('organization') case final org when org.isNotEmpty)
+          RecordFact(Icons.apartment_outlined, org),
+        if (value('role') case final role when role.isNotEmpty)
+          RecordFact(Icons.person_outline, role),
+      ],
+      lines: [
+        if (value('result') case final result when result.isNotEmpty) result,
+        if (value('detail') case final detail when detail.isNotEmpty) detail,
+      ],
+      onTap: () => _edit(kind, record: record),
+      footer: [
+        for (final field in fields.where(
+          (f) =>
+              f.type == PersonalFieldType.url && record.value(f.key).isNotEmpty,
+        ))
+          ExternalLinkButton(url: record.value(field.key), label: field.label),
+      ],
+      actions: [
+        RecordAction(
+          '수정',
+          Icons.edit_outlined,
+          () => _edit(kind, record: record),
+        ),
+        RecordAction(
+          '삭제',
+          Icons.delete_outline,
+          () => _delete(kind, record),
+          destructive: true,
         ),
       ],
     );
   }
+
+  /// Same header in every state so the title never shifts.
+  List<Widget> _headerActions(bool serverBacked) {
+    final ready = !_loading && !_loadFailed;
+    return [
+      PageMoreMenu(
+        key: const Key('activity-more'),
+        enabled: ready,
+        itemBuilder: (context) => [
+          PopupMenuItem<void>(
+            key: const Key('activity-load-draft'),
+            onTap: _loadDraft,
+            child: const ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.inventory_2_outlined),
+              title: Text('임시저장 불러오기'),
+            ),
+          ),
+          if (serverBacked)
+            PopupMenuItem<void>(
+              onTap: _load,
+              child: const ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.refresh),
+                title: Text('다시 읽기'),
+              ),
+            ),
+        ],
+      ),
+      PageAddButton(label: '활동 추가', onPressed: ready ? _add : null),
+    ];
+  }
+
+  Widget _statePage({required Widget child}) =>
+      FeaturePage(title: '활동', trailing: _headerActions(false), body: [child]);
 
   @override
   Widget build(BuildContext context) {
@@ -318,118 +407,82 @@ class _ActivityPageState extends State<ActivityPage> {
       return _statePage(
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('개인 기록을 읽지 못했습니다. 기존 저장 내용은 덮어쓰지 않습니다.'),
-            TextButton(onPressed: _load, child: const Text('다시 시도')),
+            const FeatureLine.one(
+              text: '개인 기록을 읽지 못했습니다. 기존 저장 내용은 덮어쓰지 않습니다.',
+            ),
+            FeatureLine.reload(onPressed: _load, label: '다시 시도'),
           ],
         ),
       );
     }
+
     final personal = [
       for (final record in _activityRepo.records)
         (PersonalRecordKind.activity, record),
       for (final record in _experienceRepo.records)
         (PersonalRecordKind.experience, record),
     ];
-    final examples = [
-      if (widget.showMockData) ...activityMockEntries,
-      if (widget.showMockData) ...experienceMockEntries,
-    ];
-    final approvedHours = _activityRepo.records
-        .where((r) => r.value('approval') == 'approved')
-        .fold<double>(
-          0,
-          (sum, r) => sum + (double.tryParse(r.value('approvedHours')) ?? 0),
-        );
-    return ContentScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _header(),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.secondaryContainer,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
-            ),
-            child: const Text(
-              '학교 정보가 없어도 내 활동을 직접 기록할 수 있습니다. 졸업 반영이 필요한 활동은 학교 승인 후 확인해 주세요. 봉사와 그 밖의 활동은 기존 활동 기록에, 프로젝트·인턴·동아리는 기존 경험 기록에 저장합니다.',
-              style: TextStyle(fontSize: AppTypography.caption),
-            ),
-          ),
-          const SizedBox(height: 14),
-          SurfaceCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '등록한 활동',
-                  style: TextStyle(
-                    fontSize: AppTypography.section,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '학교에서 확인한 정보가 없으면 내 기록을 직접 추가할 수 있습니다.',
-                  style: TextStyle(
-                    fontSize: AppTypography.caption,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: _add,
-                  icon: const Icon(Icons.add),
-                  label: const Text('활동 직접 기록'),
-                ),
-                const SizedBox(height: 10),
-                Text('사용자가 승인됨으로 기록한 봉사 시간 합계 $approvedHours시간 · 학교 검증 아님'),
-                if (personal.isEmpty) const Text('개인 기록이 없습니다. 직접 입력해 주세요.'),
-                for (final item in personal) _personalEntry(item.$1, item.$2),
-                if (examples.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  for (final entry in examples) _entry(entry),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          const ExpansionTile(
-            title: Text('활동 준비'),
-            childrenPadding: EdgeInsets.symmetric(horizontal: 16),
-            expandedCrossAxisAlignment: CrossAxisAlignment.start,
+    final recordedHours = _activityRepo.records.fold<double>(
+      0,
+      (sum, r) => sum + (double.tryParse(r.value('reportedHours')) ?? 0),
+    );
+    final serverBacked =
+        _activityRepo.isServerBacked || _experienceRepo.isServerBacked;
+
+    return FeaturePage(
+      title: '활동',
+      trailing: _headerActions(serverBacked),
+      body: [
+        SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: Text('• 봉사 시간·증빙 자료 점검'),
+              StatStrip(
+                items: [
+                  ('활동', '${_activityRepo.records.length}'),
+                  ('경험', '${_experienceRepo.records.length}'),
+                  ('기록 시간', '${recordNumber('$recordedHours')}시간'),
+                ],
               ),
-              Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: Text('• 교내 활동 인정 절차 확인'),
-              ),
-              Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: Text('• 프로젝트·인턴·동아리는 역할과 결과를 분리해 기록'),
-              ),
-              Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: Text('• 필요할 때 외부 봉사 사이트 안내'),
-              ),
+              const SizedBox(height: 16),
+              if (personal.isEmpty)
+                EmptyState(
+                  icon: Icons.volunteer_activism_outlined,
+                  title: '아직 기록한 활동이 없습니다',
+                  message: '봉사·대외활동·프로젝트·인턴·동아리를 기록해 두면 자기소개서와 직무 분석에 쓰입니다.',
+                  action: OutlinedButton.icon(
+                    onPressed: _add,
+                    icon: const Icon(Icons.add),
+                    label: const Text('첫 활동 추가'),
+                  ),
+                )
+              else
+                ResponsiveGrid(
+                  children: [
+                    for (final item in personal)
+                      _personalEntry(item.$1, item.$2),
+                  ],
+                ),
             ],
           ),
-          const ExternalLinkButton(
-            url: 'https://www.1365.go.kr/',
-            label: '1365 봉사 찾기',
-            description: '1365에서 활동을 찾아 직접 신청하고, 학교 인정이 필요한 활동은 학교에 등록·승인받으세요. 링크 열기로 봉사 시간이나 승인 상태를 자동 변경하지 않습니다.',
-          ),
-        ],
-      ),
+        ),
+      ],
+      below: const [
+        GuideCard(
+          title: '활동 준비',
+          lines: ['봉사 시간·증빙 자료 점검', '프로젝트·인턴·동아리는 역할과 결과를 분리해 기록'],
+          links: [
+            ExternalLinkButton(
+              url: 'https://www.1365.go.kr/',
+              label: '1365 봉사 찾기',
+              description:
+                  '1365에서 활동을 찾아 직접 신청할 수 있습니다. 링크 열기로 봉사 시간을 자동 변경하지 않습니다.',
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

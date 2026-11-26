@@ -55,11 +55,26 @@ class Curriculum(CatalogRecord, Base):
 class Course(CatalogRecord, Base):
     __tablename__ = "courses"
     __table_args__ = (
-        UniqueConstraint("institution_id", "code"),
+        Index(
+            "uq_courses_school_code",
+            "institution_id",
+            "code",
+            unique=True,
+            postgresql_where=text("code <> ''"),
+        ),
         CheckConstraint("credits >= 0 AND credits <= 100", name="credits"),
+        CheckConstraint(
+            "grading_basis IN ('unspecified','graded','pass_fail')", name="grading_basis"
+        ),
+        CheckConstraint("credits IS NOT NULL OR grading_basis = 'pass_fail'", name="known_credits"),
     )
-    code: Mapped[str] = mapped_column(String(64))
-    credits: Mapped[Decimal] = mapped_column(Numeric(8, 3))
+    code: Mapped[str] = mapped_column(String(64), default="", server_default="")
+    credits: Mapped[Decimal | None] = mapped_column(Numeric(8, 3))
+    grading_basis: Mapped[str] = mapped_column(
+        String(16), default="unspecified", server_default="unspecified"
+    )
+    # Owning department; None is a course shared across the school.
+    department_id: Mapped[UUID | None] = mapped_column(index=True)
 
 
 class CurriculumCourse(CatalogRecord, Base):
@@ -131,8 +146,21 @@ for model in (RuleSet, GraduationRule, OfficialDocument):
     )
 
 # Keep school/department membership valid even for non-HTTP database writers.
-for model in (Department, Curriculum, Course, RuleSet, GraduationRule, OfficialDocument):
+for model in (
+    Department,
+    Curriculum,
+    Course,
+    RuleSet,
+    GraduationRule,
+    OfficialDocument,
+):
     model.__table__.append_constraint(UniqueConstraint("id", "institution_id"))
+Course.__table__.append_constraint(
+    ForeignKeyConstraint(
+        ["department_id", "institution_id"],
+        ["departments.id", "departments.institution_id"],
+    )
+)
 Curriculum.__table__.append_constraint(
     UniqueConstraint("id", "department_id", "institution_id", name="uq_curricula_scope")
 )

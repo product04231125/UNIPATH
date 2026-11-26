@@ -1,0 +1,61 @@
+name: unipath-demo
+services:
+  db:
+    image: ${DB_IMAGE:?Missing DB_IMAGE}
+    pull_policy: never
+    environment:
+      POSTGRES_USER: unipath_demo
+      POSTGRES_DB: unipath_demo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Missing password}
+    volumes:
+      - demo_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U unipath_demo -d unipath_demo']
+      interval: 3s
+      timeout: 3s
+      retries: 40
+  api:
+    image: ${API_IMAGE:?Missing API_IMAGE}
+    pull_policy: never
+    environment: &api_environment
+      APP_ENV: local
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: unipath_demo
+      POSTGRES_USER: unipath_demo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      CORS_ORIGINS: '["http://localhost:38100"]'
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready', timeout=3)"]
+      interval: 3s
+      timeout: 4s
+      retries: 30
+  prepare:
+    image: ${API_IMAGE}
+    pull_policy: never
+    environment: *api_environment
+    volumes:
+      - ./demo-data.json:/bundle/demo-data.json:ro
+      - ${DEMO_STATE_DIR:?Missing state directory}:/state:ro
+    command: [sh, -c, 'alembic upgrade head && python -m app.operations.demo_bundle seed --file /bundle/demo-data.json --password-file /state/accounts.json']
+    depends_on:
+      db:
+        condition: service_healthy
+  web:
+    image: ${WEB_IMAGE:?Missing WEB_IMAGE}
+    pull_policy: never
+    ports:
+      - '127.0.0.1:38100:80'
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -q, --spider, 'http://127.0.0.1/api/v1/health/ready']
+      interval: 3s
+      timeout: 4s
+      retries: 30
+volumes:
+  demo_data:

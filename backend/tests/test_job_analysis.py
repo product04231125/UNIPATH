@@ -1,4 +1,6 @@
+import base64
 from copy import deepcopy
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -8,6 +10,7 @@ from test_auth import auth_db as auth_db
 from test_auth import authorization, register
 from test_personal import post
 
+from app.rag.career.analyzer import EvidenceAnalyzer
 from app.schemas.job_analysis import JobAnalysisRequest
 
 ROOT = "/api/v1/me"
@@ -32,6 +35,7 @@ def test_request_rejects_spoofed_ownership_and_invalid_selections():
         {"records": [{**reference, "expected_version": True}]},
         {"records": [{**reference, "kind": "official"}]},
         {"personal_profile": {"skills": ["Python"]}},
+        {"external_processing_consent": "true"},
     ):
         with pytest.raises(ValidationError):
             JobAnalysisRequest.model_validate({"posting_text": POSTING, **change})
@@ -50,7 +54,15 @@ def setup(c):
             "result": "Python으로 API 구현",
         },
     )
-    return owner, record, {"posting_text": POSTING, "records": [selection(record)]}
+    return (
+        owner,
+        record,
+        {
+            "posting_text": POSTING,
+            "records": [selection(record)],
+            "external_processing_consent": True,
+        },
+    )
 
 
 class SyntheticAnalyzer:
@@ -133,6 +145,45 @@ def test_personal_context_is_explicit_owner_scoped_and_versioned(auth_client):
 
 
 @pytest.mark.integration
+def test_personal_context_says_whether_a_record_is_done(auth_client):
+    c = auth_client
+    owner = authorization(register(c))
+    planned = post(
+        c,
+        owner,
+        "experience-records",
+        {
+            "title": "합성 해커톤",
+            "experience_type": "대외활동",
+            "started_on": "2027-03-02",
+            "status_label": "참여 예정",
+        },
+    )
+    thesis = post(
+        c,
+        owner,
+        "achievement-records",
+        {
+            "title": "합성 졸업 논문",
+            "achievement_type": "논문",
+            "role": "제1저자",
+            "result": "추천 모델 비교",
+            "started_on": "2026-09-01",
+            "thesis_status_label": "작성 중",
+        },
+    )
+    result = c.post(
+        ROOT + "/personalization-contexts",
+        headers=owner,
+        json={"records": [selection(planned), {**selection(thesis), "kind": "achievement"}]},
+    )
+    assert result.status_code == 200, result.text
+    texts = [r["text"] for r in result.json()["records"]]
+    assert "status_label: 참여 예정" in texts[0] and "started_on: 2027-03-02" in texts[0]
+    assert "thesis_status_label: 작성 중" in texts[1] and "started_on: 2026-09-01" in texts[1]
+
+
+@pytest.mark.integration
 def test_job_analysis_missing_inputs_unconfigured_and_synthetic_minimum_scenario(auth_client):
     c = auth_client
     owner, _, body = setup(c)
@@ -158,6 +209,185 @@ def test_job_analysis_missing_inputs_unconfigured_and_synthetic_minimum_scenario
         c.post(ROOT + "/job-analyses", headers=owner, json=body).json()["reason"]
         == "no_requirements_found"
     )
+
+
+@pytest.mark.integration
+def test_job_analysis_accepts_more_than_twenty_saved_records(auth_client):
+    c = auth_client
+    owner, record, body = setup(c)
+    extra = [
+        post(
+            c,
+            owner,
+            "experience-records",
+            {
+                "title": f"합성 기록 {index}",
+                "experience_type": "프로젝트",
+                "role": "개발",
+                "result": "합성 결과",
+            },
+        )
+        for index in range(24)
+    ]
+    body["records"] = [selection(record)] + [selection(item) for item in extra]
+    analyzer = SyntheticAnalyzer()
+    c.app.state.job_analyzer = analyzer
+    result = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert result.status_code == 200, result.text
+    assert result.json()["status"] == "completed"
+    assert len(analyzer.calls[0].records) == 25
+
+
+@pytest.mark.integration
+def test_job_analysis_keeps_verified_items_and_explains_the_rest(auth_client):
+    c = auth_client
+    owner, _, body = setup(c)
+
+    def generate(instruction, payload):
+        sent = payload["records"][0]
+        cite = {"kind": sent["kind"], "record_id": sent["record_id"], "version": sent["version"]}
+        return {
+            "comparisons": [
+                {
+                    "priority": "required",
+                    "requirement": "Python 개발 경험",
+                    "posting_quote": "필수: Python  개발\n경험",
+                    "status": "supported",
+                    "personal_evidence": [{**cite, "excerpt": "Python으로API구현"}],
+                    "explanation": "기록에 구현 경험이 있습니다.",
+                },
+                {
+                    "priority": "preferred",
+                    "requirement": "FastAPI 경험",
+                    "posting_quote": "FastAPI 경험",
+                    "status": "supported",
+                    "personal_evidence": [{**cite, "excerpt": "기록에 없는 Django 경력"}],
+                    "explanation": "기록에 없는 Django 경력이 있습니다.",
+                },
+                {
+                    "priority": "preferred",
+                    "requirement": "Docker",
+                    "posting_quote": "공고에 없는 Docker 경험",
+                    "status": "insufficient_evidence",
+                    "personal_evidence": [],
+                    "explanation": "확인되지 않습니다.",
+                },
+            ]
+        }
+
+    c.app.state.job_analyzer = EvidenceAnalyzer(Mock(generate=Mock(side_effect=generate)))
+    result = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert result.status_code == 200, result.text
+    value = result.json()
+    assert value["status"] == "completed"
+    first, second = value["comparisons"]
+    assert first["posting_evidence"]["excerpt"] == "필수: Python 개발 경험"
+    assert first["personal_evidence"][0]["excerpt"] == "Python으로 API 구현"
+    assert second["status"] == "insufficient_evidence" and second["personal_evidence"] == []
+    assert value["warnings"] == [
+        "공고 원문에서 위치를 확인하지 못한 조건 1개는 결과에서 뺐습니다.",
+        "인용한 기록 문장을 원문에서 확인하지 못한 조건 1개는 경험 연결 설명 대신 확인 방법을 "
+        "안내했습니다.",
+    ]
+    assert "기록에 없는" not in result.text and "Docker" not in result.text
+
+
+def document(text, name="합성 포트폴리오.txt"):
+    return {"filename": name, "content_base64": base64.b64encode(text.encode()).decode()}
+
+
+@pytest.mark.integration
+def test_job_analysis_compares_selected_materials_and_reports_their_source(auth_client):
+    c = auth_client
+    owner, _, body = setup(c)
+    body["documents"] = [document("FastAPI로 합성 예약 API를 만들고 테스트를 작성했다.")]
+    sent = []
+
+    def generate(instruction, payload):
+        sent.append(payload["records"])
+        chunk = next(r for r in payload["records"] if "합성 예약 API" in r["text"])
+        cite = {"kind": chunk["kind"], "record_id": chunk["record_id"], "version": chunk["version"]}
+        return {
+            "comparisons": [
+                {
+                    "priority": "preferred",
+                    "requirement": "FastAPI 경험",
+                    "posting_quote": "FastAPI 경험",
+                    "status": "supported",
+                    "personal_evidence": [{**cite, "excerpt": "FastAPI로 합성 예약 API를 만들고"}],
+                    "explanation": "직무 해석: API 개발\n경험 활용: 예약 API\n다음 행동: 정리",
+                }
+            ]
+        }
+
+    c.app.state.job_analyzer = EvidenceAnalyzer(Mock(generate=Mock(side_effect=generate)))
+    result = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert result.status_code == 200, result.text
+    value = result.json()
+    assert value["status"] == "completed"
+    # The saved record and the selected material both reached the model.
+    assert len(sent[0]) == 2
+    [source] = value["document_sources"]
+    assert source["filename"] == "합성 포트폴리오.txt" and source["ocr"] is False
+    assert value["comparisons"][0]["personal_evidence"][0]["record_id"] == source["record_id"]
+
+
+@pytest.mark.integration
+def test_selected_materials_alone_are_enough_and_wait_for_consent(auth_client):
+    c = auth_client
+    owner, _, body = setup(c)
+    body["records"] = []
+    # Not valid base64: extraction would reject it, so a consent answer proves nothing was read.
+    body["documents"] = [{"filename": "합성.txt", "content_base64": "@@@@"}]
+    body["external_processing_consent"] = False
+    c.app.state.job_analyzer = EvidenceAnalyzer(Mock())
+    result = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert result.status_code == 200, result.text
+    assert result.json()["missing_fields"] == ["external_processing_consent"]
+    body["external_processing_consent"] = True
+    assert c.post(ROOT + "/job-analyses", headers=owner, json=body).status_code == 422
+    body["documents"] = [document("Python 합성 프로젝트를 만들었다.")]
+    model = Mock(generate=Mock(return_value={"comparisons": []}))
+    c.app.state.job_analyzer = EvidenceAnalyzer(model)
+    result = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert result.status_code == 200, result.text
+    assert result.json()["status"] == "insufficient_evidence"
+    assert len(model.generate.call_args.args[1]["records"]) == 1
+
+
+@pytest.mark.integration
+def test_job_analysis_says_when_only_some_records_were_compared(auth_client):
+    c = auth_client
+    owner, record, body = setup(c)
+    long = [
+        post(
+            c,
+            owner,
+            "experience-records",
+            {
+                "title": f"합성 긴 기록 {index}",
+                "experience_type": "프로젝트",
+                "role": "개발",
+                "result": "합성 결과 " * 1300,
+            },
+        )
+        for index in range(12)
+    ]
+    body["records"] = [selection(record)] + [selection(item) for item in long]
+    seen = []
+
+    def generate(instruction, payload):
+        seen.append(len(payload["records"]))
+        return {"comparisons": []}
+
+    c.app.state.job_analyzer = EvidenceAnalyzer(Mock(generate=Mock(side_effect=generate)))
+    result = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert result.status_code == 200, result.text
+    value = result.json()
+    assert value["status"] == "insufficient_evidence" and seen[0] < 13
+    assert value["warnings"] == [
+        f"기록이 많아 이 공고와 관련이 높은 기록 {seen[0]}개만 비교했습니다(전체 13개)."
+    ]
 
 
 @pytest.mark.integration
@@ -210,3 +440,89 @@ def test_personal_record_changes_during_analysis_invalidate_result(auth_client):
     result = c.post(ROOT + "/job-analyses", headers=owner, json=body)
     assert result.status_code == 409
     assert "comparisons" not in result.json()
+
+
+@pytest.mark.integration
+def test_no_record_leaves_the_service_without_consent_for_this_request(auth_client):
+    c = auth_client
+    owner, _, body = setup(c)
+    analyzer = SyntheticAnalyzer()
+    c.app.state.job_analyzer = analyzer
+    for payload in (
+        {**body, "external_processing_consent": False},
+        {k: v for k, v in body.items() if k != "external_processing_consent"},
+    ):
+        result = c.post(ROOT + "/job-analyses", headers=owner, json=payload)
+        assert result.status_code == 200, result.text
+        assert result.json()["status"] == "needs_user_input"
+        assert result.json()["reason"] == "external_processing_consent_required"
+        assert result.json()["missing_fields"] == ["external_processing_consent"]
+    assert analyzer.calls == []
+    assert c.post(ROOT + "/job-analyses", headers=owner, json=body).json()["status"] == "completed"
+    # Consent is not remembered between requests.
+    denied = c.post(
+        ROOT + "/job-analyses", headers=owner, json={**body, "external_processing_consent": False}
+    )
+    assert denied.json()["reason"] == "external_processing_consent_required"
+    assert len(analyzer.calls) == 1
+
+
+@pytest.mark.integration
+def test_direct_identifiers_are_removed_and_never_logged(auth_client, caplog):
+    c = auth_client
+    student = register(c, "redaction@example.test")
+    owner = authorization(student)
+    name = student.json()["user"]["display_name"]
+    record = post(
+        c,
+        owner,
+        "experience-records",
+        {
+            "title": name + " 합성 프로젝트",
+            "experience_type": "프로젝트",
+            "detail": (
+                "연락처 010-1234-5678, redaction@example.test, 학번: 20261234, "
+                "https://portfolio.example.test/me 에 게시"
+            ),
+            "result": "Python으로 API 구현",
+        },
+    )
+    analyzer = SyntheticAnalyzer()
+    c.app.state.job_analyzer = analyzer
+    body = {
+        "posting_text": POSTING,
+        "records": [selection(record)],
+        "external_processing_consent": True,
+    }
+    assert c.post(ROOT + "/job-analyses", headers=owner, json=body).json()["status"] == "completed"
+    sent = analyzer.calls[0].records[0]
+    for value in (name, "010-1234-5678", "redaction@example.test", "20261234", "portfolio"):
+        assert value not in sent.text and value not in sent.title
+    assert "Python으로 API 구현" in sent.text
+    # Failures record only the exception type.
+    c.app.state.job_analyzer = type(
+        "Failing",
+        (),
+        {"analyze": lambda self, posting, context: 1 / 0},
+    )()
+    failed = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert (failed.json()["status"], failed.json()["reason"]) == ("failed", "analysis_failed")
+    assert failed.json()["comparisons"] == []
+    assert "ZeroDivisionError" in caplog.text
+    for value in ("Python 개발 경험", "Python으로 API 구현", name):
+        assert value not in caplog.text
+
+
+@pytest.mark.integration
+def test_shared_llm_ceiling_blocks_before_calling_the_model(auth_client):
+    c = auth_client
+    owner, _, body = setup(c)
+    analyzer = SyntheticAnalyzer()
+    c.app.state.job_analyzer = analyzer
+    c.app.state.settings = c.app.state.settings.model_copy(
+        update={"llm_requests_per_15_minutes": 1}
+    )
+    assert c.post(ROOT + "/job-analyses", headers=owner, json=body).status_code == 200
+    second = c.post(ROOT + "/job-analyses", headers=owner, json=body)
+    assert second.status_code == 429
+    assert len(analyzer.calls) == 1

@@ -19,8 +19,6 @@ COLLECTIONS = (
     "personal_curricula",
     "personal_curriculum_courses",
     "personal_graduation_rules",
-    "portfolio_compositions",
-    "application_documents",
 )
 REFERENCE_RESOURCES = {
     "course": "course_records",
@@ -39,8 +37,6 @@ Resource = Literal[
     "personal-curricula",
     "personal-curriculum-courses",
     "personal-graduation-rules",
-    "portfolio-compositions",
-    "application-documents",
 ]
 
 
@@ -89,16 +85,6 @@ class ImportGraduationRule(dto.PersonalGraduationRuleCreate):
     related_record: ImportRecordReference | None = None
 
 
-class ImportComposition(dto.PortfolioCompositionCreate):
-    client_id: UUID
-    sources: list[ImportRecordReference] = Field(default_factory=list, max_length=100)
-
-
-class ImportApplicationDocument(dto.ApplicationDocumentCreate):
-    client_id: UUID
-    sources: list[ImportRecordReference] = Field(default_factory=list, max_length=100)
-
-
 class PersonalImportCreate(StrictModel):
     import_id: UUID
     source_owner_id: UUID
@@ -116,10 +102,6 @@ class PersonalImportCreate(StrictModel):
         default_factory=list, max_length=100
     )
     personal_graduation_rules: list[ImportGraduationRule] = Field(
-        default_factory=list, max_length=100
-    )
-    portfolio_compositions: list[ImportComposition] = Field(default_factory=list, max_length=100)
-    application_documents: list[ImportApplicationDocument] = Field(
         default_factory=list, max_length=100
     )
 
@@ -155,13 +137,6 @@ class PersonalImportCreate(StrictModel):
                 require(
                     REFERENCE_RESOURCES[item.related_record.kind], item.related_record.record_id
                 )
-        reference_count = 0
-        for item in [*self.portfolio_compositions, *self.application_documents]:
-            reference_count += len(item.sources)
-            for reference in item.sources:
-                require(REFERENCE_RESOURCES[reference.kind], reference.record_id)
-        if reference_count > 2000:
-            raise ValueError("Import at most 2000 ordered source references")
         if len(self.model_dump_json(by_alias=True).encode()) > 2 * 1024 * 1024:
             raise ValueError("Import at most 2 MiB of normalized data")
         return self

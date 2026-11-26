@@ -110,42 +110,49 @@ class AdminShell extends StatelessWidget {
               constraints.maxWidth < 760 ||
               MediaQuery.textScalerOf(context).scale(14) >= 21);
       final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+      final padded = Padding(
+        padding: phone
+            ? const EdgeInsets.all(phoneBodyPadding)
+            : EdgeInsets.fromLTRB(compact ? 16 : 28, 26, compact ? 16 : 28, 30),
+        child: child,
+      );
+      final scaffold = Scaffold(
+        resizeToAvoidBottomInset: true,
+        body: SafeArea(
+          bottom: !phone,
+          child: phone
+              ? padded
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      width: compact ? 72 : 196,
+                      child: Material(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerLow,
+                        child: _navigation(context, compact),
+                      ),
+                    ),
+                    const VerticalDivider(width: 1),
+                    Expanded(child: padded),
+                  ],
+                ),
+        ),
+        bottomNavigationBar: phone && !keyboardOpen
+            ? _AdminPhoneNavigationBar(
+                menus: menus,
+                section: section,
+                busy: busy,
+                onNavigate: onNavigate,
+                onSignedOut: onSignedOut,
+                iconFor: _icon,
+              )
+            : null,
+      );
       return PhoneChromeScope(
         active: phone,
-        child: Scaffold(
-          resizeToAvoidBottomInset: true,
-          body: SafeArea(
-            bottom: !phone,
-            child: phone
-                ? child
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(
-                        width: compact ? 72 : 196,
-                        child: Material(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerLow,
-                          child: _navigation(context, compact),
-                        ),
-                      ),
-                      const VerticalDivider(width: 1),
-                      Expanded(child: child),
-                    ],
-                  ),
-          ),
-          bottomNavigationBar: phone && !keyboardOpen
-              ? _AdminPhoneNavigationBar(
-                  menus: menus,
-                  section: section,
-                  busy: busy,
-                  onNavigate: onNavigate,
-                  onSignedOut: onSignedOut,
-                  iconFor: _icon,
-                )
-              : null,
-        ),
+        child: phone ? withPhoneListDensity(context, scaffold) : scaffold,
       );
     },
   );
@@ -214,7 +221,7 @@ class _AdminPhoneNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = adminPhonePrimaryMenus(menus);
-    return NavigationBar(
+    return PhoneNavigationBar(
       key: const Key('phone-nav-bar'),
       selectedIndex: _selectedBarIndex,
       destinations: [

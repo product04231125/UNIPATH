@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import exists, func, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.core.auth_errors import AuthError, conflict, forbidden
@@ -158,21 +158,40 @@ def commit(db):
         raise failure("중복 데이터 또는 연결 참조가 있습니다. 새로 조회해 확인하세요.") from None
 
 
+# Older clients omit these fields; on update, omission keeps the stored value.
+KEPT_WHEN_OMITTED = {Course: ("department_id",)}
+
+
 def save(db, request, model, kind, payload, record_id=None):
     identity = lock_actor(db, request)
+    item = stage(db, request, identity, model, kind, payload, record_id)
+    commit(db)
+    return item
+
+
+def stage(db, request, identity, model, kind, payload, record_id=None):
+    """Validate, write and audit one record; the caller holds the actor lock and commits."""
     values = payload.model_dump(exclude={"expected_version"})
+    current = None if record_id is None else read(db, identity, model, record_id)
+    if current is not None:
+        for key in KEPT_WHEN_OMITTED.get(model, ()):
+            if key in values and key not in payload.model_fields_set:
+                values[key] = getattr(current, key)
     group = validate_relations(db, identity, model, values)
     if record_id is None:
         item = model(**values, created_by=identity.user.id, updated_by=identity.user.id)
         db.add(item)
         action = "create"
     else:
-        item = read(db, identity, model, record_id)
+        item = current
         if item.version != payload.expected_version:
             raise conflict()
         if model in VERSIONED and item.status != "draft":
             raise failure("적용본은 변경할 수 없습니다. 새 버전 초안을 만드세요.")
         for key in ("institution_id", "department_id", "curriculum_id", "rule_set_id"):
+            if model == Course and key == "department_id":
+                # A course's owning department can be corrected; it scopes nothing below it.
+                continue
             if key in values and getattr(item, key) != values[key]:
                 raise failure("기존 항목의 소속은 변경할 수 없습니다. 새 항목을 등록하세요.")
         for key, value in values.items():
@@ -198,7 +217,6 @@ def save(db, request, model, kind, payload, record_id=None):
         db.rollback()
         raise failure("동일 범위에 중복된 코드·이름·관계가 있습니다.") from None
     audit(db, identity, kind, action, item, request)
-    commit(db)
     return item
 
 
@@ -250,7 +268,7 @@ def references(db, identity, model, record_id):
             .order_by(RuleProgram.id)
         ):
             result.append({"id": program.id, "kind": "ruleProgram", "name": program.name})
-    return result
+    return [row for index, row in enumerate(result) if row not in result[:index]]
 
 
 def remove(db, request, model, kind, record_id, version):
@@ -373,7 +391,71 @@ def update_institution(db, request, record_id, payload):
     return item
 
 
-def history(db, identity, institution_id, cursor, limit):
+SCOPE_ACTIONS = ("scope_granted", "scope_revoked")
+# Workspace mutations audit as "academic:<entity>_<verb>" with the school as target.
+WORKSPACE_PREFIXES = {
+    "classification": "classification_",
+    "studyTrack": "track_",
+    "curriculum": "curriculum_",
+    "rule": "requirement_",
+}
+LOCAL_IMPORT_KINDS = {"track": "studyTrack", "requirement": "rule"}
+
+
+def audit_kind(action):
+    if action.startswith("academic:"):
+        operation = action.split(":")[1]
+        for kind, prefix in WORKSPACE_PREFIXES.items():
+            if operation.startswith(prefix):
+                return kind
+        return operation
+    if action.startswith("local_pdf_import:"):
+        return LOCAL_IMPORT_KINDS.get(action.split(":")[1], "other")
+    if action in SCOPE_ACTIONS:
+        return "scope"
+    if action == "institution_created":
+        return "institution"
+    return "account"
+
+
+def imported(name):
+    action = IdentityAudit.action
+    return or_(
+        action == f"local_pdf_import:{name}",
+        action.startswith(f"local_pdf_import:{name}:", autoescape=True),
+    )
+
+
+def kind_condition(kind):
+    """The inverse of audit_kind(), so a kind filter finds exactly the labelled rows."""
+    action = IdentityAudit.action
+    if kind == "scope":
+        return action.in_(SCOPE_ACTIONS)
+    if kind == "institution":
+        return or_(
+            action == "institution_created",
+            action.startswith("academic:institution:", autoescape=True),
+        )
+    if kind == "account":
+        return and_(
+            ~action.startswith("academic:", autoescape=True),
+            ~action.startswith("local_pdf_import:", autoescape=True),
+            action.not_in((*SCOPE_ACTIONS, "institution_created")),
+        )
+    if kind == "other":
+        return and_(
+            action.startswith("local_pdf_import:", autoescape=True),
+            *[~imported(name) for name in LOCAL_IMPORT_KINDS],
+        )
+    imports = [imported(name) for name, label in LOCAL_IMPORT_KINDS.items() if label == kind]
+    options = [action.startswith(f"academic:{kind}:", autoescape=True), *imports]
+    if kind in WORKSPACE_PREFIXES:
+        options.append(action.startswith(f"academic:{WORKSPACE_PREFIXES[kind]}", autoescape=True))
+    return or_(*options)
+
+
+def history(db, identity, institution_id, cursor, limit, filters=None):
+    filters = filters or {}
     if identity.user.role not in (Role.SUPER_ADMIN, Role.SCHOOL_ADMIN):
         raise forbidden()
     statement = select(IdentityAudit)
@@ -388,21 +470,20 @@ def history(db, identity, institution_id, cursor, limit):
                 AdminScope.status == "active",
             )
         )
+    for key in ("target_id", "actor_id", "action"):
+        if filters.get(key) is not None:
+            statement = statement.where(getattr(IdentityAudit, key) == filters[key])
+    if filters.get("kind"):
+        statement = statement.where(kind_condition(filters["kind"]))
+    if filters.get("occurred_from"):
+        statement = statement.where(IdentityAudit.occurred_at >= filters["occurred_from"])
+    if filters.get("occurred_to"):
+        statement = statement.where(IdentityAudit.occurred_at < filters["occurred_to"])
     if cursor:
         statement = statement.where(IdentityAudit.id > cursor)
     result = []
     for row in db.scalars(statement.order_by(IdentityAudit.id).limit(limit + 1)):
-        kind = (
-            row.action.split(":")[1]
-            if row.action.startswith("academic:")
-            else (
-                "scope"
-                if row.action in ("scope_granted", "scope_revoked")
-                else "institution"
-                if row.action == "institution_created"
-                else "account"
-            )
-        )
+        kind = audit_kind(row.action)
         result.append(
             {
                 "id": row.id,

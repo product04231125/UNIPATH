@@ -13,11 +13,11 @@ from app.schemas.assistant import (
 )
 
 
-def create_school_rag_service(settings: Settings) -> SchoolRagService:
+def create_school_rag_service(settings: Settings, generator=None) -> SchoolRagService:
     path = settings.resolved_school_corpus_path
     try:
         chunks = load_chunks(path) if path is not None else []
-        return SchoolRagService(SchoolRetriever(chunks))
+        return SchoolRagService(SchoolRetriever(chunks), generator)
     except (OSError, ValueError, KeyError, TypeError):
         # Fail closed on an invalid configured corpus without disclosing its content.
         raise RuntimeError("The configured school corpus cannot be loaded") from None

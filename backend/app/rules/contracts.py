@@ -107,6 +107,9 @@ class VolunteerRecord(Contract):
     id: UUID
     approval_status: Approval
     approved_hours: Amount | None = None
+    # Self-reported values; only personal rules with hours_basis="reported" read them.
+    reported_hours: Amount | None = None
+    activity_on: date | None = None
 
 
 class CertificateRecord(Contract):
@@ -179,6 +182,8 @@ class CourseRule(RuleBase):
 class VolunteerRule(RuleBase):
     kind: Literal["minimum_volunteer_hours"] = "minimum_volunteer_hours"
     minimum: Amount
+    # "approved" is the official policy and the default, so saved snapshots replay unchanged.
+    hours_basis: Literal["approved", "reported"] = "approved"
 
 
 class CertificateRule(RuleBase):
@@ -229,6 +234,11 @@ class RuleSet(Contract):
     def consistent_rule_set(self):
         if (self.scope is not None) != (self.origin == Origin.OFFICIAL):
             raise ValueError("Only official rule sets have an institutional scope")
+        if self.origin == Origin.OFFICIAL and any(
+            isinstance(rule, VolunteerRule) and rule.hours_basis != "approved"
+            for rule in self.rules
+        ):
+            raise ValueError("Official volunteer rules count approved hours only")
         if self.origin == Origin.OFFICIAL and self.approval_status == Approval.APPROVED:
             if not self.evidence:
                 raise ValueError("Approved official rules require document evidence")

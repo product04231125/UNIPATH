@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/school_knowledge_api.dart';
 import '../api/school_knowledge_models.dart';
 import '../auth/auth_api.dart';
+import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/external_link_button.dart';
 import 'school_context_form.dart';
@@ -130,9 +131,7 @@ class _SearchState extends State<SchoolDocumentSearchDialog> {
     content: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          '학교가 본문 검색용으로 승인한 문서에서 근거를 찾습니다. 문서 적용만으로 검색 승인되지 않으며, 검색 결과는 졸업요건 판정이 아닙니다.',
-        ),
+        const Text('학교가 본문 검색용으로 승인한 문서에서 근거를 찾습니다. 문서 적용만으로 검색 승인되지 않습니다.'),
         SchoolContextForm(
           key: _context,
           api: _gateway,
@@ -140,19 +139,21 @@ class _SearchState extends State<SchoolDocumentSearchDialog> {
           showDate: false,
           onChanged: _invalidate,
         ),
-        const Text('입학연도·이수 경로가 없으면 추가 정보를 요청할 수 있습니다. 학교 선택은 공식 학적 인증이 아닙니다.'),
-        TextField(
-          controller: _question,
-          enabled: !_busy,
-          minLines: 2,
-          maxLines: 5,
-          maxLength: 4000,
-          decoration: InputDecoration(
-            labelText: '검색 질문',
-            errorText:
-                _fields.any((f) => f == 'question' || f.endsWith('.question'))
-                ? '검색 질문을 확인하세요.'
-                : null,
+        const Text('입학연도·이수 경로가 없으면 추가 정보를 요청할 수 있습니다.'),
+        FieldLabel(
+          label: '검색 질문',
+          child: TextField(
+            controller: _question,
+            enabled: !_busy,
+            minLines: 2,
+            maxLines: 5,
+            maxLength: 4000,
+            decoration: InputDecoration(
+              errorText:
+                  _fields.any((f) => f == 'question' || f.endsWith('.question'))
+                  ? '검색 질문을 확인하세요.'
+                  : null,
+            ),
           ),
         ),
         if (_busy) const LinearProgressIndicator(),

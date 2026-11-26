@@ -10,20 +10,25 @@ class WorkspaceTitleBar extends StatelessWidget {
     this.onBack,
     this.onForward,
     this.onToggleSidebar,
-    this.onAccountSecurity,
-    this.onApplications,
-    this.applicationLabel = '학교 관리 권한·신청 이력',
     this.sidebarVisible = true,
-    this.title = 'UniversityPath',
+    this.statusLabel,
+    this.center,
+    this.trailingActions,
 
-    /// Phone portrait: hide back/forward/sidebar/title; keep window controls only.
+    /// Phone portrait: hide back/forward/sidebar/status; keep window controls only.
     this.phoneChrome = false,
   });
-  final VoidCallback? onBack, onForward, onToggleSidebar, onAccountSecurity;
-  final VoidCallback? onApplications;
-  final String applicationLabel;
+  final VoidCallback? onBack, onForward, onToggleSidebar;
   final bool sidebarVisible;
-  final String title;
+
+  /// Account role / current status shown trailing (before OS window controls).
+  final String? statusLabel;
+
+  /// Center slot inside the drag region; only the child receives pointer hits.
+  final Widget? center;
+
+  /// Optional actions before [statusLabel] (e.g. guest-preview exit).
+  final List<Widget>? trailingActions;
   final bool phoneChrome;
 
   bool get native => !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
@@ -38,6 +43,9 @@ class WorkspaceTitleBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (phoneChrome && !native) return const SizedBox.shrink();
+    final status = statusLabel?.trim();
+    final showStatus = !phoneChrome && status != null && status.isNotEmpty;
+    final actions = trailingActions ?? const <Widget>[];
     return Material(
       color: titleBarColor(Theme.of(context).colorScheme),
       child: SafeArea(
@@ -62,40 +70,45 @@ class WorkspaceTitleBar extends StatelessWidget {
               ),
             ],
             Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onPanStart: native
-                    ? (_) => windowManager.startDragging()
-                    : null,
-                onDoubleTap: native ? _maximize : null,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 14,
-                  ),
-                  child: phoneChrome
-                      ? const SizedBox.shrink()
-                      : Text(
-                          title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
+              child: SizedBox(
+                height: 48,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onPanStart: native
+                          ? (_) => windowManager.startDragging()
+                          : null,
+                      onDoubleTap: native ? _maximize : null,
+                      child: const SizedBox.expand(),
+                    ),
+                    if (!phoneChrome && center != null)
+                      Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 440),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: center,
+                          ),
                         ),
+                      ),
+                  ],
                 ),
               ),
             ),
-            if (!phoneChrome && onApplications != null)
-              IconButton(
-                tooltip: applicationLabel,
-                onPressed: onApplications,
-                icon: const Icon(Icons.school_outlined),
-              ),
-            if (!phoneChrome && onAccountSecurity != null)
-              IconButton(
-                tooltip: '계정 보안',
-                onPressed: onAccountSecurity,
-                icon: const Icon(Icons.manage_accounts_outlined),
+            if (!phoneChrome) ...actions,
+            if (showStatus)
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Text(
+                  status,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             if (native) ...[
               IconButton(

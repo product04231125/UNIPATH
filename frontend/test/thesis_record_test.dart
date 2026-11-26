@@ -3,9 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/records/personal_record_fields.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
 
 import 'support/achievement_records_page.dart';
+import 'support/record_actions.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -41,21 +41,6 @@ void main() {
       final reload = PersonalRecordRepository(PersonalRecordKind.portfolio);
       await reload.load();
       expect(reload.records.single.value('thesisGrade'), isEmpty);
-      final source = PortfolioSource(
-        PersonalRecordKind.portfolio,
-        PersonalRecord(
-          id: 'thesis',
-          values: {
-            'title': '합성 논문',
-            'thesisType': '졸업논문',
-            'thesisStatus': '제출 기록',
-            'thesisGrade': 'Pass (원문)',
-            'thesisApprovedOn': '2026-02-28',
-          },
-        ),
-      );
-      expect(source.text, contains('원 성적 표기: Pass (원문)'));
-      expect(source.text, contains('학교 승인 처리 아님: 2026-02-28'));
     },
   );
 
@@ -83,8 +68,8 @@ void main() {
 
         await tester.pumpWidget(page());
         await tester.pumpAndSettle();
-        await tester.ensureVisible(find.text('성과 직접 기록'));
-        await tester.tap(find.text('성과 직접 기록'));
+        await tester.ensureVisible(find.byTooltip('성과 직접 기록'));
+        await tester.tap(find.byTooltip('성과 직접 기록'));
         await tester.pumpAndSettle();
         for (final entry in {
           'title': '합성 캡스톤',
@@ -92,7 +77,6 @@ void main() {
           'thesisType': '캡스톤 발표',
           'thesisStatus': '학교 화면에서 결과 확인',
           'thesisGrade': 'P / 통과 (원문)',
-          'thesisApprovedOn': '2026-02-30',
           'role': '실험 설계',
           'result': '발표 완료',
         }.entries) {
@@ -100,17 +84,10 @@ void main() {
         }
         await tester.tap(find.text('내 기록에 저장'));
         await tester.pumpAndSettle();
-        final date = find.byKey(
-          const ValueKey('record-field-thesisApprovedOn'),
-        );
         expect(
-          tester.widget<TextFormField>(date).controller!.text,
-          '2026-02-30',
+          find.byKey(const ValueKey('record-field-thesisApprovedOn')),
+          findsNothing,
         );
-        expect(find.text('실제 날짜를 YYYY-MM-DD 형식으로 입력하세요.'), findsOneWidget);
-        await fill('thesisApprovedOn', '2026-02-28');
-        await tester.tap(find.text('내 기록에 저장'));
-        await tester.pumpAndSettle();
         final repo = PersonalRecordRepository(PersonalRecordKind.portfolio);
         await repo.load();
         final id = repo.records.single.id;
@@ -119,12 +96,11 @@ void main() {
         await tester.pumpAndSettle();
         await tester.pumpWidget(page());
         await tester.pumpAndSettle();
-        await tester.ensureVisible(find.text('수정'));
-        await tester.tap(find.text('수정'));
+        await tapRecordAction(tester, '수정');
         await tester.pumpAndSettle();
         expect(
-          tester.widget<TextFormField>(date).controller!.text,
-          '2026-02-28',
+          find.byKey(const ValueKey('record-field-thesisApprovedOn')),
+          findsNothing,
         );
         await fill('thesisStatus', '직접 재확인');
         await tester.tap(find.text('내 기록에 저장'));
@@ -132,15 +108,13 @@ void main() {
         await repo.load();
         expect(repo.records.single.id, id);
         expect(repo.records.single.value('thesisStatus'), '직접 재확인');
-        await tester.ensureVisible(find.text('삭제'));
-        await tester.tap(find.text('삭제'));
+        await tapRecordAction(tester, '삭제');
         await tester.pumpAndSettle();
         await tester.tap(find.text('취소'));
         await tester.pumpAndSettle();
         await repo.load();
         expect(repo.records, hasLength(1));
-        await tester.ensureVisible(find.text('삭제'));
-        await tester.tap(find.text('삭제'));
+        await tapRecordAction(tester, '삭제');
         await tester.pumpAndSettle();
         await tester.tap(find.text('삭제').last);
         await tester.pumpAndSettle();

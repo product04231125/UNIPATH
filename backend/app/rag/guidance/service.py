@@ -9,9 +9,9 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlsplit
 
-from . import content
+from . import career_menu, content
 
-VERSION = "academic-click-v2"
+VERSION = "academic-click-v3"
 STATUS_TEXT = {
     "satisfied": "기준일의 검토 자료로 등록된 요건을 충족했습니다.",
     "not_satisfied": "기준일의 검토 자료에서 충족하지 못한 요건이 있습니다.",
@@ -38,19 +38,28 @@ NODES = {
     "tuition": ("등록금", "home", "unavailable"),
     "dormitory": ("기숙사", "home", "unavailable"),
     "departments": ("학부·학과", "home", "unavailable"),
+    # summary is the student's own audit; the others are general criteria first and show
+    # one item of an audit only when the caller names a verified audit.
     "summary": ("내 졸업요건 요약", "graduation", "audit"),
-    "credits": ("이수학점", "graduation", "audit"),
-    "courses": ("필수과목", "graduation", "audit"),
-    "volunteer": ("봉사", "graduation", "audit"),
-    "certificate": ("자격", "graduation", "audit"),
-    "thesis": ("논문", "graduation", "audit"),
-    "review": ("추가 확인 항목", "graduation", "audit"),
+    "credits": ("이수학점", "graduation", "criteria"),
+    "courses": ("필수과목", "graduation", "criteria"),
+    "volunteer": ("봉사", "graduation", "criteria"),
+    "certificate": ("자격", "graduation", "criteria"),
+    "thesis": ("논문", "graduation", "criteria"),
+    "review": ("추가 확인 항목", "graduation", "criteria"),
 }
 NOTICE = "학교 검토 자료 기준 안내이며 학교의 최종 학위 수여 승인을 대체하지 않습니다."
 
 
+_node_cache = (None, None)
+
+
 def _nodes():
-    return {**NODES, **content.bundle()[0]}
+    global _node_cache
+    dynamic = content.bundle()[0]
+    if _node_cache[0] is not dynamic:
+        _node_cache = (dynamic, {**NODES, **dynamic, **career_menu.NODES})
+    return _node_cache[1]
 
 
 def _button(node_id):
@@ -66,6 +75,11 @@ def _button(node_id):
 
 def catalog():
     """Return a detached serializable catalog for the frontend handoff, not a live API."""
+    nodes = _nodes()
+    children = {key: [] for key in nodes}
+    for key, (_, parent, _) in nodes.items():
+        if parent in children:
+            children[parent].append(key)
     return {
         "schema_version": VERSION,
         "root_id": "home",
@@ -75,7 +89,7 @@ def catalog():
                 "label": label,
                 "parent_id": parent,
                 "mode": mode,
-                "children": [child for child, value in _nodes().items() if value[1] == key],
+                "children": children[key],
             }
             for key, (label, parent, mode) in _nodes().items()
         ],
@@ -289,7 +303,19 @@ def respond(node_id="home", *, audit=None):
             reason="approved_content_not_configured",
             message="검토된 안내 자료를 준비 중입니다. 현재 이 항목의 정보를 제공할 수 없습니다.",
         )
-    elif mode == "audit":
+    elif mode == "criteria" and audit is None:
+        # General criteria live in the school's approved rule programs (GET
+        # /catalog/rule-programs) and published requirements; the API adds the latter.
+        response.update(
+            reason="general_criteria",
+            message=(
+                "이 항목의 기준은 학교가 승인한 졸업 기준에서 안내합니다. "
+                "내 충족 여부는 '내 졸업요건 요약'에서 확인해 주세요."
+            ),
+            criteria_kind=KINDS[node_id],
+        )
+        response["buttons"].insert(0, {**_button("summary"), "label": "내 충족 여부 보기"})
+    elif mode in ("audit", "criteria"):
         if audit is None:
             response.update(
                 state="needs_input",
@@ -308,4 +334,7 @@ def respond(node_id="home", *, audit=None):
                     ),
                 )
     response.update(content.payload(node_id))
+    response.update(career_menu.payload(node_id))
+    for related in response.pop("related_node_ids", []):
+        response["buttons"].append(_button(related))
     return deepcopy(response)

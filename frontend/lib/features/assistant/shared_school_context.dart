@@ -9,6 +9,9 @@ SchoolQueryContext schoolContext(PlanningProfile profile) => SchoolQueryContext(
       : profile.department.trim(),
   admissionYear: profile.admissionYear,
   track: profile.track,
+  institutionId: profile.institutionId,
+  departmentId: profile.departmentId,
+  curriculumId: profile.curriculumId,
 );
 
 /// Synchronizes only confirmed, successfully saved profile values, not messages.
@@ -20,6 +23,9 @@ class SharedSchoolContext {
   final PlanningRepository repository;
   final AssistantConversation conversation;
   void _sync() {
+    conversation.setContextAvailable(
+      !repository.isLoading && !repository.loadFailed,
+    );
     if (!repository.isLoading && !repository.loadFailed) {
       conversation.setContext(schoolContext(repository.profile));
     }

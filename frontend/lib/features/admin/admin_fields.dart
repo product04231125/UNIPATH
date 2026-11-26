@@ -8,9 +8,12 @@ class AdminField {
     this.relation,
     this.options = const {},
     this.multiline = false,
+    this.date = false,
   });
   final String key, label;
-  final bool required, multiline;
+
+  /// [date]: a `YYYY-MM-DD` value chosen from a calendar.
+  final bool required, multiline, date;
   final AdminKind? relation;
   final Map<String, String> options;
 }
@@ -84,13 +87,22 @@ List<AdminField> adminFields(AdminKind kind) => [
     const AdminField('countryCode', '국가 코드', required: false),
     const AdminField('officialUrl', '공식 사이트 HTTP(S)', required: false),
   ],
-  if (kind == AdminKind.department || kind == AdminKind.course)
-    const AdminField('code', '코드'),
+  if (kind == AdminKind.department) const AdminField('code', '코드'),
+  if (kind == AdminKind.course)
+    const AdminField('code', '학교 과목번호 (선택)', required: false),
   if (kind == AdminKind.curriculum) ...[
     const AdminField('departmentId', '학과', relation: AdminKind.department),
     const AdminField('year', '적용 연도'),
   ],
-  if (kind == AdminKind.course) const AdminField('credits', '학점'),
+  if (kind == AdminKind.course) ...[
+    const AdminField(
+      'gradingBasis',
+      '평가 방식',
+      required: false,
+      options: {'unspecified': '미지정', 'graded': '등급 평가', 'pass_fail': 'P/F'},
+    ),
+    const AdminField('credits', '학점 (P/F 미확인 시 비움)', required: false),
+  ],
   if (kind == AdminKind.curriculumCourse) ...[
     const AdminField('curriculumId', '교육과정', relation: AdminKind.curriculum),
     const AdminField('courseId', '과목', relation: AdminKind.course),
@@ -161,8 +173,8 @@ List<AdminField> adminFields(AdminKind kind) => [
   if (kind == AdminKind.ruleSet ||
       kind == AdminKind.rule ||
       kind == AdminKind.document) ...[
-    const AdminField('effectiveFrom', '적용 시작일 YYYY-MM-DD', required: false),
-    const AdminField('effectiveTo', '적용 종료일 YYYY-MM-DD', required: false),
+    const AdminField('effectiveFrom', '적용 시작일', required: false, date: true),
+    const AdminField('effectiveTo', '적용 종료일', required: false, date: true),
   ],
   if (kind == AdminKind.scope) ...[
     const AdminField('userId', '사용자', relation: AdminKind.account),
@@ -177,10 +189,20 @@ List<AdminField> adminFields(AdminKind kind) => [
     ),
     const AdminField('reason', '부여·변경 사유', multiline: true),
   ],
-  if (kind == AdminKind.account)
+  if (kind == AdminKind.account) ...[
+    const AdminField(
+      'role',
+      '역할',
+      options: {
+        'user': '일반 사용자',
+        'school_admin': '학교관리자',
+        'super_admin': '슈퍼관리자',
+      },
+    ),
     const AdminField(
       'accountStatus',
       '계정 상태',
       options: {'active': '활성', 'suspended': '정지'},
     ),
+  ],
 ];

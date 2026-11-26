@@ -1,3 +1,4 @@
+import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -5,7 +6,6 @@ import 'package:university_path_frontend/features/auth/local_data_owner.dart';
 import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/remote_personal_record_repository.dart';
-import 'package:university_path_frontend/features/records/portfolio/remote_portfolio_workspace_repository.dart';
 import 'package:university_path_frontend/features/records/course/course_page.dart';
 import 'package:university_path_frontend/features/graduation/personal_graduation_workspace.dart';
 
@@ -13,6 +13,7 @@ import 'support/auth_fixture.dart';
 import 'course_period_test.dart' as period;
 import 'support/personal_gateway.dart';
 import 'support/personal_workspace_fixture.dart';
+import 'support/record_actions.dart';
 
 Widget scope(PersonalGateway gateway, Widget child, {double scale = 1}) =>
     MaterialApp(
@@ -27,8 +28,6 @@ Widget scope(PersonalGateway gateway, Widget child, {double scale = 1}) =>
           kind,
           ensureOpen: () {},
         ),
-        portfolio: () =>
-            RemotePortfolioWorkspaceRepository(gateway.api, ensureOpen: () {}),
         child: Scaffold(body: child),
       ),
     );
@@ -47,27 +46,28 @@ void main() {
           addTearDown(() => tester.binding.setSurfaceSize(null));
           final gateway = PersonalGateway()..failWrites = true;
           await tester.pumpWidget(
-            scope(gateway, const CoursePage(showMockData: false), scale: scale),
+            scope(gateway, const CoursePage(), scale: scale),
           );
           await tester.pumpAndSettle();
           expect(find.text('합성 course'), findsOneWidget);
-          expect(find.textContaining('계정 서버 개인 기록'), findsWidgets);
-          final edit = find.widgetWithText(TextButton, '수정');
-          await tester.ensureVisible(edit);
-          await tester.tap(edit);
-          await tester.pumpAndSettle();
-          final title = find.byType(TextFormField).first;
-          await tester.ensureVisible(title);
-          await tester.enterText(title, '충돌 후 유지할 이름');
+          await tapRecordAction(tester, '수정');
+          expect(
+            find.byKey(const ValueKey('record-field-title')),
+            findsNothing,
+          );
+          expect(
+            find.byKey(const ValueKey('record-field-detail')),
+            findsNothing,
+          );
+          final section = find.byKey(const ValueKey('record-field-section'));
+          await tester.ensureVisible(section);
+          await tester.enterText(section, '123');
           final save = find.widgetWithText(FilledButton, '내 기록에 저장');
           await tester.ensureVisible(save);
           await tester.tap(save);
           await tester.pumpAndSettle();
           expect(find.textContaining('입력은 유지됩니다'), findsOneWidget);
-          expect(
-            tester.widget<TextFormField>(title).controller!.text,
-            '충돌 후 유지할 이름',
-          );
+          expect(tester.widget<TextFormField>(section).controller!.text, '123');
           final request = gateway.calls.singleWhere(
             (call) => call.$1 == 'PATCH',
           );
@@ -92,37 +92,32 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1440, 1000));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final gateway = CoursePeriodGateway()
-        ..empty = true
+        ..emptyCourses = true
         ..failWrites = true;
-      await tester.pumpWidget(
-        scope(gateway, const CoursePage(showMockData: false)),
-      );
+      await tester.pumpWidget(scope(gateway, const CoursePage()));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('수강 과목 직접 입력'));
+      await tester.tap(find.byTooltip('수강 과목 추가'));
       await tester.pumpAndSettle();
-      await period.enter(tester, 'title', '서버 계절 과목');
+      expect(find.byKey(const ValueKey('record-field-detail')), findsNothing);
+      await period.pickCourse(tester, '합성 personalCurriculumCourse');
       await period.enter(tester, 'course-year', '2024');
       await period.enter(tester, 'term', '겨울 계절학기');
-      await period.enter(tester, 'category', '교양');
-      await period.enter(tester, 'credits', '2');
       await period.save(tester);
       expect(find.textContaining('입력은 유지됩니다'), findsOneWidget);
       expect(
         tester
-            .widget<TextFormField>(
-              find.byKey(const ValueKey('record-field-course-year')),
+            .widget<AnchoredSelectField<String>>(
+              find.byKey(const ValueKey('record-select-course-year')),
             )
-            .controller!
-            .text,
+            .value,
         '2024',
       );
       expect(
         tester
-            .widget<TextFormField>(
-              find.byKey(const ValueKey('record-field-term')),
+            .widget<AnchoredSelectField<String>>(
+              find.byKey(const ValueKey('record-select-term')),
             )
-            .controller!
-            .text,
+            .value,
         '겨울 계절학기',
       );
       gateway.failWrites = false;
@@ -145,10 +140,13 @@ void main() {
           'course_code',
           'grade',
           'completion',
+          'grading_basis',
+          'academic_context_id',
+          'academic_entry_id',
         ]),
       );
-      expect(find.textContaining('수강 기간: 2024년 겨울 계절학기'), findsOneWidget);
-      await tester.tap(find.widgetWithText(TextButton, '수정'));
+      expect(find.textContaining('2024년 겨울 계절학기'), findsOneWidget);
+      await tapRecordAction(tester, '수정');
       await tester.pumpAndSettle();
       await period.enter(tester, 'course-year', '2025');
       await period.save(tester);
@@ -157,7 +155,7 @@ void main() {
       expect(patch.$3!['term'], '2025년 겨울 계절학기');
       expect(patch.$3!.containsKey('year'), isFalse);
       expect(patch.$3!.containsKey('client_id'), isFalse);
-      expect(find.textContaining('수강 기간: 2025년 겨울 계절학기'), findsOneWidget);
+      expect(find.textContaining('2025년 겨울 계절학기'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -169,7 +167,7 @@ void main() {
         scope(gateway, PersonalGraduationWorkspace(onBack: () {})),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(OutlinedButton, '개인 규칙'));
+      await tester.tap(find.widgetWithText(OutlinedButton, '규칙'));
       await tester.pumpAndSettle();
       expect(find.text('합성 personalGraduationRule'), findsOneWidget);
       expect(
@@ -203,13 +201,19 @@ void main() {
 }
 
 class CoursePeriodGateway extends PersonalGateway {
+  bool emptyCourses = false;
+
   @override
   Future<Map<String, dynamic>?> request(
     String method,
     String path, [
     Map<String, Object?>? body,
   ]) async {
-    if (method == 'GET' || failWrites) return super.request(method, path, body);
+    if (method == 'GET') {
+      empty = emptyCourses && Uri.parse(path).path == 'me/course-records';
+      return super.request(method, path, body);
+    }
+    if (failWrites) return super.request(method, path, body);
     calls.add((method, path, body));
     return {
       ...body!,

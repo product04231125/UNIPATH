@@ -5,7 +5,7 @@
 이 문서는 백엔드 계약 요청 명세다. **2026-10-18 인증·역할·계정 상태·학교 전체 범위 API를 구현했다.**
 정확한 구현/DTO는 [인증 API](authentication.md)와 [OpenAPI](openapi.json)를 따른다.
 관리자 학사 CRUD·검토 버전·감사·역할/범위 UI 연결은 [학사 API](academic.md)로 구현했다.
-개인 자료 서버 API·학생용 카탈로그·비밀번호 변경과 전송 DTO/adapter도 구현했다. 실제 세 역할의 공통 제목표시줄에 [계정 보안 화면](account-security-integration.md)도 연결했다. 정확한 계약은
+개인 자료 서버 API·학생용 카탈로그·비밀번호 변경과 전송 DTO/adapter도 구현했다. 실제 세 역할의 설정 `계정·정보`에 [계정 보안 화면](account-security-integration.md)도 연결했다. 정확한 계약은
 [개인 자료](personal.md), [학생용 카탈로그](student-catalog.md)를 따른다. 학업 프로필·일정은 [화면 연결/동의 이전](planning-integration.md), 나머지 개인 기록·구성·문서는 [서버 작업 공간](personal-workspace-integration.md)을 연결했다.
 개인 자료와 명시적 조건의 [개인 계산/불변 이력 API](personal-evaluations.md)도 구현했으며
 화면의 다섯 명시 조건·계산·이력 조회/삭제도 연결했다. [학교 본문 검토·DB 검색](school-knowledge.md)은 별도 관리자
@@ -36,7 +36,7 @@ Swagger는 `/api/v1/docs`, 계약 원본은 `/api/v1/openapi.json`이다. `/heal
 
 - 일반 로그인·회원가입은 실제 계정·세션 API다. 관리자 샘플 진입은 `kShowDebugSampleLogin`(기본 `false`)와 non-Release에서만 보이며 서버 권한을 주지 않는다.
 - 계정/역할/정지·학교 전체 범위·학교 생성은 실제 API다. 학사 CRUD·검토 버전·감사 UI는 실제 API이며 debug 샘플·테스트만 FakeAdminRepository다.
-- 실제 일반 계정의 학업 프로필·일정·수강·활동·경험·자격·성과·개인 교육과정/규칙·포트폴리오/지원 문서는 서버 저장이다. 서버 CRUD·동의 이전·버전 충돌 처리를 화면에 연결했으며 기기 원본과 debug 샘플은 로컬 저장을 유지한다.
+- 실제 일반 계정의 학업 프로필·일정·수강·활동·경험·자격·성과·개인 교육과정/규칙은 서버 저장이다(예전 포트폴리오 구성·지원 문서 API는 2026-11-25에 지웠다). 서버 CRUD·동의 이전·버전 충돌 처리를 화면에 연결했으며 기기 원본과 debug 샘플은 로컬 저장을 유지한다.
 - 인증·학교 관리 범위와 AI 학교 질의에 실제 HTTP adapter가 있다. 실행 중 대화/창 간 공유는 클라이언트 메모리·IPC이며 서버 대화 저장 API가 아니다.
 - 공식 졸업 판정은 API 미연결 안내/예시 상태다. 개인 입력 수치 합계는 공식 판정이 아니다.
 
@@ -50,7 +50,7 @@ Swagger는 `/api/v1/docs`, 계약 원본은 `/api/v1/openapi.json`이다. `/heal
 | 3   | 설정·홈·일정            | 개인 프로필/일정 저장·재조회·충돌 처리     | 서버 저장·동의 이전 화면 연결              |
 | 3   | 개인 수강·활동·경험·자격·성과  | 본인 소유 CRUD·검증·출처 구분        | 서버 CRUD·동의 이전, 공식 기록 아님            |
 | 3   | 개인 교육과정/졸업 규칙      | 개인 자료 CRUD·관계/삭제 영향·명시 조건 계산 | 서버 CRUD·명시 조건 계산·이력 화면 연결 |
-| 3   | 포트폴리오 구성·지원 문서     | 초안 CRUD·선택 참조·순서·사용 의도     | 서버 초안, 공개/제출 아님              |
+| 3   | 포트폴리오 구성·지원 문서     | (2026-11-25 삭제, 작성 API로 대체)       | —                                       |
 | 4   | 공식 졸업요건 화면         | 학교 공식 읽기·Rule Engine 판정/근거 | 실행 규칙·공식 기록·감사 API 구현, 화면 연결 후속 |
 | 별도  | 학교 지식 검토·AI 질의      | 기존 계약 유지, 별도 UUID/승인 DB·생성기 | 검토/검색 API 구현, 화면·실제 생성기 후속 |
 | 5 | 학교관리자 가입 신청 | 본인 신청·슈퍼관리자 검토·역할/학교 범위 부여 | API·DTO 구현, 신청·검토 화면 후속 |
@@ -184,14 +184,9 @@ Swagger는 `/api/v1/docs`, 계약 원본은 `/api/v1/openapi.json`이다. `/heal
 - 모든 관계는 같은 owner와 같은 개인 교육과정인지 검증한다. 삭제된 참조의 표시/차단/해제 방식을 합의하며 원본을 연쇄 삭제하지 않는다.
 - 자유 입력 조건은 규칙 실행식이 아니다. CRUD 저장 API와 개인 Rule Engine 계산 API를 분리한다. 실제 계산을 제공할 때 타입·연산·성적/중복 기록 처리 계약을 별도로 확정한다.
 
-### 6.4 포트폴리오 구성·지원 문서 후보
+### 6.4 포트폴리오 구성·지원 문서 (2026-11-25 삭제)
 
-| 컬렉션 | 현재 입력/동작 | 보존 조건 |
-| --- | --- | --- |
-| `/me/portfolio-compositions` | 이름/소개, 선택한 성과의 순서 배열, 사용 의도, 검토 체크 | 순서 저장은 원자적. 구성 삭제/제외가 원 성과를 삭제하지 않음 |
-| `/me/application-documents` | 이름/지원처/직무/문서 종류/본문, 참조 경험·성과 | 빈 본문 초안 허용. 원본 기록 변경으로 작성 본문을 자동 덮어쓰지 않음 |
-
-각 컬렉션의 목록/상세/생성/수정/삭제를 제공하는 후보다. 참조는 `{kind, record_id}` 같은 구조로 같은 owner를 검증한다. 프런트의 `kind/id` 문자열과 로컬 UUID는 서버 FK로 간주하지 않는다.
+예전 `/me/portfolio-compositions`·`/me/application-documents`와 연결 표는 화면에서 쓰지 않아 마이그레이션 `0033_drop_legacy_portfolio`로 지웠다. 포트폴리오 구성과 자기소개서·포트폴리오 초안은 [작성 API](writing.md)가 맡는다.
 
 `private/application/publicReview`는 현재 로컬 사용 의도다. 실제 공개/공유/제출 권한 enum으로 재사용하지 않는다. 검토 체크는 내용·선택·순서 변경 때 다시 확인하는 UI 기록이며 저작권/개인정보/학교 승인 인증이 아니다. 실제 게시/공유는 별도 계약이다.
 
@@ -236,7 +231,7 @@ Swagger는 `/api/v1/docs`, 계약 원본은 `/api/v1/openapi.json`이다. `/heal
 
 - [기능별 구현 문서](../frontend/README.md), [개인/공식 입력 경계](../frontend/manual-input-boundaries.md), [논리 DB 설계](../database-erd.md)
 - [개인 입력 필드](../../frontend/lib/features/records/personal_record_fields.dart), [개인 졸업 관계](../../frontend/lib/features/graduation/personal_graduation_fields.dart)
-- [프로필/일정](../../frontend/lib/features/planning/planning_repository.dart), [개인 CRUD 저장소](../../frontend/lib/features/records/personal_record_repository.dart), [구성/지원 문서](../../frontend/lib/features/records/portfolio/portfolio_workspace_repository.dart)
+- [프로필/일정](../../frontend/lib/features/planning/planning_repository.dart), [개인 CRUD 저장소](../../frontend/lib/features/records/personal_record_repository.dart)
 - [관리자 필드](../../frontend/lib/features/admin/admin_fields.dart), [관리자 합성 동작](../../frontend/lib/features/admin/admin_repository.dart), [역할](../../frontend/lib/features/auth/app_role.dart)
 - [기존 학교 질의](assistant.md), [현 OpenAPI 사본](openapi.json), [서버 공통 오류](../../backend/app/schemas/common.py)
 

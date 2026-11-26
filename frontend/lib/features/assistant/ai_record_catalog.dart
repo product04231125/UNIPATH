@@ -1,0 +1,154 @@
+import 'dart:convert';
+
+import '../api/academic_guidance_models.dart';
+import '../api/student_api.dart';
+import '../api/student_api_models.dart';
+import '../records/portfolio/material_repository.dart';
+
+/// Display metadata only; contents are read when a request is sent.
+class AssistantMaterial {
+  const AssistantMaterial({
+    required this.id,
+    required this.title,
+    required this.type,
+  });
+  final String id, title, type;
+  Map<String, Object?> toJson() => {'id': id, 'title': title, 'type': type};
+  factory AssistantMaterial.fromJson(Map<String, dynamic> value) =>
+      AssistantMaterial(
+        id: value['id'] as String,
+        title: value['title'] as String,
+        type: value['type'] as String,
+      );
+}
+
+Future<List<AssistantMaterial>> loadAssistantMaterials(
+  MaterialRepository repository,
+) async => [
+  for (final material in await repository.load())
+    AssistantMaterial(
+      id: material.id,
+      title: material.title,
+      type: material.type,
+    ),
+];
+
+class AiRecordOption {
+  const AiRecordOption({
+    required this.kind,
+    required this.id,
+    required this.version,
+    required this.title,
+  });
+  final String kind, id, title;
+  final int version;
+  String get key => '$kind/$id';
+  String get kindLabel => switch (kind) {
+    'course' => '수강',
+    'activity' => '활동',
+    'experience' => '경험',
+    'credential' => '자격',
+    'achievement' => '성과',
+    _ => '기록',
+  };
+  GuidanceRecordSelection get selection => GuidanceRecordSelection(
+    kind: kind,
+    recordId: id,
+    expectedVersion: version,
+  );
+  Map<String, Object?> toJson() => {
+    'kind': kind,
+    'id': id,
+    'version': version,
+    'title': title,
+  };
+  factory AiRecordOption.fromJson(Map<String, dynamic> value) => AiRecordOption(
+    kind: value['kind'] as String,
+    id: value['id'] as String,
+    version: value['version'] as int,
+    title: value['title'] as String,
+  );
+}
+
+/// Reads only owner-checked server records; no PDFs or device-local fixtures.
+Future<List<AiRecordOption>> loadAiRecords(
+  StudentApi api, {
+  bool includeCourses = true,
+}) async {
+  final resources = <String, StudentResource<StudentPayload>>{
+    if (includeCourses) 'course': StudentResources.courseRecords,
+    'activity': StudentResources.activityRecords,
+    'experience': StudentResources.experienceRecords,
+    'credential': StudentResources.credentialRecords,
+    'achievement': StudentResources.achievementRecords,
+  };
+  final records = <AiRecordOption>[];
+  for (final entry in resources.entries) {
+    String? cursor;
+    final cursors = <String>{};
+    final identifiers = <String>{};
+    do {
+      final page = await api.list(entry.value, cursor: cursor);
+      for (final record in page.items) {
+        if (!identifiers.add(record.id)) {
+          throw const FormatException('Repeated record');
+        }
+        final json = record.data.toJson();
+        records.add(
+          AiRecordOption(
+            kind: entry.key,
+            id: record.id,
+            version: record.version,
+            title:
+                (json['title'] ?? json['course_name'] ?? '이름 확인 필요') as String,
+          ),
+        );
+      }
+      cursor = page.nextCursor;
+      if (cursor != null && !cursors.add(cursor)) {
+        throw const FormatException('Repeated record cursor');
+      }
+    } while (cursor != null);
+  }
+  return List.unmodifiable(records);
+}
+
+Future<List<GuidanceDocument>> loadGuidanceDocuments(
+  MaterialRepository repository,
+  List<String> ids,
+) async {
+  final materials = await repository.load();
+  final documents = <GuidanceDocument>[];
+  var bytes = 0;
+  for (final id in ids) {
+    final matches = materials.where((m) => m.id == id);
+    if (matches.length != 1) throw StateError('선택한 자료가 변경되었습니다. 다시 선택해 주세요.');
+    final m = matches.single;
+    if (m.description.trim().isNotEmpty) {
+      final raw = utf8.encode(m.description);
+      bytes += raw.length;
+      documents.add(
+        GuidanceDocument(
+          filename: '${m.title.substring(0, m.title.length.clamp(0, 160))}.txt',
+          contentBase64: base64Encode(raw),
+        ),
+      );
+    }
+    if (m.hasPdf) {
+      final pdf = await repository.pdf(m);
+      if (pdf != null) {
+        bytes += pdf.length;
+        documents.add(
+          GuidanceDocument(
+            filename: m.fileName.isEmpty ? '자료.pdf' : m.fileName,
+            contentBase64: base64Encode(pdf),
+          ),
+        );
+      }
+    }
+  }
+  if (documents.isEmpty || documents.length > 5 || bytes > 8 * 1024 * 1024) {
+    throw StateError('설명과 PDF는 합계 5개·8MiB 이내로 선택해 주세요.');
+  }
+  return List.unmodifiable(documents);
+}

@@ -98,7 +98,7 @@ class ProgramRuleInput(StrictModel):
     rule_id: UUID
     expected_version: Version
     condition: Condition
-    evidence_chunk_ids: list[UUID] = Field(min_length=1, max_length=8)
+    evidence_chunk_ids: list[UUID] = Field(default_factory=list, min_length=0, max_length=8)
 
     @model_validator(mode="after")
     def unique_evidence(self):

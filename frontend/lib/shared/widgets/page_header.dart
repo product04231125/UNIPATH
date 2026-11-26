@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../app_shell/phone_shell.dart';
 import '../app_typography.dart';
+import 'page_tabs.dart';
 
 /// Presentation only: the feature supplies its title and any real context.
 class PageHeader extends StatelessWidget {
@@ -20,22 +22,36 @@ class PageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final heading = Semantics(
-      header: true,
-      child: Text(
-        title,
-        style: theme.textTheme.headlineMedium?.merge(AppTypography.pageStyle),
-      ),
-    );
+    final phone = PhoneChromeScope.of(context);
+    final titleStyle = phone
+        ? AppTypography.pageStyle.copyWith(fontSize: phonePageTitleSize)
+        : AppTypography.pageStyle;
+    // Inside a tabbed menu the sibling pages replace the title.
+    final tabs = PageTabsScope.of(context);
+    final heading = tabs != null
+        ? PageTabTitles(data: tabs)
+        : Semantics(
+            header: true,
+            child: Text(
+              title,
+              style: theme.textTheme.headlineMedium?.merge(titleStyle),
+            ),
+          );
     return SizedBox(
       width: double.infinity,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final stacked =
-              constraints.maxWidth < 600 ||
+              constraints.maxWidth < 300 ||
               MediaQuery.textScalerOf(context).scale(AppTypography.body) >
                   AppTypography.body * 1.2;
-          final controls = Wrap(spacing: 8, runSpacing: 8, children: actions);
+          final controls = Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: actions,
+          );
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,11 +64,18 @@ class PageHeader extends StatelessWidget {
                 controls,
               ] else
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(child: heading),
                     const SizedBox(width: 12),
-                    Flexible(child: controls),
+                    // Actions keep their own width at the right edge and
+                    // wrap only when they would take most of the row.
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: constraints.maxWidth * .7,
+                      ),
+                      child: controls,
+                    ),
                   ],
                 ),
               if (contextLabel?.trim().isNotEmpty ?? false) ...[
@@ -73,7 +96,7 @@ class PageHeader extends StatelessWidget {
                   ),
                 ),
               ],
-              const SizedBox(height: 16),
+              SizedBox(height: phone ? phonePageHeaderBottomGap : 16),
             ],
           );
         },

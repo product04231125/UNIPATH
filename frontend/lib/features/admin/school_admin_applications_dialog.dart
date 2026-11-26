@@ -6,8 +6,10 @@ import '../api/student_api_models.dart';
 import '../auth/auth_api.dart';
 import '../auth/app_role.dart';
 import '../records/personal_record_repository.dart';
+import '../../shared/widgets/feature_line.dart';
 import '../../shared/widgets/input_dialog.dart';
 import '../../shared/widgets/anchored_select_field.dart';
+import '../../shared/widgets/surface_card.dart';
 import 'unregistered_school_application_form.dart';
 import 'school_signup_panel.dart';
 
@@ -303,6 +305,42 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
     }
   }
 
+  Widget _emptyApplicationCards() {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    Widget placeholder({
+      required String title,
+      required String subtitle,
+    }) => Opacity(
+      opacity: 0.72,
+      child: IgnorePointer(
+        child: SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 4),
+              Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ),
+      ),
+    );
+    return Column(
+      key: const ValueKey('application-empty-cards'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        placeholder(title: '예시 · 대기', subtitle: '신청자 이름 · 직책'),
+        const SizedBox(height: 8),
+        placeholder(title: '예시 · 승인', subtitle: '신청자 이름 · 직책'),
+        const SizedBox(height: 12),
+        Text(
+          '신청 내역이 없습니다. 접수되면 여기에 신청이 표시됩니다.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: muted),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final content = Column(
@@ -323,15 +361,6 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
           ),
         ],
         if (_loading) const LinearProgressIndicator(),
-        if (_review)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: _busy || _loading ? null : _load,
-              icon: const Icon(Icons.refresh),
-              label: const Text('접수 목록 새로고침'),
-            ),
-          ),
         if (!_review) ...[
           const SizedBox(height: 12),
           Wrap(
@@ -440,14 +469,16 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
             _error == null)
           const Text('신청 가능한 학교가 없습니다. 미등록 학교 유형에서 정보를 작성할 수 있습니다.'),
         const SizedBox(height: 20),
-        Text(
-          _review ? '접수 목록' : '내 신청 이력',
-          style: Theme.of(context).textTheme.titleMedium,
+        FeatureLine.section(
+          text: _review ? '접수 목록' : '내 신청 이력',
+          trailing: FeatureLine.reload(
+            onPressed: _busy || _loading ? null : _load,
+            label: _review ? '접수 목록 새로고침' : '신청 이력 다시 읽기',
+          ),
         ),
-        if (!_review)
-          const Text('서버에 접수된 신청만 표시합니다. 미등록 학교 작성 내용은 이력에 포함되지 않습니다.'),
         if (_review)
           AnchoredSelectField(
+            externalLabel: true,
             value: _filter,
             label: '신청 상태',
             options: [
@@ -474,6 +505,7 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
           const SizedBox(height: 12),
           AnchoredSelectField<String>(
             key: const ValueKey('application-school-filter'),
+            externalLabel: true,
             value: _reviewSchool,
             label: '신청 학교',
             searchable: true,
@@ -498,35 +530,61 @@ class _ApplicationsState extends State<SchoolAdminApplicationsDialog> {
             },
           ),
         ],
-        if (!_loading && (_review ? _reviewItems.isEmpty : _items.isEmpty))
-          const Text('신청 내역이 없습니다.'),
+        if (!_loading && (_review ? _reviewItems.isEmpty : _items.isEmpty)) ...[
+          SizedBox(height: FeatureLine.slotGap(context)),
+          _emptyApplicationCards(),
+        ],
         if (_review)
           ..._reviewItems.map(
-            (r) => Card(
-              child: ListTile(
-                title: Text(
-                  '${r.institutionName} · ${applicationStatus(r.status)}',
+            (r) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _busy ? null : () => _inspect(r),
+                  borderRadius: BorderRadius.circular(20),
+                  child: SurfaceCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${r.institutionName} · ${applicationStatus(r.status)}',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${r.applicant.displayName} · ${r.position}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                subtitle: Text('${r.applicant.displayName} · ${r.position}'),
-                onTap: _busy ? null : () => _inspect(r),
               ),
             ),
           )
         else
           ..._items.map(
-            (r) => Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
+            (r) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: SurfaceCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       '${r.institutionName} · ${applicationStatus(r.status)}',
+                      style: Theme.of(context).textTheme.titleSmall,
                     ),
+                    const SizedBox(height: 4),
                     Text(
                       '${r.createdAt.toLocal()}\n${r.position}\n${r.reason}',
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    if (r.reviewNote.isNotEmpty) Text('검토 사유: ${r.reviewNote}'),
+                    if (r.reviewNote.isNotEmpty)
+                      Text(
+                        '검토 사유: ${r.reviewNote}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     if (r.status == 'pending')
                       TextButton(
                         onPressed: _busy ? null : () => _cancel(r),

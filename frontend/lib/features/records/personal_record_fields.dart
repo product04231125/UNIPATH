@@ -57,6 +57,12 @@ class PersonalRecordField {
   }
 }
 
+/// Activity memos show only a name, hours, and a note. Other stored keys stay
+/// on the record so an edit does not wipe them.
+const activityVisibleKeys = {'title', 'reportedHours', 'detail'};
+
+const portfolioHiddenKeys = {'thesisApprovedOn'};
+
 List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
   const PersonalRecordField('title', '이름', required: true),
   const PersonalRecordField('detail', '설명 · 메모', multiline: true),
@@ -96,7 +102,20 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
     ],
     PersonalRecordKind.personalGraduationRule => const [
       PersonalRecordField('ruleCode', '개인 규칙 코드'),
-      PersonalRecordField('ruleType', '규칙 종류', required: true),
+      PersonalRecordField(
+        'ruleType',
+        '규칙 종류',
+        required: true,
+        options: ['학점', '필수과목', '봉사', '논문·캡스톤', '자격', '기타'],
+        optionLabels: {
+          '학점': '학점',
+          '필수과목': '필수과목',
+          '봉사': '봉사',
+          '논문·캡스톤': '논문·캡스톤',
+          '자격': '자격',
+          '기타': '기타',
+        },
+      ),
       PersonalRecordField(
         'scope',
         '개인 적용 범위',
@@ -137,6 +156,8 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
       ),
     ],
     PersonalRecordKind.course => const [
+      PersonalRecordField('academicContextId', '학업 기준 연결'),
+      PersonalRecordField('academicEntryId', '교육과정 과목 연결'),
       PersonalRecordField('term', '학기', required: true),
       PersonalRecordField('category', '이수구분', required: true),
       PersonalRecordField(
@@ -149,9 +170,19 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
       PersonalRecordField('courseCode', '과목 코드'),
       PersonalRecordField('grade', '원 성적 표기'),
       PersonalRecordField(
+        'gradingBasis',
+        '평가 방식',
+        options: ['unspecified', 'graded', 'pass_fail'],
+        optionLabels: {
+          'unspecified': '미지정',
+          'graded': '등급 평가',
+          'pass_fail': 'P/F',
+        },
+      ),
+      PersonalRecordField(
         'completion',
-        '개인 기록 상태',
-        options: ['계획', '수강 중', '이수 기록'],
+        '수강 상태',
+        options: ['수강 예정', '수강 중', '이수 완료', '미이수'],
       ),
     ],
     PersonalRecordKind.activity => const [
@@ -161,7 +192,7 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
       PersonalRecordField('role', '역할'),
       PersonalRecordField(
         'reportedHours',
-        '직접 입력 봉사 시간',
+        '시간',
         type: PersonalFieldType.number,
       ),
       PersonalRecordField(
@@ -226,23 +257,20 @@ List<PersonalRecordField> personalRecordFields(PersonalRecordKind kind) => [
   },
 ];
 
+/// Start and end of a period: the form puts them on one line and checks their order.
+const personalDatePairs = {
+  'startedOn': 'endedOn',
+  'earnedOn': 'expiresOn',
+  'effectiveFrom': 'effectiveTo',
+};
+
 String? personalRecordCrossError(Map<String, String> values) {
-  for (final pair in [
-    ('startedOn', 'endedOn'),
-    ('earnedOn', 'expiresOn'),
-    ('effectiveFrom', 'effectiveTo'),
-  ]) {
-    final start = DateTime.tryParse(values[pair.$1] ?? '');
-    final end = DateTime.tryParse(values[pair.$2] ?? '');
+  for (final pair in personalDatePairs.entries) {
+    final start = DateTime.tryParse(values[pair.key] ?? '');
+    final end = DateTime.tryParse(values[pair.value] ?? '');
     if (start != null && end != null && end.isBefore(start)) {
       return '종료·만료일은 시작·취득일보다 빠를 수 없습니다.';
     }
-  }
-  final approved = double.tryParse(values['approvedHours'] ?? '') ?? 0;
-  if (approved > 0 &&
-      (values['approval'] != 'approved' ||
-          (values['observedOn'] ?? '').isEmpty)) {
-    return '승인 시간을 기록하려면 승인 상태 approved와 학교 상태 확인일을 입력하세요.';
   }
   return null;
 }

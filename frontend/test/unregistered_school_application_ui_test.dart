@@ -105,14 +105,14 @@ void main() {
         expect(tester.widget<FilledButton>(submit).onPressed, isNotNull);
         expect(writes, 0);
         expect(find.textContaining('신청이 접수됐습니다.'), findsNothing);
-        expect(find.text('신청 내역이 없습니다.'), findsOneWidget);
+        expect(find.textContaining('신청 내역이 없습니다.'), findsOneWidget);
         await tapVisible(tester, find.text('닫기'));
         expect(find.text('작성한 내용을 폐기할까요?'), findsOneWidget);
-        await tester.tap(find.text('계속 작성'));
+        await tester.tap(find.byKey(const Key('input-discard-cancel')));
         await tester.pumpAndSettle();
         expect(find.text('학교 서비스 등록 요청'), findsOneWidget);
         await tapVisible(tester, find.text('닫기'));
-        await tester.tap(find.text('내용 폐기'));
+        await tester.tap(find.byKey(const Key('input-discard-delete')));
         await tester.pumpAndSettle();
         await tester.tap(find.text('열기'));
         await tester.pumpAndSettle();

@@ -1,8 +1,6 @@
 # 계정·세션·역할 API
 
-2026-11-04: 아래 **목표 계약(미구현)** 은 백엔드 런타임·OpenAPI에 아직 반영하지 않은
-제품 계약이다. **현재 구현** 은 2026-10-23 서버 동작과 이 체크아웃
-[OpenAPI](openapi.json)다. 구현 전까지 클라이언트는 현재 구현을 따른다.
+2026-11-08: 2026-11-04에 적은 학교관리자 가입 심사 **목표 계약**(승인 전 세션 미발급, 미승인 로그인 403, 학교관리자의 추가 관리자 승인·범위 부여 등)은 진행하지 않기로 했다. 아래 **현재 구현**이 계약이며 [OpenAPI](openapi.json)와 같다. 당시 제안은 PR #47의 git 이력에 있다.
 
 이메일 소유 확인·비밀번호 찾기·자동 학교 신원 확인·SSO는 후속 작업이다. 비밀번호 변경과
 학사 관리 메타데이터는 아래 및 [학사 API](academic.md)로 구현했다. 가입 이메일은
@@ -11,87 +9,10 @@
 학교관리자 경로는 [최초 가입](initial-school-admin-signups.md)과
 [추가 신청](school-admin-applications.md)을 본다.
 
-## 목표 계약 (미구현)
-
-학생 가입과 학교관리자 가입을 완전히 분리한다. 학생 계정은 학교관리자를 신청할 수 없고,
-학교관리자 가입은 승인 전에 어떤 작업 공간에도 들어가지 않는다. 반려해도 학생이 되지 않는다.
-
-### 가입
-
-| 경로 | 목표 |
-|---|---|
-| `POST /auth/register` | 학생만 만든다. 역할은 항상 `user`. 역할/owner 필드는 422. 성공 시 지금처럼 학생 세션을 발급한다. |
-| `POST /auth/school-admin-signups` | 학교관리자 신청만 만든다. 201이어도 세션·쿠키를 만들지 않는다. 상세는 [최초 가입](initial-school-admin-signups.md). |
-
-같은 이메일은 UNIQUE를 유지한다. 학생으로 쓴 이메일로 학교관리자 가입을 붙이거나, 학교관리자
-신청 계정을 `POST /auth/register`로 학생으로 바꾸는 것은 409다. 한 계정이 학생과
-학교관리자를 겸임하지 않는다.
-
-### 로그인 가드와 팝업용 상태
-
-비밀번호가 맞는 학교관리자 신청 계정의 최신 신청이 `pending`/`rejected`/`cancelled`이면
-**세션을 발급하지 않는다.** 잘못된 비밀번호·없는 이메일·정지 계정은 지금처럼 같은 401이다.
-
-| HTTP | `error.code` (구현 시 `ErrorCode` 추가) | 클라이언트 |
-|---|---|---|
-| 403 | `SCHOOL_ADMIN_SIGNUP_PENDING` | 대기 팝업. 작업 공간 진입 금지 |
-| 403 | `SCHOOL_ADMIN_SIGNUP_REJECTED` | 반려 팝업. `review_note` 표시. 학생 전환 없음 |
-| 403 | `SCHOOL_ADMIN_SIGNUP_CANCELLED` | 취소 안내 팝업. 작업 공간 진입 금지 |
-
-403 본문은 공통 envelope에 신청 문맥을 붙인다. `message`만 파싱하지 않는다.
-
-```json
-{
-  "error": {
-    "code": "SCHOOL_ADMIN_SIGNUP_REJECTED",
-    "message": "학교관리자 신청이 반려되었습니다.",
-    "field_errors": [],
-    "request_id": "…",
-    "signup": {
-      "id": "<uuid>",
-      "status": "rejected",
-      "school_name": "…",
-      "review_note": "신청자에게 보이는 사유",
-      "reviewed_at": "2026-11-04T00:00:00Z"
-    }
-  }
-}
-```
-
-`review_note`는 `rejected`에서만 채운다. 쿠키를 설정하지 않고 `access_token`도 없다.
-이 403은 이메일 존재와 신청 상태를 드러내며, 대기/반려 안내를 위한 의도된 계약이다.
-
-승인된 `school_admin`만 200과 세션을 받는다. 기존에 발급된 미승인 세션이 남아 있으면
-`GET /auth/me`와 보호 API가 그 세션을 폐기하고 위와 같은 403을 반환한다. 학생(`user`)과
-슈퍼관리자 로그인은 지금과 같다.
-
-### 학생의 관리자 신청 거부
-
-역할 `user`의 `POST /me/school-admin-applications`와 `POST /me/school-admin-signups`는
-403 `STUDENT_SCHOOL_ADMIN_APPLY_FORBIDDEN`이다. UI를 숨겨도 서버가 거절한다.
-
-### 역할·심사·범위
-
-| 역할 | 목표 |
-|---|---|
-| `user` | 학생 작업 공간만. 관리자 API·학교관리자 신청 생성 불가 |
-| `school_admin` | 본인 활성 범위 학사 관리. **자기 학교**의 추가 관리자 승인/반려, 같은 학교 범위 부여/회수 |
-| `super_admin` | 미등록 학교와 **해당 학교 첫** 학교관리자 승인, 계정 정지, 강제 범위 회수, 감사. 전체 학사 관리 |
-
-`POST /admin/scopes`와 `POST /admin/scopes/{id}/revoke`는 슈퍼 전용이 아니다. 활성 범위가
-있는 `school_admin`은 **그 학교**에 한해 학교 전체 범위를 부여·회수한다. 다른 학교·자기
-계정 정지·자기 마지막 활성 범위 회수는 거부한다. `user`를 `school_admin`으로 승격하는
-직접 부여는 허용하지 않는다. 승격은 신청 승인 트랜잭션만 한다.
-
-슈퍼의 강제 회수는 학교관리자가 부여한 범위를 포함해 어떤 학교 범위든 회수할 수 있다.
-정지는 지금처럼 세션을 모두 폐기한다. 감사 테이블 정책(수행자·행동·대상·학교, 사유 원문
-미복제)은 유지한다.
-
-조교 전용 하위 역할과 학과/교육과정 하위 범위는 아직 없다. 추가 인력도 `school_admin` +
-학교 전체 범위다. OpenAPI·런타임은 구현 작업에서 이 목표와 함께 바꾼다.
-
 ## 현재 구현
 
+2026-10-23 기준. 계약 원본은 [OpenAPI](openapi.json)다.
+[학교관리자 신청·수동 검토 승인](school-admin-applications.md)은 별도 API로 구현했다.
 [최초 학교관리자 가입](initial-school-admin-signups.md)은 계정·학교 신청을 원자적으로
 접수한다. 승인 전에는 일반 계정이며 학교 등록·학교관리자 역할·범위 부여는 슈퍼관리자의
 명시적 신원/소속 확인과 승인에서 함께 처리한다. 기존 계정의 미등록 학교 신청도 제공한다.
@@ -119,13 +40,16 @@
   쿠키를 설정한다. staging/production은 Secure와 `__Host-unipath_session` 이름을 사용한다.
   local HTTP만 `unipath_session` 이름이다. 쿠키 변경 요청·쿠키 로그인/가입에는 Origin이
   필요하며 `CORS_ORIGINS`에 정확히 일치해야 한다. Web HTTP 클라이언트는 credentials를
-  포함한다. 로컬 Web/API는 모두 `localhost`로 접속하고 127.0.0.1과 혼용하지 않는다.
+  포함한다.   로컬 Web 원점은 기본으로 `http://localhost:3000`과
+  `http://127.0.0.1:3000`을 허용한다. 같은 세션에서는 주소창 호스트를 바꿔 가며
+  쓰지 않는다(쿠키·Origin이 호스트마다 다르다). 프론트 Web은 페이지와 API가 모두
+  루프백일 때 API 호스트를 페이지 호스트에 맞춰 Strict 쿠키가 같은 사이트에 남게 한다.
 - Windows는 `session_mode=bearer`를 보내고 응답 `access_token`을 실행 중 메모리에만 둔다.
   `Authorization: Bearer ...`로 전송하며 재시작 후 다시 로그인한다. 쿠키용 토큰을 bearer로
   사용할 수 없다. 네이티브 bearer 요청은 Origin 생략을 허용하지만 다른 Origin은 거부한다.
-- 로그인은 이메일별 15분 8회, 가입은 15분 3회의 PostgreSQL 원자적 한도다. 실패 요청도
-  커밋되며 여러 워커가 공유한다. 공개 nginx는 IP별 로그인 10회/분(burst 10), 가입 3회/분
-  (burst 3)을 추가한다. 실패한 로그인은 이메일 부재·비밀번호 오류·정지 모두 같은 401이다.
+- 로그인에는 시도 횟수 제한이 없다(졸업작품 시연·시험 계정을 여럿이 함께 써서 서로 잠기던
+  문제로 앱·nginx 모두 제거). 가입은 15분 3회의 PostgreSQL 원자적 한도다. 실패 요청도
+  커밋되며 여러 워커가 공유한다. 공개 nginx는 IP별 가입 3회/분(burst 3)을 추가한다. 실패한 로그인은 이메일 부재·비밀번호 오류·정지 모두 같은 401이다.
 - 공통 오류 envelope와 no-store 응답을 사용한다. 만료/폐기 401, 권한 403, 중복/버전 409,
   검증 422, 한도 429다. 응답·로그에 비밀번호·토큰·DB 예외/입력을 노출하지 않는다.
 
@@ -135,7 +59,7 @@
 갱신하고 현재를 포함한 모든 세션을 폐기하므로 새 비밀번호로 다시 로그인해야 한다.
 감사에는 변경 행동만 남기며 이메일 발송·비밀번호 재설정·기존 개인 자료 삭제는 수행하지 않는다.
 
-실제 학생·학교관리자·슈퍼관리자는 공통 제목표시줄의 [계정 보안 화면](account-security-integration.md)에서
+실제 학생·학교관리자·슈퍼관리자는 설정의 [계정 보안 화면](account-security-integration.md)에서
 비밀번호 변경·모든 기기 로그아웃을 호출한다. 응답 유실은 성공으로 표시하지 않으며 확인된 204만
 완료로 안내한다. 세션 종료 후 새 비밀번호 또는 기존 비밀번호로 다시 로그인한다.
 
@@ -155,6 +79,7 @@
 | --- | --- |
 | GET `/admin/users?cursor=&limit=` | 슈퍼관리자, UUID cursor·최대 100, `items/next_cursor` |
 | PATCH `/admin/users/{id}/role` | `role`, `expected_version` |
+| PATCH `/admin/users/{id}/access` | `role`, `account_status`, `expected_version`을 함께 변경. 현재 FE 사용자 수정 폼이 사용 |
 | PATCH `/admin/users/{id}/status` | `account_status: active/suspended`, `expected_version` |
 | GET/POST `/admin/institutions` | 허용 학교 목록(cursor/최대 100, `query` 검색), 생성은 슈퍼관리자·`name` |
 | GET `/admin/institutions/{id}` | 직접 ID 접근에도 범위 확인 |
@@ -170,7 +95,7 @@
 생성은 advisory transaction lock으로 직렬화한다. 수행자·행동·대상·학교·request ID·시각을
 감사 테이블에 기록하며 자유 입력 사유·비밀번호·토큰·학생 기록 원문을 감사 로그에 복제하지 않는다.
 범위 부여/회수는 **슈퍼관리자만** 호출한다. 학교관리자는 본인 범위 조회만 한다. 추가 학교관리자
-승인 주체를 학교로 옮기는 목표는 위 **목표 계약**과 [신청 API](school-admin-applications.md)를 본다.
+추가 학교관리자 승인도 슈퍼관리자가 한다. [신청 API](school-admin-applications.md)를 본다.
 
 ## 최초 슈퍼관리자
 
@@ -196,11 +121,11 @@ uv run --frozen python -m app.operations.users --environment staging \
 - Web은 쿠키로 신원을 복원하고 60초 간격/앱 복귀 시 갱신한다. 401이면 로그인으로 돌아가며
   통신 실패를 세션 폐기로 간주하지 않는다. API 권한은 매 요청 서버가 확인한다.
 - 실제 일반 계정의 개인 프로필·일정·기록·포트폴리오는 서버 저장이다. 기기 원본은 사용자 UUID별 키로 분리하고
-  객체는 생성 당시 계정을 유지해 지연 저장이 다른 계정을 덮어쓰지 않는다. 기존 익명 자료는
+  객체는 생성 당시 계정을 유지해 지연 저장이 다른 계정을 덮어쓰지 않는다. 자료 메뉴의 설명/PDF 파일 보관은 이 서버 기록 계약과 별개로 기기 저장이며 개인 PDF 업로드·추출 계약은 미연결이다. 기존 익명 자료는
   자동 귀속·업로드·삭제하지 않는다. namespace는 암호화/공유 OS 접근 통제를 대신하지 않는다.
 - [개인 자료 API](personal.md)와 [학생용 학사 조회](student-catalog.md)는 서버에 구현했다.
   생성 DTO/프론트 전송 adapter와 [프로필·일정 화면 연결/동의 이전](planning-integration.md)을 제공한다. [나머지 개인 기록·구성·문서 화면](personal-workspace-integration.md)도 서버 저장과 동의 이전에 연결했다.
-- 이메일 검증/복구·MFA·학교 담당자 심사·자동 실시간 동기화·세션/한도 데이터
+- 이메일 검증/복구·MFA·자동 학교 신원 확인·자동 실시간 동기화·세션/한도 데이터
   정리 주기는 후속이다. 공식 학적/학교 자격을 검증했다고 표시하지 않는다.
 
 검증은 합성 데이터와 독립 PostgreSQL 스키마로 수행한다. 권한 우회·CSRF·쿠키 속성·토큰

@@ -449,6 +449,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('기기 학업 정보·일정 이전'));
       await tester.tap(find.text('기기 학업 정보·일정 이전'));
       await tester.pumpAndSettle();
       final confirm = find.widgetWithText(FilledButton, '동의하고 이전');
@@ -470,7 +471,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.textContaining('계정 서버 저장'), findsOneWidget);
+      expect(find.byTooltip('일정 추가'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       local.dispose();

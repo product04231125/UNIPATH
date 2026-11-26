@@ -14,6 +14,12 @@ x-backend: &backend
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env and set POSTGRES_PASSWORD}
     CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000","http://localhost:5173"]}
     AUTH_SESSION_HOURS: ${AUTH_SESSION_HOURS:-12}
+    VERTEX_PROJECT: ${VERTEX_PROJECT:-}
+    VERTEX_LOCATION: ${VERTEX_LOCATION:-}
+    VERTEX_MODEL: ${VERTEX_MODEL:-}
+    VERTEX_TIMEOUT_SECONDS: ${VERTEX_TIMEOUT_SECONDS:-40}
+    LLM_REQUESTS_PER_15_MINUTES: ${LLM_REQUESTS_PER_15_MINUTES:-60}
+    CAREER_SOURCE_MODE: ${CAREER_SOURCE_MODE:-api}
 
 services:
   db:
@@ -64,7 +70,8 @@ services:
     environment:
       <<: *backend-environment
       RUN_DB_TESTS: "1"
-    command: ["pytest", "-q"]
+    # Each integration test uses its own schema, so tests run in parallel (pytest-xdist).
+    command: ["pytest", "-q", "-n", "auto"]
     depends_on:
       migrate:
         condition: service_completed_successfully

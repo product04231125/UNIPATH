@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:io';
 
@@ -10,10 +11,17 @@ import 'package:sembast/sembast_memory.dart' hide Finder;
 import 'package:university_path_frontend/features/records/portfolio/material_repository.dart';
 import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
 import 'package:university_path_frontend/features/auth/local_data_owner.dart';
+import 'package:university_path_frontend/shared/widgets/surface_card.dart';
 
-class MemoryMaterials extends MaterialRepository {
+import 'support/record_actions.dart';
+
+import 'package:university_path_frontend/shared/widgets/record_tile.dart';
+
+class MemoryMaterials implements MaterialRepository {
   final records = <String, PersonalMaterial>{};
   bool fail = false;
+  @override
+  bool get inAccount => false;
   @override
   Future<List<PersonalMaterial>> load() async {
     if (fail) throw StateError('읽기 실패');
@@ -23,17 +31,63 @@ class MemoryMaterials extends MaterialRepository {
   @override
   Future<void> save(PersonalMaterial material) async {
     if (fail) throw StateError('쓰기 실패');
-    if (material.pdf == null && material.description.trim().isEmpty) {
+    if (!material.hasPdf && material.description.trim().isEmpty) {
       throw StateError('설명 또는 PDF를 입력하세요.');
     }
-    records[material.id] = material;
+    // Like the real stores: a missing PDF with its file name keeps the saved one.
+    final keep = material.pdf == null && material.fileName.isNotEmpty
+        ? records[material.id]?.pdf
+        : null;
+    records[material.id] = keep == null
+        ? material
+        : PersonalMaterial(
+            id: material.id,
+            title: material.title,
+            type: material.type,
+            description: material.description,
+            fileName: material.fileName,
+            pdf: keep,
+          );
   }
 
   @override
-  Future<void> delete(String id) async {
+  Future<void> delete(PersonalMaterial material) => deleteId(material.id);
+
+  Future<void> deleteId(String id) async {
     records.remove(id);
   }
+
+  @override
+  Future<Uint8List?> pdf(PersonalMaterial material) async =>
+      material.pdf ?? records[material.id]?.pdf;
+
+  /// Pretends a server renders pages (an account store).
+  bool preview = false;
+  final pageRequests = <int>[];
+
+  @override
+  bool get canPreview => preview;
+
+  @override
+  Future<MaterialPages> pages(PersonalMaterial material) async =>
+      const MaterialPages(
+        count: 2,
+        sizes: [(width: 595, height: 842), (width: 595, height: 842)],
+      );
+
+  @override
+  Future<Uint8List> pageImage(PersonalMaterial material, int number) async {
+    pageRequests.add(number);
+    return pageImageBytes;
+  }
 }
+
+/// A 1×1 white PNG standing in for a rendered page.
+final pageImageBytes = Uint8List.fromList(
+  base64Decode(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=',
+  ),
+);
 
 void main() {
   test(
@@ -43,15 +97,15 @@ void main() {
         'materials-owner-isolation',
       );
       addTearDown(db.close);
-      final first = MaterialRepository(
+      final first = DeviceMaterialRepository(
         open: () async => db,
         owner: const LocalDataOwner('first'),
       );
-      final second = MaterialRepository(
+      final second = DeviceMaterialRepository(
         open: () async => db,
         owner: const LocalDataOwner('second'),
       );
-      final anonymous = MaterialRepository(
+      final anonymous = DeviceMaterialRepository(
         open: () async => db,
         owner: const LocalDataOwner(null),
       );
@@ -73,7 +127,7 @@ void main() {
           description: '다른 자료',
         ),
       );
-      await second.delete('same');
+      await second.deleteId('same');
       expect((await first.load()).single.title, '첫 계정');
     },
   );
@@ -81,7 +135,7 @@ void main() {
   test('PDF and metadata survive another repository, failed validation and deletion', () async {
     final db = await databaseFactoryMemory.openDatabase('materials-repository');
     addTearDown(db.close);
-    final repo = MaterialRepository(open: () async => db);
+    final repo = DeviceMaterialRepository(open: () async => db);
     await repo.save(
       PersonalMaterial(
         id: 'pdf',
@@ -92,7 +146,8 @@ void main() {
         pdf: pdf,
       ),
     );
-    final restored = await MaterialRepository(open: () async => db).load();
+    final restored = await DeviceMaterialRepository(open: () async => db)
+        .load();
     expect(restored.single.pdf, pdf);
     expect(restored.single.description, '핵심 성과');
     await expectLater(
@@ -124,7 +179,7 @@ void main() {
         description: '첨부 없이 보관',
       ),
     );
-    await repo.delete('pdf');
+    await repo.deleteId('pdf');
     expect((await repo.load()).single.id, 'note');
   });
 
@@ -137,7 +192,7 @@ void main() {
       final path = '${directory.path}${Platform.pathSeparator}materials.db';
       var db = await disk.databaseFactoryIo.openDatabase(path);
       try {
-        await MaterialRepository(open: () async => db).save(
+        await DeviceMaterialRepository(open: () async => db).save(
           PersonalMaterial(
             id: 'file',
             title: '합성 PDF',
@@ -149,7 +204,8 @@ void main() {
         );
         await db.close();
         db = await disk.databaseFactoryIo.openDatabase(path);
-        final rows = await MaterialRepository(open: () async => db).load();
+        final rows = await DeviceMaterialRepository(open: () async => db)
+            .load();
         expect(rows.single.pdf, pdf);
         expect(rows.single.fileName, 'synthetic.pdf');
       } finally {
@@ -164,7 +220,8 @@ void main() {
     },
   );
 
-  for (final size in [const Size(1440, 900), const Size(480, 520)]) {
+  // Narrow 480 viewport checks stay out of scope (AGENTS 2026-10-25).
+  for (final size in [const Size(1440, 900)]) {
     testWidgets(
       'material note PDF cancel failure edit export and scale at $size',
       (tester) async {
@@ -187,7 +244,7 @@ void main() {
               body: MaterialsPage(
                 repository: repo,
                 pickPdf: () async => selected,
-                exportPdf: (value) async => exported = value,
+                exportPdf: (value, _) async => exported = value,
               ),
             ),
           ),
@@ -222,8 +279,9 @@ void main() {
           tester
               .getSemantics(find.byKey(const ValueKey('material-title')))
               .label,
-          contains('자료 이름'),
+          contains('자료 이름 (필수)'),
         );
+        expect(find.text('자료 종류 (필수)'), findsOneWidget);
         semantics.dispose();
         final save = find.widgetWithText(FilledButton, '자료 등록');
         await fill('title', '내 이력서');
@@ -251,14 +309,16 @@ void main() {
         await tap(save);
         expect((await repo.load()).single.pdf, pdf);
         expect((await repo.load()).single.type, '이력서');
-        expect(find.text('이력서 · 내 이력서'), findsOneWidget);
-        await tap(find.text('수정'));
+        expect(find.text('내 이력서'), findsOneWidget);
+        expect(find.text('이력서'), findsWidgets);
+        expect(find.text('1개 표시 / 1개'), findsOneWidget);
+        await tapRecordAction(tester, '수정');
         await fill('description', '수정된 설명');
-        await tap(save);
+        await tap(find.widgetWithText(FilledButton, '저장'));
         expect((await repo.load()).single.description, '수정된 설명');
-        await tap(find.text('PDF 내보내기'));
+        await tapRecordAction(tester, 'PDF 내보내기');
         expect(exported!.pdf, pdf);
-        await tap(find.text('삭제'));
+        await tapRecordAction(tester, '삭제');
         await tester.tap(find.widgetWithText(FilledButton, '삭제').last);
         await tester.pumpAndSettle();
         expect(await repo.load(), isEmpty);
@@ -348,16 +408,17 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('자유 입력 종류 · 옛 자료'), findsOneWidget);
-    await tester.tap(find.text('수정'));
-    await tester.pumpAndSettle();
-    final save = find.widgetWithText(FilledButton, '자료 등록');
+    expect(find.text('옛 자료'), findsOneWidget);
+    expect(find.text('자유 입력 종류'), findsOneWidget);
+    await tapRecordAction(tester, '수정');
+    final save = find.widgetWithText(FilledButton, '저장');
     await tester.ensureVisible(save);
     await tester.pumpAndSettle();
     await tester.tap(save);
     await tester.pumpAndSettle();
     expect(find.text('자료 종류를 선택하세요.'), findsOneWidget);
-    expect(find.text('자유 입력 종류 · 옛 자료'), findsOneWidget);
+    // The saved tile keeps the old type until a valid kind is saved.
+    expect(find.text('자유 입력 종류'), findsOneWidget);
     await tester.ensureVisible(find.byKey(const ValueKey('material-type')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('material-type')));
@@ -369,7 +430,243 @@ void main() {
     await tester.tap(save);
     await tester.pumpAndSettle();
     expect((await repo.load()).single.type, '증빙·기타');
-    expect(find.text('증빙·기타 · 옛 자료'), findsOneWidget);
-    expect(find.text('자유 입력 종류 · 옛 자료'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(RecordTile),
+        matching: find.text('증빙·기타'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('자유 입력 종류'), findsNothing);
+  });
+
+  testWidgets(
+    'a new material requires its own kind after saving or cancelling',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repo = MemoryMaterials();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: MaterialsPage(repository: repo)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      Future<void> fillAndSave(String title) async {
+        await tester.enterText(
+          find.byKey(const ValueKey('material-title')),
+          title,
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('material-description')),
+          '보관할 설명',
+        );
+        final save = find.widgetWithText(FilledButton, '자료 등록');
+        await tester.ensureVisible(save);
+        await tester.tap(save);
+        await tester.pumpAndSettle();
+      }
+
+      await tester.tap(find.byKey(const ValueKey('material-type')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('이력서').last);
+      await tester.pumpAndSettle();
+      await fillAndSave('첫 자료');
+      expect(repo.records.length, 1);
+      await fillAndSave('두 번째 자료');
+      expect(find.text('자료 종류를 선택하세요.'), findsOneWidget);
+      expect(repo.records.length, 1);
+
+      final cancel = find.widgetWithText(TextButton, '취소');
+      await tester.ensureVisible(cancel);
+      await tester.tap(cancel);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('input-discard-delete')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const ValueKey('material-type')));
+      await tester.tap(find.byKey(const ValueKey('material-type')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('포트폴리오').last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(cancel);
+      await tester.tap(cancel);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('input-discard-delete')));
+      await tester.pumpAndSettle();
+      await fillAndSave('취소 후 자료');
+      expect(find.text('자료 종류를 선택하세요.'), findsOneWidget);
+      expect(repo.records.length, 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'materials list searches locally, caps height, and outlines edit',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repo = MemoryMaterials();
+      for (final entry in [
+        ('a', '이력서', '첫 자료', '알파 설명'),
+        ('b', '포트폴리오', '둘째 자료', '베타 설명'),
+        ('c', '증빙·기타', '셋째 자료', '감마 설명'),
+        ('d', '이력서', '넷째 자료', '델타 설명'),
+      ]) {
+        await repo.save(
+          PersonalMaterial(
+            id: entry.$1,
+            type: entry.$2,
+            title: entry.$3,
+            description: entry.$4,
+          ),
+        );
+      }
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: MaterialsPage(repository: repo)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('4개 표시 / 4개'), findsOneWidget);
+      // Every material is a tile in the grid, each with its own ⋮ menu.
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('material-catalog')),
+          matching: find.byType(RecordTile),
+        ),
+        findsNWidgets(4),
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('material-row-a')),
+          matching: find.byIcon(Icons.more_vert),
+        ),
+        findsOneWidget,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('material-search')),
+        '베타',
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('1개 표시 / 4개'), findsOneWidget);
+      expect(find.text('둘째 자료'), findsOneWidget);
+      expect(find.text('첫 자료'), findsNothing);
+      expect(find.text('검색에 맞는 자료가 없습니다'), findsNothing);
+      await tester.enterText(
+        find.byKey(const ValueKey('material-search')),
+        '없는검색어',
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('0개 표시 / 4개'), findsOneWidget);
+      expect(find.text('검색에 맞는 자료가 없습니다'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('wide materials put the form left and the list right', (
+    tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = MemoryMaterials();
+    Future<void> pump(Size size) async {
+      await tester.binding.setSurfaceSize(size);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: MaterialsPage(repository: repo)),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await pump(const Size(1440, 900));
+    expect(find.text('자료 목록'), findsOneWidget);
+    expect(find.text('0개'), findsOneWidget);
+    expect(find.text('등록한 자료가 없습니다'), findsOneWidget);
+    final cards = find.byType(SurfaceCard);
+    expect(cards, findsNWidgets(2));
+    final form = tester.getRect(cards.at(0));
+    final list = tester.getRect(cards.at(1));
+    expect(list.left, greaterThan(form.right));
+    expect(form.width, lessThanOrEqualTo(600));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a saved PDF opens in the viewer from its tile and the form', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = MemoryMaterials()..preview = true;
+    repo.records['m'] = PersonalMaterial(
+      id: 'm',
+      title: '합성 포트폴리오',
+      type: MaterialKinds.portfolio,
+      description: '',
+      fileName: 'portfolio.pdf',
+      pdf: Uint8List.fromList(utf8.encode('%PDF-1.4 synthetic')),
+    );
+    PersonalMaterial? exported;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MaterialsPage(
+            repository: repo,
+            exportPdf: (value, _) async => exported = value,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('material-view-m')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('material-preview')), findsOneWidget);
+    expect(find.text('portfolio.pdf · 2쪽'), findsOneWidget);
+    expect(find.text('1 / 2'), findsOneWidget);
+    expect(repo.pageRequests, contains(1));
+    await tester.tap(find.byTooltip('확대'));
+    await tester.pumpAndSettle();
+    expect(find.text('125%'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('material-preview-zoom')));
+    await tester.pumpAndSettle();
+    expect(find.text('100%'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('material-preview-export')));
+    await tester.pumpAndSettle();
+    expect(exported?.id, 'm');
+    await tester.tap(find.byTooltip('닫기'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('material-preview')), findsNothing);
+
+    // Editing the material offers the saved PDF too.
+    await tester.tap(find.byKey(const ValueKey('material-row-m')));
+    await tester.pumpAndSettle();
+    final formView = find.byKey(const ValueKey('material-form-view'));
+    await tester.ensureVisible(formView);
+    await tester.tap(formView);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('material-preview')), findsOneWidget);
+  });
+
+  testWidgets('a device store has no in-app viewer, only export', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = MemoryMaterials();
+    repo.records['m'] = PersonalMaterial(
+      id: 'm',
+      title: '합성 포트폴리오',
+      type: MaterialKinds.portfolio,
+      description: '',
+      fileName: 'portfolio.pdf',
+      pdf: Uint8List.fromList(utf8.encode('%PDF-1.4 synthetic')),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MaterialsPage(repository: repo)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('material-view-m')), findsNothing);
   });
 }

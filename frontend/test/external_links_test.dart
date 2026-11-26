@@ -206,7 +206,7 @@ void main() {
       );
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(body: ActivityPage(showMockData: false)),
+          home: Scaffold(body: ActivityPage()),
         ),
       );
       await tester.pumpAndSettle();
@@ -279,7 +279,7 @@ void main() {
               ),
               child: child!,
             ),
-            home: const Scaffold(body: CredentialPage(showMockData: false)),
+            home: const Scaffold(body: CredentialPage()),
           ),
         );
         await tester.pumpAndSettle();

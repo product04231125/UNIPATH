@@ -44,7 +44,7 @@ class SchoolQueryContextFormState extends State<SchoolQueryContextForm> {
         _track != widget.initial.track;
     if (changed) {
       _confirming = true;
-      final discard = await confirmInputDiscard(context);
+      final discard = await confirmInputDiscardAllowsLeave(context);
       _confirming = false;
       if (!discard) return false;
     }

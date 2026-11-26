@@ -81,6 +81,25 @@ class ServerComposeTests(unittest.TestCase):
                 self.assertEqual(services["api"]["image"], API_IMAGE)
                 self.assertEqual(services["web"]["image"], WEB_IMAGE)
 
+    def test_gemini_stays_off_until_the_environment_supplies_it(self):
+        result = self.config()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        api = json.loads(result.stdout)["services"]["api"]
+        for name in ("VERTEX_PROJECT", "VERTEX_LOCATION", "VERTEX_MODEL"):
+            self.assertEqual(api["environment"][name], "")
+        self.assertEqual(api["environment"]["VERTEX_TIMEOUT_SECONDS"], "40")
+        self.assertEqual(
+            [mount["source"] for mount in api["volumes"]],
+            ["/dev/null"],
+        )
+        self.assertTrue(all(mount["read_only"] for mount in api["volumes"]))
+
+    def test_job_collection_defaults_to_api_until_the_server_chooses_crawl(self):
+        result = self.config()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        api = json.loads(result.stdout)["services"]["api"]
+        self.assertEqual(api["environment"]["CAREER_SOURCE_MODE"], "api")
+
     def test_local_development_still_builds_backend(self):
         result = self.config(server=False)
         self.assertEqual(result.returncode, 0, result.stderr)

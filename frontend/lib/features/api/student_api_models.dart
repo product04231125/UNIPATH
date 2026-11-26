@@ -179,6 +179,7 @@ class StudentEventCreate implements StudentPayload {
     required this.endsAt,
     required this.timeZone,
     required this.category,
+    this.completedAt,
   });
   final String title;
   final String detail;
@@ -187,6 +188,7 @@ class StudentEventCreate implements StudentPayload {
   final DateTime endsAt;
   final String timeZone;
   final String category;
+  final DateTime? completedAt;
   factory StudentEventCreate.fromJson(Map<String, dynamic> value) =>
       StudentEventCreate(
         title: value['title'] as String,
@@ -198,6 +200,9 @@ class StudentEventCreate implements StudentPayload {
         endsAt: DateTime.parse(value['ends_at'] as String),
         timeZone: value['time_zone'] as String,
         category: value['category'] as String,
+        completedAt: value['completed_at'] == null
+            ? null
+            : DateTime.parse(value['completed_at'] as String),
       );
   @override
   Map<String, Object?> toJson() => {
@@ -208,6 +213,7 @@ class StudentEventCreate implements StudentPayload {
     'ends_at': endsAt.toUtc().toIso8601String(),
     'time_zone': timeZone,
     'category': category,
+    'completed_at': completedAt?.toUtc().toIso8601String(),
   };
 }
 
@@ -219,10 +225,13 @@ class StudentCourseRecordCreate implements StudentPayload {
     required this.term,
     required this.category,
     required this.credits,
+    this.gradingBasis = "unspecified",
     this.section = "",
     this.courseCode = "",
     this.grade = "",
     this.completion = "planned",
+    this.academicContextId,
+    this.academicEntryId,
   });
   final String title;
   final String detail;
@@ -230,10 +239,13 @@ class StudentCourseRecordCreate implements StudentPayload {
   final String term;
   final String category;
   final String credits;
+  final String gradingBasis;
   final String section;
   final String courseCode;
   final String grade;
   final String completion;
+  final String? academicContextId;
+  final String? academicEntryId;
   factory StudentCourseRecordCreate.fromJson(Map<String, dynamic> value) =>
       StudentCourseRecordCreate(
         title: value['title'] as String,
@@ -243,7 +255,10 @@ class StudentCourseRecordCreate implements StudentPayload {
             : value['client_id'] as String,
         term: value['term'] as String,
         category: value['category'] as String,
-        credits: _decimal(value['credits']),
+        credits: value['credits'] == null ? "" : _decimal(value['credits']),
+        gradingBasis: value['grading_basis'] == null
+            ? "unspecified"
+            : value['grading_basis'] as String,
         section: value['section'] == null ? "" : value['section'] as String,
         courseCode: value['course_code'] == null
             ? ""
@@ -252,6 +267,12 @@ class StudentCourseRecordCreate implements StudentPayload {
         completion: value['completion'] == null
             ? "planned"
             : value['completion'] as String,
+        academicContextId: value['academic_context_id'] == null
+            ? null
+            : value['academic_context_id'] as String,
+        academicEntryId: value['academic_entry_id'] == null
+            ? null
+            : value['academic_entry_id'] as String,
       );
   @override
   Map<String, Object?> toJson() => {
@@ -260,11 +281,14 @@ class StudentCourseRecordCreate implements StudentPayload {
     'client_id': clientId,
     'term': term,
     'category': category,
-    'credits': credits,
+    'credits': credits.isEmpty ? null : credits,
+    'grading_basis': gradingBasis,
     'section': section,
     'course_code': courseCode,
     'grade': grade,
     'completion': completion,
+    'academic_context_id': academicContextId,
+    'academic_entry_id': academicEntryId,
   };
 }
 
@@ -714,104 +738,6 @@ class StudentPersonalGraduationRuleCreate implements StudentPayload {
   };
 }
 
-class StudentPortfolioCompositionCreate implements StudentPayload {
-  const StudentPortfolioCompositionCreate({
-    required this.title,
-    this.detail = "",
-    this.clientId,
-    this.audience = "private",
-    this.reviewed = false,
-    this.sources = const [],
-  });
-  final String title;
-  final String detail;
-  final String? clientId;
-  final String audience;
-  final bool reviewed;
-  final List<StudentRecordReference> sources;
-  factory StudentPortfolioCompositionCreate.fromJson(
-    Map<String, dynamic> value,
-  ) => StudentPortfolioCompositionCreate(
-    title: value['title'] as String,
-    detail: value['detail'] == null ? "" : value['detail'] as String,
-    clientId: value['client_id'] == null ? null : value['client_id'] as String,
-    audience: value['audience'] == null
-        ? "private"
-        : value['audience'] as String,
-    reviewed: value['reviewed'] == null ? false : value['reviewed'] as bool,
-    sources: value['sources'] == null
-        ? const []
-        : List.unmodifiable(
-            (value['sources'] as List).map(
-              (v) => StudentRecordReference.fromJson(
-                Map<String, dynamic>.from(v as Map),
-              ),
-            ),
-          ),
-  );
-  @override
-  Map<String, Object?> toJson() => {
-    'title': title,
-    'detail': detail,
-    'client_id': clientId,
-    'audience': audience,
-    'reviewed': reviewed,
-    'sources': sources.map((v) => v.toJson()).toList(),
-  };
-}
-
-class StudentApplicationDocumentCreate implements StudentPayload {
-  const StudentApplicationDocumentCreate({
-    required this.title,
-    this.detail = "",
-    this.clientId,
-    required this.target,
-    required this.role,
-    required this.documentType,
-    this.body = "",
-    this.sources = const [],
-  });
-  final String title;
-  final String detail;
-  final String? clientId;
-  final String target;
-  final String role;
-  final String documentType;
-  final String body;
-  final List<StudentRecordReference> sources;
-  factory StudentApplicationDocumentCreate.fromJson(
-    Map<String, dynamic> value,
-  ) => StudentApplicationDocumentCreate(
-    title: value['title'] as String,
-    detail: value['detail'] == null ? "" : value['detail'] as String,
-    clientId: value['client_id'] == null ? null : value['client_id'] as String,
-    target: value['target'] as String,
-    role: value['role'] as String,
-    documentType: value['document_type'] as String,
-    body: value['body'] == null ? "" : value['body'] as String,
-    sources: value['sources'] == null
-        ? const []
-        : List.unmodifiable(
-            (value['sources'] as List).map(
-              (v) => StudentRecordReference.fromJson(
-                Map<String, dynamic>.from(v as Map),
-              ),
-            ),
-          ),
-  );
-  @override
-  Map<String, Object?> toJson() => {
-    'title': title,
-    'detail': detail,
-    'client_id': clientId,
-    'target': target,
-    'role': role,
-    'document_type': documentType,
-    'body': body,
-    'sources': sources.map((v) => v.toJson()).toList(),
-  };
-}
-
 class StudentInstitutionView implements StudentPayload {
   const StudentInstitutionView({
     required this.id,
@@ -927,8 +853,10 @@ class StudentCoursePublicView implements StudentPayload {
     required this.version,
     required this.name,
     required this.institutionId,
-    required this.code,
-    required this.credits,
+    this.code = "",
+    this.credits = "",
+    this.gradingBasis = "unspecified",
+    this.departmentId,
   });
   final String id;
   final int version;
@@ -936,14 +864,22 @@ class StudentCoursePublicView implements StudentPayload {
   final String institutionId;
   final String code;
   final String credits;
+  final String gradingBasis;
+  final String? departmentId;
   factory StudentCoursePublicView.fromJson(Map<String, dynamic> value) =>
       StudentCoursePublicView(
         id: value['id'] as String,
         version: value['version'] as int,
         name: value['name'] as String,
         institutionId: value['institution_id'] as String,
-        code: value['code'] as String,
-        credits: _decimal(value['credits']),
+        code: value['code'] == null ? "" : value['code'] as String,
+        credits: value['credits'] == null ? "" : _decimal(value['credits']),
+        gradingBasis: value['grading_basis'] == null
+            ? "unspecified"
+            : value['grading_basis'] as String,
+        departmentId: value['department_id'] == null
+            ? null
+            : value['department_id'] as String,
       );
   @override
   Map<String, Object?> toJson() => {
@@ -952,7 +888,9 @@ class StudentCoursePublicView implements StudentPayload {
     'name': name,
     'institution_id': institutionId,
     'code': code,
-    'credits': credits,
+    'credits': credits.isEmpty ? null : credits,
+    'grading_basis': gradingBasis,
+    'department_id': departmentId,
   };
 }
 

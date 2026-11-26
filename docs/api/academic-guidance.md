@@ -1,0 +1,133 @@
+# 정형 학사 안내 API
+
+버튼을 눌러 학사일정, 규정, 장학금, 학과 안내를 읽는 API다. LLM을 쓰지 않고 수집한 스냅샷의
+본문을 그대로 돌려준다. 안내 자료는 참고 자료이며 졸업 판정을 계산하지 않는다.
+로그인이 필요하고 응답은 `no-store`다. 원본은 `backend/app/rag/guidance/`다.
+
+## 학교 연결
+
+수집 자료는 학교에 연결해야 학생에게 보인다. 지금 제공하는 자료 묶음은 경동대학교 수집본
+(`kduniv-academic-guidance`) 하나다. 연결은 공식 승인이나 RAG 근거 승인이 아니다.
+
+| 경로 | 동작 |
+|---|---|
+| `GET /admin/academic-guidance-bundles` | 묶음 목록. `bundle_id`, 이름, 출처 학교, 공식 URL, `edition`, `fetched_at`, `availability` |
+| `GET /admin/institutions/{id}/academic-guidance` | 학교의 연결. `state=unbound/bound/unavailable`, `version`(없으면 0) |
+| `PUT /admin/institutions/{id}/academic-guidance` | `bundle_id`, `edition`, `expected_version`(새 연결 0)으로 연결·교체 |
+| `DELETE /admin/institutions/{id}/academic-guidance?expected_version=N` | 연결 해제. 해제 후 상태를 200으로 반환 |
+| `GET /me/academic-guidance/binding` | 학생의 등록 학교 기준 상태. `school_required/unbound/bound/unavailable` |
+
+- 학교관리자는 자기 활성 학교만, 슈퍼관리자는 모든 학교를 연결한다. 학생은 연결 API를 쓸 수 없다.
+- `edition`은 자료 파일의 해시다. 목록의 현재 판본과 다르면 409로 막는다. 버전 충돌도 409다.
+  자료를 새로 수집하면 판본이 바뀌고, 연결은 새 판본을 그대로 보여 주면서 `edition_changed=true`를
+  알린다. 관리자가 다시 저장하면 새 판본을 확인한 것으로 기록한다.
+- 연결·해제는 학교의 감사 기록(`academic:institution:guidance_bind`/`guidance_unbind`)으로 남는다.
+- 등록 학교는 학생 프로필의 `institution_id`다. 등록 학교가 없으면 모든 노드가
+  `needs_input/school_required`, 연결이 없으면 `unavailable/school_guidance_not_connected`이고
+  카드·버튼은 비어 있다. 원문 파일은 404다. 다른 학교의 연결된 자료를 섞어 보여 주지 않는다.
+- 노드·파일 조회의 `institution_id`는 기본값이 등록 학교다. 학생은 등록 학교만 지정할 수 있고(다르면
+  404), 관리자는 자기 범위의 학교를 미리 볼 수 있다(범위 밖 403).
+- 해제·교체 뒤 이전 노드 ID로 다시 조회하면 그 시점의 연결 상태로 답한다. 화면은 표시 중인 내용을
+  비우고 `binding`과 첫 메뉴를 다시 조회한다.
+
+## 노드 조회
+
+`GET /api/v1/me/academic-guidance/nodes/{node_id}?audit_id={uuid}`
+
+첫 화면은 `home`이다. 응답의 `buttons[].node_id`로 다음 노드를 호출한다. ID를 만들어 내거나
+label로 분기하지 않는다. `availability=content_pending`은 준비 중 배지로 표시한다.
+`node_id`는 영문·숫자·`:`·`_`·`-` 200자 이내이며 형식이 다르면 422다.
+형식은 맞지만 없는 노드는 200과 `reason=unknown_node`, 처음으로 가는 버튼을 준다.
+사용자별 15분당 600회로 제한한다.
+
+| state | 의미 |
+|---|---|
+| `ready` | 표시 가능. 충족이나 승인을 뜻하지 않는다 |
+| `needs_selection` | 없는 노드 |
+| `needs_input` | 감사 또는 입력 필요 (`verified_audit_required`, `career_inputs_required`) |
+| `unavailable` | 준비 중 (`approved_content_not_configured`, `department_content_pending`) |
+
+공통 필드는 `schema_version`, `node_id`, `title`, `state`, `reason`, `message`, `cards`, `warnings`,
+`buttons`다. `warnings`는 본문보다 먼저 표시한다. `snapshot_stale=true`는 수집 후 7일이 지났다는
+뜻이다. `fetched_at`은 수집 시각이며 규정 시행일이 아니다.
+
+## 카드
+
+`cards[].type`으로 분기한다.
+
+| type | 표시할 내용 |
+|---|---|
+| `calendar_event` | `title`, `date_text`, `start_date`, `end_date`. `body`는 추가 설명만 담고, 없으면 빈 문자열이다 |
+| `regulation_excerpt` | `title`, `body`(줄바꿈 보존), `sources` |
+| `regulation_page` | `body`, `tables`, `sources`, OCR이면 `image_asset_id` |
+| `regulation_metadata` | 규정명, 분류 경로, 게시 개정일 |
+| `reference_text` | 장학금·학과 본문 |
+| `reference_table` | `table.rows`(병합 구조), `table.grid`(펼친 배열) |
+| `audit_requirement` | Rule Engine 결과. `status`, `quantities`, `missing_courses`, 근거 |
+
+- `extraction_status=ocr_unreviewed`이면 `preferred_view=image`다. 이미지와 OCR 경고를 먼저
+  보여 주고 텍스트는 보조로 쓴다. OCR 문구로 금액이나 자격을 단정하지 않는다.
+- `tables`와 `table.grid`의 `null`은 병합·공란이다. 0이나 면제로 바꾸지 않는다.
+- `quantities`의 `null`도 0이 아니다. 프론트에서 부족 수치를 다시 계산하지 않는다.
+- 텍스트는 HTML로 실행하지 않는다.
+
+## 졸업 항목
+
+일반 기준과 개인 결과를 나눈다.
+
+- `credits`, `courses`, `volunteer`, `certificate`, `thesis`, `review`는 **일반 기준** 항목이다.
+  `audit_id` 없이 조회하면 `state=ready`, `reason=general_criteria`이고, `criteria_kind`(예:
+  `minimum_credits`)로 보여 줄 규칙 종류를 알려 준다. 공식 실행 규칙은 학교가 승인한
+  `GET /catalog/rule-programs`에서 읽는다. 승인된 기준이 없으면 학점이나 과목을 추측하지 않는다.
+- 같은 일반 기준 항목의 `cards`에는 학생이 적용한 **학교 게시 기준**을 붙인다.
+  `GET /me/academic-requirements`와 같은 적용본(학과·입학연도·이수 경로·교육과정으로 거른 행)을
+  읽으므로 관리자 기준, 학업 기준 화면, 졸업 안내가 같은 자료를 쓴다. 카드는 판정이 아니다.
+
+  | 항목 | 카드 |
+  |---|---|
+  | `credits` | 학점표 `reference_table`. 첫 행은 적용 이수 경로, 이후 행은 머리글 트리 순서(형제 간 `position`)의 각 열이며 이름은 상위 머리글을 ` · `로 잇는다. `not_applicable`은 `해당 없음`, 빈 칸은 `-` |
+  | `courses` | 선택한 교육과정 개정본의 필수 과목 표 |
+  | `certificate` | 졸업인증 영역·선택 조건·면제 `reference_text`와 설명 표 |
+  | `review` | 졸업 요건 체크리스트 전체 |
+  | `thesis`, `volunteer` | 체크리스트 줄과 졸업인증 항목 중 졸업작품·졸업시험·논문 / 봉사를 언급한 것. 졸업인증 항목은 상위 영역 경로와 선택 조건(예: `1개 선택`)을 함께 보여 준다 |
+
+  출처는 `title=학교 게시 기준 · {개정본 이름}`, `document_id`=개정본 UUID,
+  `document_version`=개정 번호다. 학업 기준을 적용하지 않았으면 카드 없이
+  `missing_fields=["academic_requirements"]`다. 적용본에 해당 항목이 없으면 카드 없이
+  그 사실을 안내한다. 프로필·학업 기준이 적용 후 바뀌었거나 적용본이 회수·만료되면 `message`에
+  다시 적용하라는 안내를 덧붙인다. 관리자 미리보기는 학생 적용본을 보지 않는다.
+  학교가 교육과정·졸업요건 개정본을 하나도 게시하지 않았으면(실행 규칙만 승인한 학교) 응답을
+  바꾸지 않아, 기준은 실행 규칙에서 안내한다는 원래 문구가 유지된다.
+  첫 버튼은 `summary`("내 충족 여부 보기")다.
+- `summary`("내 졸업요건 요약")는 **개인 결과**다. `audit_id`가 없으면 `needs_input`,
+  `verified_audit_required`이고 충족이나 미충족으로 표시하지 않는다.
+- 어느 항목이든 `audit_id`를 주면 그 감사의 해당 결과를 `audit_rendered`로 보여 준다. 프론트는
+  `audit_id`만 보내고 서버가 소유권을 확인해 다시 읽는다. 다른 사용자의 감사는 404다.
+  `audit.current_usable=false`이면 과거 기준일 결과로 묶어서 표시한다.
+
+## 학교 질문과 외부 AI 전송
+
+학사 안내 메뉴(`/me/academic-guidance/nodes`, `/assets`)는 서버에 저장된 수집 자료와 학생 본인의
+감사 결과만 읽는다. **외부 AI로 아무것도 보내지 않으므로** 별도 동의가 필요 없다. 화면이 동의 상태를
+추정해 메뉴 조회를 막거나 동의를 요구하지 않는다.
+
+외부 모델(Gemini)을 쓰는 기능은 학생이 고른 기록을 보내는 맞춤 안내와 채용 분석뿐이며, 그때는
+D6 조건(학생이 그때그때 고른 기록만, 이름·이메일·학번·연락처 제외, 본문 로그 금지, Google 전송 고지와
+동의)을 따른다. 학교 질문 화면에 자유 입력 질문을 외부 모델로 보내는 기능은 없다. 추가하면 같은 조건과
+요청마다의 동의 확인을 계약에 먼저 적는다.
+
+## 원문 파일
+
+`GET /api/v1/me/academic-guidance/assets/{asset_id}`
+
+`sources[].asset_id`(PDF)와 `image_asset_id`(페이지 JPEG)로 내려받는다. ID는 SHA-256이고 수집
+목록에 있는 파일만 해시를 다시 확인해 제공한다. 파일 경로나 URL은 입력받지 않는다.
+없는 ID는 404, 형식 오류는 422다. 사용자별 15분당 120회로 제한한다.
+
+## 취업 메뉴
+
+`career:posting`의 `integration_state`는 분석기가 설정되면 `connected`, 아니면
+`adapter_not_connected`다. `career:recommend`, `career:profile`은 공개 API가 없어 항상
+`adapter_not_connected`다. 메뉴를 누르는 것만으로 자료를 보내거나 모델을 호출하지 않는다.
+
+타입은 `scripts/export_academic_guidance_contracts.py`로 재생성한다.

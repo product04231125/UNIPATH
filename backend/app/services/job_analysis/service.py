@@ -4,15 +4,23 @@ from typing import Protocol
 from uuid import uuid4
 
 from app.core.auth_errors import conflict
+from app.rag.career.analyzer import analyze_with_notes
+from app.rag.career.contracts import AnalysisRejected
 from app.schemas import job_analysis as dto
-from app.schemas.personalization import PersonalizationContext
-from app.services import auth
+from app.schemas.personalization import (
+    MAX_ANALYSIS_RECORDS,
+    MAX_DOCUMENT_RECORDS,
+    PersonalizationContext,
+)
+from app.services import auth, gemini
 from app.services.personalization.context import assemble
+from app.services.personalization.documents import attach_documents
+from app.services.personalization.redaction import redact_context
 
 
 class JobAnalyzer(Protocol):
     # The adapter owns extraction + matching; an LLM explanation alone is not a matcher.
-    # No real provider is selected or called by the default application.
+    # A provider is called only when configured and the student consented for this request.
     def analyze(
         self, posting_text: str, context: PersonalizationContext
     ) -> list[dto.JobRequirementComparison]: ...
@@ -20,17 +28,21 @@ class JobAnalyzer(Protocol):
 
 def validate_comparisons(posting, context, values):
     if not isinstance(values, list) or len(values) > 50:
-        raise ValueError("Analyzer must return a bounded comparison list")
+        raise AnalysisRejected("Analyzer must return a bounded comparison list", "output_shape")
     comparisons = [dto.JobRequirementComparison.model_validate(value) for value in values]
     selected = {(item.kind, item.record_id, item.version): item for item in context.records}
     for item in comparisons:
         evidence = item.posting_evidence
         if posting[evidence.start : evidence.end] != evidence.excerpt:
-            raise ValueError("Posting evidence must preserve exact input offsets")
+            raise AnalysisRejected(
+                "Posting evidence must preserve exact input offsets", "posting_quote"
+            )
         for citation in item.personal_evidence:
             record = selected.get((citation.kind, citation.record_id, citation.version))
             if record is None or citation.excerpt not in record.text:
-                raise ValueError("Personal citations must refer to selected record text")
+                raise AnalysisRejected(
+                    "Personal citations must refer to selected record text", "personal_citation"
+                )
     return comparisons
 
 
@@ -41,7 +53,7 @@ def execute(db, request, payload, analyzer: JobAnalyzer | None):
     identity = auth.current_identity(request, db)
     context = assemble(db, identity, payload.records)
     identifier = uuid4()
-    if not context.records:
+    if not context.records and not payload.documents:
         return dto.JobAnalysisResponse(
             analysis_id=identifier,
             status=dto.JobAnalysisStatus.NEEDS_USER_INPUT,
@@ -54,12 +66,31 @@ def execute(db, request, payload, analyzer: JobAnalyzer | None):
             status=dto.JobAnalysisStatus.NOT_CONFIGURED,
             reason=dto.JobAnalysisReason.ANALYZER_NOT_CONFIGURED,
         )
-    # Release the read transaction before calling a future external adapter.
+    if not payload.external_processing_consent:
+        return dto.JobAnalysisResponse(
+            analysis_id=identifier,
+            status=dto.JobAnalysisStatus.NEEDS_USER_INPUT,
+            reason=dto.JobAnalysisReason.EXTERNAL_PROCESSING_CONSENT_REQUIRED,
+            missing_fields=["external_processing_consent"],
+        )
+    # Citations are validated against what the model actually received.
+    outbound = redact_context(context, identity)
+    sources, document_notes = [], []
+    if payload.documents:
+        # Extraction/OCR only after consent, and never inside an open transaction.
+        db.rollback()
+        outbound, sources, document_notes = attach_documents(
+            payload.documents,
+            outbound,
+            identity,
+            max_records=MAX_ANALYSIS_RECORDS + MAX_DOCUMENT_RECORDS,
+        )
+    gemini.reserve_call(db, request)
+    # Release the read transaction before calling the external adapter.
     db.rollback()
     try:
-        comparisons = validate_comparisons(
-            payload.posting_text, context, analyzer.analyze(payload.posting_text, context)
-        )
+        values, notes = analyze_with_notes(analyzer, payload.posting_text, outbound)
+        comparisons = validate_comparisons(payload.posting_text, outbound, values)
         result = dto.JobAnalysisResponse(
             analysis_id=identifier,
             status=(
@@ -73,9 +104,13 @@ def execute(db, request, payload, analyzer: JobAnalyzer | None):
                 else dto.JobAnalysisReason.NO_REQUIREMENTS_FOUND
             ),
             comparisons=comparisons,
+            # Document notes first (unreadable or OCR pages), then the analyzer's own notes.
+            warnings=(document_notes + notes)[:10],
+            document_sources=sources,
         )
-    except Exception:
+    except Exception as error:
         # Never return provider errors, input or unvalidated comparisons.
+        gemini.log_failure("job analysis", error)
         result = dto.JobAnalysisResponse(
             analysis_id=identifier,
             status=dto.JobAnalysisStatus.FAILED,

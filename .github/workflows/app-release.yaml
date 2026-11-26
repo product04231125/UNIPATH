@@ -1,8 +1,8 @@
 name: App downloads
 
+# Manual only (2026-11-23): builds run when the team asks for a download such as the Windows
+# demo app. Pull request CI already verifies the code, so this workflow only builds and publishes.
 on:
-  push:
-    branches: [develop, main]
   workflow_dispatch:
     inputs:
       channel:
@@ -69,74 +69,8 @@ jobs:
               output.write('channels=' + json.dumps(channels) + '\n')
           PY
 
-  verify:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - name: Cache pinned Flutter SDK
-        uses: actions/cache@v4
-        id: flutter-cache
-        with:
-          path: ${{ runner.temp }}/unipath-flutter
-          key: flutter-3.47.6-${{ runner.os }}-${{ runner.arch }}
-      - name: Install pinned Flutter from official Git tag
-        shell: bash
-        run: |
-          if [ ! -d "$RUNNER_TEMP/unipath-flutter/.git" ]; then
-            git clone --depth 1 --branch 3.47.6 https://github.com/flutter/flutter.git "$RUNNER_TEMP/unipath-flutter"
-          fi
-          echo "$RUNNER_TEMP/unipath-flutter/bin" >> "$GITHUB_PATH"
-      - name: Initialize Flutter
-        shell: bash
-        run: |
-          flutter config --no-analytics
-          flutter --version
-      - name: Verify Flutter
-        working-directory: frontend
-        run: |
-          flutter pub get --enforce-lockfile
-          flutter analyze
-          flutter test
-      - uses: astral-sh/setup-uv@v6
-        with:
-          version: '0.12.21'
-          python-version: '3.12'
-          enable-cache: true
-      - name: Verify backend, RAG and release scripts
-        working-directory: backend
-        env:
-          POSTGRES_PASSWORD: synthetic-ci-password
-        run: |
-          uv lock --check
-          uv sync --frozen
-          uv run --frozen ruff check . ../scripts
-          uv run --frozen ruff format --check . ../scripts
-          uv run --frozen pytest -q -m 'not integration'
-          uv run --frozen python -m app.rag.ingestion
-          uv run --frozen python -m app.rag.evals
-          python -m unittest discover -s ../scripts/tests -v
-      - name: Verify shared Docker environment
-        run: |
-          cp .env.example .env
-          docker compose -f compose.yaml -f compose.rag.yaml up --build --wait --wait-timeout 180
-          docker compose -f compose.yaml -f compose.rag.yaml --profile test run --build --rm test
-          docker compose -f compose.yaml -f compose.rag.yaml run --rm --no-deps migrate alembic check
-          python backend/scripts/smoke_api.py
-      - name: Verify staged requests through both gateway layers
-        run: python backend/scripts/smoke_gateway_proxy.py
-      - name: Verify backup restoration with synthetic data
-        working-directory: backend
-        run: uv run --frozen python -m scripts.smoke_db_backup
-      - name: Clean up synthetic CI data
-        # Restore checks use their own disposable containers and clean them up.
-        if: always()
-        run: docker compose -f compose.yaml -f compose.rag.yaml down --volumes
-
   build:
-    needs: [plan, verify]
+    needs: [plan]
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
@@ -190,7 +124,7 @@ jobs:
           retention-days: 30
 
   publish:
-    needs: [plan, verify, build]
+    needs: [plan, build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

@@ -43,7 +43,7 @@
 |---|---|---|
 | `minimum_credits` | `minimum`, 선택적 `category`, `course_record_ids` | 해당 개인 과정에 연결된 수강 기록만 사용. 목록 생략은 연결된 전체 기록, `[]`는 빈 선택. 분류는 수강 기록 기준. `recorded`의 credits만 합산하고 중복 연결은 한 번 반영 |
 | `required_courses` | `courses[{curriculum_course_id, minimum_credits?, minimum_grade_points?, comparison_grade_scale?}]`, `grades[{course_record_id, points, scale}]` | 개인 과정 과목 ID로 지정. 원 성적 A+를 숫자로 환산하지 않음. 점수 기준과 척도는 함께 지정. 동일 수강 기록을 두 필수과목으로 지정하면 `ambiguous_personal_course_mapping` 확인 필요 |
-| `minimum_volunteer_hours` | `minimum`, `activity_ids` | 개인 활동의 `approval`, `approved_hours`, `observed_on` 사용. 기준일 이후/없는 관찰일은 미확인, reported_hours는 합산하지 않음 |
+| `minimum_volunteer_hours` | `minimum`, `activity_ids` | 선택한 활동의 입력 시간 `reported_hours`를 합산한다. 승인·관찰일은 요구하지 않는다. `reported_hours`가 없는 이전 기록은 `approval=approved`이고 `observed_on`이 기준일 이전인 `approved_hours`를 쓰며, 둘 다 없으면 확인 필요다. `0`은 0시간. 종료일(없으면 시작일)이 기준일 이후인 활동은 합산하지 않고 날짜가 없으면 합산한다. 공식 졸업 감사는 승인 시간 기준을 유지한다 |
 | `any_certificate` | `certificates[{credential_id, possession, validity_known}]` | possession은 held/not_held/unknown, 기본 unknown. validity_known 기본 false. 개인 기록 만료일은 해당 날짜까지 유효. 미래 취득·만료 자격은 충족 근거가 되지 않음 |
 | `thesis` | `thesis_type`, `requires_approval=true`, `accepted_grades=[]`, `records[{achievement_id, completion, approval}]` | 개인 성과에 thesis_type 필요. completion 기본 unknown, approval 기본 needs_review. 승인 조건이 있으면 기준일 이내 thesis_approved_on도 필요. 원 성적을 허용 문자열과 비교 |
 

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/graduation/personal_requirement_panel.dart';
 import 'package:university_path_frontend/features/graduation/personal_calculation_controller.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
 import 'package:university_path_frontend/features/records/remote_personal_record_repository.dart';
-import 'package:university_path_frontend/features/records/portfolio/remote_portfolio_workspace_repository.dart';
 
 import 'support/calculation_gateway.dart';
 import 'support/personal_workspace_fixture.dart';
@@ -31,10 +31,6 @@ void main() {
             kind,
             ensureOpen: () {},
           ),
-          portfolio: () => RemotePortfolioWorkspaceRepository(
-            gateway.api,
-            ensureOpen: () {},
-          ),
           calculations: controller,
           child: Scaffold(
             body: SingleChildScrollView(
@@ -56,6 +52,8 @@ void main() {
       await tester.pumpWidget(page());
       await tester.pumpAndSettle();
       expect(gateway.posted, isEmpty);
+      final picker = tester.widget<AnchoredSelectField<String>>(find.byWidgetPredicate((w) => w is AnchoredSelectField<String> && w.label == '실행할 계산 조건'));
+      expect(picker.options.any((o) => o.value == 'thesis'), isFalse);
       await tester.tap(find.text('조건 미지정 · 확인 필요'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(MenuItemButton, '최소 학점'));

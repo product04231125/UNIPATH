@@ -1,19 +1,30 @@
 import '../../shared/app_style.dart';
+import '../../shared/app_tones.dart';
+import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/tone_chip.dart';
 
 import 'package:flutter/material.dart';
 
 import '../../app_shell/phone_shell.dart';
+import '../../shared/drafts/form_draft_picker.dart';
+import '../../shared/drafts/form_draft_store.dart';
 import '../../shared/widgets/equal_height_row.dart';
-import '../../shared/widgets/content_scroll_view.dart';
+import '../../shared/widgets/feature_line.dart';
+import '../../shared/widgets/feature_page.dart';
 import '../../shared/widgets/input_dialog.dart';
+import '../../shared/widgets/surface_card.dart';
 import '../../shared/pending_ui_action.dart';
 import '../planning/planning_repository.dart';
 import '../planning/planning_storage_state.dart';
 import '../../shared/widgets/anchored_select_field.dart';
-import '../../shared/widgets/page_header.dart';
 import '../planning/planning_dates.dart';
+import '../planning/event_category_tone.dart';
 import '../planning/remote_planning_repository.dart';
 import '../auth/auth_api.dart';
+import '../auth/guest_preview_scope.dart';
+import '../../shared/widgets/page_actions.dart';
+
+const _scheduleDraftScreenId = 'schedule.event';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({
@@ -48,14 +59,9 @@ class _SchedulePageState extends State<SchedulePage> {
     animation: widget.repository,
     builder: (context, _) {
       if (widget.repository.isLoading || widget.repository.loadFailed) {
-        return ContentScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _header(),
-              PlanningStorageState(repository: widget.repository),
-            ],
-          ),
+        return FeaturePage(
+          title: '일정',
+          body: [PlanningStorageState(repository: widget.repository)],
         );
       }
       final selectedEvents = _eventsForDay(_selectedDay);
@@ -74,93 +80,107 @@ class _SchedulePageState extends State<SchedulePage> {
         });
       }
       return LayoutBuilder(
-        builder: (context, constraints) => ContentScrollView(
+        builder: (context, constraints) => FeaturePage(
           padding: EdgeInsets.only(
-            bottom: constraints.maxHeight < 620 ? 28 : 8,
+            bottom: PhoneChromeScope.of(context)
+                ? phoneListGap
+                : (constraints.maxHeight < 620 ? 28 : 8),
           ),
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1100),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _header(
-                    actions: [
-                      FilledButton.icon(
-                        onPressed: () => _editEvent(),
-                        icon: Icon(Icons.add),
-                        label: Text('일정 추가'),
-                      ),
-                    ],
+          title: '일정',
+          trailing: [
+            PageMoreMenu(
+              key: const Key('schedule-more'),
+              itemBuilder: (context) => [
+                PopupMenuItem<void>(
+                  key: const Key('schedule-load-draft'),
+                  onTap: _loadDraft,
+                  child: const ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.inventory_2_outlined),
+                    title: Text('임시저장 불러오기'),
                   ),
-                  if (constraints.maxWidth >= 820)
-                    EqualHeightRow(
-                      children: [
-                        Expanded(flex: 3, child: _calendar()),
-                        const SizedBox(width: 18),
-                        Expanded(flex: 2, child: _dayList(selectedEvents)),
-                      ],
-                    )
-                  else ...[
-                    _calendar(),
-                    const SizedBox(height: 18),
-                    _dayList(selectedEvents),
-                  ],
-                ],
+                ),
+              ],
+            ),
+            PageAddButton(label: '일정 추가', onPressed: () => _editEvent()),
+          ],
+          body: [
+            Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: double.infinity,
+                child: constraints.maxWidth >= 1000
+                    ? EqualHeightRow(
+                        children: [
+                          Expanded(flex: 3, child: _calendar()),
+                          const SizedBox(width: 16),
+                          Expanded(flex: 2, child: _dayList(selectedEvents)),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _calendar(),
+                          SizedBox(height: FeatureLine.slotGap(context)),
+                          _dayList(selectedEvents),
+                        ],
+                      ),
               ),
             ),
-          ),
+          ],
         ),
       );
     },
   );
 
-  Widget _header({List<Widget> actions = const []}) {
-    final phone = PhoneChromeScope.of(context);
-    return PageHeader(
-      title: '일정',
-      description: phone
-          ? null
-          : widget.repository.isServerBacked
-          ? '개인 계획 · ${widget.repository.storageLabel}. 학교 공식 일정·알림·반복 일정은 아직 연결되지 않았습니다.'
-          : '개인 계획을 이 기기에 저장합니다. 학교 공식 일정·알림·반복 일정은 아직 연결되지 않았습니다.',
-      actions: actions,
-    );
-  }
-
-  Widget _calendar() => Card(
-    clipBehavior: Clip.antiAlias,
-    child: Padding(
-      padding: const EdgeInsets.all(16),
+  Widget _calendar() {
+    final theme = Theme.of(context);
+    final now = DateTime.now();
+    final showingToday =
+        _month.year == now.year &&
+        _month.month == now.month &&
+        _sameDay(_selectedDay, now);
+    return SurfaceCard(
       child: Column(
         children: [
           Row(
             children: [
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    '${_month.year}년 ${_month.month}월',
+                    style: theme.textTheme.titleLarge,
+                  ),
+                ),
+              ),
+              if (!showingToday) ...[
+                TextButton(
+                  onPressed: () => setState(() {
+                    _selectedDay = _dateOnly(now);
+                    _month = DateTime(now.year, now.month);
+                  }),
+                  child: const Text('오늘'),
+                ),
+                const SizedBox(width: 4),
+              ],
               IconButton(
                 tooltip: '이전 달',
                 onPressed: () => setState(
                   () => _month = DateTime(_month.year, _month.month - 1),
                 ),
-                icon: Icon(Icons.chevron_left),
-              ),
-              Expanded(
-                child: Text(
-                  '${_month.year}년 ${_month.month}월',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                icon: const Icon(Icons.chevron_left),
               ),
               IconButton(
                 tooltip: '다음 달',
                 onPressed: () => setState(
                   () => _month = DateTime(_month.year, _month.month + 1),
                 ),
-                icon: Icon(Icons.chevron_right),
+                icon: const Icon(Icons.chevron_right),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Row(
             children: [
               for (final day in planningWeek(
@@ -171,94 +191,395 @@ class _SchedulePageState extends State<SchedulePage> {
                   child: Center(
                     child: Text(
                       weekdayLabel(day.weekday),
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: _weekdayColor(day.weekday),
                       ),
                     ),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 4),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 42,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-              mainAxisExtent:
-                  MediaQuery.textScalerOf(context).scale(14) * 3 + 24,
-            ),
-            itemBuilder: (context, index) {
-              final first = DateTime(_month.year, _month.month);
-              final day = first.add(
-                Duration(
-                  days:
-                      index -
-                      (first.weekday -
-                              widget.repository.profile.weekStartsOn.weekday +
-                              7) %
-                          7,
+          const SizedBox(height: 6),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final scaler = MediaQuery.textScalerOf(context);
+              // PC widths: cells list event titles instead of dots.
+              final detailed = constraints.maxWidth / 7 >= scaler.scale(110);
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: 42,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  mainAxisExtent: detailed
+                      ? scaler.scale(14) * 7 + 12
+                      : scaler.scale(14) * 3 + 20,
                 ),
+                itemBuilder: (context, index) {
+                  final first = DateTime(_month.year, _month.month);
+                  final day = first.add(
+                    Duration(
+                      days:
+                          index -
+                          (first.weekday -
+                                  widget
+                                      .repository
+                                      .profile
+                                      .weekStartsOn
+                                      .weekday +
+                                  7) %
+                              7,
+                    ),
+                  );
+                  return _dayCell(day, detailed: detailed);
+                },
               );
-              return _dayCell(day);
             },
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
 
-  Widget _dayCell(DateTime day) {
+  Color _weekdayColor(int weekday) => switch (weekday) {
+    DateTime.sunday => AppTone.danger.color(context),
+    DateTime.saturday => AppTone.info.color(context),
+    _ => Theme.of(context).colorScheme.onSurfaceVariant,
+  };
+
+  Widget _dayCell(DateTime day, {bool detailed = false}) {
+    final colors = Theme.of(context).colorScheme;
     final events = _eventsForDay(day);
     final selected = _sameDay(day, _selectedDay);
     final today = _sameDay(day, DateTime.now());
     final inMonth = day.month == _month.month;
+    final number = Container(
+      width: 30,
+      height: 30,
+      alignment: Alignment.center,
+      decoration: today
+          ? BoxDecoration(color: colors.primary, shape: BoxShape.circle)
+          : null,
+      child: Text(
+        '${day.day}',
+        style: TextStyle(
+          fontWeight: selected || today ? FontWeight.w800 : FontWeight.w500,
+          color: today
+              ? colors.onPrimary
+              : inMonth
+              ? colors.onSurface
+              : colors.onSurfaceVariant.withValues(alpha: .45),
+        ),
+      ),
+    );
     return Semantics(
       button: true,
-      label: '${day.month}월 ${day.day}일, 일정 ${events.length}개',
+      selected: selected,
+      label:
+          '${day.month}월 ${day.day}일${today ? ', 오늘' : ''}, 일정 ${events.length}개',
       child: InkWell(
-        onTap: () => setState(() => _selectedDay = _dateOnly(day)),
-        borderRadius: BorderRadius.circular(20),
+        onTap: () => setState(() {
+          _selectedDay = _dateOnly(day);
+          if (!inMonth) _month = DateTime(day.year, day.month);
+        }),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
           margin: const EdgeInsets.all(2),
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.only(top: 4),
           decoration: BoxDecoration(
-            color: selected
-                ? Theme.of(context).colorScheme.primaryContainer
-                : null,
-            border: today
-                ? Border.all(color: Theme.of(context).colorScheme.outline)
-                : null,
-            borderRadius: BorderRadius.circular(20),
+            color: selected ? colors.primaryContainer : null,
+            borderRadius: BorderRadius.circular(14),
           ),
-          child: Column(
-            children: [
-              Text(
-                '${day.day}',
-                style: TextStyle(
-                  fontWeight: selected || today
-                      ? FontWeight.w800
-                      : FontWeight.w500,
-                  color: inMonth
-                      ? null
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
+          child: detailed
+              ? _detailedCell(number, day, events)
+              : Column(
+                  children: [
+                    number,
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final event in events.take(3))
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 1.5,
+                            ),
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: event.category.tone.color(context),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const SizedBox(width: 6, height: 6),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailedCell(
+    Widget number,
+    DateTime day,
+    List<PlanningEvent> events,
+  ) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(alignment: Alignment.center, child: number),
+          const SizedBox(height: 4),
+          for (final event in events.take(2))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 3),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: event.category.tone.container(context),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${_sameDay(event.start, day) ? '${_time(event.start)} ' : ''}${event.title}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: event.category.tone.color(context),
+                  ),
                 ),
               ),
-              const SizedBox(height: 2),
-              Wrap(
-                spacing: 2,
-                children: [
-                  for (final event in events.take(3))
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: _categoryColor(event.category),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const SizedBox(width: 6, height: 6),
-                    ),
-                ],
+            ),
+          if (events.length > 2)
+            Text(
+              '+${events.length - 2}개',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dayList(List<PlanningEvent> events) {
+    final theme = Theme.of(context);
+    final day = _selectedDay;
+    final today = _sameDay(day, DateTime.now());
+    return SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    '${day.month}월 ${day.day}일 ${weekdayLabel(day.weekday)}요일',
+                    style: theme.textTheme.titleLarge,
+                  ),
+                ),
+              ),
+              if (today) const ToneChip(label: '오늘', tone: AppTone.accent),
+              if (events.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                ToneChip(label: '${events.length}개'),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (events.isEmpty)
+            EmptyState(
+              icon: Icons.event_available_outlined,
+              title: '일정이 없습니다',
+              action: OutlinedButton.icon(
+                onPressed: () => _editEvent(),
+                icon: const Icon(Icons.add),
+                label: const Text('이 날에 추가'),
+              ),
+            )
+          else
+            for (final event in events) ...[
+              _eventTile(event, day),
+              const SizedBox(height: 8),
+            ],
+          ..._monthAgenda(),
+        ],
+      ),
+    );
+  }
+
+  /// The shown month's other events, so a quiet day still leads somewhere.
+  List<Widget> _monthAgenda() {
+    final theme = Theme.of(context);
+    final events =
+        widget.repository.events
+            .where(
+              (e) =>
+                  e.start.year == _month.year &&
+                  e.start.month == _month.month &&
+                  !_sameDay(e.start, _selectedDay),
+            )
+            .toList()
+          ..sort((a, b) => a.start.compareTo(b.start));
+    if (events.isEmpty) return const [];
+    return [
+      const SizedBox(height: 8),
+      const Divider(),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              '${_month.month}월의 다른 일정',
+              style: theme.textTheme.titleSmall,
+            ),
+          ),
+          ToneChip(label: '${events.length}개'),
+        ],
+      ),
+      const SizedBox(height: 8),
+      for (final event in events)
+        InkWell(
+          key: ValueKey('month-agenda-${event.id}'),
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => setState(() => _selectedDay = _dateOnly(event.start)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 64,
+                  child: Text(
+                    '${event.start.month}.${event.start.day} (${weekdayLabel(event.start.weekday)})',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: event.category.tone.color(context),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const SizedBox(width: 8, height: 8),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    event.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  _time(event.start),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+    ];
+  }
+
+  Widget _eventTile(PlanningEvent event, DateTime day) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final tone = event.category.tone;
+    final continued = !_sameDay(event.start, day);
+    return Material(
+      color: colors.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _editEvent(existing: event),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 4, color: tone.color(context)),
+              const SizedBox(width: 4),
+              Center(
+                child: Checkbox(
+                  key: ValueKey('schedule-done-${event.id}'),
+                  value: event.done,
+                  semanticLabel: '${event.title} 완료',
+                  onChanged: (value) => _setDone(event, value ?? false),
+                ),
+              ),
+              SizedBox(
+                width: 52,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        continued ? '계속' : _time(event.start),
+                        style: theme.textTheme.titleSmall,
+                      ),
+                      Text(
+                        _sameDay(event.end, day) ? _time(event.end) : '다음 날',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        event.title,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          decoration: event.done
+                              ? TextDecoration.lineThrough
+                              : null,
+                          color: event.done ? colors.onSurfaceVariant : null,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (event.memo.isNotEmpty)
+                        Text(
+                          event.memo,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      const SizedBox(height: 6),
+                      ToneChip(
+                        label: event.category.label,
+                        tone: tone,
+                        dot: true,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: '${event.title} 수정',
+                icon: const Icon(Icons.edit_outlined, size: 20),
+                onPressed: () => _editEvent(existing: event),
+              ),
+              const SizedBox(width: 4),
             ],
           ),
         ),
@@ -266,64 +587,72 @@ class _SchedulePageState extends State<SchedulePage> {
     );
   }
 
-  Widget _dayList(List<PlanningEvent> events) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '${_selectedDay.month}월 ${_selectedDay.day}일 일정',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 10),
-          if (events.isEmpty)
-            Text(
-              '등록된 개인 일정이 없습니다.',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            )
-          else
-            for (final event in events) _eventTile(event),
-        ],
-      ),
-    ),
-  );
-
-  Widget _eventTile(PlanningEvent event, {bool showDate = false}) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    leading: Container(
-      width: 4,
-      height: 42,
-      decoration: BoxDecoration(
-        color: _categoryColor(event.category),
-        borderRadius: BorderRadius.circular(4),
-      ),
-    ),
-    title: Text(event.title),
-    subtitle: Text(
-      '${showDate ? '${event.start.month}.${event.start.day} · ' : ''}${_time(event.start)}–${_time(event.end)} · ${event.category.label}${event.memo.isEmpty ? '' : '\n${event.memo}'}',
-    ),
-    trailing: IconButton(
-      tooltip: '${event.title} 수정',
-      icon: Icon(Icons.edit_outlined),
-      onPressed: () => _editEvent(event),
-    ),
-  );
+  /// Checks an event off (or reopens it) without opening the editor.
+  Future<void> _setDone(PlanningEvent event, bool done) async {
+    if (!_allowWrite()) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    try {
+      await widget.repository.saveEvent(
+        event.withCompletion(done ? DateTime.now() : null),
+      );
+    } catch (e) {
+      messenger?.showSnackBar(
+        SnackBar(
+          content: Text(e is AuthFailure ? e.message : '완료 표시를 저장하지 못했습니다.'),
+        ),
+      );
+    }
+  }
 
   List<PlanningEvent> _eventsForDay(DateTime day) =>
       eventsOnDay(widget.repository.events, day);
 
-  Future<void> _editEvent([PlanningEvent? existing]) async {
+  Future<void> _editEvent({
+    PlanningEvent? existing,
+    Map<String, Object?>? draftValues,
+    String? appliedDraftId,
+  }) async {
+    if (!_allowWrite()) return;
     await showInputDialog<void>(
       context: context,
       builder: (context) => _EventEditor(
         event: existing,
         initialDay: _selectedDay,
         repository: widget.repository,
+        allowWrite: _allowWrite,
+        draftValues: draftValues,
+        appliedDraftId: appliedDraftId,
       ),
     );
+  }
+
+  Future<void> _loadDraft() async {
+    if (!_allowWrite()) return;
+    final entry = await showFormDraftPicker(
+      context: context,
+      collectionKey: formDraftCollectionKey(_scheduleDraftScreenId),
+    );
+    if (!mounted || entry == null) return;
+    await _editEvent(draftValues: entry.payload, appliedDraftId: entry.id);
+  }
+
+  bool _allowWrite() {
+    if (!mounted) return false;
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return false;
+    }
+    if (widget.repository.writesBlocked) {
+      try {
+        widget.repository.ensureWritable();
+      } on StateError catch (error) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(error.message)));
+      }
+      return false;
+    }
+    return true;
   }
 }
 
@@ -332,10 +661,16 @@ class _EventEditor extends StatefulWidget {
     this.event,
     required this.initialDay,
     required this.repository,
+    required this.allowWrite,
+    this.draftValues,
+    this.appliedDraftId,
   });
   final PlanningEvent? event;
   final DateTime initialDay;
   final PlanningRepository repository;
+  final bool Function() allowWrite;
+  final Map<String, Object?>? draftValues;
+  final String? appliedDraftId;
 
   @override
   State<_EventEditor> createState() => _EventEditorState();
@@ -349,17 +684,26 @@ class _EventEditorState extends State<_EventEditor> {
   late PlanningEventCategory _category;
   late DateTime _defaultStart, _defaultEnd;
   final _formKey = GlobalKey<FormState>();
+  final _drafts = FormDraftStore.instance;
   bool _saving = false;
   String? _error;
+  late String? _loadedDraftId = widget.appliedDraftId;
   late final String _id = widget.event?.id ?? planningClientId();
+  String get _collectionKey => formDraftCollectionKey(_scheduleDraftScreenId);
 
   @override
   void initState() {
     super.initState();
     final event = widget.event;
-    _title = TextEditingController(text: event?.title);
-    _memo = TextEditingController(text: event?.memo);
+    final draft = widget.draftValues;
+    _title = TextEditingController(
+      text: draft?['title']?.toString() ?? event?.title,
+    );
+    _memo = TextEditingController(
+      text: draft?['memo']?.toString() ?? event?.memo,
+    );
     _start =
+        DateTime.tryParse(draft?['start']?.toString() ?? '') ??
         event?.start ??
         DateTime(
           widget.initialDay.year,
@@ -367,8 +711,17 @@ class _EventEditorState extends State<_EventEditor> {
           widget.initialDay.day,
           9,
         );
-    _end = event?.end ?? _start.add(const Duration(hours: 1));
-    _category = event?.category ?? PlanningEventCategory.academic;
+    _end =
+        DateTime.tryParse(draft?['end']?.toString() ?? '') ??
+        event?.end ??
+        _start.add(const Duration(hours: 1));
+    final categoryName = draft?['category']?.toString();
+    _category =
+        PlanningEventCategory.values
+            .where((c) => c.name == categoryName)
+            .firstOrNull ??
+        event?.category ??
+        PlanningEventCategory.academic;
     _defaultStart = _start;
     _defaultEnd = _end;
   }
@@ -380,17 +733,53 @@ class _EventEditorState extends State<_EventEditor> {
     super.dispose();
   }
 
+  Future<bool> _saveDraft() async {
+    if (!widget.allowWrite()) return false;
+    try {
+      final payload = <String, Object?>{
+        'title': _title.text.trim(),
+        'memo': _memo.text.trim(),
+        'start': _start.toIso8601String(),
+        'end': _end.toIso8601String(),
+        'category': _category.name,
+      };
+      final entry = await _drafts.add(
+        _collectionKey,
+        summary: formDraftSummaryFromValues({
+          'title': _title.text.trim(),
+          'memo': _memo.text.trim(),
+        }),
+        payload: payload,
+      );
+      _loadedDraftId = entry.id;
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('임시저장했습니다.')));
+      }
+      return true;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('임시저장하지 못했습니다. 입력은 유지됩니다.')),
+        );
+      }
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) => InputDialog(
     changes: Listenable.merge([_title, _memo]),
     editing: widget.event != null,
     saving: _saving,
+    onTempSave: _saveDraft,
     hasUnsavedChanges: () => widget.event == null
         ? _title.text.trim().isNotEmpty ||
               _memo.text.trim().isNotEmpty ||
               _category != PlanningEventCategory.academic ||
               _start != _defaultStart ||
-              _end != _defaultEnd
+              _end != _defaultEnd ||
+              widget.draftValues != null
         : _title.text != widget.event!.title ||
               _memo.text != widget.event!.memo ||
               _category != widget.event!.category ||
@@ -421,25 +810,41 @@ class _EventEditorState extends State<_EventEditor> {
                 value == null || value.trim().isEmpty ? '제목을 입력해 주세요.' : null,
           ),
           const SizedBox(height: 12),
-          _dateTimeField(
-            '시작 일시',
-            _start,
-            (value) => setState(() {
-              _start = value;
-              if (_end.isBefore(_start)) {
-                _end = _start.add(const Duration(hours: 1));
-              }
-            }),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final start = _dateTimeField(
+                const Key('event-start'),
+                '시작 일시',
+                _start,
+                (value) => setState(() {
+                  _start = value;
+                  if (_end.isBefore(_start)) {
+                    _end = _start.add(const Duration(hours: 1));
+                  }
+                }),
+              );
+              final end = _dateTimeField(
+                const Key('event-end'),
+                '종료 일시',
+                _end,
+                (value) => setState(() => _end = value),
+              );
+              // Side by side when both values fit on one line each.
+              final sideBySide =
+                  constraints.maxWidth >=
+                  MediaQuery.textScalerOf(context).scale(440);
+              return sideBySide
+                  ? Row(
+                      children: [
+                        Expanded(child: start),
+                        const SizedBox(width: 12),
+                        Expanded(child: end),
+                      ],
+                    )
+                  : Column(children: [start, const SizedBox(height: 12), end]);
+            },
           ),
-          const SizedBox(height: 8),
-          _dateTimeField(
-            '종료 일시',
-            _end,
-            (value) => setState(() => _end = value),
-          ),
-          if (widget.repository.isServerBacked)
-            const Text('일시는 이 기기의 시간대로 입력·표시하고 서버에는 UTC 시각으로 저장합니다.'),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           AnchoredSelectField<PlanningEventCategory>(
             value: _category,
             label: '분류',
@@ -478,6 +883,11 @@ class _EventEditorState extends State<_EventEditor> {
         onPressed: _saving ? null : () => InputDialog.cancel<void>(context),
         child: Text('취소'),
       ),
+      TextButton(
+        key: const Key('schedule-temp-save'),
+        onPressed: _saving ? null : () => _saveDraft(),
+        child: const Text('임시저장'),
+      ),
       FilledButton(
         onPressed: _saving ? null : _save,
         child: Text(_saving ? '저장 중…' : '저장'),
@@ -486,38 +896,60 @@ class _EventEditorState extends State<_EventEditor> {
   );
 
   Widget _dateTimeField(
+    Key key,
     String label,
     DateTime value,
     ValueChanged<DateTime> onChanged,
-  ) => OutlinedButton(
-    onPressed: _saving
-        ? null
-        : () async {
-            final date = await showDatePicker(
-              context: context,
-              initialDate: value,
-              firstDate: DateTime(2000),
-              lastDate: DateTime(2100),
-            );
-            if (date == null || !mounted) return;
-            final time = await showTimePicker(
-              context: context,
-              initialTime: TimeOfDay.fromDateTime(value),
-            );
-            if (time == null || !mounted) return;
-            onChanged(
-              DateTime(date.year, date.month, date.day, time.hour, time.minute),
-            );
-          },
-    child: Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        '$label  ${value.year}.${value.month}.${value.day} ${_time(value)}',
+  ) {
+    final text =
+        '${value.year}.${value.month}.${value.day} (${weekdayLabel(value.weekday)}) ${_time(value)}';
+    return Semantics(
+      button: true,
+      label: '$label $text',
+      excludeSemantics: true,
+      child: InkWell(
+        key: key,
+        borderRadius: BorderRadius.circular(appCornerRadius),
+        onTap: _saving
+            ? null
+            : () async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: value,
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                );
+                if (date == null || !mounted) return;
+                final time = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay.fromDateTime(value),
+                );
+                if (time == null || !mounted) return;
+                onChanged(
+                  DateTime(
+                    date.year,
+                    date.month,
+                    date.day,
+                    time.hour,
+                    time.minute,
+                  ),
+                );
+              },
+        child: InputDecorator(
+          isEmpty: false,
+          decoration: InputDecoration(
+            labelText: label,
+            enabled: !_saving,
+            suffixIcon: const Icon(Icons.event_outlined),
+          ),
+          child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   Future<void> _delete() async {
+    if (!widget.allowWrite()) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -549,6 +981,7 @@ class _EventEditorState extends State<_EventEditor> {
   }
 
   Future<void> _persist(Future<void> Function() write) async {
+    if (!widget.allowWrite()) return;
     setState(() {
       _saving = true;
       _error = null;
@@ -570,6 +1003,7 @@ class _EventEditorState extends State<_EventEditor> {
   }
 
   Future<void> _save() async {
+    if (!widget.allowWrite()) return;
     if (!_formKey.currentState!.validate()) return;
     if (!_end.isAfter(_start)) {
       ScaffoldMessenger.of(
@@ -585,8 +1019,16 @@ class _EventEditorState extends State<_EventEditor> {
       end: _end,
       category: _category,
       memo: _memo.text.trim(),
+      completedAt: widget.event?.completedAt,
     );
-    await _persist(() => widget.repository.saveEvent(event));
+    await _persist(() async {
+      await widget.repository.saveEvent(event);
+      final draftId = _loadedDraftId;
+      if (draftId != null) {
+        await _drafts.delete(_collectionKey, draftId);
+        _loadedDraftId = null;
+      }
+    });
   }
 }
 
@@ -596,9 +1038,3 @@ bool _sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 String _time(DateTime value) =>
     '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
-Color _categoryColor(PlanningEventCategory category) => switch (category) {
-  PlanningEventCategory.academic => const Color(0xff315a77),
-  PlanningEventCategory.personal => const Color(0xff6c7a37),
-  PlanningEventCategory.activity => const Color(0xff8f5a3c),
-  PlanningEventCategory.deadline => const Color(0xffa4414d),
-};

@@ -41,9 +41,14 @@ abstract class AdminRepository extends ChangeNotifier {
 
 /// In-memory fake only. Every operation checks the latest role/scope.
 class FakeAdminRepository extends AdminRepository {
-  FakeAdminRepository({List<AdminRecord>? seed, this.beforeOperation})
-    : _records = [...seed ?? adminFixture()];
+  FakeAdminRepository({
+    List<AdminRecord>? seed,
+    this.beforeOperation,
+    this.live = false,
+  }) : _records = [...seed ?? adminFixture()];
   final Future<void> Function(String operation)? beforeOperation;
+  @override
+  final bool live;
   final List<AdminRecord> _records;
   final List<AdminAuditEntry> _history = [];
   int _sequence = 0;
@@ -276,8 +281,10 @@ class FakeAdminRepository extends AdminRepository {
     if (r.kind == AdminKind.course) {
       final credits = double.tryParse(r.value('credits'));
       _require(
-        credits != null && credits.isFinite && credits > 0,
-        '학점은 0보다 큰 유한 숫자여야 합니다.',
+        (r.value('gradingBasis') == 'pass_fail' &&
+                r.value('credits').isEmpty) ||
+            (credits != null && credits.isFinite && credits >= 0),
+        '학점은 0 이상의 숫자로 입력하세요. P/F 학점 미확인은 비워 둘 수 있습니다.',
       );
     }
     if (r.kind == AdminKind.document) {

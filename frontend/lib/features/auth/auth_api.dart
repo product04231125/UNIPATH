@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'guidance_asset_gateway.dart';
+import 'file_export_gateway.dart';
+import 'material_file_gateway.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -8,7 +12,10 @@ import 'app_role.dart';
 import 'account_security_gateway.dart';
 import 'auth_http_stub.dart' if (dart.library.js_interop) 'auth_http_web.dart';
 import 'record_files_gateway.dart';
+import '../api/api_base_url.dart';
 import '../api/school_signup_models.dart';
+import '../../shared/drafts/form_draft_store.dart';
+import 'local_data_owner.dart';
 
 class SchoolSignupResult {
   const SchoolSignupResult(this.identity, this.signup);
@@ -17,10 +24,16 @@ class SchoolSignupResult {
 }
 
 class AuthFailure implements Exception {
-  const AuthFailure(this.message, {this.status, this.fields = const []});
+  const AuthFailure(
+    this.message, {
+    this.status,
+    this.fields = const [],
+    this.requestId,
+  });
   final String message;
   final int? status;
   final List<String> fields;
+  final String? requestId;
 }
 
 class AuthIdentity {
@@ -107,13 +120,7 @@ class AuthApi implements AuthGateway, ApiGateway {
     : _cookieMode = cookieMode,
       _pageHost = (pageUrl ?? Uri.base).host.toLowerCase(),
       _base = resolveCookieApiBase(
-        baseUrl ??
-            Uri.parse(
-              const String.fromEnvironment(
-                'API_BASE_URL',
-                defaultValue: 'http://localhost:8010',
-              ),
-            ),
+        resolveApiBaseUrl(baseUrl ?? configuredApiBaseUrl()),
         cookieMode: cookieMode,
         pageUrl: pageUrl,
       );
@@ -330,8 +337,14 @@ class AuthApi implements AuthGateway, ApiGateway {
   }
 
   void _setOwner(String? value) {
+    final previous = _ownerId;
     if (_ownerId != value) _sessionEpoch++;
     _ownerId = value;
+    LocalDataOwner.currentUserId = value;
+    if (previous != null && previous != value) {
+      // Fire-and-forget: draft wipe must not block logout/session switch.
+      unawaited(FormDraftStore.instance.clearForOwner(previous));
+    }
   }
 
   @override
@@ -358,9 +371,41 @@ class AuthApi implements AuthGateway, ApiGateway {
       final response = await _client
           .send(request)
           .then(http.Response.fromStream)
-          .timeout(const Duration(seconds: 20));
+          .timeout(
+            Duration(
+              seconds:
+                  // Posting collection, several postings or a whole document in one model
+                  // call; the gateway allows 180 s for these paths.
+                  (const {
+                        'me/job-recommendations',
+                        'me/career-gap-analyses',
+                        'me/activity-recommendations',
+                        'me/certificate-recommendations',
+                        'me/certificate-study-plans',
+                        'me/writing-drafts',
+                      }.contains(path) ||
+                      (path == 'me/personalized-guidance' &&
+                          (body?['documents'] as List? ?? []).isNotEmpty))
+                  ? 180
+                  : const {
+                          'me/school-queries',
+                          'me/personalized-guidance',
+                          'me/job-analyses',
+                        }.contains(path) ||
+                        path.startsWith('me/materials')
+                  ? 55
+                  : 20,
+            ),
+          );
       if (response.statusCode >= 400) {
         final fields = <String>[];
+        String? requestId;
+        try {
+          final error = jsonDecode(utf8.decode(response.bodyBytes)) as Map;
+          requestId = error['error']['request_id'] as String?;
+        } catch (_) {
+          /* Keep a safe message for malformed error bodies. */
+        }
         if (response.statusCode == 422) {
           try {
             final error = jsonDecode(utf8.decode(response.bodyBytes)) as Map;
@@ -384,6 +429,7 @@ class AuthApi implements AuthGateway, ApiGateway {
           },
           status: response.statusCode,
           fields: fields,
+          requestId: requestId,
         );
       }
       if (response.statusCode == 204) return null;
@@ -546,11 +592,202 @@ class AuthApi implements AuthGateway, ApiGateway {
   }
 }
 
-class _OwnerGateway implements ApiGateway {
+class _OwnerGateway
+    implements
+        ApiGateway,
+        GuidanceAssetGateway,
+        FileExportGateway,
+        MaterialFileGateway {
   const _OwnerGateway(this.auth, this.ownerId, this.epoch);
   final AuthApi auth;
   final String ownerId;
   final int epoch;
+
+  @override
+  Future<Uint8List> exportFile(
+    String path,
+    Map<String, Object?> body,
+    ExportFormat format,
+  ) async {
+    void check() {
+      if (!auth._ownsSession(ownerId, epoch)) {
+        throw const AuthFailure('계정이 변경되었습니다. 다시 로그인해 주세요.', status: 403);
+      }
+    }
+
+    check();
+    try {
+      final request = http.Request('POST', auth._base.resolve('/api/v1/$path'));
+      request.followRedirects = false;
+      request.headers['Content-Type'] = 'application/json';
+      request.headers['X-Unipath-Owner'] = ownerId;
+      if (auth._token != null) {
+        request.headers['Authorization'] = 'Bearer ${auth._token}';
+      }
+      request.body = jsonEncode(body);
+      final response = await auth._client
+          .send(request)
+          .then(http.Response.fromStream)
+          .timeout(const Duration(seconds: 30));
+      check();
+      if (response.statusCode != 200) {
+        throw AuthFailure(switch (response.statusCode) {
+          401 => '다시 로그인해 주세요.',
+          422 => '문서 내용의 길이와 형식을 확인해 주세요.',
+          429 => '요청이 많습니다. 잠시 후 다시 시도해 주세요.',
+          503 => '${format.label} 파일을 지금 만들 수 없습니다. 다른 형식으로 받아 주세요.',
+          _ => '${format.label} 파일을 만들지 못했습니다. 다시 시도해 주세요.',
+        }, status: response.statusCode);
+      }
+      final type = response.headers['content-type']?.split(';').first;
+      final bytes = response.bodyBytes;
+      if (type != format.mime || !format.matches(bytes)) {
+        throw AuthFailure('${format.label} 파일 형식을 확인하지 못했습니다.');
+      }
+      return bytes;
+    } on AuthFailure {
+      rethrow;
+    } catch (_) {
+      check();
+      throw AuthFailure('${format.label} 파일을 받지 못했습니다. 연결을 확인하고 다시 시도해 주세요.');
+    }
+  }
+
+  @override
+  Future<Uint8List> materialFile(String id) => _materialBytes(
+    id,
+    'file',
+    what: '자료의 PDF',
+    whatObject: '자료의 PDF를',
+    valid: (type, bytes) =>
+        type == ExportFormat.pdf.mime && ExportFormat.pdf.matches(bytes),
+  );
+
+  @override
+  Future<Uint8List> materialPage(String id, int number) {
+    if (number < 1) throw const AuthFailure('올바른 쪽을 선택해 주세요.');
+    return _materialBytes(
+      id,
+      'pages/$number',
+      what: 'PDF $number쪽',
+      whatObject: 'PDF $number쪽을',
+      valid: (type, bytes) => type == 'image/webp' && isWebp(bytes),
+    );
+  }
+
+  /// One owner-scoped binary response under `me/materials/{id}/`.
+  Future<Uint8List> _materialBytes(
+    String id,
+    String suffix, {
+    required String what,
+    required String whatObject,
+    required bool Function(String? type, Uint8List bytes) valid,
+  }) async {
+    if (!RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(id)) {
+      throw const AuthFailure('올바른 자료를 선택해 주세요.');
+    }
+    void check() {
+      if (!auth._ownsSession(ownerId, epoch)) {
+        throw const AuthFailure('계정이 변경되었습니다. 다시 로그인해 주세요.', status: 403);
+      }
+    }
+
+    check();
+    try {
+      final request = http.Request(
+        'GET',
+        auth._base.resolve('/api/v1/me/materials/$id/$suffix'),
+      );
+      request.followRedirects = false;
+      request.headers['X-Unipath-Owner'] = ownerId;
+      if (auth._token != null) {
+        request.headers['Authorization'] = 'Bearer ${auth._token}';
+      }
+      final response = await auth._client
+          .send(request)
+          .then(http.Response.fromStream)
+          .timeout(const Duration(seconds: 60));
+      check();
+      if (response.statusCode != 200) {
+        throw AuthFailure(switch (response.statusCode) {
+          404 => '$whatObject 찾을 수 없습니다. 목록을 새로 읽어 주세요.',
+          429 => '요청이 많습니다. 잠시 후 다시 시도해 주세요.',
+          _ => '$whatObject 받지 못했습니다. 다시 시도해 주세요.',
+        }, status: response.statusCode);
+      }
+      final type = response.headers['content-type']?.split(';').first;
+      final bytes = response.bodyBytes;
+      if (!valid(type, bytes)) {
+        throw AuthFailure('$what 형식을 확인하지 못했습니다.');
+      }
+      return bytes;
+    } on AuthFailure {
+      rethrow;
+    } catch (_) {
+      check();
+      throw AuthFailure('$whatObject 받지 못했습니다. 연결을 확인하고 다시 시도해 주세요.');
+    }
+  }
+
+  @override
+  Future<GuidanceAsset> guidanceAsset(String id) async {
+    if (!RegExp(r'^[0-9a-f]{64}$').hasMatch(id)) {
+      throw const AuthFailure('올바른 안내 자료를 선택해 주세요.');
+    }
+    void check() {
+      if (!auth._ownsSession(ownerId, epoch)) {
+        throw const AuthFailure('계정이 변경되었습니다. 다시 로그인해 주세요.', status: 403);
+      }
+    }
+
+    check();
+    try {
+      final request = http.Request(
+        'GET',
+        auth._base.resolve('/api/v1/me/academic-guidance/assets/$id'),
+      );
+      request.followRedirects = false;
+      request.headers['X-Unipath-Owner'] = ownerId;
+      if (auth._token != null) {
+        request.headers['Authorization'] = 'Bearer ${auth._token}';
+      }
+      final response = await auth._client
+          .send(request)
+          .then(http.Response.fromStream)
+          .timeout(const Duration(seconds: 20));
+      check();
+      if (response.statusCode != 200) {
+        throw AuthFailure(
+          response.statusCode == 404
+              ? '안내 자료를 찾을 수 없습니다.'
+              : '안내 자료를 읽지 못했습니다. 다시 시도해 주세요.',
+          status: response.statusCode,
+        );
+      }
+      final type = response.headers['content-type']?.split(';').first;
+      final bytes = response.bodyBytes;
+      final validPdf =
+          type == 'application/pdf' &&
+          bytes.length >= 5 &&
+          utf8.decode(bytes.take(5).toList(), allowMalformed: true) == '%PDF-';
+      final validJpeg =
+          type == 'image/jpeg' &&
+          bytes.length >= 3 &&
+          bytes[0] == 255 &&
+          bytes[1] == 216 &&
+          bytes[2] == 255;
+      if (!validPdf && !validJpeg) {
+        throw const AuthFailure('안내 자료의 파일 형식을 확인하지 못했습니다.');
+      }
+      return GuidanceAsset(bytes, type!);
+    } on AuthFailure {
+      rethrow;
+    } catch (_) {
+      check();
+      throw const AuthFailure('안내 자료를 읽지 못했습니다. 다시 시도해 주세요.');
+    }
+  }
+
   @override
   Future<Map<String, dynamic>?> request(
     String method,

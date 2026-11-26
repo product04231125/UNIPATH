@@ -29,7 +29,7 @@
 | 개인 규칙 · GraduationRuleSet/Rule 및 관련 요건  | 이름·코드·종류·학교/학과/교육과정 범위·필요/현재 값·단위·조건/대체 요건/성적 기준·기간·출처 CRUD, 교육과정·과목·개인 기록 연결 | `personal_graduation_fields.dart`의 연결 대상 재검사·교육과정 불일치 거부; `personal_graduation_test.dart`의 값/기간 검증·규칙 CRUD·끊어진 참조·판정 미표시                                                      |
 | 일정 · ERD 독립 엔터티 없음                      | 제목·시작/종료 일시·분류·메모 CRUD, 달력·선택 날짜·주간 표시                                        | `planning_repository.dart`·`schedule_page.dart`; `widget_test.dart`의 저장·복원, `planning_storage_test.dart`의 실패 보존·삭제 확인/취소/재시도, `workspace_ux_test.dart`의 날짜 경계                 |
 | 설정 · User의 개인 소속 정보                     | 학교·학과·입학연도·개인 계획 학년·주 시작 요일 저장                                                | `settings_page.dart`·PlanningProfile; `widget_test.dart`의 로컬 복원, `planning_storage_test.dart`의 프로필 저장 실패 보존·성공 표시·읽기 재시도                                                      |
-| 포트폴리오 구성·지원 문서 · HTML 확장                | 성과 선택·순서·소개·로컬 사용 의도, 지원처/직무/문서 종류/본문 CRUD·경험/성과 선택·확인 후 본문 추가·미리보기/복사        | `portfolio_workspace_repository.dart`·`portfolio_editor_dialog.dart`·`portfolio_drafts_page.dart`; `portfolio_workspace_test.dart`의 독립 저장·정렬·공개 검토·원본 삭제/실패·사용자 본문 보존·복사·좁은 창 |
+| 포트폴리오 구성·지원 문서 · HTML 확장                | 포트폴리오: 최근 목표 직무 분석의 요건 순서로 근거 기록 묶기·순서 바꾸기·기록 빼기 후 초안 요청(2026-11-24). 예전 로컬 구성·지원 문서 화면은 삭제 | `features/writing/portfolio_composition.dart`; `portfolio_composition_test.dart`. 기기 자료 가져오기용 `portfolio_workspace_repository.dart`는 `portfolio_workspace_test.dart`(저장소 검증)만 유지 |
 
 공통 검증: 필수값, 양의 학점, 비음수·유한 숫자, 실제 날짜·기간 역전, 안전한 URL을 검사한다.
 저장 성공 뒤 상태 확정, 읽기 실패 시 덮어쓰기 차단, 저장 실패 입력 유지, 삭제 확인을 구현했다.

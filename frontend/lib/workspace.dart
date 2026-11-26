@@ -1,21 +1,35 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import 'app_shell/phone_shell.dart';
 import 'app_shell/workspace_shell.dart';
 import 'shared/pending_ui_action.dart';
 import 'features/assistant/assistant_window_host.dart';
 import 'features/settings/chat_preferences.dart';
+import 'features/settings/ai_consent_preferences.dart';
 import 'features/assistant/assistant_conversation.dart';
 import 'features/assistant/assistant_api.dart';
+import 'features/assistant/ai_record_catalog.dart';
+import 'features/api/guidance_api.dart';
 import 'features/assistant/assistant_panel.dart';
 import 'features/assistant/shared_school_context.dart';
 import 'features/assistant/conversation_bridge.dart';
 import 'chat_window.dart' as native;
 import 'features/graduation/graduation_page.dart';
 import 'features/graduation/personal_calculation_controller.dart';
+import 'app_shell/student_pages.dart';
+import 'features/academics/academics_page.dart';
+import 'shared/widgets/page_tabs.dart';
+import 'features/writing/writing_api.dart';
+import 'features/writing/writing_page.dart';
+import 'features/career/career_gap.dart';
+import 'features/career/activity_recommendation.dart';
+import 'features/career/activity_recommendation_view.dart';
+import 'features/career/certificate_lookup_view.dart';
+import 'features/career/certificate_recommendation_view.dart';
+import 'features/career/certificate_study_plan.dart';
+import 'features/career/certificates.dart';
+import 'features/career/career_goal.dart';
 import 'features/home/home_page.dart';
 import 'features/planning/planning_repository.dart';
 import 'features/planning/remote_planning_repository.dart';
@@ -23,18 +37,21 @@ import 'features/api/student_api.dart';
 import 'features/records/personal_repository_scope.dart';
 import 'features/records/personal_workspace_importer.dart';
 import 'features/records/remote_personal_record_repository.dart';
-import 'features/records/portfolio/remote_portfolio_workspace_repository.dart';
 import 'features/planning/weekly_schedule.dart';
 import 'features/records/activity/activity_page.dart';
 import 'features/records/course/course_page.dart';
 import 'features/records/credential/credential_page.dart';
 import 'features/records/portfolio/job_analysis_page.dart';
 import 'features/records/portfolio/materials_page.dart';
+import 'features/records/portfolio/material_repository.dart';
+import 'features/auth/local_data_owner.dart';
 import 'features/settings/settings_page.dart';
 import 'features/schedule/schedule_page.dart';
+import 'features/auth/guest_preview_scope.dart';
+import 'features/writing/posting_link.dart';
 
-/// Coordinates navigation, mock-data visibility, and the assistant window.
-/// Feature pages own their own mock state and input interactions.
+/// Coordinates navigation and the assistant window.
+/// Product pages show personal/server records; fixtures stay isolated.
 class Workspace extends StatefulWidget {
   const Workspace({
     super.key,
@@ -42,12 +59,15 @@ class Workspace extends StatefulWidget {
     this.windowHost = const AssistantWindowHost(),
     this.chatPreferences,
     this.selectedPage,
+    this.academicTab = 0,
     this.onPageChanged,
     this.assistantFactory,
     this.sidebarVisible = true,
     this.integratedTitleBar = false,
     this.beforeSignedOut,
     this.studentApi,
+    this.guestPreview = false,
+    this.previewInstitutionId,
   });
 
   final VoidCallback onSignedOut;
@@ -56,40 +76,40 @@ class Workspace extends StatefulWidget {
   final AssistantWindowHost windowHost;
   final ChatPreferences? chatPreferences;
   final int? selectedPage;
+
+  /// 학사 tab: 0 수강 관리, 1 졸업 요건 (`/courses`, `/graduation` links).
+  final int academicTab;
   final ValueChanged<int>? onPageChanged;
   final AssistantGateway Function()? assistantFactory;
   final bool sidebarVisible, integratedTitleBar;
+  final bool guestPreview;
+  final String? previewInstitutionId;
 
   @override
   State<Workspace> createState() => _WorkspaceState();
 }
 
 class _WorkspaceState extends State<Workspace> {
-  static const _labels = [
-    '홈',
-    '일정',
-    '수강 관리',
-    '졸업 요건',
-    '활동',
-    '자격',
-    '자료',
-    '채용공고 분석',
-  ];
+  static const _labels = StudentPages.labels;
   static const _icons = [
     Icons.home_outlined,
-    Icons.calendar_month_outlined,
-    Icons.menu_book_outlined,
-    Icons.school_outlined,
+    Icons.work_outline,
     Icons.volunteer_activism_outlined,
     Icons.workspace_premium_outlined,
     Icons.collections_bookmark_outlined,
-    Icons.work_outline,
+    Icons.calendar_month_outlined,
+    Icons.school_outlined,
   ];
 
   var _page = 0;
+  late var _academicTab = widget.academicTab;
   final _visitedPages = <int>{};
   final _materials = GlobalKey<MaterialsPageState>();
-  var _showMockData = true;
+  late final MaterialRepository _materialRepository =
+      switch (widget.studentApi) {
+        final api? => AccountMaterialRepository(api.api, ownerId: api.ownerId),
+        null => DeviceMaterialRepository(owner: LocalDataOwner.current()),
+      };
   var _chatOpen = false;
   var _chatManuallyOpened = false;
   var _detachedChatActive = false;
@@ -101,17 +121,153 @@ class _WorkspaceState extends State<Workspace> {
   Future<void>? _endingSession;
   final _assistantButtonFocus = FocusNode(debugLabel: 'AI 도우미 열기');
   late final ChatPreferences _chatPreferences;
+  late final AiConsentPreferences? _aiConsent = widget.studentApi == null
+      ? null
+      : AiConsentPreferences(ownerId: widget.studentApi!.ownerId);
   var _chatWidth = 360.0;
-  double _graduationMinimumWidth = 0;
-  final _graduationPageKey = GlobalKey();
   final _assistantPanelKey = GlobalKey();
   late final _assistantConversation = AssistantConversation(
-    api: widget.assistantFactory?.call(),
+    api:
+        widget.assistantFactory?.call() ??
+        (widget.studentApi == null
+            ? null
+            : RegisteredAssistantApi(widget.studentApi!.api)),
+    registeredOnly: widget.assistantFactory == null,
+    guidanceApi: widget.studentApi == null
+        ? null
+        : GuidanceApi(
+            widget.studentApi!.api,
+            ownerId: widget.studentApi!.ownerId,
+          ),
+    consent: _aiConsent,
+    loadRecords: widget.studentApi == null
+        ? null
+        : () => loadAiRecords(widget.studentApi!),
+    loadMaterials: () => loadAssistantMaterials(_materialRepository),
+    loadDocuments: (ids) => loadGuidanceDocuments(_materialRepository, ids),
+    onOpenSettings: () => _selectPage(_labels.length),
   );
-  late final PlanningRepository _planningRepository = widget.studentApi == null
-      ? PlanningRepository()
-      : RemotePlanningRepository(widget.studentApi!);
-  late final StudentApi? _personalApi = widget.studentApi;
+  late final PlanningRepository _planningRepository = () {
+    final base = widget.studentApi == null
+        ? PlanningRepository()
+        : RemotePlanningRepository(widget.studentApi!);
+    if (widget.guestPreview) base.blockWrites(GuestPreviewScope.blockedMessage);
+    return base;
+  }();
+  late final StudentApi? _personalApi = widget.guestPreview
+      ? null
+      : widget.studentApi;
+  late final GapReportStore? _gapStore = _personalApi == null
+      ? null
+      : GapReportStore(ownerId: _personalApi.ownerId);
+  final _gapReport = ValueNotifier<GapReport?>(null);
+  JobPurposeRequest? _jobPurposeRequest;
+
+  /// 자료 tab: 0 내 자료, 1 자기소개서·포트폴리오.
+  var _materialsTab = 0;
+  var _activityTab = 0;
+  var _credentialTab = 0;
+  final _certificateSelection = CertificateSelection();
+  // Bumped when 활동 추천 saves a record, so 내 활동 (kept alive in its tab) reloads.
+  final _activityRecordsChanged = ValueNotifier(0);
+  late final WritingSessionStore? _writingStore = _personalApi == null
+      ? null
+      : WritingSessionStore(ownerId: _personalApi.ownerId);
+  WritingRequest? _writingRequest;
+
+  /// 채용공고 분석 → 자기소개서·포트폴리오 for that posting.
+  void _writeForPosting(PostingLink link, WritingType type) {
+    setState(() {
+      _writingRequest = WritingRequest(link: link, type: type);
+      _materialsTab = 1;
+    });
+    _selectPage(StudentPages.materials);
+  }
+
+  Future<void> _addPreparationPlan(
+    GapAction action,
+    GapRequirement requirement,
+    DateTime date,
+  ) => _planningRepository.saveEvent(
+    PlanningEvent(
+      id: planningClientId(),
+      title: '${action.title} 목표일',
+      start: DateTime(date.year, date.month, date.day, 9),
+      end: DateTime(date.year, date.month, date.day, 10),
+      category: action.type == 'certificate'
+          ? PlanningEventCategory.deadline
+          : PlanningEventCategory.activity,
+      memo: '${requirement.requirement} 준비 · ${action.detail}',
+    ),
+  );
+
+  Future<void> _addActivityPlan(
+    ActivityRecommendation activity,
+    DateTime date,
+  ) => _planningRepository.saveEvent(
+    PlanningEvent(
+      id: planningClientId(),
+      title: '${activity.title} 목표일',
+      start: DateTime(date.year, date.month, date.day, 9),
+      end: DateTime(date.year, date.month, date.day, 10),
+      category: PlanningEventCategory.activity,
+      memo: '${activity.kindLabel} · ${activity.reason}',
+    ),
+  );
+
+  /// Official exam events as calendar entries: registration periods get a start and an end.
+  Future<void> _addCertificateEvents(
+    String certificate,
+    List<ScheduleEvent> events,
+  ) async {
+    for (final e in events) {
+      final days = e.kind == ScheduleEventKind.registration && e.isRange
+          ? [(e.start, '${e.label} 시작'), (e.end, '${e.label} 마감')]
+          : [(e.start, e.label)];
+      for (final (day, label) in days) {
+        await _planningRepository.saveEvent(
+          PlanningEvent(
+            id: planningClientId(),
+            title: '$certificate $label',
+            start: DateTime(day.year, day.month, day.day, 9),
+            end: DateTime(day.year, day.month, day.day, 10),
+            category: switch (e.kind) {
+              ScheduleEventKind.registration ||
+              ScheduleEventKind.document => PlanningEventCategory.deadline,
+              ScheduleEventKind.exam => PlanningEventCategory.activity,
+              ScheduleEventKind.result => PlanningEventCategory.personal,
+            },
+            memo: '${e.label} ${eventPeriod(e)} · 공식 일정은 바뀔 수 있습니다',
+          ),
+        );
+      }
+    }
+  }
+
+  /// Weekly study goals as calendar entries on each week's first day.
+  Future<void> _addStudyPlan(String certificate, List<StudyWeek> weeks) async {
+    for (final w in weeks) {
+      await _planningRepository.saveEvent(
+        PlanningEvent(
+          id: planningClientId(),
+          title: '$certificate ${w.week}주차 · ${w.focus}',
+          start: DateTime(w.start.year, w.start.month, w.start.day, 9),
+          end: DateTime(w.start.year, w.start.month, w.start.day, 10),
+          category: PlanningEventCategory.academic,
+          memo: w.tasks.join(' / '),
+        ),
+      );
+    }
+  }
+
+  void _openCareerGap() {
+    setState(() => _jobPurposeRequest = JobPurposeRequest(JobPurpose.gap));
+    _selectPage(StudentPages.jobs);
+  }
+
+  late final CareerGoalController? _careerGoal = _personalApi == null
+      ? null
+      : (CareerGoalController(_personalApi.api)..load());
   late final PersonalCalculationController? _personalCalculations =
       _personalApi == null
       ? null
@@ -143,6 +299,11 @@ class _WorkspaceState extends State<Workspace> {
   void initState() {
     super.initState();
     _page = widget.selectedPage ?? 0;
+    unawaited(
+      _gapStore?.load().then((report) {
+        if (mounted && report != null) _gapReport.value ??= report;
+      }),
+    );
     _sharedSchoolContext = SharedSchoolContext(
       _planningRepository,
       _assistantConversation,
@@ -154,7 +315,7 @@ class _WorkspaceState extends State<Workspace> {
       );
       native.bindConversation(
         _conversationBridge!.read,
-        _conversationBridge!.command,
+        _conversationBridge!.dispatch,
       );
       native.bindSchoolProfile(
         () {
@@ -176,6 +337,7 @@ class _WorkspaceState extends State<Workspace> {
     _planningRepository.load();
     _chatPreferences = widget.chatPreferences ?? ChatPreferences();
     _chatPreferences.load();
+    _aiConsent?.load();
     widget.windowHost.isMaximized().then(_onMaximized, onError: (Object _) {});
     _mainWindowMaximizeSubscription = widget.windowHost.maximizeChanges.listen(
       _onMaximized,
@@ -238,6 +400,9 @@ class _WorkspaceState extends State<Workspace> {
   @override
   void didUpdateWidget(covariant Workspace oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.academicTab != oldWidget.academicTab) {
+      _academicTab = widget.academicTab;
+    }
     if (widget.selectedPage != null && widget.selectedPage != _page) {
       _scheduleAddRequest = null;
       _page = widget.selectedPage!;
@@ -248,6 +413,10 @@ class _WorkspaceState extends State<Workspace> {
   void dispose() {
     _personalClosed = true;
     _personalImporter?.dispose();
+    _careerGoal?.dispose();
+    _gapReport.dispose();
+    _certificateSelection.dispose();
+    _activityRecordsChanged.dispose();
     _personalCalculations?.dispose();
     unawaited(_releaseSession().catchError((Object _) {}));
     _assistantButtonFocus.dispose();
@@ -263,23 +432,14 @@ class _WorkspaceState extends State<Workspace> {
     _planningRepository.removeListener(_refreshProfile);
     _planningRepository.dispose();
     if (widget.chatPreferences == null) _chatPreferences.dispose();
+    _aiConsent?.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final phone = isPhonePortraitShell(
-          Size(constraints.maxWidth, constraints.maxHeight),
-        );
-        final showMockData = phone ? false : _showMockData;
-        return _buildShell(context, showMockData: showMockData);
-      },
-    );
-  }
+  Widget build(BuildContext context) => _buildShell(context);
 
-  Widget _buildShell(BuildContext context, {required bool showMockData}) {
+  Widget _buildShell(BuildContext context) {
     final navigationItems = [
       for (var index = 0; index < _labels.length; index++)
         WorkspaceNavigationItem(label: _labels[index], icon: _icons[index]),
@@ -291,17 +451,10 @@ class _WorkspaceState extends State<Workspace> {
       integratedTitleBar: widget.integratedTitleBar,
       selectedPage: _page,
       navigationItems: navigationItems,
-      onPageSelected: (value) => _selectPage(value),
+      onPageSelected: _selectPage,
       // Navigation shares the home baseline so changing destinations cannot
       // expand a compact startup sidebar just because that page is narrower.
-      minimumContentWidth: math.max(
-        WeeklySchedule.minimumWidth + 16,
-        _page == 3 && showMockData && _graduationMinimumWidth > 0
-            ? _graduationMinimumWidth + 16
-            : 0,
-      ),
-      showMockData: showMockData,
-      onMockDataChanged: (value) => setState(() => _showMockData = value),
+      minimumContentWidth: WeeklySchedule.minimumWidth + 16,
       onSignedOut: _signOut,
       isAssistantOpen: _chatOpen,
       isAssistantManuallyOpened: _chatManuallyOpened,
@@ -312,11 +465,8 @@ class _WorkspaceState extends State<Workspace> {
       onAssistantWidthChanged: (delta) => setState(() {
         _chatWidth = (_chatWidth - delta).clamp(300.0, 480.0);
       }),
-      pageBuilder: (context, layout) => _buildPage(
-        navigationItems.length,
-        layout,
-        showMockData: showMockData,
-      ),
+      pageBuilder: (context, layout) =>
+          _buildPage(navigationItems.length, layout),
       assistantBuilder: (context, width, fullScreen) => AssistantPanel(
         key: _assistantPanelKey,
         active: _chatOpen,
@@ -353,19 +503,11 @@ class _WorkspaceState extends State<Workspace> {
               kind,
               ensureOpen: _ensurePersonalOpen,
             ),
-            portfolio: () => RemotePortfolioWorkspaceRepository(
-              _personalApi,
-              ensureOpen: _ensurePersonalOpen,
-            ),
             child: shell,
           );
   }
 
-  Widget _buildPage(
-    int settingsPage,
-    WorkspaceShellLayout layout, {
-    required bool showMockData,
-  }) {
+  Widget _buildPage(int settingsPage, WorkspaceShellLayout layout) {
     _visitedPages.add(_page);
     return Stack(
       children: [
@@ -378,12 +520,7 @@ class _WorkspaceState extends State<Workspace> {
                 excluding: index != _page,
                 child: TickerMode(
                   enabled: index == _page,
-                  child: _pageFor(
-                    index,
-                    settingsPage,
-                    layout,
-                    showMockData: showMockData,
-                  ),
+                  child: _pageFor(index, settingsPage, layout),
                 ),
               ),
             ),
@@ -392,54 +529,134 @@ class _WorkspaceState extends State<Workspace> {
     );
   }
 
-  Widget _pageFor(
-    int index,
-    int settingsPage,
-    WorkspaceShellLayout layout, {
-    required bool showMockData,
-  }) => switch (index) {
-    0 => HomePage(
-      repository: _planningRepository,
-      coveredRightWidth: 0,
-      onOpenPage: _selectPage,
-      onOpenSettings: () => _selectPage(settingsPage - 1),
-      onOpenSchedule: (day) {
-        _scheduleAddRequest = null;
-        _scheduleInitialDay = day;
-        _selectPage(1);
-      },
-      onAddSchedule: () {
-        _scheduleInitialDay = DateTime.now();
-        _selectPage(1, addRequest: PendingUiAction());
-      },
-    ),
-    1 => SchedulePage(
-      repository: _planningRepository,
-      initialDay: _scheduleInitialDay,
-      addRequest: _scheduleAddRequest,
-    ),
-    2 => CoursePage(showMockData: showMockData),
-    3 => GraduationPage(
-      planning: _planningRepository,
-      key: _graduationPageKey,
-      showMockData: showMockData,
-      onMinimumWidthChanged: (width) => setState(() {
-        _graduationMinimumWidth = width;
-      }),
-    ),
-    4 => ActivityPage(showMockData: showMockData),
-    5 => CredentialPage(showMockData: showMockData),
-    6 => MaterialsPage(key: _materials),
-    7 => const JobAnalysisPage(),
-    _ when index == settingsPage - 1 => SettingsPage(
-      repository: _planningRepository,
-      chatPreferences: widget.windowHost.supportsDetached
-          ? _chatPreferences
-          : null,
-      studentApi: widget.studentApi,
-    ),
-    _ => const SizedBox.shrink(),
-  };
+  Widget _pageFor(int index, int settingsPage, WorkspaceShellLayout layout) =>
+      switch (index) {
+        StudentPages.home => HomePage(
+          careerGoal: _careerGoal,
+          gapReport: _gapStore == null ? null : _gapReport,
+          onOpenCareerGap: _openCareerGap,
+          repository: _planningRepository,
+          onOpenPage: _selectPage,
+          onOpenSettings: () => _selectPage(settingsPage - 1),
+          onOpenSchedule: (day) {
+            _scheduleAddRequest = null;
+            _scheduleInitialDay = day;
+            _selectPage(StudentPages.schedule);
+          },
+          onAddSchedule: () {
+            _scheduleInitialDay = DateTime.now();
+            _selectPage(StudentPages.schedule, addRequest: PendingUiAction());
+          },
+        ),
+        StudentPages.jobs => JobAnalysisPage(
+          careerGoal: _careerGoal,
+          gapStore: _gapStore,
+          onAddPlan: _addPreparationPlan,
+          onGapReport: (report) => _gapReport.value = report,
+          purposeRequest: _jobPurposeRequest,
+          onWrite: _writeForPosting,
+          api: _personalApi,
+          consent: _aiConsent,
+          loadMaterials: () => loadAssistantMaterials(_materialRepository),
+          loadDocuments: (ids) =>
+              loadGuidanceDocuments(_materialRepository, ids),
+        ),
+        StudentPages.activity => PageTabs(
+          tabsKey: const ValueKey('activity-tabs'),
+          labels: const ['내 활동', '활동 추천'],
+          tab: _activityTab,
+          onTabChanged: (tab) => setState(() => _activityTab = tab),
+          children: [
+            ActivityPage(changes: _activityRecordsChanged),
+            ActivityRecommendationView(
+              api: _personalApi,
+              consent: _aiConsent,
+              careerGoal: _careerGoal,
+              onAddPlan: _personalApi == null ? null : _addActivityPlan,
+              onRecordSaved: () => _activityRecordsChanged.value++,
+              onOpenCareerGap: _openCareerGap,
+            ),
+          ],
+        ),
+        StudentPages.credential => PageTabs(
+          tabsKey: const ValueKey('credential-tabs'),
+          labels: const ['내 자격', '자격증 추천', '시험 일정'],
+          tab: _credentialTab,
+          onTabChanged: (tab) => setState(() => _credentialTab = tab),
+          children: [
+            const CredentialPage(),
+            CertificateRecommendationView(
+              api: _personalApi,
+              consent: _aiConsent,
+              careerGoal: _careerGoal,
+              onOpenSchedule: (certificate) {
+                _certificateSelection.select(certificate);
+                setState(() => _credentialTab = 2);
+              },
+              onOpenCareerGap: _openCareerGap,
+            ),
+            CertificateLookupView(
+              api: _personalApi,
+              selection: _certificateSelection,
+              consent: _aiConsent,
+              onAddEvents: _personalApi == null ? null : _addCertificateEvents,
+              onAddStudyPlan: _personalApi == null ? null : _addStudyPlan,
+            ),
+          ],
+        ),
+        StudentPages.materials => PageTabs(
+          tabsKey: const ValueKey('materials-tabs'),
+          labels: const ['내 자료', '자기소개서·포트폴리오'],
+          tab: _materialsTab,
+          onTabChanged: (tab) => setState(() => _materialsTab = tab),
+          children: [
+            MaterialsPage(
+              key: _materials,
+              repository: _materialRepository,
+              onChanged: () =>
+                  unawaited(_assistantConversation.refreshMaterials()),
+            ),
+            WritingPage(
+              api: _personalApi,
+              consent: _aiConsent,
+              careerGoal: _careerGoal,
+              store: _writingStore,
+              request: _writingRequest,
+              loadMaterials: () => loadAssistantMaterials(_materialRepository),
+              loadDocuments: (ids) =>
+                  loadGuidanceDocuments(_materialRepository, ids),
+            ),
+          ],
+        ),
+        StudentPages.schedule => SchedulePage(
+          repository: _planningRepository,
+          initialDay: _scheduleInitialDay,
+          addRequest: _scheduleAddRequest,
+        ),
+        StudentPages.academics => AcademicsPage(
+          tab: _academicTab,
+          onTabChanged: (tab) => setState(() => _academicTab = tab),
+          courses: CoursePage(
+            studentApi: widget.studentApi,
+            planning: _planningRepository,
+            onOpenSettings: () => _selectPage(settingsPage - 1),
+          ),
+          graduation: GraduationPage(
+            planning: _planningRepository,
+            onOpenSettings: () => _selectPage(settingsPage - 1),
+          ),
+        ),
+        _ when index == settingsPage - 1 => SettingsPage(
+          repository: _planningRepository,
+          chatPreferences: widget.windowHost.supportsDetached
+              ? _chatPreferences
+              : null,
+          studentApi: widget.studentApi,
+          aiConsent: _aiConsent,
+          previewInstitutionId: widget.previewInstitutionId,
+        ),
+        _ => const SizedBox.shrink(),
+      };
 
   void _selectPage(int value, {PendingUiAction? addRequest}) {
     unawaited(_selectPageGuarded(value, addRequest: addRequest));

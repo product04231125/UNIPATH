@@ -16,6 +16,8 @@ import 'official_records_api_test.dart' as fixture;
 import 'official_sources_ui_test.dart' as ui;
 import 'record_source_api_test.dart' as source;
 import 'support/auth_fixture.dart';
+import 'support/reachable_controls.dart';
+import 'support/date_picker.dart';
 
 void main() {
   for (final kind in ['academics', 'volunteers', 'certificates', 'theses']) {
@@ -114,7 +116,7 @@ void main() {
   }
   for (final size in [const Size(1440, 900), const Size(480, 720)]) {
     testWidgets(
-      'record draft keeps explicit reviewed context, exact amount and source at $size',
+      size.width == 480 ? 'record editor controls fit and scroll at $size' : 'record draft keeps explicit reviewed context, exact amount and source',
       (tester) async {
         tester.view.physicalSize = size;
         tester.view.devicePixelRatio = 1;
@@ -171,17 +173,31 @@ void main() {
             }),
           ),
         );
+        if (size.width == 480) {
+          await expectControlsReachable(tester, [
+            find.widgetWithText(TextField, '입학연도'),
+            find.byKey(const ValueKey('official-records-as-of')),
+            find.text('대조한 기록 추가'),
+            find.text('검토 초안 저장'),
+          ]);
+          expect(attempts, isEmpty);
+          return;
+        }
         await catalog.choose(tester, '학과 선택', '검증 학과');
         for (final entry in {
           '입학연도': '2026',
           '이수 경로': 'single_major',
           '원본 전체 쪽수': '2',
-          '기록 기준일 (YYYY-MM-DD)': '2026-01-01',
         }.entries) {
           final f = find.widgetWithText(TextField, entry.key);
           await tester.ensureVisible(f);
           await tester.enterText(f, entry.value);
         }
+        await pickDate(
+          tester,
+          find.byKey(const ValueKey('official-records-as-of')),
+          DateTime(2026, 1, 1),
+        );
         await tester.ensureVisible(find.text('대조한 기록 추가'));
         await tester.drag(
           find.byType(SingleChildScrollView).last,
@@ -220,8 +236,9 @@ void main() {
     );
   }
 
+  for (final replacement in [false, true]) {
   testWidgets(
-    'record approval requires independent review and uses version and source hash',
+    'record approval requires independent review and uses version and source hash replacement=$replacement',
     (tester) async {
       Map<String, dynamic>? sent;
       var batch = {
@@ -244,6 +261,9 @@ void main() {
           }
           if (request.url.path.endsWith('/events')) {
             return fixture.json({'items': []});
+          }
+          if (request.url.path.endsWith('/official-record-batches') && request.method == 'GET') {
+            return fixture.json({'items': replacement ? [{...fixture.batchJson(owner: otherId), 'id': '10000000-0000-4000-8000-000000000099', 'version':7}, {...fixture.batchJson(owner: userId), 'id': '10000000-0000-4000-8000-000000000098'}] : [], 'next_cursor':null});
           }
           if (request.method == 'POST') {
             sent = jsonDecode(request.body) as Map<String, dynamic>;
@@ -279,6 +299,14 @@ void main() {
         await tester.tap(find.text(label));
         await tester.pumpAndSettle();
       }
+      if (replacement) {
+        expect(tester.widget<FilledButton>(approve).onPressed, isNull);
+        final picker = find.byKey(const ValueKey('official-record-replacement'));
+        await tester.ensureVisible(picker); await tester.tap(picker); await tester.pumpAndSettle();
+        expect(find.textContaining('10000000-0000-4000-8000-000000000098'), findsNothing);
+        await tester.tap(find.textContaining('10000000-0000-4000-8000-000000000099').last);
+        await tester.pumpAndSettle();
+      }
       await tester.ensureVisible(approve);
       await tester.tap(approve);
       await tester.pumpAndSettle();
@@ -290,14 +318,16 @@ void main() {
         'records_reviewed': true,
         'context_reviewed': true,
         'coverage_reviewed': true,
-        'replaces_batch_id': null,
-        'expected_replaced_version': null,
+        'replaces_batch_id': replacement ? '10000000-0000-4000-8000-000000000099' : null,
+        'expected_replaced_version': replacement ? 7 : null,
       });
       expect(find.text('현재 졸업감사 입력으로 사용할 수 있는 기록입니다.'), findsOneWidget);
       expect(find.text('학생 기록 승인'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
+
+  }
 
   testWidgets('student cannot approve or edit own school record', (
     tester,

@@ -31,6 +31,37 @@ AssistantResult result() => AssistantResult.fromJson({
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test(
+    'detached chat rejects removed career commands without sending records',
+    () async {
+      final gateway = PendingGateway();
+      final owner = AssistantConversation(api: gateway);
+      final bridge = ConversationBridge(owner, (_) async {});
+      final requests = <Map<String, dynamic>>[];
+      final child = RemoteConversation(
+        request: (command) async {
+          if (command == null) return bridge.read();
+          requests.add(command);
+          return bridge.command(command);
+        },
+        changes: const Stream.empty(),
+      );
+      await child.load();
+      await child.navigateGuidance('career');
+      await child.navigateGuidance('career:recommend');
+      expect(requests, isEmpty);
+      for (final action in ['career', 'career_recommend']) {
+        expect(
+          () => bridge.command({'command_id': action, 'action': action}),
+          throwsFormatException,
+        );
+      }
+      expect(gateway.calls, 0);
+      child.dispose();
+      bridge.dispose();
+      owner.dispose();
+    },
+  );
+  test(
     'detach during request keeps history, draft and owner request alive',
     () async {
       final api = PendingGateway();

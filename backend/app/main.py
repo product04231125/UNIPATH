@@ -4,11 +4,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.academic import router as academic_router
+from app.api.academic_guidance import admin as academic_guidance_admin_router
+from app.api.academic_guidance import router as academic_guidance_router
+from app.api.academic_requirements import router as academic_requirements_router
+from app.api.academic_workspace import router as academic_workspace_router
 from app.api.access import router as access_router
 from app.api.admin_applications import admin_router as admin_applications_router
 from app.api.admin_applications import router as admin_applications_owner_router
 from app.api.admin_signups import admin_router as school_signup_admin_router
 from app.api.admin_signups import router as school_signup_owner_router
+from app.api.analysis_results import router as analysis_results_router
 from app.api.assistant import router as assistant_router
 from app.api.auth import router as auth_router
 from app.api.catalog import router as catalog_router
@@ -24,6 +29,7 @@ from app.api.graduation import router as graduation_catalog_router
 from app.api.health import health, router
 from app.api.knowledge import router as knowledge_router
 from app.api.knowledge import student_router as knowledge_student_router
+from app.api.materials import router as materials_router
 from app.api.official_records import owner_router as official_records_owner_router
 from app.api.official_records import router as official_records_router
 from app.api.personal import router as personal_router
@@ -33,11 +39,17 @@ from app.api.record_sources import admin_router as record_sources_admin_router
 from app.api.record_sources import router as record_sources_router
 from app.api.rule_programs import public_router as program_catalog_router
 from app.api.rule_programs import router as program_router
+from app.api.student_academic import router as student_academic_router
 from app.core.config import Settings, get_settings
 from app.core.database import create_session_factory
 from app.core.errors import register_error_handlers
+from app.rag.career.api import router as career_recommendation_router
+from app.rag.career.gap import GAP_TIMEOUT_SECONDS
+from app.rag.writing.api import router as writing_router
+from app.rag.writing.service import WRITING_TIMEOUT_SECONDS
 from app.schemas.common import ErrorResponse
 from app.schemas.health import HealthResponse
+from app.services import gemini
 from app.services.assistant import create_school_rag_service
 from app.services.knowledge_queries import KnowledgeIndexCache
 
@@ -48,10 +60,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         application.state.settings = config
-        application.state.school_rag_service = create_school_rag_service(config)
+        answer_generator = gemini.create_answer_generator(config)
+        application.state.school_rag_service = create_school_rag_service(config, answer_generator)
         application.state.session_factory = create_session_factory(config)
         application.state.knowledge_index_cache = KnowledgeIndexCache()
-        application.state.job_analyzer = None
+        application.state.knowledge_index_cache.generator = answer_generator
+        guidance_model = gemini.create_model(config, timeout=config.vertex_timeout_seconds)
+        application.state.guidance_model = guidance_model
+        application.state.job_analyzer = gemini.create_job_analyzer(guidance_model)
+        # Posting recommendations share the job-analysis model and settings (D2).
+        application.state.portfolio_analyzer = application.state.job_analyzer
+        # Gap analysis reads up to 8 postings in one call: same model, longer timeout.
+        application.state.gap_model = gemini.create_model(
+            config, timeout=max(config.vertex_timeout_seconds, GAP_TIMEOUT_SECONDS)
+        )
+        # 자기소개서·포트폴리오 drafts write a whole document in one call.
+        application.state.writing_model = gemini.create_model(
+            config, timeout=max(config.vertex_timeout_seconds, WRITING_TIMEOUT_SECONDS)
+        )
         try:
             yield
         finally:
@@ -98,9 +124,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(admin_applications_router, prefix="/api/v1")
     application.include_router(access_router, prefix="/api/v1")
     application.include_router(academic_router, prefix="/api/v1")
+    application.include_router(academic_workspace_router, prefix="/api/v1")
+    application.include_router(academic_requirements_router, prefix="/api/v1")
     application.include_router(personal_router, prefix="/api/v1")
+    application.include_router(student_academic_router, prefix="/api/v1")
     application.include_router(personal_imports_router, prefix="/api/v1")
     application.include_router(personalization_router, prefix="/api/v1")
+    application.include_router(career_recommendation_router, prefix="/api/v1")
+    application.include_router(writing_router, prefix="/api/v1")
+    application.include_router(materials_router, prefix="/api/v1")
+    application.include_router(analysis_results_router, prefix="/api/v1")
+    application.include_router(academic_guidance_router, prefix="/api/v1")
+    application.include_router(academic_guidance_admin_router, prefix="/api/v1")
     application.include_router(official_records_router, prefix="/api/v1")
     application.include_router(official_records_owner_router, prefix="/api/v1")
     application.include_router(record_sources_router, prefix="/api/v1")

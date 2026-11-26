@@ -8,6 +8,7 @@ import 'package:university_path_frontend/features/planning/planning_repository.d
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 import 'package:university_path_frontend/shared/widgets/equal_height_row.dart';
 import 'package:university_path_frontend/shared/widgets/surface_card.dart';
+import 'package:university_path_frontend/shared/widgets/guide_card.dart';
 
 Widget host(Widget child, double scale) => MaterialApp(
   theme: universityPathTheme(),
@@ -93,26 +94,35 @@ void main() {
                   kind: kind,
                   title: '기록',
                   description: '개인 기록',
-                  notice: '학교 공식 판정 아님',
                   listTitle: '등록 기록',
-                  fixture: const [],
                   guideTitle: '준비',
                   guides: ['긴 안내 문구 ' * 15],
                   addLabel: '추가',
                   detailLabel: '상세',
-                  showMockData: false,
                 ),
                 scale,
               ),
             );
             await tester.pumpAndSettle();
-            final cards = find.byType(SurfaceCard);
+            final guide = find.byType(GuideCard);
+            final list = find
+                .byType(SurfaceCard)
+                .evaluate()
+                .where(
+                  (e) => find
+                      .descendant(of: guide, matching: find.byWidget(e.widget))
+                      .evaluate()
+                      .isEmpty,
+                )
+                .toList();
 
-            expect(cards, findsOneWidget);
-            expect(find.byType(ExpansionTile), findsOneWidget);
+            // One list card, then folded guidance below it.
+            expect(list, hasLength(1));
+            expect(guide, findsOneWidget);
+            expect(find.textContaining('긴 안내 문구'), findsNothing);
             expect(
-              tester.getTopLeft(find.byType(ExpansionTile)).dy,
-              greaterThan(tester.getBottomLeft(cards).dy),
+              tester.getTopLeft(guide).dy,
+              greaterThan(tester.getBottomLeft(find.byWidget(list.single.widget)).dy),
             );
             expect(tester.takeException(), isNull, reason: kind.name);
           }
@@ -126,16 +136,27 @@ void main() {
       final repository = PlanningRepository();
       addTearDown(repository.dispose);
       await repository.load();
+      await repository.saveProfile(
+        const PlanningProfile(
+          school: '레이아웃 대학',
+          department: '레이아웃 학과',
+          admissionYear: 2024,
+        ),
+      );
       addTearDown(() => tester.binding.setSurfaceSize(null));
-      for (final size in [const Size(900, 768), const Size(480, 520)]) {
+      for (final size in [
+        const Size(1200, 900),
+        const Size(900, 768),
+        const Size(480, 520),
+      ]) {
         await tester.binding.setSurfaceSize(size);
         await tester.pumpWidget(
           host(SchedulePage(repository: repository), scale),
         );
         await tester.pumpAndSettle();
-        final cards = find.byType(Card);
+        final cards = find.byType(SurfaceCard);
         expect(cards, findsNWidgets(2));
-        if (size.width >= 820) {
+        if (size.width >= 1000) {
           expect(find.byType(EqualHeightRow), findsOneWidget);
           expect(
             tester.getBottomLeft(cards.first).dy,
@@ -152,6 +173,9 @@ void main() {
             isNot(closeTo(tester.getSize(cards.last).height, .01)),
           );
         }
+        expect(find.byTooltip('일정 추가'), findsOneWidget);
+        expect(find.byTooltip('이전 달'), findsOneWidget);
+        expect(find.byTooltip('다음 달'), findsOneWidget);
         expect(tester.takeException(), isNull);
       }
     });

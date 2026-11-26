@@ -108,6 +108,8 @@ class EventCreate(PersonalCreate):
     ends_at: Instant
     time_zone: Annotated[str, StringConstraints(min_length=1, max_length=64)]
     category: Literal["academic", "personal", "activity", "deadline"]
+    # When the student checked it off; null while open.
+    completed_at: Instant | None = None
 
     @field_validator("time_zone")
     @classmethod
@@ -128,11 +130,26 @@ class EventCreate(PersonalCreate):
 class CourseRecordCreate(PersonalCreate):
     term: Name
     category: Name
-    credits: Credits
+    credits: (
+        Annotated[Decimal, Field(ge=0, le=100, max_digits=8, decimal_places=3, allow_inf_nan=False)]
+        | None
+    )
+    grading_basis: Literal["unspecified", "graded", "pass_fail"] = "unspecified"
     section: ShortText = ""
     course_code: ShortText = ""
     grade: ShortText = ""
-    completion: Literal["planned", "in_progress", "recorded"] = "planned"
+    completion: Literal["planned", "in_progress", "recorded", "not_completed"] = "planned"
+    # Selection from the student's activated academic workspace (both or neither).
+    academic_context_id: UUID | None = None
+    academic_entry_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def valid_course_credits(self):
+        if bool(self.academic_context_id) != bool(self.academic_entry_id):
+            raise ValueError("Select a curriculum course and its academic context together")
+        if self.grading_basis != "pass_fail" and (self.credits is None or self.credits <= 0):
+            raise ValueError("Only P/F records may have zero or unconfirmed credits")
+        return self
 
 
 class DatedRecord(PersonalCreate):
@@ -239,38 +256,6 @@ class PersonalGraduationRuleCreate(PersonalCreate):
         return self
 
 
-class PortfolioCompositionCreate(PersonalCreate):
-    audience: Literal["private", "application", "public_review"] = "private"
-    reviewed: bool = Field(default=False, strict=True)
-    sources: list[RecordReference] = Field(default_factory=list, max_length=100)
-
-    @field_validator("sources")
-    @classmethod
-    def valid_sources(cls, value):
-        if len({(v.kind, v.record_id) for v in value}) != len(value):
-            raise ValueError("Duplicate sources")
-        if any(v.kind != "achievement" for v in value):
-            raise ValueError("Compositions reference achievements only")
-        return value
-
-
-class ApplicationDocumentCreate(PersonalCreate):
-    target: Name
-    role: Name
-    document_type: Name
-    body: LongText = ""
-    sources: list[RecordReference] = Field(default_factory=list, max_length=100)
-
-    @field_validator("sources")
-    @classmethod
-    def valid_sources(cls, value):
-        if len({(v.kind, v.record_id) for v in value}) != len(value):
-            raise ValueError("Duplicate sources")
-        if any(v.kind not in ("achievement", "experience") for v in value):
-            raise ValueError("Documents reference achievements or experiences only")
-        return value
-
-
 class OwnedView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -311,8 +296,6 @@ for prefix in (
     "PersonalCurriculum",
     "PersonalCurriculumCourse",
     "PersonalGraduationRule",
-    "PortfolioComposition",
-    "ApplicationDocument",
 ):
     schema = globals()[prefix + "Create"]
     globals()[prefix + "Patch"] = patch_contract(prefix + "Patch", schema)

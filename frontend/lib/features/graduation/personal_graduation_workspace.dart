@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../auth/guest_preview_scope.dart';
 import '../records/personal_record_repository.dart';
 import '../records/personal_repository_scope.dart';
 import '../records/local_record_workbench.dart';
@@ -12,9 +13,11 @@ class PersonalGraduationWorkspace extends StatefulWidget {
     super.key,
     required this.onBack,
     this.planning,
+    this.backLabel = '설정으로 돌아가기',
   });
   final VoidCallback onBack;
   final PlanningRepository? planning;
+  final String backLabel;
   @override
   State<PersonalGraduationWorkspace> createState() =>
       _PersonalGraduationWorkspaceState();
@@ -30,7 +33,7 @@ class _PersonalGraduationWorkspaceState
     PersonalRecordKind.personalDepartment: '학과',
     PersonalRecordKind.personalCurriculum: '교육과정',
     PersonalRecordKind.personalCurriculumCourse: '교육과정 과목',
-    PersonalRecordKind.personalGraduationRule: '개인 규칙',
+    PersonalRecordKind.personalGraduationRule: '규칙',
   };
   Future<void> _select(
     PersonalRecordKind kind, {
@@ -48,6 +51,10 @@ class _PersonalGraduationWorkspaceState
   }
 
   Future<void> _useProfile(PersonalRecord record) {
+    if (GuestPreviewScope.isActive(context)) {
+      GuestPreviewScope.showBlockedMessage(context);
+      return Future.value();
+    }
     final planning = widget.planning!;
     final current = planning.profile;
     return planning.saveProfile(
@@ -75,21 +82,18 @@ class _PersonalGraduationWorkspaceState
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final entry in _labels.entries.where(
-              (entry) => factory == null || entry.key.hasServerContract,
-            ))
+            for (final entry in _labels.entries)
               OutlinedButton(
-                onPressed: () => _select(entry.key),
+                onPressed: factory != null && !entry.key.hasServerContract ? null : () => _select(entry.key),
                 style: OutlinedButton.styleFrom(
                   backgroundColor: !_calculation && _kind == entry.key
                       ? Theme.of(context).colorScheme.secondaryContainer
                       : null,
                 ),
-                child: Text(entry.value),
+                child: Text(factory != null && !entry.key.hasServerContract ? '${entry.value} · 서버 연결 전' : entry.value),
               ),
-            if (calculation != null)
               OutlinedButton(
-                onPressed: () => _select(_kind, calculation: true),
+                onPressed: calculation == null ? null : () => _select(_kind, calculation: true),
                 child: const Text('개인 기준 계산·이력'),
               ),
             TextButton(
@@ -100,10 +104,13 @@ class _PersonalGraduationWorkspaceState
                   widget.onBack();
                 }
               },
-              child: const Text('졸업 요건으로 돌아가기'),
+              child: Text(widget.backLabel),
             ),
           ],
         ),
+        if (calculation == null) const Text('개인 기준 계산·이력은 계정 서버 연결이 필요합니다.'),
+        if (factory != null && !PersonalRecordKind.personalDepartment.hasServerContract)
+          const Text('개인 학과 관리의 서버 저장 계약은 연결 전입니다.'),
         const SizedBox(height: 12),
         Expanded(
           child: _calculation && calculation != null
@@ -124,7 +131,8 @@ class _PersonalGraduationWorkspaceState
                   ),
                   onUse:
                       _kind == PersonalRecordKind.personalCurriculum &&
-                          widget.planning != null
+                          widget.planning != null &&
+                          !GuestPreviewScope.isActive(context)
                       ? _useProfile
                       : null,
                 ),

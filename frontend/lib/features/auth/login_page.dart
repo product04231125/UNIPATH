@@ -53,6 +53,7 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _passwordConfirmController = TextEditingController();
+  final _passwordFocus = FocusNode(debugLabel: 'login-password');
   bool _isLogin = true;
   bool _schoolAdminSignup = false;
   final String _signupClientId = PersonalRecord.newId();
@@ -63,12 +64,34 @@ class _LoginPageState extends State<LoginPage> {
   final _schoolDraft = UnregisteredSchoolApplicationDraft();
   bool _obscurePassword = true;
   bool _obscurePasswordConfirm = true;
+  // Flutter Web can keep Flutter focus after dropping the hidden <input>
+  // (https://github.com/flutter/flutter/issues/192102 on 3.44+ / 3.47.x).
+  // Remount while unfocused / on obscure toggle so the next focus is fresh.
+  int _passwordInputEpoch = 0;
+  int _passwordConfirmInputEpoch = 0;
   bool _submitting = false;
   String? _error;
   List<String> _serverFields = const [];
 
   @override
+  void initState() {
+    super.initState();
+    _passwordFocus.addListener(_onPasswordFocusChanged);
+  }
+
+  void _onPasswordFocusChanged() {
+    if (_passwordFocus.hasFocus || !kIsWeb || !mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _passwordFocus.hasFocus) return;
+      setState(() => _passwordInputEpoch++);
+    });
+  }
+
+  @override
   void dispose() {
+    _passwordFocus
+      ..removeListener(_onPasswordFocusChanged)
+      ..dispose();
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -428,17 +451,24 @@ class _LoginPageState extends State<LoginPage> {
     _passwordField(newPassword: true),
     const SizedBox(height: 16),
     TextFormField(
+      key: ValueKey('login-password-confirm-$_passwordConfirmInputEpoch'),
       enabled: _fieldsEnabled,
       controller: _passwordConfirmController,
       obscureText: _obscurePasswordConfirm,
+      autocorrect: false,
+      enableSuggestions: false,
+      keyboardType: TextInputType.visiblePassword,
       autofillHints: const [AutofillHints.newPassword],
       textInputAction: TextInputAction.done,
       decoration: _decoration('비밀번호 확인').copyWith(
         suffixIcon: IconButton(
           tooltip: _obscurePasswordConfirm ? '비밀번호 표시' : '비밀번호 숨기기',
-          onPressed: () => setState(
-            () => _obscurePasswordConfirm = !_obscurePasswordConfirm,
-          ),
+          onPressed: () {
+            setState(() {
+              _obscurePasswordConfirm = !_obscurePasswordConfirm;
+              if (kIsWeb) _passwordConfirmInputEpoch++;
+            });
+          },
           icon: Icon(
             _obscurePasswordConfirm
                 ? Icons.visibility_outlined
@@ -469,9 +499,14 @@ class _LoginPageState extends State<LoginPage> {
   );
 
   TextFormField _passwordField({bool newPassword = false}) => TextFormField(
+    key: ValueKey('login-password-$_passwordInputEpoch'),
     enabled: _fieldsEnabled,
+    focusNode: _passwordFocus,
     controller: _passwordController,
     obscureText: _obscurePassword,
+    autocorrect: false,
+    enableSuggestions: false,
+    keyboardType: TextInputType.visiblePassword,
     autofillHints: [
       newPassword ? AutofillHints.newPassword : AutofillHints.password,
     ],
@@ -480,7 +515,17 @@ class _LoginPageState extends State<LoginPage> {
       helperText: newPassword ? '15~128자 · 공백을 포함한 긴 문장도 사용할 수 있습니다.' : null,
       suffixIcon: IconButton(
         tooltip: _obscurePassword ? '비밀번호 표시' : '비밀번호 숨기기',
-        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+        onPressed: () {
+          setState(() {
+            _obscurePassword = !_obscurePassword;
+            if (kIsWeb) _passwordInputEpoch++;
+          });
+          if (kIsWeb) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _passwordFocus.requestFocus();
+            });
+          }
+        },
         icon: Icon(
           _obscurePassword
               ? Icons.visibility_outlined

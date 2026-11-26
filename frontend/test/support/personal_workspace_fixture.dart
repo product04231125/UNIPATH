@@ -1,11 +1,9 @@
 import 'package:university_path_frontend/features/auth/local_data_owner.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
-import 'package:university_path_frontend/features/records/portfolio/portfolio_workspace_repository.dart';
 
 String fixtureId(PersonalRecordKind kind) =>
     '10000000-0000-4000-8000-${(kind.index + 1).toString().padLeft(12, '0')}';
-const compositionId = '20000000-0000-4000-8000-000000000001';
-const documentId = '20000000-0000-4000-8000-000000000002';
+const importId = '20000000-0000-4000-8000-000000000001';
 Map<String, String> fixtureValues(PersonalRecordKind kind) => {
   'title': '합성 ${kind.name}',
   'detail': '합성 메모',
@@ -19,7 +17,10 @@ Map<String, String> fixtureValues(PersonalRecordKind kind) => {
       'section': 'A',
       'courseCode': 'CS101',
       'grade': 'A',
-      'completion': '이수 기록',
+      'completion': '이수 완료',
+      'academicContextId': '',
+      'academicEntryId': '',
+      'gradingBasis': 'unspecified',
     },
     PersonalRecordKind.activity => {
       'organization': '합성 행사',
@@ -104,30 +105,4 @@ Future<void> seedLocalWorkspace(String ownerId) async {
       PersonalRecord(id: fixtureId(kind), values: fixtureValues(kind)),
     );
   }
-  final portfolio = PortfolioWorkspaceRepository(
-    owner: LocalDataOwner(ownerId),
-  );
-  await portfolio.load();
-  await portfolio.saveComposition(
-    PortfolioComposition(
-      id: compositionId,
-      title: '합성 구성',
-      description: '구성 메모',
-      sources: ['portfolio/${fixtureId(PersonalRecordKind.portfolio)}'],
-    ),
-  );
-  await portfolio.saveDocument(
-    ApplicationDocument(
-      id: documentId,
-      title: '합성 문서',
-      target: '합성 지원처',
-      role: '개발',
-      type: '이력서',
-      body: '합성 본문',
-      sources: [
-        'experience/${fixtureId(PersonalRecordKind.experience)}',
-        'portfolio/${fixtureId(PersonalRecordKind.portfolio)}',
-      ],
-    ),
-  );
 }

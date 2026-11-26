@@ -93,24 +93,29 @@ python scripts/publish_app.py --assets-dir dist/product --tag v0.1.0-preview.소
 
 워크플로는 [app-release.yaml](../.github/workflows/app-release.yaml)로 활성화했다.
 기본 브랜치 `main`의 **Actions → App downloads → Run workflow**에서 채널을 선택한다.
-`develop` 푸시는 개발용, `main` 푸시는 배포용 프리뷰를 검증·빌드·릴리스한다. 수동 실행은
-두 채널을 함께 선택할 수도 있고 API URL을 지정할 수도 있다. 앱 다운로드 워크플로가
-서버 컨테이너를 자동 배포하지는 않는다.
+2026-11-23부터 수동 실행만 한다(이어진 결정). 브랜치 푸시로는 실행되지 않으며, 윈도우 시연
+설치본처럼 다운로드가 필요할 때 담당자가 실행한다. 코드 검증은 PR의 Backend CI·Frontend CI가
+맡으므로 이 워크플로는 테스트 없이 빌드·릴리스만 한다. 개발용은 `channel=develop`, 배포용
+프리뷰는 `channel=product`를 고른다. 두 채널을 함께 선택할 수도 있고 API URL을 지정할 수도
+있다. 앱 다운로드 워크플로가 서버 컨테이너를 자동 배포하지는 않는다.
 
 ```bash
-# 동일한 소스 커밋에서 두 채널의 Web·Windows를 검증·빌드·릴리스
+# 윈도우 시연 설치본(개발용, 스테이징 연결)
+gh workflow run app-release.yaml --ref develop -f channel=develop
+# 동일한 소스 커밋에서 두 채널의 Web·Windows를 빌드·릴리스
 # 셸에서 사용하는 공개 설정이며 비밀값이 아니다.
 gh workflow run app-release.yaml --ref main -f channel=both -f product_preview=true
 ```
 
 repository variables `DEVELOP_API_BASE_URL`, `PRODUCT_API_BASE_URL`은 각각 위 두
 HTTPS 도메인으로 설정했다. 워크플로 기본값도 동일하다. 실제 운영 전환은
-`product_preview=false`를 명시한 수동 실행에서만 가능하다. 검증 실패나 한 플랫폼
-빌드 실패 시 릴리스를 발행하지 않는다. 출력은 Actions Artifacts와 GitHub Releases에
+`product_preview=false`를 명시한 수동 실행에서만 가능하다. 한 플랫폼이라도 빌드에
+실패하면 릴리스를 발행하지 않는다. 출력은 Actions Artifacts와 GitHub Releases에
 저장하며 ZIP에는 SDK나 소스 코드·`.env`를 넣지 않는다.
 
 [backend-ci.yaml](../.github/workflows/backend-ci.yaml)은 백엔드 변경 PR 및
-`main`/`develop` 푸시에 공통 환경을 검증한다. 워크플로 파일 수정·푸시에는 GitHub
+`main`/`develop` 푸시에 공통 환경을 검증한다. 컨테이너 테스트는 테스트마다 별도 스키마를 쓰므로
+`pytest -n auto`로 병렬 실행한다. 워크플로 파일 수정·푸시에는 GitHub
 연결의 `workflow` 권한이 필요하다. 개인 에이전트 설정은 계속 Git에서 제외한다.
 
 ## 이 서버의 도메인 배포
@@ -202,6 +207,26 @@ docker run --rm \
 HTTPS 개통 완료로 간주하지 않는다. SPA 화면 경로와 API readiness·학교 질의를
 두 도메인에서 확인한다. 배포 실패 시 게이트웨이 설정의 작업 전 백업으로 되돌리며
 DB 볼륨은 삭제하지 않는다.
+
+## Gemini 설정
+
+Gemini는 Vertex AI로만 호출하고 기본값은 꺼짐이다. 환경 파일에 `VERTEX_PROJECT`,
+`VERTEX_LOCATION`, `VERTEX_MODEL`을 함께 넣으면 켜진다. 일부만 넣으면 API가 시작되지 않는다.
+서비스 계정 키는 `VERTEX_CREDENTIALS_FILE`에 저장소 밖 경로로 지정한다. 컨테이너 사용자
+UID 10001이 읽을 수 있어야 하므로 `chown root:10001`, `chmod 640`으로 둔다. 키를 커밋하거나
+로그에 남기지 않는다. 키를 바꾸거나 설정을 켠 뒤에는 API 컨테이너를 다시 만든다.
+호출 상한은 `LLM_REQUESTS_PER_15_MINUTES`(기본 60)이고, 월 비용 한도는 Google Cloud 예산으로
+별도 설정한다. 켠 뒤 `backend/`에서 `uv run --frozen python -m scripts.evaluate_job_analysis --live`로
+합성 시나리오를 확인한다. 시연 경로는 `python3 backend/scripts/smoke_demo_flow.py --base-url 주소`로
+점검한다. 이 스크립트는 합성 계정과 기록을 하나씩 만든다.
+
+## 학사 안내 연결
+
+`0016_guidance_bindings` 이후 학사 안내는 학교에 연결해야 학생에게 보인다. 배포 뒤 관리자 화면 또는
+`PUT /api/v1/admin/institutions/{학교 UUID}/academic-guidance`로 시연 학교를 연결한다. 연결 전에는
+학생 화면이 "연결된 학사 안내 자료가 아직 없습니다"를 표시한다.
+
+## 게이트웨이 한도
 
 스테이징과 프로덕션 바깥 게이트웨이의 요청 한도는 2 MiB다. 앱 프록시는 로그인 16 KiB·일반 관리자
 64 KiB·개인 자료/문서/규칙 256 KiB·개인 일괄 이전 2 MiB처럼 경로별로 더 작게 제한한다.

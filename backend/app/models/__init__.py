@@ -7,6 +7,21 @@ from app.models.academic import (
     OfficialDocument,
     RuleSet,
 )
+from app.models.academic_workspace import (
+    AcademicCreditRecordBinding,
+    AcademicCurriculumCourse,
+    AcademicCurriculumDepartmentRef,
+    AcademicCurriculumRevision,
+    AcademicCurriculumTrackRef,
+    AcademicMutationReceipt,
+    AcademicRequirementDepartmentRef,
+    AcademicRequirementNodeRef,
+    AcademicRequirementRevision,
+    AcademicRequirementTrackRef,
+    ClassificationNode,
+    ClassificationRevision,
+    StudyTrack,
+)
 from app.models.admin_applications import SchoolAdminApplication
 from app.models.admin_signups import SchoolAdminSignup
 from app.models.base import Base
@@ -17,6 +32,7 @@ from app.models.graduation import (
     GraduationCatalogReview,
     GraduationCatalogReviewEvent,
 )
+from app.models.guidance_bindings import AcademicGuidanceBinding
 from app.models.identity import (
     AdminScope,
     AuthSession,
@@ -35,8 +51,8 @@ from app.models.official_records import (
 from app.models.personal import (
     AchievementRecord,
     ActivityRecord,
-    ApplicationDocument,
-    ApplicationSource,
+    AnalysisResult,
+    CareerGoal,
     CourseRecord,
     CredentialRecord,
     ExperienceRecord,
@@ -46,8 +62,8 @@ from app.models.personal import (
     PersonalEvent,
     PersonalGraduationRule,
     PlanningProfile,
-    PortfolioComposition,
-    PortfolioSource,
+    StudentMaterial,
+    WritingDocument,
 )
 from app.models.personal_imports import PersonalImportReceipt
 from app.models.record_sources import OfficialRecordSource, OfficialRecordSourceEvent
@@ -58,8 +74,38 @@ from app.models.rule_programs import (
     ProgramRule,
     RuleProgram,
 )
+from app.models.student_academic import (
+    StudentAcademicActivation,
+    StudentAcademicContext,
+    StudentAcademicCourseLink,
+    StudentAcademicDocument,
+    StudentAcademicReceipt,
+    StudentAcademicResponse,
+    StudentAcademicWorkspace,
+)
 
 __all__ = [
+    "AcademicCreditRecordBinding",
+    "AcademicCurriculumCourse",
+    "AcademicCurriculumDepartmentRef",
+    "AcademicCurriculumRevision",
+    "AcademicCurriculumTrackRef",
+    "AcademicGuidanceBinding",
+    "AcademicMutationReceipt",
+    "AcademicRequirementDepartmentRef",
+    "AcademicRequirementNodeRef",
+    "AcademicRequirementRevision",
+    "AcademicRequirementTrackRef",
+    "ClassificationNode",
+    "ClassificationRevision",
+    "StudentAcademicActivation",
+    "StudentAcademicContext",
+    "StudentAcademicCourseLink",
+    "StudentAcademicDocument",
+    "StudentAcademicReceipt",
+    "StudentAcademicResponse",
+    "StudentAcademicWorkspace",
+    "StudyTrack",
     "SchoolAdminSignup",
     "SchoolAdminApplication",
     "Base",
@@ -78,8 +124,6 @@ __all__ = [
     "OfficialDocument",
     "AchievementRecord",
     "ActivityRecord",
-    "ApplicationDocument",
-    "ApplicationSource",
     "CourseRecord",
     "CredentialRecord",
     "ExperienceRecord",
@@ -88,9 +132,11 @@ __all__ = [
     "PersonalCurriculumCourse",
     "PersonalEvent",
     "PersonalGraduationRule",
+    "CareerGoal",
+    "WritingDocument",
+    "StudentMaterial",
+    "AnalysisResult",
     "PlanningProfile",
-    "PortfolioComposition",
-    "PortfolioSource",
     "PersonalEvaluation",
     "GraduationAudit",
     "GraduationCatalogReview",

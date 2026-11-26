@@ -1,3 +1,7 @@
+import '../course_period_test.dart' as period;
+
+import 'package:university_path_frontend/shared/widgets/field_label.dart';
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -17,7 +21,6 @@ import 'package:university_path_frontend/features/planning/planning_repository.d
 import 'package:university_path_frontend/features/planning/remote_planning_repository.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
-import 'package:university_path_frontend/features/records/portfolio/remote_portfolio_workspace_repository.dart';
 import 'package:university_path_frontend/features/records/remote_personal_record_repository.dart';
 import 'package:university_path_frontend/features/settings/settings_page.dart';
 
@@ -30,8 +33,12 @@ const syntheticEmail = 'synthetic@example.test';
 const syntheticPassword = 'synthetic long password';
 
 Finder labeledField(String label) => find.ancestor(
-  of: find.byWidgetPredicate(
-    (widget) => widget is TextField && widget.decoration?.labelText == label,
+  of: find.byElementPredicate(
+    (element) =>
+        element.widget is TextField &&
+        ((element.widget as TextField).decoration?.labelText == label ||
+            element.findAncestorWidgetOfExactType<FieldLabel>()?.label ==
+                label),
   ),
   matching: find.byType(TextFormField),
 );
@@ -85,10 +92,6 @@ class JourneyGateway implements ApiGateway {
     if (path.startsWith('me/events')) {
       return {'items': <Map<String, dynamic>>[], 'next_cursor': null};
     }
-    if (path.startsWith('me/portfolio-compositions') ||
-        path.startsWith('me/application-documents')) {
-      return {'items': <Map<String, dynamic>>[], 'next_cursor': null};
-    }
     final uri = Uri.parse(path);
     final parts = uri.path.split('/');
     if (parts.length >= 2 && parts.first == 'me') {
@@ -98,7 +101,10 @@ class JourneyGateway implements ApiGateway {
         throw const AuthFailure('다른 변경이 있습니다. 다시 읽어주세요.', status: 409);
       }
       if (method == 'GET' && id == null) {
-        return {'items': [...?records[resource]], 'next_cursor': null};
+        return {
+          'items': [...?records[resource]],
+          'next_cursor': null,
+        };
       }
       if (method == 'POST') {
         final row = _recordRow(body!, records[resource]?.length ?? 0);
@@ -388,13 +394,8 @@ class StudentWorld {
     final server = ensureGateway();
     final api = StudentApi(server, ownerId: userId);
     return PersonalRepositoryScope(
-      records: (kind) => RemotePersonalRecordRepository(
-        api,
-        kind,
-        ensureOpen: () {},
-      ),
-      portfolio: () =>
-          RemotePortfolioWorkspaceRepository(api, ensureOpen: () {}),
+      records: (kind) =>
+          RemotePersonalRecordRepository(api, kind, ensureOpen: () {}),
       child: Scaffold(body: child),
     );
   }
@@ -427,7 +428,7 @@ class StudentWorld {
           body: OfficialGraduationPage(
             auth: authApi,
             ownerId: userId,
-            onPersonal: () {},
+            onOpenSettings: () {},
             profile: planning?.profile,
           ),
         ),
@@ -503,14 +504,28 @@ class StudentWorld {
     Map<String, String> values,
   ) async {
     for (final entry in values.entries) {
+      if (entry.key == 'course-year' || entry.key == 'term') {
+        await period.enter(tester, entry.key, entry.value);
+        continue;
+      }
       final field = find.byKey(ValueKey('record-field-${entry.key}'));
+      if (field.evaluate().isEmpty &&
+          ['title', 'credits', 'category'].contains(entry.key) &&
+          find
+              .byKey(const ValueKey('record-select-course'))
+              .evaluate()
+              .isNotEmpty) {
+        continue;
+      }
       await tester.ensureVisible(field);
       await tester.enterText(field, entry.value);
     }
   }
 
   Future<void> saveRecord(WidgetTester tester) async {
-    final button = find.text('내 기록에 저장');
+    final button = find.text('내 기록에 저장').evaluate().isNotEmpty
+        ? find.text('내 기록에 저장')
+        : find.widgetWithText(FilledButton, '등록');
     await tester.ensureVisible(button);
     await tester.tap(button);
     await tester.pumpAndSettle();
@@ -537,7 +552,11 @@ class StudentWorld {
     String? choice,
     required Map<String, String> values,
   }) async {
-    var add = find.widgetWithText(FilledButton, addLabel);
+    // Page headers show add as a + icon named by its tooltip.
+    var add = find.byTooltip(addLabel);
+    if (add.evaluate().isEmpty) {
+      add = find.widgetWithText(FilledButton, addLabel);
+    }
     if (add.evaluate().isEmpty) {
       add = find.text(addLabel);
     }
@@ -554,6 +573,12 @@ class StudentWorld {
         await tester.tap(option.last);
         await tester.pumpAndSettle();
       }
+    }
+    if (find
+        .byKey(const ValueKey('record-select-course'))
+        .evaluate()
+        .isNotEmpty) {
+      await period.pickCourse(tester, values['title']!);
     }
     await fillRecord(tester, values);
     FocusManager.instance.primaryFocus?.unfocus();

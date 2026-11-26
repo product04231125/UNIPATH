@@ -13,7 +13,19 @@ class SchoolWorkflowActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final session = SchoolWorkflowSession.maybeOf(context);
-    if (session == null) return const SizedBox.shrink();
+    if (session == null) {
+      return const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('학교 문서·기록 기능은 로그인한 계정의 서버 연결이 필요합니다.'),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            OutlinedButton(onPressed: null, child: Text('학교 문서 검색·근거')),
+            OutlinedButton(onPressed: null, child: Text('학교 발급 PDF 제출·이력')),
+            OutlinedButton(onPressed: null, child: Text('학교 확인 학생 기록')),
+          ]),
+        ],
+      );
+    }
     final admin = session.identity.role != AppRole.user;
     return Wrap(
       spacing: 8,
