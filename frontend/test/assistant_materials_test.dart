@@ -242,6 +242,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('이 기기에 등록한 자료가 없습니다. 자료 메뉴에서 등록해 주세요.'), findsOneWidget);
+      await tester.tap(find.byTooltip('자료 추가'));
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const ValueKey('material-title')),
         '질문용 이력서',
