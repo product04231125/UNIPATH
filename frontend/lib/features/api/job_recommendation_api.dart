@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import '../auth/auth_api.dart';
+import '../planning/academic_stage.dart';
 import 'job_analysis_models.dart';
 
 class RecommendationDocument {
@@ -12,18 +13,6 @@ class RecommendationDocument {
     'filename': filename,
     'content_base64': base64Encode(bytes),
   };
-}
-
-enum RecommendationAcademicStage {
-  year1('1학년'),
-  year2('2학년'),
-  year3('3학년'),
-  year4('4학년'),
-  graduating('졸업예정'),
-  graduate('졸업');
-
-  const RecommendationAcademicStage(this.label);
-  final String label;
 }
 
 /// Work regions the server searches by each source's region codes, in display order.
@@ -68,7 +57,7 @@ class JobRecommendationRequest {
   final List<RecommendationDocument> documents;
   final List<PersonalEvidenceSelection> records;
   final bool consent;
-  final RecommendationAcademicStage? academicStage;
+  final AcademicStage? academicStage;
   Map<String, Object?> toJson() => {
     'keyword': keyword,
     if (categoryCodes.isNotEmpty) 'category_codes': categoryCodes,

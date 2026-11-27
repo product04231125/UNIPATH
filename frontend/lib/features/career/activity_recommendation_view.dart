@@ -1,25 +1,28 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../shared/app_tones.dart';
 import '../../shared/widgets/external_link_button.dart';
 import '../../shared/widgets/feature_page.dart';
-import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/responsive_grid.dart';
 import '../../shared/widgets/surface_card.dart';
 import '../../shared/widgets/tone_chip.dart';
 import '../../shared/widgets/work_layout.dart';
-import '../api/job_recommendation_api.dart';
 import '../api/student_api.dart';
 import '../assistant/ai_record_catalog.dart';
 import '../auth/auth_api.dart';
 import '../auth/guest_preview_scope.dart';
+import '../planning/academic_stage.dart';
 import '../records/portfolio/job_recommendation_result.dart';
 import '../settings/ai_consent_preferences.dart';
 import '../settings/ai_consent_section.dart';
 import '../records/personal_record_form.dart';
 import '../records/personal_record_repository.dart';
 import '../records/personal_repository_scope.dart';
+import 'academic_stage_field.dart';
 import 'activity_recommendation.dart';
 import 'career_goal.dart';
 import 'career_goal_card.dart';
@@ -42,6 +45,7 @@ class ActivityRecommendationView extends StatefulWidget {
     this.onAddPlan,
     this.onRecordSaved,
     this.onOpenCareerGap,
+    this.profileStage,
     this.now,
   });
   final StudentApi? api;
@@ -55,6 +59,9 @@ class ActivityRecommendationView extends StatefulWidget {
 
   /// Opens 목표 직무 분석 so its gaps can steer the recommendations.
   final VoidCallback? onOpenCareerGap;
+
+  /// The 학업 프로필 stage the 현재 학년 starts at.
+  final ValueListenable<AcademicStage?>? profileStage;
   final DateTime Function()? now;
 
   @override
@@ -65,8 +72,18 @@ class ActivityRecommendationView extends StatefulWidget {
 class _ActivityRecommendationViewState
     extends State<ActivityRecommendationView> {
   var _recordFormOpen = false;
-  RecommendationAcademicStage? _stage;
+  final _stage = AcademicStageChoice();
   ActivityRecommendationResult? _result;
+
+  /// Finished recommendations kept in the account; null before signing in.
+  SavedAnalysesController? _saved;
+
+  static SavedAnalysesController? _savedFor(StudentApi? api) => api == null
+      ? null
+      : SavedAnalysesController(
+          AnalysisResultsApi(api.api),
+          AnalysisKind.activity,
+        );
   bool _busy = false;
   String? _error;
   var _revision = 0;
@@ -80,6 +97,8 @@ class _ActivityRecommendationViewState
   void initState() {
     super.initState();
     widget.careerGoal?.addListener(_changed);
+    widget.profileStage?.addListener(_changed);
+    _saved = _savedFor(widget.api);
   }
 
   @override
@@ -89,19 +108,59 @@ class _ActivityRecommendationViewState
       oldWidget.careerGoal?.removeListener(_changed);
       widget.careerGoal?.addListener(_changed);
     }
+    if (!identical(oldWidget.profileStage, widget.profileStage)) {
+      oldWidget.profileStage?.removeListener(_changed);
+      widget.profileStage?.addListener(_changed);
+    }
     if (oldWidget.api?.ownerId != widget.api?.ownerId) {
       _revision++;
       _result = null;
       _error = null;
       _busy = false;
-      _stage = null;
+      _stage.reset();
+      _saved?.dispose();
+      _saved = _savedFor(widget.api);
     }
   }
 
   @override
   void dispose() {
+    _saved?.dispose();
     widget.careerGoal?.removeListener(_changed);
+    widget.profileStage?.removeListener(_changed);
     super.dispose();
+  }
+
+  Future<void> _save(
+    ActivityRecommendationResult result,
+    AcademicStage? stage,
+  ) async {
+    if (result.status != 'completed' || result.recommendations.isEmpty) return;
+    await _saved?.save(
+      title: analysisTitle(result.goalSummary, fallback: '활동 추천'),
+      summary: {'recommendations': result.recommendations.length},
+      input: {
+        if (result.goalSummary.isNotEmpty) 'goal': result.goalSummary,
+        'academic_stage': ?stage?.name,
+      },
+      result: result.raw,
+    );
+  }
+
+  Future<void> _openSaved(SavedAnalysisSummary item) async {
+    if (_busy) return;
+    final revision = _revision;
+    final saved = await _saved?.open(item.id);
+    if (saved == null || !mounted || revision != _revision) return;
+    try {
+      final result = ActivityRecommendationResult.fromJson(saved.result);
+      setState(() {
+        _result = result;
+        _error = null;
+      });
+    } catch (_) {
+      setState(() => _error = '저장된 결과의 형식을 읽지 못했습니다.');
+    }
   }
 
   void _changed() {
@@ -134,10 +193,12 @@ class _ActivityRecommendationViewState
           revision != _revision) {
         return;
       }
+      final stage = _stage.valueWith(widget.profileStage);
       final result = await ActivityRecommendationApi(api)
-          .recommend(records: records, academicStage: _stage);
+          .recommend(records: records, academicStage: stage);
       if (!mounted || revision != _revision) return;
       setState(() => _result = result);
+      unawaited(_save(result, stage));
     } on AuthFailure catch (e) {
       if (mounted && revision == _revision) {
         setState(
@@ -179,28 +240,13 @@ class _ActivityRecommendationViewState
                       alignment: AlignmentDirectional.centerStart,
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 280),
-                        child: FieldLabel(
-                          label: '현재 학년 (선택)',
-                          child:
-                              DropdownButtonFormField<
-                                RecommendationAcademicStage
-                              >(
-                                key: const ValueKey('activity-academic-stage'),
-                                initialValue: _stage,
-                                isExpanded: true,
-                                items: [
-                                  const DropdownMenuItem(child: Text('선택 안 함')),
-                                  for (final stage
-                                      in RecommendationAcademicStage.values)
-                                    DropdownMenuItem(
-                                      value: stage,
-                                      child: Text(stage.label),
-                                    ),
-                                ],
-                                onChanged: _busy
-                                    ? null
-                                    : (v) => setState(() => _stage = v),
-                              ),
+                        child: AcademicStageField(
+                          fieldKey: const ValueKey('activity-academic-stage'),
+                          value: _stage.valueWith(widget.profileStage),
+                          fromProfile: _stage.fromProfile(widget.profileStage),
+                          onChanged: _busy
+                              ? null
+                              : (v) => setState(() => _stage.pick(v)),
                         ),
                       ),
                     ),
@@ -243,6 +289,14 @@ class _ActivityRecommendationViewState
                   ],
                 ),
               ),
+              if (_saved case final saved?) ...[
+                const SizedBox(height: 16),
+                SavedAnalysesPanel(
+                  controller: saved,
+                  enabled: !_busy,
+                  onOpen: _openSaved,
+                ),
+              ],
             ],
           ),
           result: result == null ? null : _resultView(context, result),
@@ -285,7 +339,15 @@ class _ActivityRecommendationViewState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('활동 추천', style: theme.textTheme.titleMedium),
+              Row(
+                children: [
+                  Text('활동 추천', style: theme.textTheme.titleMedium),
+                  if (_saved case final saved?) ...[
+                    const SizedBox(width: 4),
+                    SavedAnalysisStar(controller: saved),
+                  ],
+                ],
+              ),
               const SizedBox(height: 10),
               Wrap(
                 spacing: 6,

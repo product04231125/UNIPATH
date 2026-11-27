@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../auth/local_data_owner.dart';
+import 'academic_stage.dart';
 
 /// Device-local planning for samples and preserved original data. Live accounts
 /// use RemotePlanningRepository; neither store represents official school records.
@@ -197,7 +198,7 @@ class PlanningProfile {
     this.department = '',
     this.admissionYear,
     this.track,
-    this.academicYearOverride,
+    this.academicStage,
     this.weekStartsOn = WeekStartDay.sunday,
     this.institutionId,
     this.departmentId,
@@ -209,7 +210,9 @@ class PlanningProfile {
   final String department;
   final int? admissionYear;
   final String? track;
-  final int? academicYearOverride;
+
+  /// The stage the student set (1~4학년·졸업예정·졸업); null counts it from the admission year.
+  final AcademicStage? academicStage;
   final WeekStartDay weekStartsOn;
   final String? institutionId;
   final String? departmentId;
@@ -235,7 +238,7 @@ class PlanningProfile {
       department: nextDepartment,
       admissionYear: admissionYear,
       track: track,
-      academicYearOverride: academicYearOverride,
+      academicStage: academicStage,
       weekStartsOn: weekStartsOn,
       institutionId: keep ? institutionId : null,
       departmentId: keep ? departmentId : null,
@@ -249,11 +252,18 @@ class PlanningProfile {
       department.trim().isNotEmpty &&
       admissionYear != null;
 
-  int? academicYearFor(DateTime date) {
-    if (academicYearOverride != null) return academicYearOverride;
+  /// The year counted from the admission year (1~4; a school year starts in March).
+  int? countedYearFor(DateTime date) {
     if (admissionYear == null) return null;
     final academicYearStart = date.month < 3 ? date.year - 1 : date.year;
     return (academicYearStart - admissionYear! + 1).clamp(1, 4);
+  }
+
+  /// The student's stage on [date]: the one set in the profile, else the counted year.
+  AcademicStage? academicStageFor(DateTime date) {
+    if (academicStage != null) return academicStage;
+    final year = countedYearFor(date);
+    return year == null ? null : AcademicStage.ofYear(year);
   }
 
   Map<String, dynamic> toJson() => {
@@ -261,7 +271,7 @@ class PlanningProfile {
     'department': department,
     'admissionYear': admissionYear,
     'track': track,
-    'academicYearOverride': academicYearOverride,
+    'academicStage': academicStage?.name,
     'weekStartsOn': weekStartsOn.storageValue,
     'institutionId': institutionId,
     'departmentId': departmentId,
@@ -274,7 +284,13 @@ class PlanningProfile {
         department: json['department'] as String? ?? '',
         admissionYear: json['admissionYear'] as int?,
         track: json['track'] as String?,
-        academicYearOverride: json['academicYearOverride'] as int?,
+        academicStage:
+            AcademicStage.fromName(json['academicStage']) ??
+            // Saved before 졸업예정·졸업 existed: a 1~4 year.
+            switch (json['academicYearOverride']) {
+              final int year => AcademicStage.ofYear(year),
+              _ => null,
+            },
         weekStartsOn: weekStartDayFromStorage(json['weekStartsOn']),
         institutionId: json['institutionId'] as String?,
         departmentId: json['departmentId'] as String?,

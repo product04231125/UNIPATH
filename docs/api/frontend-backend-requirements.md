@@ -149,7 +149,7 @@ Swagger는 `/api/v1/docs`, 계약 원본은 `/api/v1/openapi.json`이다. `/heal
 
 | 경로·메서드 | 입력 후보 | 필요한 응답/검증 |
 | --- | --- | --- |
-| `GET/PATCH /me/planning-profile` | 학교/학과 표시명, 입학연도, 이수경로, 개인 계획 학년 override, 주 시작 요일 | 저장된 값/버전. 본인 소유. 공식 학적과 별도 |
+| `GET/PATCH /me/planning-profile` | 학교/학과 표시명, 입학연도, 이수경로, 현재 학년(`academic_stage`, 1~4학년·졸업예정·졸업), 주 시작 요일 | 저장된 값/버전. 본인 소유. 공식 학적과 별도 |
 | `GET/POST /me/events`, `GET/PATCH/DELETE /me/events/{id}` | 제목, 시작/종료, 분류, 메모 | 기간 조회, 저장된 일정/버전. 종료>시작. 시간대·현지 날짜 경계 계약 필요 |
 
 - 현재 프로필은 자유 입력 이름이다. 공식 `institution_id/department_id/curriculum_id` 연결은 명시적 선택/검증/마이그레이션 후 제공한다. 문자열이 같다는 이유로 학교 FK/공식 학적으로 자동 승격하지 않는다.

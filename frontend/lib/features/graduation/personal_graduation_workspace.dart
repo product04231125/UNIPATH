@@ -63,7 +63,7 @@ class _PersonalGraduationWorkspaceState
         department: record.value('department'),
         admissionYear: int.tryParse(record.value('admissionYear')),
         track: current.track,
-        academicYearOverride: current.academicYearOverride,
+        academicStage: current.academicStage,
         weekStartsOn: current.weekStartsOn,
         version: current.version,
       ),

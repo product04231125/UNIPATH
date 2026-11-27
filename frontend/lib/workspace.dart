@@ -31,6 +31,7 @@ import 'features/career/certificate_study_plan.dart';
 import 'features/career/certificates.dart';
 import 'features/career/career_goal.dart';
 import 'features/home/home_page.dart';
+import 'features/planning/academic_stage.dart';
 import 'features/planning/planning_repository.dart';
 import 'features/planning/remote_planning_repository.dart';
 import 'features/api/student_api.dart';
@@ -382,7 +383,18 @@ class _WorkspaceState extends State<Workspace> {
   }
 
   void _refreshProfile() {
+    _updateProfileStage();
     if (mounted) setState(() {});
+  }
+
+  /// The 학업 프로필 stage 공고 찾기·활동 추천·자격증 추천 start at.
+  final _profileStage = ValueNotifier<AcademicStage?>(null);
+
+  void _updateProfileStage() {
+    if (_planningRepository.isLoading || _planningRepository.loadFailed) return;
+    _profileStage.value = _planningRepository.profile.academicStageFor(
+      DateTime.now(),
+    );
   }
 
   String get _profileSummary {
@@ -431,6 +443,7 @@ class _WorkspaceState extends State<Workspace> {
     _assistantConversation.dispose();
     _planningRepository.removeListener(_refreshProfile);
     _planningRepository.dispose();
+    _profileStage.dispose();
     if (widget.chatPreferences == null) _chatPreferences.dispose();
     _aiConsent?.dispose();
     super.dispose();
@@ -555,6 +568,7 @@ class _WorkspaceState extends State<Workspace> {
           onGapReport: (report) => _gapReport.value = report,
           purposeRequest: _jobPurposeRequest,
           onWrite: _writeForPosting,
+          profileStage: _profileStage,
           api: _personalApi,
           consent: _aiConsent,
           loadMaterials: () => loadAssistantMaterials(_materialRepository),
@@ -575,6 +589,7 @@ class _WorkspaceState extends State<Workspace> {
               onAddPlan: _personalApi == null ? null : _addActivityPlan,
               onRecordSaved: () => _activityRecordsChanged.value++,
               onOpenCareerGap: _openCareerGap,
+              profileStage: _profileStage,
             ),
           ],
         ),
@@ -594,6 +609,7 @@ class _WorkspaceState extends State<Workspace> {
                 setState(() => _credentialTab = 2);
               },
               onOpenCareerGap: _openCareerGap,
+              profileStage: _profileStage,
             ),
             CertificateLookupView(
               api: _personalApi,

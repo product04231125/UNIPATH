@@ -13,6 +13,7 @@ from app.api.auth import CurrentIdentity, Database
 from app.core.auth_errors import AuthError, conflict
 from app.models.personal import AnalysisResult, PlanningProfile
 from app.schemas.common import ErrorCode
+from app.schemas.personal import AcademicStage
 from app.schemas.personalization import (
     MAX_ANALYSIS_RECORDS,
     PersonalEvidenceSelection,
@@ -55,9 +56,7 @@ class RecommendationRequest(PersonalizationRequest):
     records: list[PersonalEvidenceSelection] = Field(
         default_factory=list, max_length=MAX_ANALYSIS_RECORDS
     )
-    academic_stage: Literal["year1", "year2", "year3", "year4", "graduating", "graduate"] | None = (
-        None
-    )
+    academic_stage: AcademicStage | None = None
     documents: list[Document] = Field(default_factory=list, max_length=5)
     # Detail search words; optional once a category (Work24 occupation codes) is chosen.
     keyword: str = Field(default="", max_length=80)
@@ -206,9 +205,7 @@ class ActivityRecommendationRequest(PersonalizationRequest):
     records: list[PersonalEvidenceSelection] = Field(
         default_factory=list, max_length=MAX_ANALYSIS_RECORDS
     )
-    academic_stage: Literal["year1", "year2", "year3", "year4", "graduating", "graduate"] | None = (
-        None
-    )
+    academic_stage: AcademicStage | None = None
     external_processing_consent: bool = Field(default=False, strict=True)
 
 
@@ -331,9 +328,7 @@ class CertificateRecommendationRequest(PersonalizationRequest):
     records: list[PersonalEvidenceSelection] = Field(
         default_factory=list, max_length=MAX_ANALYSIS_RECORDS
     )
-    academic_stage: Literal["year1", "year2", "year3", "year4", "graduating", "graduate"] | None = (
-        None
-    )
+    academic_stage: AcademicStage | None = None
     external_processing_consent: bool = Field(default=False, strict=True)
 
 

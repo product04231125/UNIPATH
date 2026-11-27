@@ -11,7 +11,7 @@ class CredentialPage extends StatelessWidget {
   Widget build(BuildContext context) => RecordMenuPage(
     key: const ValueKey(PersonalRecordKind.credential),
     kind: PersonalRecordKind.credential,
-    title: '자격',
+    title: '자격증',
     listTitle: '등록한 자격',
     guideTitle: '자격 준비',
     guides: const [

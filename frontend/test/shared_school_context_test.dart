@@ -16,6 +16,7 @@ import 'package:university_path_frontend/features/planning/planning_repository.d
 import 'package:university_path_frontend/features/settings/settings_page.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/features/assistant/assistant_context_dialog.dart';
+import 'package:university_path_frontend/features/planning/academic_stage.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -173,7 +174,7 @@ void main() {
         const PlanningProfile(
           school: '합성학교',
           track: 'double_major',
-          academicYearOverride: 3,
+          academicStage: AcademicStage.year3,
           weekStartsOn: WeekStartDay.monday,
         ),
       );
@@ -197,7 +198,7 @@ void main() {
         ),
       );
       expect(repository.profile.school, '변경학교');
-      expect(repository.profile.academicYearOverride, 3);
+      expect(repository.profile.academicStage, AcademicStage.year3);
       expect(repository.profile.weekStartsOn, WeekStartDay.monday);
       expect(repository.events.single.title, '합성일정');
       final reloaded = PlanningRepository();
@@ -297,7 +298,10 @@ void main() {
       final owner = PlanningRepository();
       await owner.load();
       await owner.saveProfile(
-        const PlanningProfile(school: '메인 학교', academicYearOverride: 4),
+        const PlanningProfile(
+          school: '메인 학교',
+          academicStage: AcademicStage.year4,
+        ),
       );
       final changes = StreamController<Map<String, dynamic>>.broadcast(
         sync: true,
@@ -339,7 +343,7 @@ void main() {
       failSave = false;
       await binding.save(const SchoolQueryContext(institution: '분리 창 학교'));
       expect(owner.profile.school, '분리 창 학교');
-      expect(owner.profile.academicYearOverride, 4);
+      expect(owner.profile.academicStage, AcademicStage.year4);
       await owner.saveSchoolContext(school: '메인 창 변경');
       changes.add(owner.profile.toJson());
       expect(conversation.context.institution, '메인 창 변경');

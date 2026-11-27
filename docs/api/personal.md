@@ -70,7 +70,7 @@ URL은 로그인 정보가 없는 HTTP(S) 링크이며 서버에서 가져오거
 - `GET /planning-profile`: 미저장은 기본값과 `version=0`, 시각 null을 반환한다.
   GET으로 빈 DB 행을 생성하지 않는다.
 - `PATCH /planning-profile`: 최초 `expected_version=0`, 이후 현재 버전으로 부분 수정한다.
-  학교/학과 표시명·입학연도(1900~현재+1)·이수경로·개인 계획 학년·주 시작 요일을 저장한다.
+  학교/학과 표시명·입학연도(1900~현재+1)·이수경로·현재 학년(`academic_stage`: `year1`~`year4`, `graduating`, `graduate`, 비우면 입학연도로 계산)·주 시작 요일을 저장한다. 2026-11-27(0034)에 1~4 정수 `academic_year_override`를 대신했다(기존 값은 `yearN`으로 옮김).
   선택 `institution_id/department_id/curriculum_id`는 등록된 소속 관계를 검사하지만 공식 학적을
   증명하지 않는다. 자유 입력 이름으로 FK를 자동 추론하지 않는다. 선택 중인 학과/교육과정의
   삭제는 FK로 차단하며 관리자 참조 조회에는 학생 정보가 없는 보호된 참조 표시만 반환한다.

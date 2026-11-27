@@ -8,5 +8,5 @@ abstract final class StudentPages {
   static const schedule = 5;
   static const academics = 6;
 
-  static const labels = ['홈', '채용공고 분석', '활동', '자격', '자료', '일정', '학사'];
+  static const labels = ['홈', '채용공고 분석', '활동', '자격증', '자료', '일정', '학사'];
 }

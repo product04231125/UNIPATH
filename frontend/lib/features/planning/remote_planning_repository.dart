@@ -9,6 +9,7 @@ import '../api/student_api.dart';
 import '../api/student_api_models.dart';
 import '../auth/auth_api.dart';
 import '../auth/local_data_owner.dart';
+import 'academic_stage.dart';
 import 'planning_repository.dart';
 
 /// Authenticated planning. Device originals are read only for explicit import;
@@ -192,7 +193,7 @@ class RemotePlanningRepository extends PlanningRepository {
     department: value.department,
     admissionYear: value.admissionYear,
     track: value.track,
-    academicYearOverride: value.academicYearOverride,
+    academicStage: AcademicStage.fromName(value.academicStage),
     weekStartsOn: weekStartDayFromStorage(value.weekStartsOn),
     institutionId: value.institutionId,
     departmentId: value.departmentId,
@@ -204,7 +205,7 @@ class RemotePlanningRepository extends PlanningRepository {
     'department': value.department,
     'admission_year': value.admissionYear,
     'track': value.track,
-    'academic_year_override': value.academicYearOverride,
+    'academic_stage': value.academicStage?.name,
     'week_starts_on': value.weekStartsOn.storageValue,
     'institution_id': value.institutionId,
     'department_id': value.departmentId,

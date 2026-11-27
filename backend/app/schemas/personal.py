@@ -65,6 +65,8 @@ Day = Annotated[date, BeforeValidator(date_input)]
 Instant = Annotated[AwareDatetime, BeforeValidator(instant_input)]
 WeekStart = Literal["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
 RecordKind = Literal["course", "activity", "experience", "credential", "achievement"]
+# 1~4학년, 졸업예정, 졸업: the student's profile and the recommendation requests share these.
+AcademicStage = Literal["year1", "year2", "year3", "year4", "graduating", "graduate"]
 
 
 class ProfileData(StrictModel):
@@ -72,7 +74,8 @@ class ProfileData(StrictModel):
     department: ShortText = ""
     admission_year: int | None = Field(default=None, ge=1900, le=9999, strict=True)
     track: Name | None = None
-    academic_year_override: int | None = Field(default=None, ge=1, le=4, strict=True)
+    # Set by the student; None means the year counted from the admission year.
+    academic_stage: AcademicStage | None = None
     week_starts_on: WeekStart = "sunday"
     institution_id: UUID | None = None
     department_id: UUID | None = None

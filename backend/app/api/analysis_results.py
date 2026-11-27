@@ -1,4 +1,4 @@
-"""Saved 채용공고 분석 results: 공고 1개 비교, 목표 직무 분석 and 공고 찾기.
+"""Saved analysis results: 공고 1개 비교, 목표 직무 분석, 공고 찾기, 활동 추천 and 자격증 추천.
 
 The app saves each finished result for its owner. The newest results of each kind are kept and
 older ones fall off, except starred (favorite) ones, which stay until the student removes them.
@@ -7,7 +7,7 @@ A saved result is a snapshot for the owner to reread; nothing here calls a model
 
 import json
 from datetime import datetime
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, get_args
 from uuid import UUID
 
 from fastapi import APIRouter, Query, Request, Response
@@ -29,7 +29,7 @@ MAX_FAVORITES = 50
 MAX_RESULT_CHARS = 200_000
 MAX_INPUT_CHARS = 30_000
 MAX_SUMMARY_CHARS = 2_000
-Kind = Literal["posting", "gap", "search"]
+Kind = Literal["posting", "gap", "search", "activity", "certificate"]
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=160)]
 SummaryValue = Annotated[str, StringConstraints(max_length=200)] | int | float | bool | None
 
@@ -107,7 +107,7 @@ def analysis_results(
     rows = db.scalars(
         query.order_by(
             AnalysisResult.favorite.desc(), AnalysisResult.created_at.desc(), AnalysisResult.id
-        ).limit(KEEP_RECENT * 3 + MAX_FAVORITES)
+        ).limit(KEEP_RECENT * len(get_args(Kind)) + MAX_FAVORITES)
     )
     return AnalysisResultList(items=[_summary(item) for item in rows])
 

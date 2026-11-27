@@ -13,6 +13,7 @@ import 'package:university_path_frontend/features/planning/planning_repository.d
 import 'package:university_path_frontend/features/planning/remote_planning_repository.dart';
 import 'package:university_path_frontend/features/settings/settings_page.dart';
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
+import 'package:university_path_frontend/features/planning/academic_stage.dart';
 
 import 'support/auth_fixture.dart';
 
@@ -208,7 +209,7 @@ void main() {
       'admission_year': 2026,
       'track': 'single_major',
       'week_starts_on': 'monday',
-      'academic_year_override': 2,
+      'academic_stage': 'year2',
     });
     final repository = repo(server);
     await repository.load();
@@ -226,7 +227,7 @@ void main() {
         admissionYear: 2026,
         track: repository.profile.track,
         weekStartsOn: repository.profile.weekStartsOn,
-        academicYearOverride: repository.profile.academicYearOverride,
+        academicStage: repository.profile.academicStage,
         version: repository.profile.version,
       ),
     );
@@ -238,7 +239,7 @@ void main() {
     expect(server.profile['department_id'], isNull);
     expect(server.profile['curriculum_id'], isNull);
     expect(repository.profile.weekStartsOn, WeekStartDay.monday);
-    expect(repository.profile.academicYearOverride, 2);
+    expect(repository.profile.academicStage, AcademicStage.year2);
     expect(repository.profile.track, 'single_major');
     repository.dispose();
   });

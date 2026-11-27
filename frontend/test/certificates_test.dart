@@ -9,6 +9,8 @@ import 'package:university_path_frontend/features/career/certificate_study_plan.
 import 'package:university_path_frontend/features/career/certificates.dart';
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
 
+import 'support/saved_analyses_store.dart';
+
 const summary = {
   'id': 'qnet-9738',
   'name': '사회복지사 1급',
@@ -72,6 +74,7 @@ Map<String, dynamic> schedule({bool upcoming = true}) => {
 
 class CertificateGateway extends ApiGateway {
   final calls = <(String, String, Map<String, Object?>?)>[];
+  final saved = SavedAnalysesStore();
   Map<String, dynamic> recommendation = {};
   @override
   Future<Map<String, dynamic>?> request(
@@ -79,6 +82,9 @@ class CertificateGateway extends ApiGateway {
     String path, [
     Map<String, Object?>? body,
   ]) async {
+    if (SavedAnalysesStore.handles(path)) {
+      return saved.handle(method, path, body);
+    }
     calls.add((method, path, body));
     if (path.startsWith('me/certificates?')) {
       return {
@@ -280,6 +286,14 @@ void main() {
       await tester.ensureVisible(open);
       await tester.tap(open);
       expect(opened, ['qnet-1320']);
+      // The finished recommendation was kept in the account.
+      final kept = api.saved.items.single;
+      expect(kept['kind'], 'certificate');
+      expect((kept['input'] as Map)['academic_stage'], 'year4');
+      expect(
+        (kept['summary'] as Map)['recommendations'],
+        (api.recommendation['recommendations'] as List).length,
+      );
       await tester.pumpWidget(const SizedBox());
       consent.dispose();
     },
