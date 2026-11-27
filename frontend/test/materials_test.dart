@@ -275,6 +275,10 @@ void main() {
           await tester.pumpAndSettle();
         }
 
+        // Like 활동·자격증: the page lists, `+` opens the input dialog.
+        expect(find.byKey(const ValueKey('material-title')), findsNothing);
+        await tap(find.byTooltip('자료 추가'));
+        expect(find.text('자료 추가'), findsOneWidget);
         expect(
           tester
               .getSemantics(find.byKey(const ValueKey('material-title')))
@@ -307,12 +311,14 @@ void main() {
         selected = XFile.fromData(pdf, name: 'resume.pdf', path: 'resume.pdf');
         await tap(find.text('PDF 선택'));
         await tap(save);
+        expect(find.byKey(const ValueKey('material-title')), findsNothing);
         expect((await repo.load()).single.pdf, pdf);
         expect((await repo.load()).single.type, '이력서');
         expect(find.text('내 이력서'), findsOneWidget);
         expect(find.text('이력서'), findsWidgets);
         expect(find.text('1개 표시 / 1개'), findsOneWidget);
         await tapRecordAction(tester, '수정');
+        expect(find.text('자료 수정'), findsOneWidget);
         await fill('description', '수정된 설명');
         await tap(find.widgetWithText(FilledButton, '저장'));
         expect((await repo.load()).single.description, '수정된 설명');
@@ -340,6 +346,8 @@ void main() {
     expect(find.text('다시 읽기'), findsOneWidget);
     repo.fail = false;
     await tester.tap(find.text('다시 읽기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('자료 추가'));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey('material-title')),
@@ -386,6 +394,8 @@ void main() {
     await tester.tap(save);
     await tester.pumpAndSettle();
     expect((await repo.load()).single.title, '보존할 입력');
+    expect(find.byKey(const ValueKey('material-title')), findsNothing);
+    expect(find.text('보존할 입력'), findsOneWidget);
   });
 
   testWidgets('legacy free-text type stays listed until a kind is saved', (
@@ -453,6 +463,18 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      Future<void> open() async {
+        await tester.tap(find.byTooltip('자료 추가'));
+        await tester.pumpAndSettle();
+      }
+
+      Future<void> selectKind(String kind) async {
+        await tester.tap(find.byKey(const ValueKey('material-type')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(kind).last);
+        await tester.pumpAndSettle();
+      }
+
       Future<void> fillAndSave(String title) async {
         await tester.enterText(
           find.byKey(const ValueKey('material-title')),
@@ -468,32 +490,32 @@ void main() {
         await tester.pumpAndSettle();
       }
 
-      await tester.tap(find.byKey(const ValueKey('material-type')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('이력서').last);
-      await tester.pumpAndSettle();
+      Future<void> cancel() async {
+        final button = find.widgetWithText(TextButton, '취소');
+        await tester.ensureVisible(button);
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('input-discard-delete')));
+        await tester.pumpAndSettle();
+      }
+
+      await open();
+      await selectKind('이력서');
       await fillAndSave('첫 자료');
       expect(repo.records.length, 1);
+      // The next 자료 추가 starts empty: the saved kind is not carried over.
+      await open();
       await fillAndSave('두 번째 자료');
       expect(find.text('자료 종류를 선택하세요.'), findsOneWidget);
       expect(repo.records.length, 1);
+      await cancel();
+      expect(find.byKey(const ValueKey('material-title')), findsNothing);
 
-      final cancel = find.widgetWithText(TextButton, '취소');
-      await tester.ensureVisible(cancel);
-      await tester.tap(cancel);
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('input-discard-delete')));
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.byKey(const ValueKey('material-type')));
-      await tester.tap(find.byKey(const ValueKey('material-type')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('포트폴리오').last);
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(cancel);
-      await tester.tap(cancel);
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('input-discard-delete')));
-      await tester.pumpAndSettle();
+      // A kind picked and then cancelled is gone too.
+      await open();
+      await selectKind('포트폴리오');
+      await cancel();
+      await open();
       await fillAndSave('취소 후 자료');
       expect(find.text('자료 종류를 선택하세요.'), findsOneWidget);
       expect(repo.records.length, 1);
@@ -564,31 +586,38 @@ void main() {
     },
   );
 
-  testWidgets('wide materials put the form left and the list right', (
+  testWidgets('materials list on one card and add with + like 활동·자격증', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final repo = MemoryMaterials();
-    Future<void> pump(Size size) async {
-      await tester.binding.setSurfaceSize(size);
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: MaterialsPage(repository: repo)),
-        ),
-      );
-      await tester.pumpAndSettle();
-    }
-
-    await pump(const Size(1440, 900));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MaterialsPage(repository: repo)),
+      ),
+    );
+    await tester.pumpAndSettle();
     expect(find.text('자료 목록'), findsOneWidget);
     expect(find.text('0개'), findsOneWidget);
     expect(find.text('등록한 자료가 없습니다'), findsOneWidget);
-    final cards = find.byType(SurfaceCard);
-    expect(cards, findsNWidgets(2));
-    final form = tester.getRect(cards.at(0));
-    final list = tester.getRect(cards.at(1));
-    expect(list.left, greaterThan(form.right));
-    expect(form.width, lessThanOrEqualTo(600));
+    // The list card and the collapsed 자료 준비 guide; no form card beside them.
+    expect(find.byType(SurfaceCard), findsNWidgets(2));
+    expect(find.text('자료 준비'), findsOneWidget);
+    expect(find.byKey(const ValueKey('material-title')), findsNothing);
+    expect(find.byTooltip('자료 추가'), findsOneWidget);
+    // A device store has nothing to read again: no `…` menu.
+    expect(find.byTooltip('더보기'), findsNothing);
+
+    // The empty list's button opens the same dialog as `+`.
+    await tester.tap(find.text('첫 자료 추가'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('input-dialog-surface')), findsOneWidget);
+    expect(find.text('자료 추가'), findsOneWidget);
+    // Nothing typed yet: a click outside closes it without asking.
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('input-dialog-surface')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
