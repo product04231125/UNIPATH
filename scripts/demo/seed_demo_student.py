@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""시연 학생 계정에 시연용 합성 데이터를 넣고, 시연 학교 관리자 계정을 준비한다(스테이징).
+"""시연 학생 계정에 시연용 합성 데이터를 넣고, 시연 학교 관리자 계정을 준비한다.
 
     python3 scripts/demo/seed_demo_student.py           # 빠진 시연 데이터만 넣는다
     python3 scripts/demo/seed_demo_student.py --reset   # 리허설 흔적을 지우고 처음 상태로 되돌린다
@@ -7,26 +7,35 @@
     python3 scripts/demo/seed_demo_student.py --pin     # 최신 분석 결과·저장 문서를 시연용으로 고정
     python3 scripts/demo/seed_demo_student.py --clear   # 시연 뒤 정리(다시 넣지 않음)
 
-계정 정보는 ~/.config/unipath-staging-demo/에서 읽고 출력하지 않는다.
+기본은 스테이징 서버(staging-unipath.duckdns.org)이고, --live를 붙이면 라이브 서버
+(unipath.duckdns.org)에서 같은 일을 한다.
+
+    python3 scripts/demo/seed_demo_student.py --live --reset
+
+계정 정보는 서버별 폴더에서 읽고 출력하지 않는다. 스테이징은 ~/.config/unipath-staging-demo/,
+라이브는 ~/.config/unipath-live-demo/.
 - account.json({"base_url", "email", "password"}): 시연 학생. 역할이 학생(user)이 아니면 멈춘다.
+  base_url은 생략할 수 있고, 적었다면 고른 서버 주소와 같아야 한다(다른 서버 계정 파일이면 멈춘다).
 - admin.json({"email", "display_name", "institution", "password"?}): 시연 학교 관리자(선택).
   password는 계정을 새로 만들 때만 쓴다.
 
-학생 데이터는 스테이징 공개 API로만 다룬다. 처음 실행할 때 계정에 원래 있던 자료(수강 기록·자격·
+학생 데이터는 그 서버의 공개 API로만 다룬다. 처음 실행할 때 계정에 원래 있던 자료(수강 기록·자격·
 내 자료 등)의 id를 state.json에 "원래 자료"로 기록해 두고, --reset은 그 밖의 것만 지운다.
 --reset이 지우는 것: 시연 학생의 저장된 분석 결과 전부, 저장한 자기소개서·포트폴리오 전부, 원래
 자료가 아닌 일정·활동·경험·자격·성과·내 자료(이 스크립트가 넣은 것 + 리허설 중 추가한 것). 그다음
 시연 데이터를 다시 넣는다. 일정 날짜는 실행한 날(한국 시간) 기준이라
-시연 당일 아침에 --reset 하면 된다.
+시연 당일 아침에 --reset 하면 된다. 학업 프로필 학년은 졸업예정으로 맞춘다(인물이 졸업예정이고,
+공고 찾기·활동 추천·자격증 추천의 현재 학년이 이 값으로 채워진다). --clear는 자동 계산으로 되돌린다.
 
 --pin은 앱에서 실행해 저장한 최신 목표 직무 분석·공고 찾기 결과와 최신 자기소개서·포트폴리오
 문서를 시연에서 열 결과로 고정한다. 분석 결과에는 별표(즐겨찾기)를 붙이고, 결과와 문서가 인용하는
 지금의 경험·활동·자격·성과·내 자료도 함께 남겨 --reset 뒤에도 인용이 그대로 맞는다(일정은 실행한
 날 기준으로 다시 만든다). --clear는 고정한 결과·문서와 기록까지 지우고 고정을 푼다.
 
-학교 관리자는 초기화하지 않는다. 이 서버의 스테이징 API 컨테이너 안에서 admin.json의 계정이
-그 학교의 학교 관리자인지만 확인하고(로그인하지 않음), 없을 때만 승인과 같은 방식(학교 권한 + 감사
-기록, 부여자는 기존 슈퍼관리자)으로 만든다(승인은 슈퍼관리자만 가능해 공개 API로는 만들 수 없다).
+학교 관리자는 초기화하지 않는다. 이 컴퓨터에 있는 그 서버의 API 컨테이너 안에서 admin.json의
+계정이 그 학교의 학교 관리자인지만 확인하고(로그인하지 않음), 없을 때만 승인과 같은 방식(학교
+권한 + 감사 기록, 부여자는 기존 슈퍼관리자)으로 만든다(승인은 슈퍼관리자만 가능해 공개 API로는
+만들 수 없다).
 이미 있는 계정의 비밀번호·역할은 바꾸지 않는다(학생 역할이면 학교 관리자 권한만 부여).
 어떤 모드도 계정을 지우지 않으며, 슈퍼관리자 계정은 만들거나 바꾸거나 지우지 않는다.
 모든 내용은 시연용 합성 데이터다.
@@ -47,12 +56,22 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-# UNIPATH_DEMO_CONFIG: another account folder (for testing the script on a check account).
-CONFIG = Path(os.environ.get("UNIPATH_DEMO_CONFIG", "~/.config/unipath-staging-demo")).expanduser()
-ACCOUNT = CONFIG / "account.json"
-ADMIN = CONFIG / "admin.json"
-STATE = CONFIG / "state.json"
-API_CONTAINER = os.environ.get("UNIPATH_STAGING_API_CONTAINER", "unipath-staging-api-1")
+# The demo servers: address, account folder and the API container on this host.
+SERVERS = {
+    "staging": {
+        "url": "https://staging-unipath.duckdns.org",
+        "config": "~/.config/unipath-staging-demo",
+        "container": "unipath-staging-api-1",
+    },
+    "live": {
+        "url": "https://unipath.duckdns.org",
+        "config": "~/.config/unipath-live-demo",
+        "container": "unipath-product-api-1",
+    },
+}
+# Set by use_server(). UNIPATH_DEMO_CONFIG / UNIPATH_DEMO_API_CONTAINER override the folder and
+# container (for testing the script on a check account).
+CONFIG = ACCOUNT = ADMIN = STATE = API_CONTAINER = None
 KST = ZoneInfo("Asia/Seoul")
 RECORDS = [
     "events",
@@ -61,6 +80,16 @@ RECORDS = [
     "credential-records",
     "achievement-records",
 ]
+
+
+def use_server(name):
+    """Point the account files and API container at one server; returns its address."""
+    global CONFIG, ACCOUNT, ADMIN, STATE, API_CONTAINER
+    server = SERVERS[name]
+    CONFIG = Path(os.environ.get("UNIPATH_DEMO_CONFIG", server["config"])).expanduser()
+    ACCOUNT, ADMIN, STATE = (CONFIG / n for n in ("account.json", "admin.json", "state.json"))
+    API_CONTAINER = os.environ.get("UNIPATH_DEMO_API_CONTAINER", server["container"])
+    return server["url"]
 
 
 class Api:
@@ -126,6 +155,8 @@ class Api:
 # 졸업작품 UniPath와 RouteOn을 만들었다.
 
 GOAL = {"category_codes": ["024"], "keyword": "백엔드"}
+# The persona is 졸업예정: 공고 찾기·활동 추천·자격증 추천 start at the profile's 학년.
+ACADEMIC_STAGE = "graduating"
 
 EXPERIENCES = [
     {
@@ -280,7 +311,7 @@ def events(today: date):
 
 # ---- 시연 학교 관리자 ------------------------------------------------------------------------
 
-# Runs inside the staging API container; reads one JSON line from stdin (a password never goes on
+# Runs inside the server's API container; reads one JSON line from stdin (a password never goes on
 # a command line). Prints one word: ok, super (left alone), other (admin of another school: left
 # alone), granted or created. Granting mirrors the super administrator's signup approval: an
 # active school scope granted by the existing super administrator, its audit row, then the role.
@@ -345,7 +376,7 @@ ADMIN_RESULT = {
 
 
 def ensure_admin():
-    """Check the demo school administrator on the staging server; create it only when missing."""
+    """Check the demo school administrator on the server; create it only when missing."""
     if not ADMIN.exists():
         print(f"시연 관리자: {ADMIN}가 없어 건너뜁니다.")
         return
@@ -483,6 +514,19 @@ def restore_goal(api, state):
     ):
         api.ok("PUT", "/me/career-goal", {**original, "expected_version": goal.get("version", 0)})
         print("목표 직무를 처음 값으로 되돌렸습니다.")
+    # The baseline predates the profile 학년: it was counted from the admission year.
+    if set_stage(api, state["baseline"].get("academic_stage")):
+        print("학업 프로필 학년을 처음 값(입학연도로 자동 계산)으로 되돌렸습니다.")
+
+
+def set_stage(api, stage):
+    """Set the profile's 학년; True when it changed. A server without 학년 단계 is left alone."""
+    profile = api.ok("GET", "/me/planning-profile")
+    if "academic_stage" not in profile or profile["academic_stage"] == stage:
+        return False
+    body = {"academic_stage": stage, "expected_version": profile["version"]}
+    api.ok("PATCH", "/me/planning-profile", body)
+    return True
 
 
 def portfolio_pdf():
@@ -515,6 +559,8 @@ def seed(api, state):
     ):
         api.ok("PUT", "/me/career-goal", {**GOAL, "expected_version": goal.get("version", 0)})
         added.append("목표 직무: 소프트웨어 · 백엔드")
+    if set_stage(api, ACADEMIC_STAGE):
+        added.append("학업 프로필 학년: 졸업예정")
 
     for resource, rows in [
         ("experience-records", EXPERIENCES),
@@ -544,6 +590,8 @@ def seed(api, state):
 def status(api, state):
     goal = api.ok("GET", "/me/career-goal")
     print("목표 직무:", goal.get("category_label"), goal.get("keyword") or "-")
+    stage = api.ok("GET", "/me/planning-profile").get("academic_stage")
+    print("학업 프로필 학년:", stage or "입학연도로 자동 계산")
     for resource in RECORDS:
         print(f"{resource}:", [i["title"] for i in api.all(f"/me/{resource}?limit=100")][:12])
     print("내 자료:", [m["title"] for m in api.ok("GET", "/me/materials")["items"]])
@@ -575,11 +623,19 @@ def main():
     parser.add_argument(
         "--clear", action="store_true", help="리허설·시드 데이터를 지우고 다시 넣지 않음"
     )
+    parser.add_argument(
+        "--live", action="store_true", help="라이브 서버(unipath.duckdns.org)에서 실행"
+    )
     args = parser.parse_args()
+    url = use_server("live" if args.live else "staging")
+    print(f"서버: {url}")
     if not ACCOUNT.exists():
         sys.exit(f"{ACCOUNT}에 계정 정보가 없습니다.")
     account = json.loads(ACCOUNT.read_text())
-    api = Api(account["base_url"])
+    # An account file names its server: a staging file never runs against live, or the reverse.
+    if account.get("base_url", url).rstrip("/") != url:
+        sys.exit(f"{ACCOUNT}는 {url}의 계정 파일이 아닙니다. 아무것도 바꾸지 않았습니다.")
+    api = Api(url)
     code, body = api.login(account)
     if code != 200:
         sys.exit(f"로그인 실패: HTTP {code} {body.get('error', {}).get('code', '')}")

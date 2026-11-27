@@ -2,12 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../shared/widgets/feature_page.dart';
 import '../../../shared/widgets/field_label.dart';
 import '../../../shared/widgets/surface_card.dart';
 import '../../api/job_analysis_models.dart';
+import '../../career/academic_stage_field.dart';
+import '../../planning/academic_stage.dart';
 import '../../api/job_recommendation_api.dart';
 import '../../career/career_goal.dart';
 import '../../career/region_chips.dart';
@@ -59,8 +62,12 @@ class JobRecommendationPage extends StatefulWidget {
     this.loadDocuments,
     this.goal,
     this.onWrite,
+    this.profileStage,
   });
   final StudentApi? api;
+
+  /// The 학업 프로필 stage the 현재 학년 starts at.
+  final ValueListenable<AcademicStage?>? profileStage;
 
   /// Opens 자기소개서·포트폴리오 for one found posting.
   final WriteForPosting? onWrite;
@@ -93,7 +100,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
   String _categoryCode = '', _subcategoryCode = '';
   String get _selectedCode =>
       _subcategoryCode.isEmpty ? _categoryCode : _subcategoryCode;
-  RecommendationAcademicStage? _academicStage;
+  final _academicStage = AcademicStageChoice();
   final _documents = <RecommendationDocument>[];
   final _materialIds = <String>{};
   bool _busy = false;
@@ -175,6 +182,11 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
     super.initState();
     _applyGoal();
     _saved = _savedFor(widget.api);
+    widget.profileStage?.addListener(_profileStageChanged);
+  }
+
+  void _profileStageChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -226,7 +238,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
       _categoryCode = '';
       _subcategoryCode = '';
       _updateCategoryAccess();
-      _academicStage = null;
+      _academicStage.reset();
       _keyword.clear();
       _documents.clear();
       _materialIds.clear();
@@ -243,10 +255,15 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
     } else if (widget.goal != oldWidget.goal) {
       _applyGoal();
     }
+    if (!identical(oldWidget.profileStage, widget.profileStage)) {
+      oldWidget.profileStage?.removeListener(_profileStageChanged);
+      widget.profileStage?.addListener(_profileStageChanged);
+    }
   }
 
   @override
   void dispose() {
+    widget.profileStage?.removeListener(_profileStageChanged);
     _saved?.dispose();
     _keyword.dispose();
     super.dispose();
@@ -356,7 +373,7 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
         categoryCodes: _selectedCode.isEmpty ? const [] : [_selectedCode],
         region: _regionLabel,
         regions: _orderedRegions,
-        academicStage: _academicStage,
+        academicStage: _academicStage.valueWith(widget.profileStage),
         documents: documents,
         records: [
           for (final record in records)
@@ -502,24 +519,14 @@ class _JobRecommendationPageState extends State<JobRecommendationPage> {
         ),
       ),
     );
-    final stage = FieldLabel(
-      label: '현재 학년 (선택)',
-      child: DropdownButtonFormField<RecommendationAcademicStage>(
-        key: const ValueKey('recommend-academic-stage'),
-        initialValue: _academicStage,
-        isExpanded: true,
-        decoration: InputDecoration(
-          errorText: _hasField('academic_stage') ? '선택한 학년을 확인하세요.' : null,
-        ),
-        items: [
-          const DropdownMenuItem(child: Text('선택 안 함')),
-          for (final stage in RecommendationAcademicStage.values)
-            DropdownMenuItem(value: stage, child: Text(stage.label)),
-        ],
-        onChanged: _busy
-            ? null
-            : (stage) => setState(() => _academicStage = stage),
-      ),
+    final stage = AcademicStageField(
+      fieldKey: const ValueKey('recommend-academic-stage'),
+      value: _academicStage.valueWith(widget.profileStage),
+      fromProfile: _academicStage.fromProfile(widget.profileStage),
+      errorText: _hasField('academic_stage') ? '선택한 학년을 확인하세요.' : null,
+      onChanged: _busy
+          ? null
+          : (stage) => setState(() => _academicStage.pick(stage)),
     );
     final input = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../auth/auth_api.dart';
 import '../auth/guest_preview_scope.dart';
+import '../planning/academic_stage.dart';
 import '../planning/planning_import_section.dart';
 import '../records/personal_repository_scope.dart';
 import '../records/personal_workspace_import_section.dart';
@@ -55,7 +56,7 @@ class _SettingsPageState extends State<SettingsPage> {
   late final TextEditingController _school;
   late final TextEditingController _department;
   int? _admissionYear;
-  int? _academicYearOverride;
+  AcademicStage? _academicStage;
   late WeekStartDay _weekStartsOn;
   bool _saved = false;
   bool _saving = false;
@@ -77,7 +78,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _school = TextEditingController(text: profile.school);
     _department = TextEditingController(text: profile.department);
     _admissionYear = profile.admissionYear;
-    _academicYearOverride = profile.academicYearOverride;
+    _academicStage = profile.academicStage;
     _weekStartsOn = profile.weekStartsOn;
     _track = profile.track;
     _displayedProfile = profile;
@@ -196,7 +197,7 @@ class _SettingsPageState extends State<SettingsPage> {
           _school.text = profile.school;
           _department.text = profile.department;
           _admissionYear = profile.admissionYear;
-          _academicYearOverride = profile.academicYearOverride;
+          _academicStage = profile.academicStage;
           _weekStartsOn = profile.weekStartsOn;
           _track = profile.track;
           _displayedProfile = profile;
@@ -359,24 +360,28 @@ class _SettingsPageState extends State<SettingsPage> {
                                       CrossAxisAlignment.stretch,
                                   children: [
                                     const FeatureLine.section(text: '개인 계획'),
-                                    AnchoredSelectField<int?>(
-                                      value: _academicYearOverride,
-                                      label: '개인 계획 학년',
+                                    AnchoredSelectField<AcademicStage?>(
+                                      key: const Key(
+                                        'settings-academic-stage-select',
+                                      ),
+                                      value: _academicStage,
+                                      label: '현재 학년',
                                       options: [
-                                        SelectOption<int?>(
+                                        SelectOption<AcademicStage?>(
                                           null,
                                           suggestedYear == null
                                               ? '자동 계산 (입학연도 필요)'
                                               : '자동 계산 ($suggestedYear학년 제안)',
                                         ),
-                                        for (var year = 1; year <= 4; year++)
-                                          SelectOption<int?>(
-                                            year,
-                                            '$year학년으로 직접 설정',
+                                        for (final stage
+                                            in AcademicStage.values)
+                                          SelectOption<AcademicStage?>(
+                                            stage,
+                                            '${stage.label}으로 직접 설정',
                                           ),
                                       ],
                                       onChanged: (value) => setState(() {
-                                        _academicYearOverride = value;
+                                        _academicStage = value;
                                         _saved = false;
                                         _dirty = true;
                                       }),
@@ -492,7 +497,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   int? _suggestedYear() =>
       PlanningProfile(admissionYear: _admissionYear)
-          .academicYearFor(DateTime.now());
+          .countedYearFor(DateTime.now());
 
   void _captureCatalogSelection() {
     final form = _schoolForm.currentState;
@@ -554,7 +559,7 @@ class _SettingsPageState extends State<SettingsPage> {
           department: department,
           admissionYear: _admissionYear,
           track: _track,
-          academicYearOverride: _academicYearOverride,
+          academicStage: _academicStage,
           weekStartsOn: _weekStartsOn,
           institutionId: picked ? catalog?.institutionId : null,
           departmentId: picked ? catalog?.departmentId : null,

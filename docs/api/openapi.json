@@ -43924,7 +43924,9 @@
                   "enum": [
                     "posting",
                     "gap",
-                    "search"
+                    "search",
+                    "activity",
+                    "certificate"
                   ],
                   "type": "string"
                 },
@@ -54674,19 +54676,6 @@
             ],
             "title": "Track"
           },
-          "academic_year_override": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 4.0,
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Academic Year Override"
-          },
           "week_starts_on": {
             "type": "string",
             "enum": [
@@ -54736,6 +54725,25 @@
               }
             ],
             "title": "Curriculum Id"
+          },
+          "academic_stage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "year1",
+                  "year2",
+                  "year3",
+                  "year4",
+                  "graduating",
+                  "graduate"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Stage"
           }
         },
         "additionalProperties": false,
@@ -54799,19 +54807,6 @@
             ],
             "title": "Track"
           },
-          "academic_year_override": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 4.0,
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Academic Year Override"
-          },
           "week_starts_on": {
             "anyOf": [
               {
@@ -54867,6 +54862,25 @@
               }
             ],
             "title": "Curriculum Id"
+          },
+          "academic_stage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "year1",
+                  "year2",
+                  "year3",
+                  "year4",
+                  "graduating",
+                  "graduate"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Stage"
           }
         },
         "additionalProperties": false,
@@ -54915,19 +54929,6 @@
               }
             ],
             "title": "Track"
-          },
-          "academic_year_override": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 4.0,
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Academic Year Override"
           },
           "week_starts_on": {
             "type": "string",
@@ -55017,6 +55018,25 @@
             "const": false,
             "title": "Official",
             "default": false
+          },
+          "academic_stage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "year1",
+                  "year2",
+                  "year3",
+                  "year4",
+                  "graduating",
+                  "graduate"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Stage"
           }
         },
         "additionalProperties": false,
@@ -70188,7 +70208,9 @@
             "enum": [
               "posting",
               "gap",
-              "search"
+              "search",
+              "activity",
+              "certificate"
             ],
             "title": "Kind"
           },

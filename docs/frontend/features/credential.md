@@ -2,10 +2,11 @@
 
 ## 자격증 추천·시험 일정 탭 (2026-11-24)
 
-`자격` 메뉴는 `내 자격 | 자격증 추천 | 시험 일정` 탭이다. API는 [certificates](../../api/certificate-recommendations.md)에 있다.
+`자격증` 메뉴(2026-11-27 `자격`에서 이름 변경)는 `내 자격 | 자격증 추천 | 시험 일정` 탭이다. API는 [certificates](../../api/certificate-recommendations.md)에 있다.
 
 ### 자격증 추천 (`CertificateRecommendationView`)
-- **입력:** 목표 직무 카드, 학년, `자격증 추천 받기`.
+- **입력:** 목표 직무 카드, 학년(학업 프로필 학년으로 채움), `자격증 추천 받기`, `저장된 결과`.
+- 끝난 추천은 계정에 자동 저장된다(`kind=certificate`). 저장된 결과를 누르면 다시 열고, 별표로 계속 보관한다(2026-11-27).
 - **결과 요약 칩**
   - 목표 직무
   - `목표 직무 분석 기준 · 공고 N건`
@@ -60,7 +61,7 @@
 
 - 공통 `PageHeader`로 한글 제목과 한 줄 설명 `자격증·어학·교육 이수 내역을 관리합니다.`를 표시하며 중복 영어 라벨은 제거했다.
   읽기 대기·실패에도 제목을 유지한다. `학교 정보가 없어도` 같은 반복 안내는 헤더·목록 아래에 두지 않는다.
-- `frontend/lib/features/records/credential/credential_page.dart`는 자격 메뉴 설정을 제공하며,
+- `frontend/lib/features/records/credential/credential_page.dart`는 자격증 메뉴 설정을 제공하며,
   공통 `RecordMenuPage`와 `showPersonalRecordForm`이 목록·입력 상태를 관리한다.
 - 제품 화면의 자격 예시 행은 제거했다. 개인 기록만 표시한다.
 - 자격명·발급 기관·점수/등급·취득/만료일·보유 상태·증빙 링크를 분리 입력한다.

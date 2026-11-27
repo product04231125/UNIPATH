@@ -634,7 +634,7 @@ class PersonalImportProfile implements PersonalImportPayload {
     this.department = "",
     this.admissionYear,
     this.track,
-    this.academicYearOverride,
+    this.academicStage,
     this.weekStartsOn = "sunday",
     this.institutionId,
     this.departmentId,
@@ -644,7 +644,7 @@ class PersonalImportProfile implements PersonalImportPayload {
   final String department;
   final int? admissionYear;
   final String? track;
-  final int? academicYearOverride;
+  final String? academicStage;
   final String weekStartsOn;
   final String? institutionId;
   final String? departmentId;
@@ -659,9 +659,16 @@ class PersonalImportProfile implements PersonalImportPayload {
             ? null
             : value['admission_year'] as int,
         track: value['track'] == null ? null : value['track'] as String,
-        academicYearOverride: value['academic_year_override'] == null
+        academicStage: value['academic_stage'] == null
             ? null
-            : value['academic_year_override'] as int,
+            : _choice(value['academic_stage'], [
+                "year1",
+                "year2",
+                "year3",
+                "year4",
+                "graduating",
+                "graduate",
+              ]),
         weekStartsOn: value['week_starts_on'] == null
             ? "sunday"
             : _choice(value['week_starts_on'], [
@@ -689,7 +696,7 @@ class PersonalImportProfile implements PersonalImportPayload {
     'department': department,
     'admission_year': admissionYear,
     'track': track,
-    'academic_year_override': academicYearOverride,
+    'academic_stage': academicStage,
     'week_starts_on': weekStartsOn,
     'institution_id': institutionId,
     'department_id': departmentId,

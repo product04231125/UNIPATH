@@ -280,7 +280,7 @@ void main() {
         await world.pumpSidebar(tester);
         expect(find.text('수강 관리'), findsWidgets);
         expect(find.text('활동'), findsWidgets);
-        expect(find.text('자격'), findsWidgets);
+        expect(find.text('자격증'), findsWidgets);
         expect(find.byTooltip('경험'), findsNothing);
         expect(
           tester.widget<Workspace>(find.byType(Workspace)).selectedPage,
@@ -554,7 +554,7 @@ void main() {
             await world.pumpSidebar(tester);
             expect(find.text('수강 관리'), findsWidgets);
             expect(find.text('활동'), findsWidgets);
-            expect(find.text('자격'), findsWidgets);
+            expect(find.text('자격증'), findsWidgets);
             expect(find.byTooltip('경험'), findsNothing);
           },
       '졸업 요건 개인 규칙에서 그 기록 UUID를 선택해 연결하면': (tester, world) async {

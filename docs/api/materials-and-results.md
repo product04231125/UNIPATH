@@ -28,7 +28,7 @@
 
 ## 저장된 분석 결과 `/api/v1/me/analysis-results`
 
-공고 1개 비교(`posting`), 목표 직무 분석(`gap`), 내 자료로 공고 찾기(`search`)의 끝난 결과다(표 `analysis_results`). 앱이 분석을 마치면 자동으로 저장한다.
+공고 1개 비교(`posting`), 목표 직무 분석(`gap`), 내 자료로 공고 찾기(`search`), 활동 추천(`activity`), 자격증 추천(`certificate`)의 끝난 결과다(표 `analysis_results`). 앱이 분석·추천을 마치면 자동으로 저장한다. 활동·자격증 추천은 2026-11-27(마이그레이션 0034)에 더했다.
 
 | 요청 | 설명 |
 | --- | --- |

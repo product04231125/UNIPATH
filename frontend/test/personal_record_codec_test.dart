@@ -57,7 +57,7 @@ void main() {
       const MaterialApp(home: Scaffold(body: CredentialPage())),
     );
     await tester.pumpAndSettle();
-    expect(find.text('자격'), findsOneWidget);
+    expect(find.text('자격증'), findsOneWidget);
     expect(find.text('아직 등록한 기록이 없습니다'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

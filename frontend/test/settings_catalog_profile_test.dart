@@ -9,6 +9,7 @@ import 'package:university_path_frontend/features/planning/planning_repository.d
 import 'package:university_path_frontend/features/planning/remote_planning_repository.dart';
 import 'package:university_path_frontend/features/settings/settings_page.dart';
 import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
+import 'package:university_path_frontend/features/planning/academic_stage.dart';
 
 import 'support/auth_fixture.dart';
 
@@ -237,19 +238,24 @@ void main() {
           lessThan(tester.getTopLeft(find.text('개인 계획')).dy),
         );
         final year = find.byWidgetPredicate(
-          (w) => w is AnchoredSelectField<int?> && w.label == '개인 계획 학년',
+          (w) => w is AnchoredSelectField<AcademicStage?> && w.label == '현재 학년',
         );
-        tester.widget<AnchoredSelectField<int?>>(year).onChanged(4);
+        tester
+            .widget<AnchoredSelectField<AcademicStage?>>(year)
+            .onChanged(AcademicStage.graduating);
         await tester.pumpAndSettle();
         server.profileFailure = const AuthFailure('합성 저장 실패', status: 422);
         await saveSettings(tester);
         expect(find.textContaining('합성 저장 실패'), findsOneWidget);
-        expect(tester.widget<AnchoredSelectField<int?>>(year).value, 4);
+        expect(
+          tester.widget<AnchoredSelectField<AcademicStage?>>(year).value,
+          AcademicStage.graduating,
+        );
         expect(server.writes.single['track'], track);
         server.profileFailure = null;
         await saveSettings(tester);
         expect(repository.profile.track, track);
-        expect(repository.profile.academicYearOverride, 4);
+        expect(repository.profile.academicStage, AcademicStage.graduating);
         expect(server.writes.last['track'], track);
         expect(tester.takeException(), isNull);
       },

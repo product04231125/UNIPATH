@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../shared/app_tones.dart';
@@ -24,6 +24,7 @@ import '../../career/career_gap_view.dart';
 import '../../career/career_goal.dart';
 import '../../career/requirement_result.dart';
 import '../../career/saved_analyses.dart';
+import '../../planning/academic_stage.dart';
 import '../../auth/guest_preview_scope.dart';
 import '../../settings/ai_consent_preferences.dart';
 import '../../settings/ai_consent_section.dart';
@@ -100,6 +101,7 @@ class JobAnalysisPage extends StatefulWidget {
     this.onGapReport,
     this.purposeRequest,
     this.onWrite,
+    this.profileStage,
   });
   final Future<XFile?> Function()? pickFile;
   final StudentApi? api;
@@ -123,6 +125,9 @@ class JobAnalysisPage extends StatefulWidget {
 
   /// Opens 자기소개서·포트폴리오 with an analysed posting (here or in 공고 찾기).
   final WriteForPosting? onWrite;
+
+  /// The 학업 프로필 stage 공고 찾기 starts at.
+  final ValueListenable<AcademicStage?>? profileStage;
   @override
   State<JobAnalysisPage> createState() => _JobAnalysisPageState();
 }
@@ -453,6 +458,7 @@ class _JobAnalysisPageState extends State<JobAnalysisPage> {
           JobRecommendationPage(
             goal: widget.careerGoal?.goal,
             onWrite: widget.onWrite,
+            profileStage: widget.profileStage,
             api: widget.api,
             consent: widget.consent,
             loadRecords: widget.loadRecords,

@@ -1,6 +1,6 @@
 # 자격증 추천·시험 일정 API (2026-11-24)
 
-자격 메뉴의 `자격증 추천`과 `시험 일정` 탭이 쓰는 API다. 관리자용 자격증·발급기관 마스터([certificates.md](certificates.md))와는 별개다.
+자격증 메뉴의 `자격증 추천`과 `시험 일정` 탭이 쓰는 API다. 관리자용 자격증·발급기관 마스터([certificates.md](certificates.md))와는 별개다.
 
 - **AI가 맡는 부분:** 추천 대상 고르기와 추천 이유.
 - **공식 데이터가 맡는 부분:** 날짜, 응시료, 시험 과목, 응시자격 안내. AI가 만들지 않는다.
@@ -73,7 +73,7 @@ Q-Net API는 해당 시험 연도의 회차만 준다.
 각 회차는 `{name, events: [{kind: registration|exam|result|document, label, start, end}]}`이다.
 
 ## `POST /api/v1/me/certificate-recommendations`
-요청은 `records`(저장된 기록 전체), `academic_stage`, `external_processing_consent`다. 목표 직무가 없으면 `needs_user_input`과 `career_goal`을 돌려준다.
+요청은 `records`(저장된 기록 전체), `academic_stage`, `external_processing_consent`다. 목표 직무가 없으면 `needs_user_input`과 `career_goal`을 돌려준다. 앱은 학업 프로필의 학년을 `academic_stage` 기본값으로 보내고, 끝난 결과를 [저장된 분석 결과](materials-and-results.md)에 `kind=certificate`로 저장한다(이 API는 저장하지 않는다).
 
 ### 처리
 1. 가장 최근에 저장된 목표 직무 분석에서 다음을 꺼낸다.

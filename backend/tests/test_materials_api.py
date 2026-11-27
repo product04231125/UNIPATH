@@ -186,3 +186,26 @@ def test_analysis_results_keep_the_newest_and_every_favorite(auth_client, monkey
     large["result"]["comparisons"] = [{"requirement": "가" * 1000}] * 250
     assert c.post(path, headers=owner, json=large).status_code == 422
     assert c.post(path, headers=owner, json={**result(), "kind": "other"}).status_code == 422
+
+
+@pytest.mark.integration
+def test_activity_and_certificate_recommendations_are_kept_by_kind(auth_client):
+    c = auth_client
+    owner = authorization(register(c))
+    path = "/api/v1/me/analysis-results"
+    for kind, title in (("activity", "활동 · 백엔드"), ("certificate", "자격 · 백엔드")):
+        body = {
+            "kind": kind,
+            "title": title,
+            "summary": {"recommendations": 3},
+            "input": {"goal": "소프트웨어 · 백엔드", "academic_stage": "graduating"},
+            "result": {"status": "completed", "recommendations": [{"title": "합성"}]},
+        }
+        saved = c.post(path, headers=owner, json=body)
+        assert saved.status_code == 201, saved.text
+        assert saved.json()["kind"] == kind
+    assert c.post(path, headers=owner, json=result()).status_code == 201
+    for kind, title in (("activity", "활동 · 백엔드"), ("certificate", "자격 · 백엔드")):
+        items = c.get(f"{path}?kind={kind}", headers=owner).json()["items"]
+        assert [(i["title"], i["summary"]) for i in items] == [(title, {"recommendations": 3})]
+    assert len(c.get(path, headers=owner).json()["items"]) == 3
