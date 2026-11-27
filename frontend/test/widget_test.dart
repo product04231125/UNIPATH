@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/main.dart';
+import 'package:university_path_frontend/features/planning/academic_stage.dart';
 
 void main() {
   setUp(() async {
@@ -30,7 +31,7 @@ void main() {
         school: '테스트대학교',
         department: '컴퓨터공학과',
         admissionYear: 2025,
-        academicYearOverride: 2,
+        academicStage: AcademicStage.year2,
         weekStartsOn: WeekStartDay.tuesday,
       ),
     );
@@ -48,7 +49,10 @@ void main() {
     await reloaded.load();
 
     expect(reloaded.profile.school, '테스트대학교');
-    expect(reloaded.profile.academicYearFor(DateTime(2026, 10)), 2);
+    expect(
+      reloaded.profile.academicStageFor(DateTime(2026, 10)),
+      AcademicStage.year2,
+    );
     expect(reloaded.profile.weekStartsOn, WeekStartDay.tuesday);
     expect(reloaded.events.single.title, '과제 마감');
   });
@@ -304,7 +308,7 @@ void main() {
       ('졸업 요건', '학업 프로필'),
       ('일정', '일정이 없습니다'),
       ('활동', '기록 시간'),
-      ('자격', '아직 등록한 기록이 없습니다'),
+      ('자격증', '아직 등록한 기록이 없습니다'),
       ('자료', '내 자료'),
       ('채용공고 분석', '채용공고 본문'),
       ('설정', '학업과 계획'),

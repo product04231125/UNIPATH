@@ -192,7 +192,7 @@ void main() {
       (const CoursePage(), '수강 관리', '학기별 수강 계획과 개인 이수 기록을 정리합니다.'),
       (const ActivityPage(), '활동', '봉사·교내외 활동과 프로젝트·인턴·동아리 경험을 한곳에서 기록합니다.'),
       (const ExperiencePage(), '경험', '프로젝트·인턴·동아리 경험을 이력 문장과 강점으로 정리합니다.'),
-      (const CredentialPage(), '자격', '자격증·어학·교육 이수 내역을 관리합니다.'),
+      (const CredentialPage(), '자격증', '자격증·어학·교육 이수 내역을 관리합니다.'),
     ]) {
       await tester.pumpWidget(host(page));
       // The same header (title and actions) stays put before and after load.

@@ -24,7 +24,8 @@
 --reset이 지우는 것: 시연 학생의 저장된 분석 결과 전부, 저장한 자기소개서·포트폴리오 전부, 원래
 자료가 아닌 일정·활동·경험·자격·성과·내 자료(이 스크립트가 넣은 것 + 리허설 중 추가한 것). 그다음
 시연 데이터를 다시 넣는다. 일정 날짜는 실행한 날(한국 시간) 기준이라
-시연 당일 아침에 --reset 하면 된다.
+시연 당일 아침에 --reset 하면 된다. 학업 프로필 학년은 졸업예정으로 맞춘다(인물이 졸업예정이고,
+공고 찾기·활동 추천·자격증 추천의 현재 학년이 이 값으로 채워진다). --clear는 자동 계산으로 되돌린다.
 
 --pin은 앱에서 실행해 저장한 최신 목표 직무 분석·공고 찾기 결과와 최신 자기소개서·포트폴리오
 문서를 시연에서 열 결과로 고정한다. 분석 결과에는 별표(즐겨찾기)를 붙이고, 결과와 문서가 인용하는
@@ -154,6 +155,8 @@ class Api:
 # 졸업작품 UniPath와 RouteOn을 만들었다.
 
 GOAL = {"category_codes": ["024"], "keyword": "백엔드"}
+# The persona is 졸업예정: 공고 찾기·활동 추천·자격증 추천 start at the profile's 학년.
+ACADEMIC_STAGE = "graduating"
 
 EXPERIENCES = [
     {
@@ -511,6 +514,19 @@ def restore_goal(api, state):
     ):
         api.ok("PUT", "/me/career-goal", {**original, "expected_version": goal.get("version", 0)})
         print("목표 직무를 처음 값으로 되돌렸습니다.")
+    # The baseline predates the profile 학년: it was counted from the admission year.
+    if set_stage(api, state["baseline"].get("academic_stage")):
+        print("학업 프로필 학년을 처음 값(입학연도로 자동 계산)으로 되돌렸습니다.")
+
+
+def set_stage(api, stage):
+    """Set the profile's 학년; True when it changed. A server without 학년 단계 is left alone."""
+    profile = api.ok("GET", "/me/planning-profile")
+    if "academic_stage" not in profile or profile["academic_stage"] == stage:
+        return False
+    body = {"academic_stage": stage, "expected_version": profile["version"]}
+    api.ok("PATCH", "/me/planning-profile", body)
+    return True
 
 
 def portfolio_pdf():
@@ -543,6 +559,8 @@ def seed(api, state):
     ):
         api.ok("PUT", "/me/career-goal", {**GOAL, "expected_version": goal.get("version", 0)})
         added.append("목표 직무: 소프트웨어 · 백엔드")
+    if set_stage(api, ACADEMIC_STAGE):
+        added.append("학업 프로필 학년: 졸업예정")
 
     for resource, rows in [
         ("experience-records", EXPERIENCES),
@@ -572,6 +590,8 @@ def seed(api, state):
 def status(api, state):
     goal = api.ok("GET", "/me/career-goal")
     print("목표 직무:", goal.get("category_label"), goal.get("keyword") or "-")
+    stage = api.ok("GET", "/me/planning-profile").get("academic_stage")
+    print("학업 프로필 학년:", stage or "입학연도로 자동 계산")
     for resource in RECORDS:
         print(f"{resource}:", [i["title"] for i in api.all(f"/me/{resource}?limit=100")][:12])
     print("내 자료:", [m["title"] for m in api.ok("GET", "/me/materials")["items"]])

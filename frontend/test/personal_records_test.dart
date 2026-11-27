@@ -822,7 +822,7 @@ void main() {
 
   for (final item in [
     ('활동', '활동 추가', {'title': '합성 활동'}),
-    ('자격', '자격 추가', {'title': '합성 자격'}),
+    ('자격증', '자격 추가', {'title': '합성 자격'}),
   ]) {
     testWidgets(
       '${item.$1} supports structured input, remount and confirmed delete',

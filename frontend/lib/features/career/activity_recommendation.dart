@@ -1,7 +1,7 @@
 import '../api/job_analysis_models.dart';
-import '../api/job_recommendation_api.dart';
 import '../api/student_api.dart';
 import '../assistant/ai_record_catalog.dart';
+import '../planning/academic_stage.dart';
 import '../records/personal_record_repository.dart';
 
 /// One kind of activity the server suggests for the target job's gaps.
@@ -98,7 +98,7 @@ class ActivityRecommendationApi {
 
   Future<ActivityRecommendationResult> recommend({
     required List<AiRecordOption> records,
-    RecommendationAcademicStage? academicStage,
+    AcademicStage? academicStage,
   }) async => ActivityRecommendationResult.fromJson(
     (await api.api.request('POST', 'me/activity-recommendations', {
       'records': [

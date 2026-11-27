@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +17,7 @@ import 'package:university_path_frontend/features/api/student_api.dart';
 import 'package:university_path_frontend/features/assistant/ai_record_catalog.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/auth/guest_preview_scope.dart';
+import 'package:university_path_frontend/features/planning/academic_stage.dart';
 import 'package:university_path_frontend/features/records/portfolio/job_recommendation_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/job_recommendation_result.dart';
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
@@ -165,6 +167,7 @@ Future<void> mount(
   Future<List<AssistantMaterial>> Function()? loadMaterials,
   Future<List<GuidanceDocument>> Function(List<String> ids)? loadDocuments,
   CareerGoal? goal,
+  ValueListenable<AcademicStage?>? profileStage,
 }) async {
   await tester.binding.setSurfaceSize(const Size(1440, 1000));
   addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -181,6 +184,7 @@ Future<void> mount(
             loadMaterials: loadMaterials,
             loadDocuments: loadDocuments,
             goal: goal,
+            profileStage: profileStage,
           ),
         ),
       ),
@@ -540,6 +544,33 @@ void main() {
     await chip('전국');
     expect(selected('서울') || selected('경기'), isFalse);
     expect(selected('전국'), isTrue);
+  });
+
+  testWidgets('현재 학년 starts at the 학업 프로필 stage and follows it until picked', (
+    tester,
+  ) async {
+    final api = RecommendationGateway();
+    final consent = await permission();
+    final profile = ValueNotifier<AcademicStage?>(AcademicStage.graduating);
+    addTearDown(profile.dispose);
+    await mount(tester, api, consent, profileStage: profile);
+    expect(find.text('설정의 학업 프로필 학년입니다.'), findsOneWidget);
+    await fill(tester);
+    await run(tester);
+    expect(api.calls.single['academic_stage'], 'graduating');
+
+    // The profile changed in 설정: the untouched field follows it.
+    profile.value = AcademicStage.year3;
+    await tester.pumpAndSettle();
+    expect(find.text('3학년'), findsOneWidget);
+    // 선택 안 함 picked here sends no stage and stays, whatever the profile says.
+    await selectOption(tester, 'recommend-academic-stage', '선택 안 함');
+    profile.value = AcademicStage.year4;
+    await tester.pumpAndSettle();
+    expect(find.text('설정의 학업 프로필 학년입니다.'), findsNothing);
+    api.calls.clear();
+    await run(tester);
+    expect(api.calls.single.containsKey('academic_stage'), isFalse);
   });
 
   testWidgets('shows display candidate states without duplicate cards', (

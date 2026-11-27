@@ -373,6 +373,30 @@ def test_profile_creation_version_partial_updates_and_calendar_window(auth_clien
         json={"expected_version": 1, "week_starts_on": "monday"},
     )
     assert response.json()["school"] == "개인 학교명" and response.json()["version"] == 2
+    # 학년 is auto (None) until set; 졸업예정·졸업 are stages beyond 4학년.
+    assert response.json()["academic_stage"] is None
+    stage = c.patch(
+        "/api/v1/me/planning-profile",
+        headers=h,
+        json={"expected_version": 2, "academic_stage": "graduating"},
+    )
+    assert stage.status_code == 200, stage.text
+    assert stage.json()["academic_stage"] == "graduating" and stage.json()["version"] == 3
+    for invalid in ("year5", 4, "졸업예정"):
+        assert (
+            c.patch(
+                "/api/v1/me/planning-profile",
+                headers=h,
+                json={"expected_version": 3, "academic_stage": invalid},
+            ).status_code
+            == 422
+        )
+    back = c.patch(
+        "/api/v1/me/planning-profile",
+        headers=h,
+        json={"expected_version": 3, "academic_stage": None},
+    )
+    assert back.json()["academic_stage"] is None and back.json()["version"] == 4
     assert (
         c.patch(
             "/api/v1/me/planning-profile",

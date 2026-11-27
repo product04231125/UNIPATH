@@ -15,7 +15,8 @@
 ```
 
 - `records`: 저장된 기록 전체(공고 찾기와 같은 형식).
-- `academic_stage`: `year1`~`year4`, `graduating`, `graduate`.
+- `academic_stage`: `year1`~`year4`, `graduating`, `graduate`. 앱은 학업 프로필의 학년(`planning-profile.academic_stage`, 비어 있으면 입학연도로 계산)을 기본값으로 보낸다.
+- 이 API는 결과를 저장하지 않는다. 앱이 끝난 결과를 [저장된 분석 결과](materials-and-results.md)에 `kind=activity`로 저장한다.
 - 목표 직무는 저장된 `career-goal`을 쓴다. 없으면 `needs_user_input`과 `missing_fields: ["career_goal"]`을 돌려준다.
 
 ## 처리

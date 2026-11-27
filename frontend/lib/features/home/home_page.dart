@@ -17,6 +17,7 @@ import '../career/career_goal.dart';
 import '../career/career_gap.dart';
 import '../career/career_gap_summary_card.dart';
 import '../career/career_goal_card.dart';
+import '../planning/academic_stage.dart';
 import '../planning/event_category_tone.dart';
 import '../planning/planning_dates.dart';
 import '../planning/planning_repository.dart';
@@ -59,7 +60,7 @@ class HomePage extends StatelessWidget {
       }
       final profile = repository.profile;
       final now = DateTime.now();
-      final year = profile.academicYearFor(now);
+      final stage = profile.academicStageFor(now);
       final ahead =
           repository.events.where((e) => e.end.isAfter(now) && !e.done).toList()
             ..sort((a, b) => a.start.compareTo(b.start));
@@ -108,7 +109,7 @@ class HomePage extends StatelessWidget {
                     deadline,
                     hasWeek,
                     profile,
-                    year,
+                    stage,
                     prepareDone,
                   )
                 : [
@@ -147,7 +148,7 @@ class HomePage extends StatelessWidget {
                               _prepare(context, profile),
                               SizedBox(height: gap),
                             ],
-                            _nextSteps(context, year),
+                            _nextSteps(context, stage),
                           ],
                         );
                         if (constraints.maxWidth < 820) {
@@ -185,7 +186,7 @@ class HomePage extends StatelessWidget {
     PlanningEvent? deadline,
     bool hasWeek,
     PlanningProfile profile,
-    int? year,
+    AcademicStage? stage,
     bool prepareDone,
   ) {
     final gap = FeatureLine.slotGap(context);
@@ -215,7 +216,7 @@ class HomePage extends StatelessWidget {
       ]),
       stack([
         if (!prepareDone) _prepare(context, profile),
-        _nextSteps(context, year),
+        _nextSteps(context, stage),
       ]),
     ];
     return [
@@ -572,10 +573,10 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _nextSteps(BuildContext context, int? year) {
+  Widget _nextSteps(BuildContext context, AcademicStage? stage) {
     final theme = Theme.of(context);
-    final steps = switch (year) {
-      1 || 2 => const [
+    final steps = switch (stage) {
+      AcademicStage.year1 || AcademicStage.year2 => const [
         _PlanLink(
           '수강 계획 정리',
           '학기별 과목과 수강 계획',
@@ -589,7 +590,7 @@ class HomePage extends StatelessWidget {
           StudentPages.activity,
         ),
       ],
-      3 => const [
+      AcademicStage.year3 => const [
         _PlanLink(
           '활동 정리',
           '프로젝트와 경험 기록',
@@ -603,7 +604,9 @@ class HomePage extends StatelessWidget {
           StudentPages.academics,
         ),
       ],
-      4 => const [
+      AcademicStage.year4 ||
+      AcademicStage.graduating ||
+      AcademicStage.graduate => const [
         _PlanLink(
           '졸업 요건 확인',
           '개인 기준 졸업 요건',

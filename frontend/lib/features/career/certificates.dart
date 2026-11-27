@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 
 import '../api/job_analysis_models.dart';
-import '../api/job_recommendation_api.dart';
 import '../api/student_api.dart';
 import '../assistant/ai_record_catalog.dart';
+import '../planning/academic_stage.dart';
 
 Map<String, dynamic> _map(Object? value) =>
     Map<String, dynamic>.from(value as Map? ?? const {});
@@ -155,7 +155,7 @@ class CertificateRecommendation {
 }
 
 class CertificateRecommendationResult {
-  CertificateRecommendationResult.fromJson(Map<String, dynamic> raw)
+  CertificateRecommendationResult.fromJson(this.raw)
     : status = raw['status'] as String,
       missingFields = List<String>.from(raw['missing_fields'] as List? ?? []),
       goalLabel = _map(raw['goal'])['label'] as String?,
@@ -172,6 +172,9 @@ class CertificateRecommendationResult {
       held = List<String>.from(raw['held'] as List? ?? const []),
       summary = raw['summary'] as String?,
       failureReason = raw['failure_reason'] as String?;
+
+  /// The server's answer as received, kept when the result is saved.
+  final Map<String, dynamic> raw;
   final String status;
   final List<String> missingFields, held;
   final String? goalLabel, summary, failureReason;
@@ -209,7 +212,7 @@ class CertificateApi {
 
   Future<CertificateRecommendationResult> recommend({
     required List<AiRecordOption> records,
-    RecommendationAcademicStage? academicStage,
+    AcademicStage? academicStage,
   }) async => CertificateRecommendationResult.fromJson(
     (await api.api.request('POST', 'me/certificate-recommendations', {
       'records': [

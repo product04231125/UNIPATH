@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:university_path_frontend/features/api/student_api.dart';
@@ -5,11 +6,14 @@ import 'package:university_path_frontend/features/assistant/ai_record_catalog.da
 import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/career/activity_recommendation.dart';
 import 'package:university_path_frontend/features/career/activity_recommendation_view.dart';
+import 'package:university_path_frontend/features/planning/academic_stage.dart';
 import 'package:university_path_frontend/features/records/activity/activity_page.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/saved_analyses_store.dart';
 
 const record = AiRecordOption(
   kind: 'experience',
@@ -51,6 +55,7 @@ Map<String, dynamic> completed({bool withGap = true}) => {
 
 class ActivityGateway extends ApiGateway {
   final calls = <Map<String, Object?>>[];
+  final saved = SavedAnalysesStore();
   Map<String, dynamic> result = completed();
   @override
   Future<Map<String, dynamic>?> request(
@@ -58,6 +63,9 @@ class ActivityGateway extends ApiGateway {
     String path, [
     Map<String, Object?>? body,
   ]) async {
+    if (SavedAnalysesStore.handles(path)) {
+      return saved.handle(method, path, body);
+    }
     expect((method, path), ('POST', 'me/activity-recommendations'));
     calls.add(body!);
     return result;
@@ -81,6 +89,7 @@ Future<void> mount(
   AiConsentPreferences p, {
   AddActivityPlan? onAddPlan,
   VoidCallback? onOpenCareerGap,
+  ValueListenable<AcademicStage?>? profileStage,
 }) async {
   await tester.binding.setSurfaceSize(const Size(1600, 1200));
   addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -93,6 +102,7 @@ Future<void> mount(
           loadRecords: () async => [record],
           onAddPlan: onAddPlan,
           onOpenCareerGap: onOpenCareerGap,
+          profileStage: profileStage,
           now: () => DateTime(2026, 11, 24),
         ),
       ),
@@ -144,6 +154,41 @@ void main() {
     // Default target day: today + the suggested 2 weeks.
     expect(added.single.$1.title, '웹 서비스 해커톤 참가');
     expect(added.single.$2, DateTime(2026, 12, 8));
+    // The finished recommendation was kept in the account.
+    final kept = api.saved.items.single;
+    expect(kept['kind'], 'activity');
+    expect(kept['title'], '소프트웨어 · 프론트엔드');
+    expect(kept['summary'], {'recommendations': 1});
+    expect(kept['input'], {
+      'goal': '소프트웨어 · 프론트엔드',
+      'academic_stage': 'graduating',
+    });
+    await tester.pumpWidget(const SizedBox());
+    p.dispose();
+  });
+
+  testWidgets('starts at the profile stage and reopens a saved result', (
+    tester,
+  ) async {
+    final api = ActivityGateway();
+    final p = await consent();
+    final profile = ValueNotifier<AcademicStage?>(AcademicStage.year3);
+    addTearDown(profile.dispose);
+    await mount(tester, api, p, profileStage: profile);
+    expect(find.text('3학년'), findsOneWidget);
+    expect(find.text('설정의 학업 프로필 학년입니다.'), findsOneWidget);
+    await run(tester);
+    expect(api.calls.single['academic_stage'], 'year3');
+    expect(find.textContaining('추천 1개'), findsOneWidget);
+
+    // Remount: the saved result comes back from the list.
+    await tester.pumpWidget(const SizedBox());
+    await mount(tester, api, p, profileStage: profile);
+    expect(find.text('웹 서비스 해커톤 참가'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('saved-analysis-saved-0')));
+    await tester.pumpAndSettle();
+    expect(find.text('웹 서비스 해커톤 참가'), findsOneWidget);
+    expect(api.calls, hasLength(1));
     await tester.pumpWidget(const SizedBox());
     p.dispose();
   });

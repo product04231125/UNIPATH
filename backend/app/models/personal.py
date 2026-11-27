@@ -120,7 +120,9 @@ class AnalysisResult(Base):
     result: Mapped[dict] = mapped_column(JSON)
     favorite: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    __table_args__ = (CheckConstraint("kind IN ('posting','gap','search')", name="kind"),)
+    __table_args__ = (
+        CheckConstraint("kind IN ('posting','gap','search','activity','certificate')", name="kind"),
+    )
 
 
 class PlanningProfile(Base):
@@ -130,7 +132,7 @@ class PlanningProfile(Base):
     department: Mapped[str] = mapped_column(String(128), default="")
     admission_year: Mapped[int | None] = mapped_column(Integer)
     track: Mapped[str | None] = mapped_column(String(128))
-    academic_year_override: Mapped[int | None] = mapped_column(Integer)
+    academic_stage: Mapped[str | None] = mapped_column(String(16))
     week_starts_on: Mapped[str] = mapped_column(String(16), default="sunday")
     institution_id: Mapped[UUID | None] = mapped_column(ForeignKey("institutions.id"))
     department_id: Mapped[UUID | None] = mapped_column()
@@ -144,8 +146,9 @@ class PlanningProfile(Base):
             "admission_year IS NULL OR admission_year BETWEEN 1900 AND 9999", name="year"
         ),
         CheckConstraint(
-            "academic_year_override IS NULL OR academic_year_override BETWEEN 1 AND 4",
-            name="academic_year",
+            "academic_stage IS NULL OR academic_stage IN "
+            "('year1','year2','year3','year4','graduating','graduate')",
+            name="academic_stage",
         ),
         CheckConstraint(
             "week_starts_on IN ('sunday','monday','tuesday','wednesday',"

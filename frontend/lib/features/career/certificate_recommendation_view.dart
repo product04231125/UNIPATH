@@ -1,20 +1,23 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../shared/app_tones.dart';
 import '../../shared/widgets/feature_page.dart';
-import '../../shared/widgets/field_label.dart';
 import '../../shared/widgets/responsive_grid.dart';
 import '../../shared/widgets/surface_card.dart';
 import '../../shared/widgets/tone_chip.dart';
 import '../../shared/widgets/work_layout.dart';
-import '../api/job_recommendation_api.dart';
 import '../api/student_api.dart';
 import '../assistant/ai_record_catalog.dart';
 import '../auth/auth_api.dart';
 import '../auth/guest_preview_scope.dart';
+import '../planning/academic_stage.dart';
 import '../records/portfolio/job_recommendation_result.dart';
 import '../settings/ai_consent_preferences.dart';
 import '../settings/ai_consent_section.dart';
+import 'academic_stage_field.dart';
 import 'career_goal.dart';
 import 'career_goal_card.dart';
 import 'certificate_schedule.dart';
@@ -32,6 +35,7 @@ class CertificateRecommendationView extends StatefulWidget {
     this.onAddEvents,
     this.onOpenSchedule,
     this.onOpenCareerGap,
+    this.profileStage,
     this.now,
   });
   final StudentApi? api;
@@ -43,6 +47,9 @@ class CertificateRecommendationView extends StatefulWidget {
   /// Shows the certificate in the 시험 일정 tab.
   final ValueChanged<CertificateSummary>? onOpenSchedule;
   final VoidCallback? onOpenCareerGap;
+
+  /// The 학업 프로필 stage the 현재 학년 starts at.
+  final ValueListenable<AcademicStage?>? profileStage;
   final DateTime Function()? now;
 
   @override
@@ -52,8 +59,18 @@ class CertificateRecommendationView extends StatefulWidget {
 
 class _CertificateRecommendationViewState
     extends State<CertificateRecommendationView> {
-  RecommendationAcademicStage? _stage;
+  final _stage = AcademicStageChoice();
   CertificateRecommendationResult? _result;
+
+  /// Finished recommendations kept in the account; null before signing in.
+  SavedAnalysesController? _saved;
+
+  static SavedAnalysesController? _savedFor(StudentApi? api) => api == null
+      ? null
+      : SavedAnalysesController(
+          AnalysisResultsApi(api.api),
+          AnalysisKind.certificate,
+        );
   bool _busy = false;
   String? _error;
   var _revision = 0;
@@ -67,6 +84,8 @@ class _CertificateRecommendationViewState
   void initState() {
     super.initState();
     widget.careerGoal?.addListener(_changed);
+    widget.profileStage?.addListener(_changed);
+    _saved = _savedFor(widget.api);
   }
 
   @override
@@ -76,19 +95,59 @@ class _CertificateRecommendationViewState
       oldWidget.careerGoal?.removeListener(_changed);
       widget.careerGoal?.addListener(_changed);
     }
+    if (!identical(oldWidget.profileStage, widget.profileStage)) {
+      oldWidget.profileStage?.removeListener(_changed);
+      widget.profileStage?.addListener(_changed);
+    }
     if (oldWidget.api?.ownerId != widget.api?.ownerId) {
       _revision++;
       _result = null;
       _error = null;
       _busy = false;
-      _stage = null;
+      _stage.reset();
+      _saved?.dispose();
+      _saved = _savedFor(widget.api);
     }
   }
 
   @override
   void dispose() {
+    _saved?.dispose();
     widget.careerGoal?.removeListener(_changed);
+    widget.profileStage?.removeListener(_changed);
     super.dispose();
+  }
+
+  Future<void> _save(
+    CertificateRecommendationResult result,
+    AcademicStage? stage,
+  ) async {
+    if (result.status != 'completed' || result.recommendations.isEmpty) return;
+    await _saved?.save(
+      title: analysisTitle(result.goalSummary, fallback: '자격증 추천'),
+      summary: {'recommendations': result.recommendations.length},
+      input: {
+        if (result.goalSummary.isNotEmpty) 'goal': result.goalSummary,
+        'academic_stage': ?stage?.name,
+      },
+      result: result.raw,
+    );
+  }
+
+  Future<void> _openSaved(SavedAnalysisSummary item) async {
+    if (_busy) return;
+    final revision = _revision;
+    final saved = await _saved?.open(item.id);
+    if (saved == null || !mounted || revision != _revision) return;
+    try {
+      final result = CertificateRecommendationResult.fromJson(saved.result);
+      setState(() {
+        _result = result;
+        _error = null;
+      });
+    } catch (_) {
+      setState(() => _error = '저장된 결과의 형식을 읽지 못했습니다.');
+    }
   }
 
   void _changed() {
@@ -121,10 +180,12 @@ class _CertificateRecommendationViewState
           revision != _revision) {
         return;
       }
+      final stage = _stage.valueWith(widget.profileStage);
       final result = await CertificateApi(api)
-          .recommend(records: records, academicStage: _stage);
+          .recommend(records: records, academicStage: stage);
       if (!mounted || revision != _revision) return;
       setState(() => _result = result);
+      unawaited(_save(result, stage));
     } on AuthFailure catch (e) {
       if (mounted && revision == _revision) {
         setState(
@@ -166,30 +227,15 @@ class _CertificateRecommendationViewState
                       alignment: AlignmentDirectional.centerStart,
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 280),
-                        child: FieldLabel(
-                          label: '현재 학년 (선택)',
-                          child:
-                              DropdownButtonFormField<
-                                RecommendationAcademicStage
-                              >(
-                                key: const ValueKey(
-                                  'certificate-academic-stage',
-                                ),
-                                initialValue: _stage,
-                                isExpanded: true,
-                                items: [
-                                  const DropdownMenuItem(child: Text('선택 안 함')),
-                                  for (final stage
-                                      in RecommendationAcademicStage.values)
-                                    DropdownMenuItem(
-                                      value: stage,
-                                      child: Text(stage.label),
-                                    ),
-                                ],
-                                onChanged: _busy
-                                    ? null
-                                    : (v) => setState(() => _stage = v),
-                              ),
+                        child: AcademicStageField(
+                          fieldKey: const ValueKey(
+                            'certificate-academic-stage',
+                          ),
+                          value: _stage.valueWith(widget.profileStage),
+                          fromProfile: _stage.fromProfile(widget.profileStage),
+                          onChanged: _busy
+                              ? null
+                              : (v) => setState(() => _stage.pick(v)),
                         ),
                       ),
                     ),
@@ -232,6 +278,14 @@ class _CertificateRecommendationViewState
                   ],
                 ),
               ),
+              if (_saved case final saved?) ...[
+                const SizedBox(height: 16),
+                SavedAnalysesPanel(
+                  controller: saved,
+                  enabled: !_busy,
+                  onOpen: _openSaved,
+                ),
+              ],
             ],
           ),
           result: result == null ? null : _resultView(context, result),
@@ -274,7 +328,15 @@ class _CertificateRecommendationViewState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('자격증 추천', style: theme.textTheme.titleMedium),
+              Row(
+                children: [
+                  Text('자격증 추천', style: theme.textTheme.titleMedium),
+                  if (_saved case final saved?) ...[
+                    const SizedBox(width: 4),
+                    SavedAnalysisStar(controller: saved),
+                  ],
+                ],
+              ),
               const SizedBox(height: 10),
               Wrap(
                 spacing: 6,

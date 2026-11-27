@@ -30,7 +30,7 @@ class StudentProfileData implements StudentPayload {
     this.department = "",
     this.admissionYear,
     this.track,
-    this.academicYearOverride,
+    this.academicStage,
     this.weekStartsOn = "sunday",
     this.institutionId,
     this.departmentId,
@@ -40,7 +40,7 @@ class StudentProfileData implements StudentPayload {
   final String department;
   final int? admissionYear;
   final String? track;
-  final int? academicYearOverride;
+  final String? academicStage;
   final String weekStartsOn;
   final String? institutionId;
   final String? departmentId;
@@ -55,9 +55,9 @@ class StudentProfileData implements StudentPayload {
             ? null
             : value['admission_year'] as int,
         track: value['track'] == null ? null : value['track'] as String,
-        academicYearOverride: value['academic_year_override'] == null
+        academicStage: value['academic_stage'] == null
             ? null
-            : value['academic_year_override'] as int,
+            : value['academic_stage'] as String,
         weekStartsOn: value['week_starts_on'] == null
             ? "sunday"
             : value['week_starts_on'] as String,
@@ -77,7 +77,7 @@ class StudentProfileData implements StudentPayload {
     'department': department,
     'admission_year': admissionYear,
     'track': track,
-    'academic_year_override': academicYearOverride,
+    'academic_stage': academicStage,
     'week_starts_on': weekStartsOn,
     'institution_id': institutionId,
     'department_id': departmentId,
@@ -91,7 +91,7 @@ class StudentProfileView implements StudentPayload {
     this.department = "",
     this.admissionYear,
     this.track,
-    this.academicYearOverride,
+    this.academicStage,
     this.weekStartsOn = "sunday",
     this.institutionId,
     this.departmentId,
@@ -106,7 +106,7 @@ class StudentProfileView implements StudentPayload {
   final String department;
   final int? admissionYear;
   final String? track;
-  final int? academicYearOverride;
+  final String? academicStage;
   final String weekStartsOn;
   final String? institutionId;
   final String? departmentId;
@@ -126,9 +126,9 @@ class StudentProfileView implements StudentPayload {
             ? null
             : value['admission_year'] as int,
         track: value['track'] == null ? null : value['track'] as String,
-        academicYearOverride: value['academic_year_override'] == null
+        academicStage: value['academic_stage'] == null
             ? null
-            : value['academic_year_override'] as int,
+            : value['academic_stage'] as String,
         weekStartsOn: value['week_starts_on'] == null
             ? "sunday"
             : value['week_starts_on'] as String,
@@ -157,7 +157,7 @@ class StudentProfileView implements StudentPayload {
     'department': department,
     'admission_year': admissionYear,
     'track': track,
-    'academic_year_override': academicYearOverride,
+    'academic_stage': academicStage,
     'week_starts_on': weekStartsOn,
     'institution_id': institutionId,
     'department_id': departmentId,

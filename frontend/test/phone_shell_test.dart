@@ -110,7 +110,7 @@ void main() {
     await tester.pumpAndSettle();
     final sheet = find.byKey(const Key('phone-nav-more-sheet'));
     expect(sheet, findsOneWidget);
-    const moreLabels = ['자격', '학사', '설정'];
+    const moreLabels = ['자격증', '학사', '설정'];
     for (final label in moreLabels) {
       expect(
         find.descendant(of: sheet, matching: find.text(label)),

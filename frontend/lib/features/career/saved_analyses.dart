@@ -6,11 +6,14 @@ import '../../shared/widgets/tone_chip.dart';
 import '../auth/auth_api.dart';
 import '../planning/planning_dates.dart';
 
-/// The three 채용공고 분석 purposes whose finished results are kept.
+/// The analyses whose finished results are kept: the three 채용공고 분석
+/// purposes, 활동 추천 and 자격증 추천.
 enum AnalysisKind {
   posting('posting'),
   gap('gap'),
-  search('search');
+  search('search'),
+  activity('activity'),
+  certificate('certificate');
 
   const AnalysisKind(this.value);
   final String value;
@@ -36,11 +39,12 @@ class SavedAnalysisSummary {
   final bool favorite;
   final DateTime? createdAt;
 
-  /// `준비 6 / 7` when the result counted requirements, or `공고 3건`.
+  /// `준비 6 / 7` when the result counted requirements, `공고 3건`, or `추천 4개`.
   String? get fact => switch ((summary['ready'], summary['total'])) {
     (final int ready, final int total) => '준비 $ready / $total',
-    _ => switch (summary['postings']) {
-      final int count => '공고 $count건',
+    _ => switch ((summary['postings'], summary['recommendations'])) {
+      (final int count, _) => '공고 $count건',
+      (_, final int count) => '추천 $count개',
       _ => null,
     },
   };
