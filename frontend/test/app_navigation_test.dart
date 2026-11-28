@@ -66,6 +66,28 @@ void main() {
     });
   }
 
+  for (final path in ['/activities', '/credentials']) {
+    testWidgets('legacy $path opens 준비 with the recommendations', (
+      tester,
+    ) async {
+      final provider = MemoryRouteProvider(path);
+      await tester.pumpWidget(
+        UniversityPathApp(
+          startAuthenticated: true,
+          routeInformationProvider: provider,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Workspace>(find.byType(Workspace)).selectedPage,
+        StudentPages.prepare,
+      );
+      expect(find.text('활동 추천'), findsWidgets);
+      await tester.pumpWidget(const SizedBox());
+      provider.dispose();
+    });
+  }
+
   testWidgets('legacy experiences path opens 내 자료 with the records', (
     tester,
   ) async {

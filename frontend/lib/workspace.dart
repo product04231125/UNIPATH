@@ -92,12 +92,12 @@ class _WorkspaceState extends State<Workspace> {
   static const _labels = StudentPages.labels;
   static const _icons = [
     Icons.home_outlined,
-    Icons.work_outline,
-    Icons.volunteer_activism_outlined,
-    Icons.workspace_premium_outlined,
-    Icons.collections_bookmark_outlined,
     Icons.calendar_month_outlined,
     Icons.school_outlined,
+    Icons.collections_bookmark_outlined,
+    Icons.trending_up,
+    Icons.work_outline,
+    Icons.description_outlined,
   ];
 
   var _page = 0;
@@ -162,11 +162,8 @@ class _WorkspaceState extends State<Workspace> {
   final _gapReport = ValueNotifier<GapReport?>(null);
   JobPurposeRequest? _jobPurposeRequest;
 
-  /// 자료 tab: 0 내 자료 (활동·자격증 기록과 파일 자료), 1 자기소개서·포트폴리오.
-  var _materialsTab = 0;
-
-  /// 자격증 tab: 0 자격증 추천, 1 시험 일정.
-  var _credentialTab = 0;
+  /// 준비 tab: 0 활동 추천, 1 자격증 추천, 2 시험 일정.
+  var _prepareTab = 0;
   final _certificateSelection = CertificateSelection();
   // Bumped when 활동 추천 saves a record, so 내 자료 (kept alive in its tab) reloads.
   final _activityRecordsChanged = ValueNotifier(0);
@@ -177,11 +174,8 @@ class _WorkspaceState extends State<Workspace> {
 
   /// 채용공고 분석 → 자기소개서·포트폴리오 for that posting.
   void _writeForPosting(PostingLink link, WritingType type) {
-    setState(() {
-      _writingRequest = WritingRequest(link: link, type: type);
-      _materialsTab = 1;
-    });
-    _selectPage(StudentPages.materials);
+    setState(() => _writingRequest = WritingRequest(link: link, type: type));
+    _selectPage(StudentPages.writing);
   }
 
   Future<void> _addPreparationPlan(
@@ -548,11 +542,7 @@ class _WorkspaceState extends State<Workspace> {
           gapReport: _gapStore == null ? null : _gapReport,
           onOpenCareerGap: _openCareerGap,
           repository: _planningRepository,
-          onOpenPage: (page) {
-            // 홈의 기록 링크는 자료 › 내 자료로 연다.
-            if (page == StudentPages.materials) _materialsTab = 0;
-            _selectPage(page);
-          },
+          onOpenPage: _selectPage,
           onOpenSettings: () => _selectPage(settingsPage - 1),
           onOpenSchedule: (day) {
             _scheduleAddRequest = null;
@@ -578,12 +568,17 @@ class _WorkspaceState extends State<Workspace> {
           loadDocuments: (ids) =>
               loadGuidanceDocuments(_materialRepository, ids),
         ),
-        // 내 활동 lives in 자료 › 내 자료 with the other records.
-        StudentPages.activity => PageTabs(
-          tabsKey: const ValueKey('activity-tabs'),
-          labels: const ['활동 추천'],
-          tab: 0,
-          onTabChanged: (_) {},
+        StudentPages.materials => MaterialsPage(
+          key: _materials,
+          repository: _materialRepository,
+          changes: _activityRecordsChanged,
+          onChanged: () => unawaited(_assistantConversation.refreshMaterials()),
+        ),
+        StudentPages.prepare => PageTabs(
+          tabsKey: const ValueKey('prepare-tabs'),
+          labels: const ['활동 추천', '자격증 추천', '시험 일정'],
+          tab: _prepareTab,
+          onTabChanged: (tab) => setState(() => _prepareTab = tab),
           children: [
             ActivityRecommendationView(
               api: _personalApi,
@@ -594,21 +589,13 @@ class _WorkspaceState extends State<Workspace> {
               onOpenCareerGap: _openCareerGap,
               profileStage: _profileStage,
             ),
-          ],
-        ),
-        StudentPages.credential => PageTabs(
-          tabsKey: const ValueKey('credential-tabs'),
-          labels: const ['자격증 추천', '시험 일정'],
-          tab: _credentialTab,
-          onTabChanged: (tab) => setState(() => _credentialTab = tab),
-          children: [
             CertificateRecommendationView(
               api: _personalApi,
               consent: _aiConsent,
               careerGoal: _careerGoal,
               onOpenSchedule: (certificate) {
                 _certificateSelection.select(certificate);
-                setState(() => _credentialTab = 1);
+                setState(() => _prepareTab = 2);
               },
               onOpenCareerGap: _openCareerGap,
               profileStage: _profileStage,
@@ -622,30 +609,15 @@ class _WorkspaceState extends State<Workspace> {
             ),
           ],
         ),
-        StudentPages.materials => PageTabs(
-          tabsKey: const ValueKey('materials-tabs'),
-          labels: const ['내 자료', '자기소개서·포트폴리오'],
-          tab: _materialsTab,
-          onTabChanged: (tab) => setState(() => _materialsTab = tab),
-          children: [
-            MaterialsPage(
-              key: _materials,
-              repository: _materialRepository,
-              changes: _activityRecordsChanged,
-              onChanged: () =>
-                  unawaited(_assistantConversation.refreshMaterials()),
-            ),
-            WritingPage(
-              api: _personalApi,
-              consent: _aiConsent,
-              careerGoal: _careerGoal,
-              store: _writingStore,
-              request: _writingRequest,
-              loadMaterials: () => loadAssistantMaterials(_materialRepository),
-              loadDocuments: (ids) =>
-                  loadGuidanceDocuments(_materialRepository, ids),
-            ),
-          ],
+        StudentPages.writing => WritingPage(
+          api: _personalApi,
+          consent: _aiConsent,
+          careerGoal: _careerGoal,
+          store: _writingStore,
+          request: _writingRequest,
+          loadMaterials: () => loadAssistantMaterials(_materialRepository),
+          loadDocuments: (ids) =>
+              loadGuidanceDocuments(_materialRepository, ids),
         ),
         StudentPages.schedule => SchedulePage(
           repository: _planningRepository,
