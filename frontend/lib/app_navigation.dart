@@ -34,15 +34,15 @@ class AppLocation {
   /// Open this tab instead of adding a new profile-edit route.
   static const settingsPath = '/settings';
 
-  /// Same order as [StudentPages]; career pages first, 수강·졸업 under `/academics`.
+  /// Same order as [StudentPages]; 수강·졸업 under `/academics`.
   static const menuPaths = [
     '/home',
-    '/job-postings',
-    '/activities',
-    '/credentials',
-    '/portfolio',
     '/schedule',
     '/academics',
+    '/portfolio',
+    '/prepare',
+    '/job-postings',
+    '/writing',
     settingsPath,
   ];
 
@@ -65,6 +65,8 @@ class AppLocation {
       '/' => '/home',
       // 경험 records are listed in 자료 › 내 자료 with the other records.
       '/experiences' => '/portfolio',
+      // The old 활동·자격증 menus kept only their recommendations, now under 준비.
+      '/activities' || '/credentials' => '/prepare',
       '/courses' || '/graduation' => '/academics',
       _ => path,
     };

@@ -33,7 +33,7 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(find.byTooltip('홈'), findsOneWidget);
-        for (final label in ['설정', '홈', '활동', '홈', '일정', '홈']) {
+        for (final label in ['설정', '홈', '준비', '홈', '일정', '홈']) {
           final destination = find.byTooltip(label);
           await tester.ensureVisible(destination);
           await tester.tap(destination);
@@ -518,14 +518,14 @@ void main() {
       );
       await tester.pumpAndSettle();
       for (final name in [
-        '채용공고 분석',
-        '활동',
-        '자격증',
-        '자료',
         '일정',
         '학사',
         // 학사 tab.
         '졸업 요건',
+        '자료',
+        '준비',
+        '채용공고 분석',
+        '자기소개서·포트폴리오',
         '설정',
       ]) {
         final navigation = find.byTooltip(name).evaluate().isNotEmpty

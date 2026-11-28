@@ -106,7 +106,7 @@ class PhoneNavigationBar extends StatelessWidget {
   }
 }
 
-const studentPhonePrimaryLabels = ['채용공고 분석', '활동', '홈', '자료', '일정'];
+const studentPhonePrimaryLabels = ['일정', '자료', '홈', '준비', '채용공고 분석'];
 
 const adminPhonePrimaryPaths = [
   '/admin/overview',
