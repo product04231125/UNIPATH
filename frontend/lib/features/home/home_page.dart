@@ -587,7 +587,7 @@ class HomePage extends StatelessWidget {
           '활동 기록 시작',
           '참여한 활동과 준비 중인 활동',
           Icons.volunteer_activism_outlined,
-          StudentPages.activity,
+          StudentPages.materials,
         ),
       ],
       AcademicStage.year3 => const [
@@ -595,7 +595,7 @@ class HomePage extends StatelessWidget {
           '활동 정리',
           '프로젝트와 경험 기록',
           Icons.volunteer_activism_outlined,
-          StudentPages.activity,
+          StudentPages.materials,
         ),
         _PlanLink(
           '수강 계획 확인',
@@ -631,7 +631,7 @@ class HomePage extends StatelessWidget {
           '활동 기록',
           '참여한 활동 기록',
           Icons.volunteer_activism_outlined,
-          StudentPages.activity,
+          StudentPages.materials,
         ),
       ],
     };

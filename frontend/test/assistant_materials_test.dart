@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/api/student_api.dart';
 import 'package:university_path_frontend/features/api/guidance_api.dart';
 import 'package:university_path_frontend/features/assistant/assistant_api.dart';
@@ -14,7 +15,7 @@ import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/records/portfolio/material_repository.dart';
 import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
 
-import 'materials_test.dart' show MemoryMaterials;
+import 'support/memory_materials.dart';
 import 'guidance_api_test.dart' show CapturingGateway;
 
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
@@ -215,6 +216,8 @@ void main() {
   testWidgets(
     'registration edit and deletion update selectable chat materials',
     (tester) async {
+      // 내 자료 also lists 활동·자격증 records from local storage.
+      SharedPreferences.setMockInitialValues({});
       await tester.binding.setSurfaceSize(const Size(1440, 1000));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final repository = MemoryMaterials();
@@ -242,8 +245,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('이 기기에 등록한 자료가 없습니다. 자료 메뉴에서 등록해 주세요.'), findsOneWidget);
-      await tester.tap(find.byTooltip('자료 추가'));
-      await tester.pumpAndSettle();
+      await openMaterialForm(tester);
       await tester.enterText(
         find.byKey(const ValueKey('material-title')),
         '질문용 이력서',

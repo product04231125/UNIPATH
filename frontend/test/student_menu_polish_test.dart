@@ -6,9 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/features/api/student_api.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
-import 'package:university_path_frontend/features/records/activity/activity_page.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/portfolio/job_analysis_page.dart';
+import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
 
 import 'job_analysis_test.dart' as analysis;
@@ -64,9 +64,10 @@ void main() {
         const UniversityPathApp(startAuthenticated: true),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('활동').first);
+      // 활동 records are listed in 자료 › 내 자료.
+      await tester.tap(find.text('자료').first);
       await tester.pumpAndSettle();
-      expect(find.byTooltip('활동 추가').hitTestable(), findsOneWidget);
+      expect(find.byTooltip('자료 추가').hitTestable(), findsOneWidget);
       // Draft restore lives in the header's more menu next to add.
       expect(find.byTooltip('더보기').hitTestable(), findsOneWidget);
       await tester.tap(find.byTooltip('더보기'));
@@ -75,7 +76,7 @@ void main() {
       await tester.tapAt(const Offset(5, 5));
       await tester.pumpAndSettle();
       final chat = tester.getRect(find.byType(FloatingActionButton));
-      final page = find.byType(ActivityPage);
+      final page = find.byType(MaterialsPage);
       for (var i = 0; i < 4; i++) {
         for (final element
             in find
@@ -147,7 +148,9 @@ void main() {
             .onTap,
         isNotNull,
       );
-      await tester.ensureVisible(find.byKey(const ValueKey('job-purpose-posting')));
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('job-purpose-posting')),
+      );
       await tester.tap(find.byKey(const ValueKey('job-purpose-posting')));
       await tester.pumpAndSettle();
       await tester.ensureVisible(
