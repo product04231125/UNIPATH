@@ -4,13 +4,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/api/student_api.dart';
 import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/auth/guest_preview_scope.dart';
-import 'package:university_path_frontend/features/records/credential/credential_page.dart';
+import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
 import 'package:university_path_frontend/features/records/official_sources_dialog.dart';
 import 'package:university_path_frontend/features/records/personal_record_codec.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 
 import 'support/auth_fixture.dart';
 import 'support/personal_workspace_fixture.dart';
+import 'support/memory_materials.dart';
 
 void main() {
   test('credential fields retain their wire values and optional dates', () {
@@ -49,16 +50,18 @@ void main() {
     expect(codec.encode({'title': '합성 자격'}).toJson()['earned_on'], isNull);
   });
 
-  testWidgets('credential page loads with no personal repository scope', (
+  testWidgets('내 자료 (with 자격증) loads with no personal repository scope', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: CredentialPage())),
+      MaterialApp(
+        home: Scaffold(body: MaterialsPage(repository: MemoryMaterials())),
+      ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('자격증'), findsOneWidget);
-    expect(find.text('아직 등록한 기록이 없습니다'), findsOneWidget);
+    expect(find.text('내 자료'), findsOneWidget);
+    expect(find.text('아직 기록한 자료가 없습니다'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -67,15 +70,15 @@ void main() {
   ) async {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: GuestPreviewScope(
           active: true,
-          child: Scaffold(body: CredentialPage()),
+          child: Scaffold(body: MaterialsPage(repository: MemoryMaterials())),
         ),
       ),
     );
     await tester.pumpAndSettle();
-    final add = find.byTooltip('자격 추가');
+    final add = find.byTooltip('자료 추가');
     await tester.ensureVisible(add);
     await tester.tap(add);
     await tester.pump();

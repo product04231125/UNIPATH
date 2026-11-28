@@ -54,7 +54,7 @@ class ActivityRecommendationView extends StatefulWidget {
   final Future<List<AiRecordOption>> Function()? loadRecords;
   final AddActivityPlan? onAddPlan;
 
-  /// Called after a recommendation was saved as a 내 활동 record.
+  /// Called after a recommendation was saved as an activity record (내 자료).
   final VoidCallback? onRecordSaved;
 
   /// Opens 목표 직무 분석 so its gaps can steer the recommendations.
@@ -551,7 +551,7 @@ class _ActivityRecommendationViewState
     );
   }
 
-  /// The 내 활동 repositories, when this view sits under the signed-in workspace.
+  /// The activity record repositories, when this view sits under the signed-in workspace.
   PersonalRepositoryScope? get _records =>
       widget.api == null ? null : PersonalRepositoryScope.read(context);
 
@@ -571,7 +571,7 @@ class _ActivityRecommendationViewState
         messenger?.showSnackBar(
           SnackBar(
             content: Text(
-              e is AuthFailure ? e.message : '내 활동 기록을 읽지 못했습니다. 다시 시도하세요.',
+              e is AuthFailure ? e.message : '활동 기록을 읽지 못했습니다. 다시 시도하세요.',
             ),
           ),
         );
@@ -594,7 +594,7 @@ class _ActivityRecommendationViewState
     if (!saved) return;
     widget.onRecordSaved?.call();
     messenger?.showSnackBar(
-      const SnackBar(content: Text('내 활동에 추가했습니다. 참여한 뒤 역할과 결과를 채워 주세요.')),
+      const SnackBar(content: Text('내 자료에 추가했습니다. 참여한 뒤 역할과 결과를 채워 주세요.')),
     );
   }
 

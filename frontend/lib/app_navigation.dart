@@ -63,7 +63,8 @@ class AppLocation {
   int? get menu {
     final normalized = switch (path) {
       '/' => '/home',
-      '/experiences' => '/activities',
+      // 경험 records are listed in 자료 › 내 자료 with the other records.
+      '/experiences' => '/portfolio',
       '/courses' || '/graduation' => '/academics',
       _ => path,
     };

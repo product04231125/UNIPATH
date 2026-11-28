@@ -39,9 +39,7 @@ import 'features/records/personal_repository_scope.dart';
 import 'features/records/personal_workspace_importer.dart';
 import 'features/records/remote_personal_record_repository.dart';
 import 'features/planning/weekly_schedule.dart';
-import 'features/records/activity/activity_page.dart';
 import 'features/records/course/course_page.dart';
-import 'features/records/credential/credential_page.dart';
 import 'features/records/portfolio/job_analysis_page.dart';
 import 'features/records/portfolio/materials_page.dart';
 import 'features/records/portfolio/material_repository.dart';
@@ -164,12 +162,13 @@ class _WorkspaceState extends State<Workspace> {
   final _gapReport = ValueNotifier<GapReport?>(null);
   JobPurposeRequest? _jobPurposeRequest;
 
-  /// 자료 tab: 0 내 자료, 1 자기소개서·포트폴리오.
+  /// 자료 tab: 0 내 자료 (활동·자격증 기록과 파일 자료), 1 자기소개서·포트폴리오.
   var _materialsTab = 0;
-  var _activityTab = 0;
+
+  /// 자격증 tab: 0 자격증 추천, 1 시험 일정.
   var _credentialTab = 0;
   final _certificateSelection = CertificateSelection();
-  // Bumped when 활동 추천 saves a record, so 내 활동 (kept alive in its tab) reloads.
+  // Bumped when 활동 추천 saves a record, so 내 자료 (kept alive in its tab) reloads.
   final _activityRecordsChanged = ValueNotifier(0);
   late final WritingSessionStore? _writingStore = _personalApi == null
       ? null
@@ -549,7 +548,11 @@ class _WorkspaceState extends State<Workspace> {
           gapReport: _gapStore == null ? null : _gapReport,
           onOpenCareerGap: _openCareerGap,
           repository: _planningRepository,
-          onOpenPage: _selectPage,
+          onOpenPage: (page) {
+            // 홈의 기록 링크는 자료 › 내 자료로 연다.
+            if (page == StudentPages.materials) _materialsTab = 0;
+            _selectPage(page);
+          },
           onOpenSettings: () => _selectPage(settingsPage - 1),
           onOpenSchedule: (day) {
             _scheduleAddRequest = null;
@@ -575,13 +578,13 @@ class _WorkspaceState extends State<Workspace> {
           loadDocuments: (ids) =>
               loadGuidanceDocuments(_materialRepository, ids),
         ),
+        // 내 활동 lives in 자료 › 내 자료 with the other records.
         StudentPages.activity => PageTabs(
           tabsKey: const ValueKey('activity-tabs'),
-          labels: const ['내 활동', '활동 추천'],
-          tab: _activityTab,
-          onTabChanged: (tab) => setState(() => _activityTab = tab),
+          labels: const ['활동 추천'],
+          tab: 0,
+          onTabChanged: (_) {},
           children: [
-            ActivityPage(changes: _activityRecordsChanged),
             ActivityRecommendationView(
               api: _personalApi,
               consent: _aiConsent,
@@ -595,18 +598,17 @@ class _WorkspaceState extends State<Workspace> {
         ),
         StudentPages.credential => PageTabs(
           tabsKey: const ValueKey('credential-tabs'),
-          labels: const ['내 자격', '자격증 추천', '시험 일정'],
+          labels: const ['자격증 추천', '시험 일정'],
           tab: _credentialTab,
           onTabChanged: (tab) => setState(() => _credentialTab = tab),
           children: [
-            const CredentialPage(),
             CertificateRecommendationView(
               api: _personalApi,
               consent: _aiConsent,
               careerGoal: _careerGoal,
               onOpenSchedule: (certificate) {
                 _certificateSelection.select(certificate);
-                setState(() => _credentialTab = 2);
+                setState(() => _credentialTab = 1);
               },
               onOpenCareerGap: _openCareerGap,
               profileStage: _profileStage,
@@ -629,6 +631,7 @@ class _WorkspaceState extends State<Workspace> {
             MaterialsPage(
               key: _materials,
               repository: _materialRepository,
+              changes: _activityRecordsChanged,
               onChanged: () =>
                   unawaited(_assistantConversation.refreshMaterials()),
             ),

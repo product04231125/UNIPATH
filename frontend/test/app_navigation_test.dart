@@ -66,7 +66,7 @@ void main() {
     });
   }
 
-  testWidgets('legacy experiences path opens the combined activity menu', (
+  testWidgets('legacy experiences path opens 내 자료 with the records', (
     tester,
   ) async {
     final provider = MemoryRouteProvider('/experiences');
@@ -79,9 +79,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       tester.widget<Workspace>(find.byType(Workspace)).selectedPage,
-      StudentPages.activity,
+      StudentPages.materials,
     );
-    expect(find.byTooltip('활동 추가'), findsOneWidget);
+    expect(find.byTooltip('자료 추가'), findsOneWidget);
     expect(find.byTooltip('경험'), findsNothing);
     await tester.pumpWidget(const SizedBox());
     provider.dispose();

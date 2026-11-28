@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
-import 'package:university_path_frontend/features/records/activity/activity_page.dart';
+import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/job_analysis_page.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/schedule/schedule_page.dart';
@@ -69,9 +69,10 @@ void main() {
           const UniversityPathApp(startAuthenticated: true),
         );
         await tester.pumpAndSettle();
-        await tester.tap(find.text('활동').first);
+        // 내 활동 lives in 자료 › 내 자료 with 자격증 and files.
+        await tester.tap(find.text('자료').first);
         await tester.pumpAndSettle();
-        expect(find.byType(ActivityPage), findsOneWidget);
+        expect(find.byType(MaterialsPage), findsOneWidget);
         final tops = [
           for (var i = 0; i < 7; i++)
             tester.getRect(find.byKey(ValueKey('record-activity-wide-$i'))).top,
