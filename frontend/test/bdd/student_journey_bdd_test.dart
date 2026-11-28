@@ -6,9 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:university_path_frontend/features/auth/local_data_owner.dart';
 import 'package:university_path_frontend/features/graduation/personal_graduation_workspace.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
-import 'package:university_path_frontend/features/records/activity/activity_page.dart';
 import 'package:university_path_frontend/features/records/course/course_page.dart';
-import 'package:university_path_frontend/features/records/credential/credential_page.dart';
+import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
 import 'package:university_path_frontend/features/records/experience/experience_page.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/shared/widgets/anchored_select_field.dart';
@@ -21,6 +20,7 @@ import 'gherkin_runner.dart';
 import 'student_world.dart';
 import '../support/record_actions.dart';
 import '../support/date_picker.dart';
+import '../support/memory_materials.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -300,13 +300,13 @@ void main() {
       },
       '저장한 값이 API 조회로 다시 보인다': (tester, world) async {
         expect(find.textContaining(world.lastCourseTitle), findsOneWidget);
-        await world.pumpMenu(tester, const ActivityPage());
+        await world.pumpMenu(tester, _myMaterials());
         expect(find.textContaining(world.lastActivityTitle), findsOneWidget);
-        await world.pumpMenu(tester, const CredentialPage());
+        await world.pumpMenu(tester, _myMaterials());
         expect(find.textContaining(world.lastCredentialTitle), findsOneWidget);
       },
       '활동 목록에 봉사·그 밖의 활동과 프로젝트·인턴·동아리 기록이 함께 보인다': (tester, world) async {
-        await world.pumpMenu(tester, const ActivityPage());
+        await world.pumpMenu(tester, _myMaterials());
         expect(find.textContaining(world.lastActivityTitle), findsOneWidget);
         expect(
           find.textContaining(world.lastOtherActivityTitle),
@@ -533,19 +533,19 @@ void main() {
       },
       '이어서 수강·활동·자격을 각각 저장하면': (tester, world) async {
         await _saveCourseAndCredential(tester, world);
-        await world.pumpMenu(tester, const ActivityPage());
+        await world.pumpMenu(tester, _myMaterials());
         await world.addNamedRecord(
           tester,
-          addLabel: '활동 추가',
+          addLabel: '자료 추가',
           values: {'title': world.lastActivityTitle},
         );
       },
       '각 메뉴를 다시 열었을 때 같은 값이 조회된다': (tester, world) async {
         await world.pumpMenu(tester, const CoursePage());
         expect(find.textContaining(world.lastCourseTitle), findsOneWidget);
-        await world.pumpMenu(tester, const ActivityPage());
+        await world.pumpMenu(tester, _myMaterials());
         expect(find.textContaining(world.lastActivityTitle), findsOneWidget);
-        await world.pumpMenu(tester, const CredentialPage());
+        await world.pumpMenu(tester, _myMaterials());
         expect(find.textContaining(world.lastCredentialTitle), findsOneWidget);
       },
       '활동에서 봉사·그 밖의 활동과 프로젝트·인턴·동아리를 고르며 경험 전용 사이드바는 없다':
@@ -751,17 +751,20 @@ Future<void> _saveCatalogProfile(
   );
 }
 
+/// 활동·자격증 records are listed and added in 자료 › 내 자료.
+Widget _myMaterials() => MaterialsPage(repository: MemoryMaterials());
+
 Future<void> _saveActivityKinds(WidgetTester tester, StudentWorld world) async {
-  await world.pumpMenu(tester, const ActivityPage());
+  await world.pumpMenu(tester, _myMaterials());
   await world.addNamedRecord(
     tester,
-    addLabel: '활동 추가',
+    addLabel: '자료 추가',
     choice: '봉사',
     values: {'title': world.lastActivityTitle},
   );
   await world.addNamedRecord(
     tester,
-    addLabel: '활동 추가',
+    addLabel: '자료 추가',
     choice: '그 밖의 활동',
     values: {'title': world.lastOtherActivityTitle},
   );
@@ -793,10 +796,11 @@ Future<void> _saveCourseAndCredential(
       'credits': '3',
     },
   );
-  await world.pumpMenu(tester, const CredentialPage());
+  await world.pumpMenu(tester, _myMaterials());
   await world.addNamedRecord(
     tester,
-    addLabel: '자격 추가',
+    addLabel: '자료 추가',
+    choice: '자격증',
     values: {'title': world.lastCredentialTitle},
   );
 }

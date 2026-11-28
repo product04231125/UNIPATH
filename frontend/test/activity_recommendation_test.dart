@@ -7,12 +7,13 @@ import 'package:university_path_frontend/features/auth/auth_api.dart';
 import 'package:university_path_frontend/features/career/activity_recommendation.dart';
 import 'package:university_path_frontend/features/career/activity_recommendation_view.dart';
 import 'package:university_path_frontend/features/planning/academic_stage.dart';
-import 'package:university_path_frontend/features/records/activity/activity_page.dart';
+import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_repository_scope.dart';
 import 'package:university_path_frontend/features/settings/ai_consent_preferences.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/memory_materials.dart';
 import 'support/saved_analyses_store.dart';
 
 const record = AiRecordOption(
@@ -255,7 +256,7 @@ void main() {
     expect(saved, 1);
     expect(experience.records.single.value('title'), '웹 서비스 해커톤 참가');
     expect(experience.records.single.value('type'), '해커톤');
-    expect(find.textContaining('내 활동에 추가했습니다'), findsOneWidget);
+    expect(find.textContaining('내 자료에 추가했습니다'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     p.dispose();
   });
@@ -270,7 +271,9 @@ void main() {
     addTearDown(changes.dispose);
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: ActivityPage(changes: changes)),
+        home: Scaffold(
+          body: MaterialsPage(repository: MemoryMaterials(), changes: changes),
+        ),
       ),
     );
     await tester.pumpAndSettle();

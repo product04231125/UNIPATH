@@ -8,88 +8,22 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sembast/sembast_memory.dart' hide Finder;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/portfolio/material_repository.dart';
 import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
 import 'package:university_path_frontend/features/auth/local_data_owner.dart';
 import 'package:university_path_frontend/shared/widgets/surface_card.dart';
 
+import 'support/memory_materials.dart';
 import 'support/record_actions.dart';
 
 import 'package:university_path_frontend/shared/widgets/record_tile.dart';
 
-class MemoryMaterials implements MaterialRepository {
-  final records = <String, PersonalMaterial>{};
-  bool fail = false;
-  @override
-  bool get inAccount => false;
-  @override
-  Future<List<PersonalMaterial>> load() async {
-    if (fail) throw StateError('읽기 실패');
-    return records.values.toList();
-  }
-
-  @override
-  Future<void> save(PersonalMaterial material) async {
-    if (fail) throw StateError('쓰기 실패');
-    if (!material.hasPdf && material.description.trim().isEmpty) {
-      throw StateError('설명 또는 PDF를 입력하세요.');
-    }
-    // Like the real stores: a missing PDF with its file name keeps the saved one.
-    final keep = material.pdf == null && material.fileName.isNotEmpty
-        ? records[material.id]?.pdf
-        : null;
-    records[material.id] = keep == null
-        ? material
-        : PersonalMaterial(
-            id: material.id,
-            title: material.title,
-            type: material.type,
-            description: material.description,
-            fileName: material.fileName,
-            pdf: keep,
-          );
-  }
-
-  @override
-  Future<void> delete(PersonalMaterial material) => deleteId(material.id);
-
-  Future<void> deleteId(String id) async {
-    records.remove(id);
-  }
-
-  @override
-  Future<Uint8List?> pdf(PersonalMaterial material) async =>
-      material.pdf ?? records[material.id]?.pdf;
-
-  /// Pretends a server renders pages (an account store).
-  bool preview = false;
-  final pageRequests = <int>[];
-
-  @override
-  bool get canPreview => preview;
-
-  @override
-  Future<MaterialPages> pages(PersonalMaterial material) async =>
-      const MaterialPages(
-        count: 2,
-        sizes: [(width: 595, height: 842), (width: 595, height: 842)],
-      );
-
-  @override
-  Future<Uint8List> pageImage(PersonalMaterial material, int number) async {
-    pageRequests.add(number);
-    return pageImageBytes;
-  }
-}
-
-/// A 1×1 white PNG standing in for a rendered page.
-final pageImageBytes = Uint8List.fromList(
-  base64Decode(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=',
-  ),
-);
-
 void main() {
+  // 내 자료 also lists 활동·자격증 records, kept in (mock) local storage here.
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   test(
     'material repositories retain their original owner across account changes',
     () async {
@@ -277,7 +211,7 @@ void main() {
 
         // Like 활동·자격증: the page lists, `+` opens the input dialog.
         expect(find.byKey(const ValueKey('material-title')), findsNothing);
-        await tap(find.byTooltip('자료 추가'));
+        await openMaterialForm(tester);
         expect(find.text('자료 추가'), findsOneWidget);
         expect(
           tester
@@ -316,7 +250,7 @@ void main() {
         expect((await repo.load()).single.type, '이력서');
         expect(find.text('내 이력서'), findsOneWidget);
         expect(find.text('이력서'), findsWidgets);
-        expect(find.text('1개 표시 / 1개'), findsOneWidget);
+        expect(find.text('자료 1'), findsOneWidget);
         await tapRecordAction(tester, '수정');
         expect(find.text('자료 수정'), findsOneWidget);
         await fill('description', '수정된 설명');
@@ -347,8 +281,7 @@ void main() {
     repo.fail = false;
     await tester.tap(find.text('다시 읽기'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('자료 추가'));
-    await tester.pumpAndSettle();
+    await openMaterialForm(tester);
     await tester.enterText(
       find.byKey(const ValueKey('material-title')),
       '보존할 입력',
@@ -463,10 +396,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      Future<void> open() async {
-        await tester.tap(find.byTooltip('자료 추가'));
-        await tester.pumpAndSettle();
-      }
+      Future<void> open() => openMaterialForm(tester);
 
       Future<void> selectKind(String kind) async {
         await tester.tap(find.byKey(const ValueKey('material-type')));
@@ -523,70 +453,106 @@ void main() {
     },
   );
 
-  testWidgets(
-    'materials list searches locally, caps height, and outlines edit',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1440, 900));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      final repo = MemoryMaterials();
-      for (final entry in [
-        ('a', '이력서', '첫 자료', '알파 설명'),
-        ('b', '포트폴리오', '둘째 자료', '베타 설명'),
-        ('c', '증빙·기타', '셋째 자료', '감마 설명'),
-        ('d', '이력서', '넷째 자료', '델타 설명'),
-      ]) {
-        await repo.save(
-          PersonalMaterial(
-            id: entry.$1,
-            type: entry.$2,
-            title: entry.$3,
-            description: entry.$4,
-          ),
-        );
-      }
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: MaterialsPage(repository: repo)),
+  testWidgets('내 자료 lists 활동·자격증 records with files and filters them by kind', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repo = MemoryMaterials();
+    for (final entry in [
+      ('a', '이력서', '첫 자료', '알파 설명'),
+      ('b', '포트폴리오', '둘째 자료', '베타 설명'),
+    ]) {
+      await repo.save(
+        PersonalMaterial(
+          id: entry.$1,
+          type: entry.$2,
+          title: entry.$3,
+          description: entry.$4,
         ),
       );
-      await tester.pumpAndSettle();
-      expect(find.text('4개 표시 / 4개'), findsOneWidget);
-      // Every material is a tile in the grid, each with its own ⋮ menu.
-      expect(
-        find.descendant(
-          of: find.byKey(const ValueKey('material-catalog')),
-          matching: find.byType(RecordTile),
-        ),
-        findsNWidgets(4),
-      );
-      expect(
-        find.descendant(
-          of: find.byKey(const ValueKey('material-row-a')),
-          matching: find.byIcon(Icons.more_vert),
-        ),
-        findsOneWidget,
-      );
-      await tester.enterText(
-        find.byKey(const ValueKey('material-search')),
-        '베타',
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('1개 표시 / 4개'), findsOneWidget);
-      expect(find.text('둘째 자료'), findsOneWidget);
-      expect(find.text('첫 자료'), findsNothing);
-      expect(find.text('검색에 맞는 자료가 없습니다'), findsNothing);
-      await tester.enterText(
-        find.byKey(const ValueKey('material-search')),
-        '없는검색어',
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('0개 표시 / 4개'), findsOneWidget);
-      expect(find.text('검색에 맞는 자료가 없습니다'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    },
-  );
+    }
+    for (final (kind, id, title) in [
+      (PersonalRecordKind.activity, 'v', '합성 봉사'),
+      (PersonalRecordKind.experience, 'p', '합성 프로젝트'),
+      (PersonalRecordKind.credential, 'c', '합성 자격'),
+    ]) {
+      final records = PersonalRecordRepository(kind);
+      await records.load();
+      await records.save(PersonalRecord(id: id, values: {'title': title}));
+    }
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: MaterialsPage(repository: repo)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // Every record and file is a tile in one grid, each with its own ⋮ menu.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('material-catalog')),
+        matching: find.byType(RecordTile),
+      ),
+      findsNWidgets(5),
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('material-row-a')),
+        matching: find.byIcon(Icons.more_vert),
+      ),
+      findsOneWidget,
+    );
+    for (final label in ['전체 5', '활동 2', '자격증 1', '자료 2']) {
+      expect(find.text(label), findsOneWidget);
+    }
 
-  testWidgets('materials list on one card and add with + like 활동·자격증', (
+    Future<void> filter(String label) async {
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+    }
+
+    await filter('자격증 1');
+    expect(find.text('합성 자격'), findsOneWidget);
+    expect(find.text('합성 봉사'), findsNothing);
+    expect(find.text('첫 자료'), findsNothing);
+    // With one kind shown, `+` opens that kind's form without asking.
+    await tester.tap(find.byTooltip('자료 추가'));
+    await tester.pumpAndSettle();
+    expect(find.text('무엇을 기록할까요?'), findsNothing);
+    expect(find.text('자격증 추가'), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, '취소'));
+    await tester.pumpAndSettle();
+
+    await filter('활동 2');
+    expect(find.text('합성 봉사'), findsOneWidget);
+    expect(find.text('합성 프로젝트'), findsOneWidget);
+    expect(find.text('합성 자격'), findsNothing);
+    // Only the activity kinds are offered.
+    await tester.tap(find.byTooltip('자료 추가'));
+    await tester.pumpAndSettle();
+    expect(find.text('무엇을 기록할까요?'), findsOneWidget);
+    expect(find.byKey(const ValueKey('activity-add-volunteer')), findsOne);
+    expect(find.byKey(const ValueKey('material-add-credential')), findsNothing);
+    expect(find.byKey(const ValueKey('material-add-file')), findsNothing);
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+
+    await filter('자료 2');
+    expect(find.text('첫 자료'), findsOneWidget);
+    expect(find.text('둘째 자료'), findsOneWidget);
+    expect(find.text('합성 봉사'), findsNothing);
+    await tester.tap(find.byTooltip('자료 추가'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('material-title')), findsOneWidget);
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+
+    await filter('전체 5');
+    expect(find.byType(RecordTile), findsNWidgets(5));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('내 자료 is one card with kind chips and adds with + like 활동', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1920, 1080));
@@ -598,19 +564,25 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('자료 목록'), findsOneWidget);
-    expect(find.text('0개'), findsOneWidget);
-    expect(find.text('등록한 자료가 없습니다'), findsOneWidget);
+    expect(find.byKey(const ValueKey('material-filters')), findsOneWidget);
+    expect(find.text('전체 0'), findsOneWidget);
+    expect(find.text('아직 기록한 자료가 없습니다'), findsOneWidget);
     // The list card and the collapsed 자료 준비 guide; no form card beside them.
     expect(find.byType(SurfaceCard), findsNWidgets(2));
     expect(find.text('자료 준비'), findsOneWidget);
     expect(find.byKey(const ValueKey('material-title')), findsNothing);
     expect(find.byTooltip('자료 추가'), findsOneWidget);
-    // A device store has nothing to read again: no `…` menu.
-    expect(find.byTooltip('더보기'), findsNothing);
+    // `…` holds 임시저장 불러오기 (no 다시 읽기 for device stores).
+    expect(find.byTooltip('더보기'), findsOneWidget);
 
-    // The empty list's button opens the same dialog as `+`.
+    // The empty list's button asks what to record, like `+`.
     await tester.tap(find.text('첫 자료 추가'));
+    await tester.pumpAndSettle();
+    expect(find.text('무엇을 기록할까요?'), findsOneWidget);
+    for (final label in ['봉사', '프로젝트', '인턴', '동아리', '그 밖의 활동', '자격증']) {
+      expect(find.text(label), findsWidgets);
+    }
+    await tester.tap(find.byKey(const ValueKey('material-add-file')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('input-dialog-surface')), findsOneWidget);
     expect(find.text('자료 추가'), findsOneWidget);

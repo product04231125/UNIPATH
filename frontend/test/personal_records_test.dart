@@ -10,7 +10,7 @@ import 'package:university_path_frontend/app.dart';
 import 'package:university_path_frontend/features/records/personal_record_repository.dart';
 import 'package:university_path_frontend/features/records/personal_record_fields.dart';
 import 'package:university_path_frontend/features/records/course/course_page.dart';
-import 'package:university_path_frontend/features/records/activity/activity_page.dart';
+import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
 import 'package:university_path_frontend/features/records/experience/experience_page.dart';
 import 'package:university_path_frontend/features/auth/guest_preview_scope.dart';
 import 'package:university_path_frontend/features/records/local_record_workbench.dart';
@@ -20,6 +20,7 @@ import 'package:university_path_frontend/features/records/record_menu_page.dart'
 import 'support/achievement_records_page.dart';
 import 'support/record_actions.dart';
 import 'package:university_path_frontend/shared/widgets/guide_card.dart';
+import 'support/memory_materials.dart';
 
 class _ActivityReviewRepository extends PersonalRecordRepository {
   _ActivityReviewRepository() : super(PersonalRecordKind.activity);
@@ -46,7 +47,7 @@ Future<void> _pumpActivityReview(
   WidgetTester tester, {
   required _ActivityReviewRepository repository,
   required ValueNotifier<bool> guest,
-  Widget page = const ActivityPage(),
+  Widget? page,
 }) async {
   await tester.binding.setSurfaceSize(const Size(1440, 900));
   addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -63,7 +64,9 @@ Future<void> _pumpActivityReview(
               PersonalRecordKind.experience => experience,
               _ => PersonalRecordRepository(kind),
             },
-            child: Scaffold(body: page),
+            child: Scaffold(
+              body: page ?? MaterialsPage(repository: MemoryMaterials()),
+            ),
           ),
         ),
       ),
@@ -76,7 +79,11 @@ Future<void> _chooseActivityAdd(
   WidgetTester tester, {
   String choice = '봉사',
 }) async {
-  await tester.tap(find.byTooltip('활동 추가'));
+  // 내 자료 asks what to record; a single-kind record menu opens its form.
+  final merged = find.byTooltip('자료 추가');
+  await tester.tap(
+    merged.evaluate().isNotEmpty ? merged : find.byTooltip('활동 추가'),
+  );
   await tester.pumpAndSettle();
   final option = find.text(choice);
   if (option.evaluate().isNotEmpty) {
@@ -119,8 +126,8 @@ void main() {
     final guest = ValueNotifier(true);
     addTearDown(guest.dispose);
     await _pumpActivityReview(tester, repository: repository, guest: guest);
-    for (final label in ['활동 추가', '수정', '삭제']) {
-      if (label == '활동 추가') {
+    for (final label in ['자료 추가', '수정', '삭제']) {
+      if (label == '자료 추가') {
         await tester.tap(find.byTooltip(label));
         await tester.pumpAndSettle();
       } else {
@@ -442,7 +449,9 @@ void main() {
         ),
       );
       await tester.pumpWidget(
-        const MaterialApp(home: Scaffold(body: ActivityPage())),
+        MaterialApp(
+          home: Scaffold(body: MaterialsPage(repository: MemoryMaterials())),
+        ),
       );
       await tester.pumpAndSettle();
       expect(find.text('내 활동'), findsOneWidget);
@@ -455,14 +464,16 @@ void main() {
     },
   );
 
-  testWidgets('activity shows empty personal state and collapses guidance', (
+  testWidgets('내 자료 shows empty personal state and collapses guidance', (
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: ActivityPage())),
+      MaterialApp(
+        home: Scaffold(body: MaterialsPage(repository: MemoryMaterials())),
+      ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('아직 기록한 활동이 없습니다'), findsOneWidget);
+    expect(find.text('아직 기록한 자료가 없습니다'), findsOneWidget);
     expect(find.text('학과 멘토링'), findsNothing);
     expect(find.byType(GuideCard), findsOneWidget);
     expect(find.text('• 봉사 시간·증빙 자료 점검'), findsNothing);
@@ -488,7 +499,9 @@ void main() {
               PersonalRecordKind.experience => experience,
               _ => PersonalRecordRepository(kind),
             },
-            child: const Scaffold(body: ActivityPage()),
+            child: Scaffold(
+              body: MaterialsPage(repository: MemoryMaterials()),
+            ),
           ),
         ),
       );
@@ -736,10 +749,11 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.byTooltip('활동'));
-      await tester.tap(find.byTooltip('활동'));
+      // 활동 records are added from 자료 › 내 자료.
+      await tester.ensureVisible(find.byTooltip('자료'));
+      await tester.tap(find.byTooltip('자료'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.byTooltip('활동 추가'));
+      await tester.ensureVisible(find.byTooltip('자료 추가'));
       await _chooseActivityAdd(tester);
       final title = find.byKey(const ValueKey('record-field-title'));
       await tester.ensureVisible(title);
@@ -820,9 +834,10 @@ void main() {
     },
   );
 
+  // 활동 and 자격증 records both live in 자료 › 내 자료; `+` asks which.
   for (final item in [
-    ('활동', '활동 추가', {'title': '합성 활동'}),
-    ('자격증', '자격 추가', {'title': '합성 자격'}),
+    ('봉사', {'title': '합성 활동'}),
+    ('자격증', {'title': '합성 자격'}),
   ]) {
     testWidgets(
       '${item.$1} supports structured input, remount and confirmed delete',
@@ -833,15 +848,13 @@ void main() {
           const UniversityPathApp(startAuthenticated: true),
         );
         await tester.pumpAndSettle();
-        await tester.tap(find.text(item.$1).first);
+        await tester.tap(find.text('자료').first);
         await tester.pumpAndSettle();
-        await tester.tap(find.byTooltip(item.$2));
+        await tester.tap(find.byTooltip('자료 추가'));
         await tester.pumpAndSettle();
-        if (item.$1 == '활동') {
-          await tester.tap(find.text('봉사').last);
-          await tester.pumpAndSettle();
-        }
-        for (final field in item.$3.entries) {
+        await tester.tap(find.text(item.$1).last);
+        await tester.pumpAndSettle();
+        for (final field in item.$2.entries) {
           final input = find.byKey(ValueKey('record-field-${field.key}'));
           await tester.ensureVisible(input);
           await tester.enterText(input, field.value);
@@ -850,9 +863,9 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('홈').first);
         await tester.pumpAndSettle();
-        await tester.tap(find.text(item.$1).first);
+        await tester.tap(find.text('자료').first);
         await tester.pumpAndSettle();
-        expect(find.textContaining(item.$3['title']!), findsOneWidget);
+        expect(find.textContaining(item.$2['title']!), findsOneWidget);
         await tapRecordAction(tester, '수정');
         await tester.pumpAndSettle();
         final name = find.byKey(const ValueKey('record-field-title'));
@@ -865,7 +878,7 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('삭제').last);
         await tester.pumpAndSettle();
-        expect(find.textContaining(item.$3['title']!), findsNothing);
+        expect(find.textContaining(item.$2['title']!), findsNothing);
         expect(find.textContaining('수정된 합성 기록'), findsNothing);
         expect(tester.takeException(), isNull);
       },

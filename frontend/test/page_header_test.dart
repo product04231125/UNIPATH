@@ -7,9 +7,7 @@ import 'package:university_path_frontend/shared/app_typography.dart';
 import 'package:university_path_frontend/shared/widgets/page_header.dart';
 import 'package:university_path_frontend/shared/widgets/content_scroll_view.dart';
 import 'package:university_path_frontend/features/records/course/course_page.dart';
-import 'package:university_path_frontend/features/records/activity/activity_page.dart';
 import 'package:university_path_frontend/features/records/experience/experience_page.dart';
-import 'package:university_path_frontend/features/records/credential/credential_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/job_analysis_page.dart';
 import 'package:university_path_frontend/features/records/portfolio/materials_page.dart';
 import 'package:university_path_frontend/features/planning/planning_repository.dart';
@@ -17,6 +15,8 @@ import 'package:university_path_frontend/features/schedule/schedule_page.dart';
 import 'package:university_path_frontend/features/settings/settings_page.dart';
 import 'package:university_path_frontend/features/graduation/graduation_page.dart';
 import 'package:university_path_frontend/features/graduation/personal_graduation_workspace.dart';
+
+import 'support/memory_materials.dart';
 
 Widget host(Widget child, {double scale = 1}) => MaterialApp(
   theme: universityPathTheme(),
@@ -51,9 +51,7 @@ void main() {
         await repository.load();
         for (final page in <Widget>[
           const CoursePage(),
-          const ActivityPage(),
           const ExperiencePage(),
-          const CredentialPage(),
           SchedulePage(repository: repository),
           SettingsPage(repository: repository),
           const GraduationPage(),
@@ -190,9 +188,12 @@ void main() {
   ) async {
     for (final (page, title, description) in <(Widget, String, String)>[
       (const CoursePage(), '수강 관리', '학기별 수강 계획과 개인 이수 기록을 정리합니다.'),
-      (const ActivityPage(), '활동', '봉사·교내외 활동과 프로젝트·인턴·동아리 경험을 한곳에서 기록합니다.'),
+      (
+        MaterialsPage(repository: MemoryMaterials()),
+        '내 자료',
+        '활동·자격증·자료를 한곳에서 기록합니다.',
+      ),
       (const ExperiencePage(), '경험', '프로젝트·인턴·동아리 경험을 이력 문장과 강점으로 정리합니다.'),
-      (const CredentialPage(), '자격증', '자격증·어학·교육 이수 내역을 관리합니다.'),
     ]) {
       await tester.pumpWidget(host(page));
       // The same header (title and actions) stays put before and after load.
