@@ -89,9 +89,9 @@ void main() {
           for (final destination in bar.destinations)
             (destination as NavigationDestination).label,
         ],
-        ['채용공고 분석', '활동', '홈', '자료', '일정', '더보기'],
+        ['일정', '자료', '홈', '준비', '채용공고 분석', '더보기'],
       );
-      for (final label in ['채용공고 분석', '활동', '홈', '자료', '일정', '더보기']) {
+      for (final label in ['일정', '자료', '홈', '준비', '채용공고 분석', '더보기']) {
         expect(barLabel(label), findsOneWidget);
       }
       expect(tester.takeException(), isNull);
@@ -110,7 +110,8 @@ void main() {
     await tester.pumpAndSettle();
     final sheet = find.byKey(const Key('phone-nav-more-sheet'));
     expect(sheet, findsOneWidget);
-    const moreLabels = ['자격증', '학사', '설정'];
+    // Sidebar order: 학사, 자기소개서·포트폴리오, then 설정.
+    const moreLabels = ['학사', '자기소개서·포트폴리오', '설정'];
     for (final label in moreLabels) {
       expect(
         find.descendant(of: sheet, matching: find.text(label)),
@@ -138,7 +139,7 @@ void main() {
       find.descendant(of: sheet, matching: find.text('계정 보안')),
       findsNothing,
     );
-    for (final label in ['채용공고 분석', '활동', '홈', '자료', '일정']) {
+    for (final label in ['일정', '자료', '홈', '준비', '채용공고 분석']) {
       expect(
         find.descendant(of: sheet, matching: find.text(label)),
         findsNothing,

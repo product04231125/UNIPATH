@@ -279,8 +279,9 @@ void main() {
       '사이드바는 수강·활동·자격이며 경험 전용 메뉴는 없다': (tester, world) async {
         await world.pumpSidebar(tester);
         expect(find.text('수강 관리'), findsWidgets);
-        expect(find.text('활동'), findsWidgets);
-        expect(find.text('자격증'), findsWidgets);
+        // 활동·자격증 records live in 자료, their recommendations in 준비.
+        expect(find.text('자료'), findsWidgets);
+        expect(find.text('준비'), findsWidgets);
         expect(find.byTooltip('경험'), findsNothing);
         expect(
           tester.widget<Workspace>(find.byType(Workspace)).selectedPage,
@@ -553,8 +554,8 @@ void main() {
             await _saveActivityKinds(tester, world);
             await world.pumpSidebar(tester);
             expect(find.text('수강 관리'), findsWidgets);
-            expect(find.text('활동'), findsWidgets);
-            expect(find.text('자격증'), findsWidgets);
+            expect(find.text('자료'), findsWidgets);
+            expect(find.text('준비'), findsWidgets);
             expect(find.byTooltip('경험'), findsNothing);
           },
       '졸업 요건 개인 규칙에서 그 기록 UUID를 선택해 연결하면': (tester, world) async {

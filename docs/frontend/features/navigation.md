@@ -1,5 +1,13 @@
 # 메뉴 URL 탐색
 
+## 학생 메뉴 순서 (2026-11-28)
+
+이 절은 아래 과거 설명보다 우선한다.
+
+- 사이드바: 홈 · 일정 · 학사 · 자료 · 준비 · 채용공고 분석 · 자기소개서·포트폴리오 (+ 설정). 매일 보는 화면(홈·일정·학사)이 위, 그 아래로 자료 → 준비 → 채용공고 분석 → 자기소개서·포트폴리오 흐름이다(`StudentPages`).
+- 경로: `/home`, `/schedule`, `/academics`, `/portfolio`(자료), `/prepare`(준비), `/job-postings`, `/writing`(자기소개서·포트폴리오), `/settings`. 옛 `/activities`·`/credentials`는 준비, `/experiences`는 자료, `/courses`·`/graduation`은 학사를 연다.
+- 휴대폰 하단: 일정 · 자료 · 홈 · 준비 · 채용공고 분석 · 더보기(학사, 자기소개서·포트폴리오, 설정).
+
 관리자 개발 세션은 `/admin/overview`, `/admin/schools`, `/admin/curricula`, `/admin/rules`,
 `/admin/documents`, `/admin/history`, `/admin/accounts` hash 경로를 사용한다. 메뉴 아래 목업 ID를
 붙인 상세 경로는 종류·현재 역할·활성 범위를 확인한다. 로그아웃은 기존 `/login`으로 복귀한다.
